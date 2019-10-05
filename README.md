@@ -5,6 +5,15 @@ This microbenchmarking framework is inteded to be used with other unit test fram
 
 API examples:
 
+
+```cpp
+// simplest possible usage
+ankerl::benchmark([&]{
+    sin(34.234);
+});
+```
+
+
 ```cpp
 // benchmarks sin(), and makes sure it is not optimized away.
 double d = 1.0;
@@ -24,3 +33,10 @@ ankerl::benchmark("string hash").batch(text.size()).unit("B").run([&] {
 }).noopt(result) << 
 ```
 
+
+Inspirations:
+* folly Benchmark https://github.com/facebook/folly/blob/master/folly/Benchmark.h
+* google Benchmark
+* nonius
+* celero
+* https://vorbrodt.blog/2019/03/18/micro-benchmarks/
