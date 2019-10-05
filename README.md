@@ -5,7 +5,7 @@ This microbenchmarking framework is inteded to be used with other unit test fram
 
 API examples:
 
-```
+```cpp
 // benchmarks sin(), and makes sure it is not optimized away.
 double d = 1.0;
 ankerl::benchmark("sin").run([&] {
