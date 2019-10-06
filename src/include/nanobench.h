@@ -176,6 +176,9 @@ class nanobench {
     std::string m_name{};
     double m_batch{1.0};
     std::string m_unit{"op"};
+    size_t m_epochs{21};
+    uint64_t m_clock_resolution_multiple{1000};
+    std::chrono::nanoseconds m_max_epoch_time{std::chrono::milliseconds{100}};
 
 public:
     struct overflow_error : public std::runtime_error {
@@ -208,18 +211,37 @@ public:
         return *this;
     }
 
+    nanobench& epochs(size_t num_epochs) noexcept {
+        m_epochs = num_epochs;
+        return *this;
+    }
+
+    // how much should we be above the clock resolution?
+    nanobench& clock_resolution_multiple(size_t multiple) noexcept {
+        m_clock_resolution_multiple = multiple;
+        return *this;
+    }
+
+    nanobench& max_epoch_time(std::chrono::nanoseconds t) noexcept {
+        m_max_epoch_time = t;
+        return *this;
+    }
+
     template <typename Op>
     nanobench const& run(Op op) const {
-        size_t const numEvals = 21;
-        auto const targetRuntime = detail::clockResolution<Clock>() * 1000;
+        auto target_runtime = detail::clockResolution<Clock>() * m_clock_resolution_multiple;
+
+        if (target_runtime > m_max_epoch_time) {
+            target_runtime = m_max_epoch_time;
+        }
 
         std::vector<double> sec_per_iter;
-        sec_per_iter.reserve(numEvals);
+        sec_per_iter.reserve(m_epochs);
 
-        size_t numIters = 1;
+        size_t num_iters = 1;
 
-        while (sec_per_iter.size() != numEvals) {
-            auto n = numIters;
+        while (sec_per_iter.size() != m_epochs) {
+            auto n = num_iters;
 
             // the code between before and after is very time critical. Make sure we only call op on
             // one occation, so that it is easy to inline.
@@ -232,29 +254,29 @@ public:
 
             auto elapsed = after - before;
             // adapt n
-            if (elapsed * 10 < targetRuntime) {
-                if (numIters * 10 < numIters) {
+            if (elapsed * 10 < target_runtime) {
+                if (num_iters * 10 < num_iters) {
                     detail::throwOverflow();
                     return *this;
                 }
-                numIters *= 10;
+                num_iters *= 10;
             } else {
-                auto mult = numIters * static_cast<size_t>(targetRuntime.count());
-                if (mult < numIters) {
+                auto mult = num_iters * static_cast<size_t>(target_runtime.count());
+                if (mult < num_iters) {
                     detail::throwOverflow();
                     return *this;
                 }
-                numIters = (numIters * targetRuntime) / elapsed;
-                if (numIters == 0) {
-                    numIters = 1;
+                num_iters = (num_iters * target_runtime) / elapsed;
+                if (num_iters == 0) {
+                    num_iters = 1;
                 }
             }
 
             // if we are within 2/3 of the target runtime, add it.
-            if (elapsed * 3 >= targetRuntime * 2) {
+            if (elapsed * 3 >= target_runtime * 2) {
                 auto result =
                     std::chrono::duration_cast<std::chrono::duration<double>>(elapsed).count() /
-                    static_cast<double>(numIters);
+                    static_cast<double>(num_iters);
 
                 sec_per_iter.push_back(result);
             }
@@ -290,7 +312,6 @@ private:
     }
 
     void show_results(std::vector<double>& sec_per_iter) const {
-
         std::vector<double> iter_per_sec;
         for (auto t : sec_per_iter) {
             iter_per_sec.push_back(1.0 / t);
@@ -298,8 +319,6 @@ private:
 
         std::sort(iter_per_sec.begin(), iter_per_sec.end());
         auto const med_iter_per_sec = calc_median(iter_per_sec);
-        // auto const mdaps_iter_per_sec = calc_median_absolute_percentage_error(iter_per_sec,
-        // med_iter_per_sec);
 
         std::sort(sec_per_iter.begin(), sec_per_iter.end());
         auto const med_sec_per_iter = calc_median(sec_per_iter);
@@ -310,7 +329,6 @@ private:
         std::cout.imbue(std::locale(std::cout.getloc(), new fmt::num_sep(',')));
 
         // show final result, the median
-
         auto const med_ns_per_op = 1e9 * med_sec_per_iter / m_batch;
         auto const med_ops = med_iter_per_sec * m_batch;
 
@@ -331,7 +349,6 @@ static void throwOverflow() {
 }
 
 } // namespace detail
-
 } // namespace ankerl
 
 #endif
