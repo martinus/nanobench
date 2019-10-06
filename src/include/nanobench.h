@@ -31,14 +31,16 @@
 #define ANKERL_NANOBENCH_H_INCLUDED
 
 // see https://semver.org/
-#define ROBIN_HOOD_VERSION_MAJOR 0 // for incompatible API changes
-#define ROBIN_HOOD_VERSION_MINOR 0 // for adding functionality in a backwards-compatible manner
-#define ROBIN_HOOD_VERSION_PATCH 1 // for backwards-compatible bug fixes
+#define ANKERL_NANOBENCH_VERSION_MAJOR 0 // incompatible API changes
+#define ANKERL_NANOBENCH_VERSION_MINOR 0 // backwards-compatible changes
+#define ANKERL_NANOBENCH_VERSION_PATCH 1 // backwards-compatible bug fixes
 
 #include <algorithm>
 #include <chrono>
+#include <cmath>
 #include <functional>
 #include <initializer_list>
+#include <iomanip>
 #include <iostream>
 #include <string>
 #include <type_traits>
@@ -102,6 +104,8 @@ typename Clock::duration clockResolution() {
     return dur;
 }
 
+static void throwOverflow();
+
 } // namespace detail
 
 template <typename... Args>
@@ -109,46 +113,120 @@ void noop(Args&&... args) {
     (void)std::initializer_list<int>{(detail::noopSink(args), 0)...};
 }
 
+namespace fmt {
+
+class num_sep : public std::numpunct<char> {
+public:
+    num_sep(char sep)
+        : m_sep(sep) {}
+
+    char do_thousands_sep() const {
+        return m_sep;
+    }
+
+    std::string do_grouping() const {
+        return "\003";
+    }
+
+private:
+    char m_sep;
+};
+
+#if defined(__clang__)
+#    pragma clang diagnostic push
+#    pragma clang diagnostic ignored "-Wpadded"
+#endif
+
+class streamstate_restorer {
+public:
+    explicit streamstate_restorer(std::ostream& s)
+        : m_stream(s)
+        , m_precision(s.precision())
+        , m_width(s.width())
+        , m_fill(s.fill())
+        , m_fmt_flags(s.flags()) {}
+
+    ~streamstate_restorer() {
+        restore();
+    }
+
+    void restore() {
+        m_stream.fill(m_fill);
+        m_stream.width(m_width);
+        m_stream.precision(m_precision);
+        m_stream.flags(m_fmt_flags);
+    }
+
+    streamstate_restorer(streamstate_restorer const&) = delete;
+
+private:
+    std::ostream& m_stream;
+    std::streamsize const m_precision;
+    std::streamsize const m_width;
+    std::ostream::char_type const m_fill;
+    std::ostream::fmtflags const m_fmt_flags;
+};
+
+#if defined(__clang__)
+#    pragma clang diagnostic pop
+#endif
+
+} // namespace fmt
+
 class nanobench {
     using Clock = std::chrono::high_resolution_clock;
 
     std::string m_name{};
-    size_t m_batch{1};
-    size_t m_iters{1};
+    double m_batch{1.0};
+    std::string m_unit{"op"};
 
 public:
-    template <typename Op, typename = typename std::enable_if<
-                               std::is_constructible<std::function<void()>, Op>::value>::type>
-    nanobench(Op op) {
-        run(op);
-    }
+    struct overflow_error : public std::runtime_error {
+        inline explicit overflow_error(std::string const& msg)
+            : std::runtime_error(msg) {}
+        inline explicit overflow_error(const char* msg)
+            : std::runtime_error(msg) {}
+
+        overflow_error(const overflow_error&) = default;
+        overflow_error& operator=(const overflow_error&) = default;
+        overflow_error(overflow_error&&) = default;
+        overflow_error& operator=(overflow_error&&) = default;
+        virtual ~overflow_error() = default;
+    };
 
     explicit nanobench(std::string name)
         : m_name(std::move(name)) {}
 
-    nanobench& batch(size_t batch) noexcept {
-        m_batch = batch;
+    nanobench& batch(double b) noexcept {
+        m_batch = b;
         return *this;
     }
 
-    nanobench& iters(size_t iters) noexcept {
-        m_iters = iters;
+    nanobench& batch(uint64_t b) noexcept {
+        return batch(static_cast<double>(b));
+    }
+
+    nanobench& unit(std::string unit) {
+        m_unit = std::move(unit);
         return *this;
     }
 
     template <typename Op>
     nanobench const& run(Op op) const {
-        size_t const numEvals = 101;
+        size_t const numEvals = 21;
 
         auto const targetRuntime = detail::clockResolution<Clock>() * 1000;
 
-        std::vector<double> results;
-        results.reserve(numEvals);
+        std::vector<double> sec_per_iter;
+        sec_per_iter.reserve(numEvals);
 
         size_t numIters = 1;
 
-        while (results.size() != numEvals) {
+        while (sec_per_iter.size() != numEvals) {
             auto n = numIters;
+
+            // the code between before and after is very time critical. Make sure we only call op on
+            // one occation, so that it is easy to inline.
             auto before = Clock::now();
             while (n > 0) {
                 op();
@@ -160,43 +238,33 @@ public:
             // adapt n
             if (elapsed * 10 < targetRuntime) {
                 if (numIters * 10 < numIters) {
-                    std::cout << "overflow in *10!" << std::endl;
+                    detail::throwOverflow();
                     return *this;
                 }
                 numIters *= 10;
             } else {
                 auto mult = numIters * static_cast<size_t>(targetRuntime.count());
                 if (mult < numIters) {
-                    std::cout << "overflow in mult!" << std::endl;
+                    detail::throwOverflow();
                     return *this;
                 }
                 numIters = (numIters * targetRuntime) / elapsed;
+                if (numIters == 0) {
+                    numIters = 1;
+                }
             }
 
-            // if we are within 50% of the target time, add this result
-            auto diff = targetRuntime.count() - elapsed.count();
-            if (diff < 0) {
-                diff = -diff;
-            }
-            if (diff * 100 / targetRuntime.count() < 20) {
+            // if we are within 2/3 of the target runtime, add it.
+            if (elapsed * 3 >= targetRuntime * 2) {
                 auto result =
                     std::chrono::duration_cast<std::chrono::duration<double>>(elapsed).count() /
                     static_cast<double>(numIters);
 
-                results.push_back(result);
+                sec_per_iter.push_back(result);
             }
         }
 
-        // show final result, the median
-        std::sort(results.begin(), results.end());
-        auto r = results[results.size() / 2];
-
-        std::cout << (r * 1e9) << " ns";
-        if (!m_name.empty()) {
-            std::cout << " for " << m_name;
-        }
-        std::cout << std::endl;
-
+        show_results(sec_per_iter);
         return *this;
     }
 
@@ -205,7 +273,72 @@ public:
         ::ankerl::noop(std::forward<Args>(args)...);
         return *this;
     }
+
+private:
+    double calc_median(std::vector<double> const& results) const {
+        auto mid = results.size() / 2;
+        if (results.size() & 1) {
+            return results[mid];
+        }
+        return (results[mid - 1] + results[mid]) / 2;
+    }
+
+    double calc_median_absolute_percentage_error(std::vector<double> const& results,
+                                                 double median) const {
+        std::vector<double> absolute_percentage_errors;
+        for (auto r : results) {
+            absolute_percentage_errors.push_back(std::fabs(r - median) / r);
+        }
+        std::sort(absolute_percentage_errors.begin(), absolute_percentage_errors.end());
+
+        return calc_median(absolute_percentage_errors);
+    }
+
+    void show_results(std::vector<double>& sec_per_iter) const {
+
+        std::vector<double> iter_per_sec;
+        for (auto t : sec_per_iter) {
+            iter_per_sec.push_back(1.0 / t);
+        }
+
+        std::sort(iter_per_sec.begin(), iter_per_sec.end());
+        auto const med_iter_per_sec = calc_median(iter_per_sec);
+        // auto const mdaps_iter_per_sec = calc_median_absolute_percentage_error(iter_per_sec,
+        // med_iter_per_sec);
+
+        std::sort(sec_per_iter.begin(), sec_per_iter.end());
+        auto const med_sec_per_iter = calc_median(sec_per_iter);
+        auto const mdaps_sec_per_iter =
+            calc_median_absolute_percentage_error(sec_per_iter, med_sec_per_iter);
+
+        fmt::streamstate_restorer restoreStream(std::cout);
+        std::cout.imbue(std::locale(std::cout.getloc(), new fmt::num_sep(',')));
+
+        // show final result, the median
+
+        auto const med_ns_per_op = 1e9 * med_sec_per_iter / m_batch;
+        auto const med_ops = med_iter_per_sec * m_batch;
+
+        std::cout << std::fixed << std::setprecision(2) << std::setw(18) << med_ns_per_op << " ns/"
+                  << m_unit << " " << std::setw(18) << med_ops << " " << m_unit << "/s +-"
+                  << std::setw(5) << std::setprecision(1) << (mdaps_sec_per_iter * 100) << "%";
+
+        if (!m_name.empty()) {
+            std::cout << " " << m_name;
+        }
+        std::cout << std::endl;
+    }
 };
+
+namespace detail {
+
+static void throwOverflow() {
+    throw nanobench::overflow_error(
+        "Cannot find a working number of iterations for reliable results. "
+        "Maybe your code got optimized away?");
+}
+
+} // namespace detail
 
 } // namespace ankerl
 
