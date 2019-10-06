@@ -37,6 +37,7 @@
 
 #include <algorithm>
 #include <chrono>
+#include <functional>
 #include <initializer_list>
 #include <iostream>
 #include <string>
@@ -53,11 +54,6 @@ namespace detail {
 #    pragma optimize("", off)
 inline void noopSink(void const*) {}
 #    pragma optimize("", on
-
-template <typename... Args>
-void noop(Args&&... args) {
-    (void)std::initializer_list<int>{(noopSink(&args), 0)...};
-}
 
 #else
 
@@ -81,11 +77,6 @@ auto noopSink(T const& val) -> typename std::enable_if<NoopNeedsIndirect<T>::val
     // the "r" forces compiler to make val available in a register, so it must have been loaded.
     // Only works when small enough (<= sizeof(long)), trivial, and no pointer
     asm volatile("" ::"r"(val));
-}
-
-template <typename... Args>
-void noop(Args&&... args) {
-    (void)std::initializer_list<int>{(noopSink(args), 0)...};
 }
 
 #endif
@@ -113,14 +104,25 @@ typename Clock::duration clockResolution() {
 
 } // namespace detail
 
+template <typename... Args>
+void noop(Args&&... args) {
+    (void)std::initializer_list<int>{(detail::noopSink(args), 0)...};
+}
+
 class nanobench {
     using Clock = std::chrono::high_resolution_clock;
 
-    std::string m_name;
+    std::string m_name{};
     size_t m_batch{1};
     size_t m_iters{1};
 
 public:
+    template <typename Op, typename = typename std::enable_if<
+                               std::is_constructible<std::function<void()>, Op>::value>::type>
+    nanobench(Op op) {
+        run(op);
+    }
+
     explicit nanobench(std::string name)
         : m_name(std::move(name)) {}
 
@@ -135,7 +137,7 @@ public:
     }
 
     template <typename Op>
-    nanobench const& run(Op op) const noexcept {
+    nanobench const& run(Op op) const {
         size_t const numEvals = 101;
 
         auto const targetRuntime = detail::clockResolution<Clock>() * 1000;
@@ -157,9 +159,17 @@ public:
             auto elapsed = after - before;
             // adapt n
             if (elapsed * 10 < targetRuntime) {
-                // TODO check n overflow
+                if (numIters * 10 < numIters) {
+                    std::cout << "overflow in *10!" << std::endl;
+                    return *this;
+                }
                 numIters *= 10;
             } else {
+                auto mult = numIters * static_cast<size_t>(targetRuntime.count());
+                if (mult < numIters) {
+                    std::cout << "overflow in mult!" << std::endl;
+                    return *this;
+                }
                 numIters = (numIters * targetRuntime) / elapsed;
             }
 
@@ -192,10 +202,10 @@ public:
 
     template <typename... Args>
     nanobench const& noop(Args&&... args) const noexcept {
-        detail::noop(std::forward<Args>(args)...);
+        ::ankerl::noop(std::forward<Args>(args)...);
         return *this;
     }
-}; // namespace ankerl
+};
 
 } // namespace ankerl
 
