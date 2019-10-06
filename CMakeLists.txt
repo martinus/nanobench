@@ -14,5 +14,6 @@ endif()
 
 add_executable(nb "")
 add_subdirectory(src)
+add_compile_flags_target(nb)
 
 target_sources_local(nb PUBLIC .clang-tidy)
