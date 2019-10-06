@@ -35,11 +35,14 @@
 #define ROBIN_HOOD_VERSION_MINOR 0 // for adding functionality in a backwards-compatible manner
 #define ROBIN_HOOD_VERSION_PATCH 1 // for backwards-compatible bug fixes
 
+#include <algorithm>
 #include <chrono>
 #include <initializer_list>
 #include <iostream>
 #include <string>
 #include <type_traits>
+#include <utility>
+#include <vector>
 
 namespace ankerl {
 
@@ -87,6 +90,27 @@ void noop(Args&&... args) {
 
 #endif
 
+// determines best resolution of the given clock
+template <typename Clock>
+typename Clock::duration calcClockResolution(size_t numEvaluations) {
+    auto bestDuration = Clock::duration::max();
+    for (size_t i = 0; i < numEvaluations; ++i) {
+        auto begin = Clock::now();
+        auto end = Clock::now();
+        while (begin == end) {
+            end = Clock::now();
+        }
+        bestDuration = (std::min)(bestDuration, end - begin);
+    }
+    return bestDuration;
+}
+
+template <typename Clock>
+typename Clock::duration clockResolution() {
+    static typename Clock::duration dur = calcClockResolution<Clock>(20);
+    return dur;
+}
+
 } // namespace detail
 
 class nanobench {
@@ -112,17 +136,56 @@ public:
 
     template <typename Op>
     nanobench const& run(Op op) const noexcept {
-        size_t n = m_iters;
-        auto before = Clock::now();
-        while (n > 0) {
-            op();
-            --n;
+        size_t const numEvals = 101;
+
+        auto const targetRuntime = detail::clockResolution<Clock>() * 1000;
+
+        std::vector<double> results;
+        results.reserve(numEvals);
+
+        size_t numIters = 1;
+
+        while (results.size() != numEvals) {
+            auto n = numIters;
+            auto before = Clock::now();
+            while (n > 0) {
+                op();
+                --n;
+            }
+            auto after = Clock::now();
+
+            auto elapsed = after - before;
+            // adapt n
+            if (elapsed * 10 < targetRuntime) {
+                // TODO check n overflow
+                numIters *= 10;
+            } else {
+                numIters = (numIters * targetRuntime) / elapsed;
+            }
+
+            // if we are within 50% of the target time, add this result
+            auto diff = targetRuntime.count() - elapsed.count();
+            if (diff < 0) {
+                diff = -diff;
+            }
+            if (diff * 100 / targetRuntime.count() < 20) {
+                auto result =
+                    std::chrono::duration_cast<std::chrono::duration<double>>(elapsed).count() /
+                    static_cast<double>(numIters);
+
+                results.push_back(result);
+            }
         }
-        auto after = Clock::now();
-        auto elapsed =
-            std::chrono::duration_cast<std::chrono::duration<double>>(after - before).count();
-        std::cout << (1e9 * elapsed / static_cast<double>(m_batch * m_iters)) << " ns for "
-                  << m_name << " (" << elapsed << " s total)" << std::endl;
+
+        // show final result, the median
+        std::sort(results.begin(), results.end());
+        auto r = results[results.size() / 2];
+
+        std::cout << (r * 1e9) << " ns";
+        if (!m_name.empty()) {
+            std::cout << " for " << m_name;
+        }
+        std::cout << std::endl;
 
         return *this;
     }
@@ -132,7 +195,7 @@ public:
         detail::noop(std::forward<Args>(args)...);
         return *this;
     }
-};
+}; // namespace ankerl
 
 } // namespace ankerl
 
