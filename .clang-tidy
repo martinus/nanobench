@@ -1,0 +1,27 @@
+---
+Checks: "*,\
+  -google-runtime-int,\
+  -google-explicit-constructor,\
+  -hicpp-no-malloc,\
+  -hicpp-vararg,\
+  -hicpp-invalid-access-moved,\
+  -hicpp-no-array-decay,\
+  -llvm-header-guard,\
+  -readability-magic-numbers,\
+  -cppcoreguidelines-avoid-magic-numbers,\
+  -cppcoreguidelines-pro-bounds-constant-array-index,\
+  -cppcoreguidelines-pro-bounds-pointer-arithmetic,\
+  -cppcoreguidelines-pro-type-reinterpret-cast,\
+  -cppcoreguidelines-no-malloc,\
+  -cppcoreguidelines-owning-memory,\
+  -cppcoreguidelines-macro-usage,\
+  -cppcoreguidelines-pro-type-vararg,\
+  -cppcoreguidelines-pro-bounds-array-to-pointer-decay,\
+  -fuchsia-overloaded-operator,\
+  -fuchsia-default-arguments,\
+  -fuchsia-multiple-inheritance,
+  -cert-err58-cpp"
+WarningsAsErrors: "*"
+HeaderFilterRegex: 'robin_hood\.h'
+...
+
