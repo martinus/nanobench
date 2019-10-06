@@ -54,20 +54,21 @@ namespace detail {
 #if defined(_MSC_VER)
 // see https://docs.microsoft.com/en-us/cpp/preprocessor/optimize
 #    pragma optimize("", off)
-inline void noopSink(void const*) {}
+inline void do_not_optimize_away_sink(void const*) {}
 #    pragma optimize("", on
 
 #else
 
 template <typename T>
-struct NoopNeedsIndirect {
+struct DoNotOptimizeAwayNeedsIndirect {
     using D = typename std::decay<T>::type;
     constexpr static bool value = !std::is_trivially_copyable<D>::value ||
                                   sizeof(D) > sizeof(long) || std::is_pointer<D>::value;
 };
 
 template <typename T>
-auto noopSink(T const& val) -> typename std::enable_if<!NoopNeedsIndirect<T>::value>::type {
+auto do_not_optimize_away_sink(T const& val) ->
+    typename std::enable_if<!DoNotOptimizeAwayNeedsIndirect<T>::value>::type {
     // see https://github.com/facebook/folly/blob/master/folly/Benchmark.h
     // Tells the compiler that we read val from memory and might read/write
     // from any memory location.
@@ -75,7 +76,8 @@ auto noopSink(T const& val) -> typename std::enable_if<!NoopNeedsIndirect<T>::va
 }
 
 template <typename T>
-auto noopSink(T const& val) -> typename std::enable_if<NoopNeedsIndirect<T>::value>::type {
+auto do_not_optimize_away_sink(T const& val) ->
+    typename std::enable_if<DoNotOptimizeAwayNeedsIndirect<T>::value>::type {
     // the "r" forces compiler to make val available in a register, so it must have been loaded.
     // Only works when small enough (<= sizeof(long)), trivial, and no pointer
     asm volatile("" ::"r"(val));
@@ -107,11 +109,6 @@ typename Clock::duration clockResolution() {
 static void throwOverflow();
 
 } // namespace detail
-
-template <typename... Args>
-void noop(Args&&... args) {
-    (void)std::initializer_list<int>{(detail::noopSink(args), 0)...};
-}
 
 namespace fmt {
 
@@ -214,7 +211,6 @@ public:
     template <typename Op>
     nanobench const& run(Op op) const {
         size_t const numEvals = 21;
-
         auto const targetRuntime = detail::clockResolution<Clock>() * 1000;
 
         std::vector<double> sec_per_iter;
@@ -269,9 +265,8 @@ public:
     }
 
     template <typename... Args>
-    nanobench const& noop(Args&&... args) const noexcept {
-        ::ankerl::noop(std::forward<Args>(args)...);
-        return *this;
+    static void do_not_optimize_away(Args&&... args) {
+        (void)std::initializer_list<int>{(detail::do_not_optimize_away_sink(args), 0)...};
     }
 
 private:
@@ -319,14 +314,11 @@ private:
         auto const med_ns_per_op = 1e9 * med_sec_per_iter / m_batch;
         auto const med_ops = med_iter_per_sec * m_batch;
 
-        std::cout << std::fixed << std::setprecision(2) << std::setw(18) << med_ns_per_op << " ns/"
-                  << m_unit << " " << std::setw(18) << med_ops << " " << m_unit << "/s +-"
-                  << std::setw(5) << std::setprecision(1) << (mdaps_sec_per_iter * 100) << "%";
-
-        if (!m_name.empty()) {
-            std::cout << " " << m_name;
-        }
-        std::cout << std::endl;
+        std::cout << std::fixed << std::setprecision(2) << std::setw(18) << std::right
+                  << med_ns_per_op << " ns/" << std::setw(2) << std::left << m_unit << " "
+                  << std::setw(18) << std::right << med_ops << " " << std::setw(2) << m_unit
+                  << "/s +-" << std::setw(5) << std::setprecision(1) << (mdaps_sec_per_iter * 100)
+                  << "%  " << m_name << std::endl;
     }
 };
 
