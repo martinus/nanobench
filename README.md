@@ -59,45 +59,29 @@ ankerl::nanobench::print_header();
 
 Desired output is in markdown format:
 
-| relative |      time per operation      |    operations per second    |  MdAPE  | benchmark name       
-|---------:|-----------------------------:|----------------------------:|--------:|:----------------------------------------------- 
-|          |                6.26 ns/op    |      159,711,728.47 op/s    |    0.1% | `std::vector<std::string> reserve(ptr) + release`
-|   86.34% |                6.83 ns/op    |      146,327,670.30 op/s    |    0.1% | `std::vector<std::string> reserve() + lookup + operator=`
-| 1208.24% |               14.15 ns/op    |       70,649,422.38 op/s    |    0.3% | `std::vector<std::string> emplace + release`
-|   99.87% |               17.15 ns/op    |       58,298,072.40 op/s    |    0.5% | `std::vector<std::string> emplace + release`
-| 1208.24% |               14.29 ns/op    |       69,984,072.59 op/s    |    0.5% | `std::vector<std::string> moving out`
-| 1208.24% |               17.26 ns/op    |       57,935,477.67 op/s    |    0.6% | `std::vector<std::string> = std::string()`
-| 1208.24% |               15.56 ns/op    |       64,252,195.88 op/s    |    0.7% | `std::vector<std::string> dtor & ctor`
-| 1208.24% |               15.60 ns/op    |       64,113,063.62 op/s    |    0.5% | `std::vector<std::string> std::string().swap()`
-|          |                5.19 ns/op    |      192,678,227.36 op/s    |    0.1% | `std::array<std::string, 16> reserve(ptr) + release`
-|          |                6.19 ns/op    |      161,533,852.61 op/s    |    0.1% | `std::array<std::string, 16> reserve() + lookup + operator=`
-|          |               10.73 ns/op    |       93,180,114.91 op/s    |    0.8% | `std::array<std::string, 16> emplace + release`
-|          |               14.76 ns/op    |       67,736,780.59 op/s    |    1.2% | `std::array<std::string, 16> emplace + release`
-|          |               11.89 ns/op    |       84,093,142.30 op/s    |    0.7% | `std::array<std::string, 16> moving out`
-|          |               14.01 ns/op    |       71,374,009.36 op/s    |    0.3% | `std::array<std::string, 16> = std::string()`
-|          |               11.61 ns/op    |       86,143,477.54 op/s    |    1.2% | `std::array<std::string, 16> dtor & ctor`
-|          |               13.26 ns/op    |       75,411,170.43 op/s    |    0.4% | `std::array<std::string, 16> std::string().swap()`
+| relative |               ns/op |               op/s  |  MdAPE  | benchmark name
+|---------:|--------------------:|--------------------:|--------:|:-----------------------------------------------
+|          |                6.26 |      159,711,728.47 |    0.1% | `std::vector<std::string> reserve(ptr) + release`
+|   86.34% |                6.83 |      146,327,670.30 |    0.1% | `std::vector<std::string> reserve() + lookup + operator=`
+| 1208.24% |               14.15 |       70,649,422.38 |    0.3% | `std::vector<std::string> emplace + release`
+|   99.87% |               17.15 |       58,298,072.40 |    0.5% | `std::vector<std::string> emplace + release`
+| 1208.24% |               14.29 |       69,984,072.59 |    0.5% | `std::vector<std::string> moving out`
+| 1208.24% |               17.26 |       57,935,477.67 |    0.6% | `std::vector<std::string> = std::string()`
+| 1208.24% |               15.56 |       64,252,195.88 |    0.7% | `std::vector<std::string> dtor & ctor`
+| 1208.24% |               15.60 |       64,113,063.62 |    0.5% | `std::vector<std::string> std::string().swap()`
 
 
 ```
-| relative |      time per operation      |    operations per second    |  MdAPE  | benchmark name       
-|---------:|-----------------------------:|----------------------------:|--------:|:----------------------------------------------- 
-|          |                6.26 ns/op    |      159,711,728.47 op/s    |    0.1% | `std::vector<std::string> reserve(ptr) + release`
-|   86.34% |                6.83 ns/op    |      146,327,670.30 op/s    |    0.1% | `std::vector<std::string> reserve() + lookup + operator=`
-| 1208.24% |               14.15 ns/op    |       70,649,422.38 op/s    |    0.3% | `std::vector<std::string> emplace + release`
-|   99.87% |               17.15 ns/op    |       58,298,072.40 op/s    |    0.5% | `std::vector<std::string> emplace + release`
-| 1208.24% |               14.29 ns/op    |       69,984,072.59 op/s    |    0.5% | `std::vector<std::string> moving out`
-| 1208.24% |               17.26 ns/op    |       57,935,477.67 op/s    |    0.6% | `std::vector<std::string> = std::string()`
-| 1208.24% |               15.56 ns/op    |       64,252,195.88 op/s    |    0.7% | `std::vector<std::string> dtor & ctor`
-| 1208.24% |               15.60 ns/op    |       64,113,063.62 op/s    |    0.5% | `std::vector<std::string> std::string().swap()`
-|          |                5.19 ns/op    |      192,678,227.36 op/s    |    0.1% | `std::array<std::string, 16> reserve(ptr) + release`
-|          |                6.19 ns/op    |      161,533,852.61 op/s    |    0.1% | `std::array<std::string, 16> reserve() + lookup + operator=`
-|          |               10.73 ns/op    |       93,180,114.91 op/s    |    0.8% | `std::array<std::string, 16> emplace + release`
-|          |               14.76 ns/op    |       67,736,780.59 op/s    |    1.2% | `std::array<std::string, 16> emplace + release`
-|          |               11.89 ns/op    |       84,093,142.30 op/s    |    0.7% | `std::array<std::string, 16> moving out`
-|          |               14.01 ns/op    |       71,374,009.36 op/s    |    0.3% | `std::array<std::string, 16> = std::string()`
-|          |               11.61 ns/op    |       86,143,477.54 op/s    |    1.2% | `std::array<std::string, 16> dtor & ctor`
-|          |               13.26 ns/op    |       75,411,170.43 op/s    |    0.4% | `std::array<std::string, 16> std::string().swap()`
+| relative |               ns/op |               op/s  |  MdAPE  | benchmark name
+|---------:|--------------------:|--------------------:|--------:|:-----------------------------------------------
+|          |                6.26 |      159,711,728.47 |    0.1% | `std::vector<std::string> reserve(ptr) + release`
+|   86.34% |                6.83 |      146,327,670.30 |    0.1% | `std::vector<std::string> reserve() + lookup + operator=`
+| 1208.24% |               14.15 |       70,649,422.38 |    0.3% | `std::vector<std::string> emplace + release`
+|   99.87% |               17.15 |       58,298,072.40 |    0.5% | `std::vector<std::string> emplace + release`
+| 1208.24% |               14.29 |       69,984,072.59 |    0.5% | `std::vector<std::string> moving out`
+| 1208.24% |               17.26 |       57,935,477.67 |    0.6% | `std::vector<std::string> = std::string()`
+| 1208.24% |               15.56 |       64,252,195.88 |    0.7% | `std::vector<std::string> dtor & ctor`
+| 1208.24% |               15.60 |       64,113,063.62 |    0.5% | `std::vector<std::string> std::string().swap()`
 ```
 
 Inspirations:
