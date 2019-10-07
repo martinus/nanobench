@@ -62,26 +62,26 @@ Desired output is in markdown format:
 | relative |               ns/op |               op/s  |  MdAPE  | benchmark name
 |---------:|--------------------:|--------------------:|--------:|:-----------------------------------------------
 |          |                6.26 |      159,711,728.47 |    0.1% | `std::vector<std::string> reserve(ptr) + release`
-|   86.34% |                6.83 |      146,327,670.30 |    0.1% | `std::vector<std::string> reserve() + lookup + operator=`
-| 1208.24% |               14.15 |       70,649,422.38 |    0.3% | `std::vector<std::string> emplace + release`
-|   99.87% |               17.15 |       58,298,072.40 |    0.5% | `std::vector<std::string> emplace + release`
-| 1208.24% |               14.29 |       69,984,072.59 |    0.5% | `std::vector<std::string> moving out`
-| 1208.24% |               17.26 |       57,935,477.67 |    0.6% | `std::vector<std::string> = std::string()`
-| 1208.24% |               15.56 |       64,252,195.88 |    0.7% | `std::vector<std::string> dtor & ctor`
-| 1208.24% |               15.60 |       64,113,063.62 |    0.5% | `std::vector<std::string> std::string().swap()`
+|    86.4% |                6.83 |      146,327,670.30 |    0.1% | `std::vector<std::string> reserve() + lookup + operator=`
+|  1208.4% |               14.15 |       70,649,422.38 |    0.3% | `std::vector<std::string> emplace + release`
+|    99.7% |               17.15 |       58,298,072.40 |    0.5% | `std::vector<std::string> emplace + release`
+|  1208.4% |               14.29 |       69,984,072.59 |    0.5% | `std::vector<std::string> moving out`
+|  1208.4% |               17.26 |       57,935,477.67 |    0.6% | `std::vector<std::string> = std::string()`
+|  1208.4% |               15.56 |       64,252,195.88 |    0.7% | `std::vector<std::string> dtor & ctor`
+|  1208.4% |               15.60 |       64,113,063.62 |    0.5% | `std::vector<std::string> std::string().swap()`
 
 
 ```
 | relative |               ns/op |               op/s  |  MdAPE  | benchmark name
 |---------:|--------------------:|--------------------:|--------:|:-----------------------------------------------
 |          |                6.26 |      159,711,728.47 |    0.1% | `std::vector<std::string> reserve(ptr) + release`
-|   86.34% |                6.83 |      146,327,670.30 |    0.1% | `std::vector<std::string> reserve() + lookup + operator=`
-| 1208.24% |               14.15 |       70,649,422.38 |    0.3% | `std::vector<std::string> emplace + release`
-|   99.87% |               17.15 |       58,298,072.40 |    0.5% | `std::vector<std::string> emplace + release`
-| 1208.24% |               14.29 |       69,984,072.59 |    0.5% | `std::vector<std::string> moving out`
-| 1208.24% |               17.26 |       57,935,477.67 |    0.6% | `std::vector<std::string> = std::string()`
-| 1208.24% |               15.56 |       64,252,195.88 |    0.7% | `std::vector<std::string> dtor & ctor`
-| 1208.24% |               15.60 |       64,113,063.62 |    0.5% | `std::vector<std::string> std::string().swap()`
+|    86.4% |                6.83 |      146,327,670.30 |    0.1% | `std::vector<std::string> reserve() + lookup + operator=`
+|  1208.4% |               14.15 |       70,649,422.38 |    0.3% | `std::vector<std::string> emplace + release`
+|    99.7% |               17.15 |       58,298,072.40 |    0.5% | `std::vector<std::string> emplace + release`
+|  1208.4% |               14.29 |       69,984,072.59 |    0.5% | `std::vector<std::string> moving out`
+|  1208.4% |               17.26 |       57,935,477.67 |    0.6% | `std::vector<std::string> = std::string()`
+|  1208.4% |               15.56 |       64,252,195.88 |    0.7% | `std::vector<std::string> dtor & ctor`
+|  1208.4% |               15.60 |       64,113,063.62 |    0.5% | `std::vector<std::string> std::string().swap()`
 ```
 
 Inspirations:
