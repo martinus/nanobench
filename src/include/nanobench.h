@@ -346,6 +346,18 @@ public:
     // Performs all evaluations.
     template <typename Op>
     Result run(Op op) const {
+#if 0
+        detail::Measurements measurements(mClockResolutionMultiple, mMaxEpochTime, mNumEpochs);
+        do {
+            auto before = Clock::now();
+            while (n > 0) {
+                op();
+                --n;
+            }
+            auto after = Clock::now();
+        } while (measurements.add(before, after));
+        return showResult(measurements.data(), measurements.error());
+#endif
         auto targetRuntime = detail::clockResolution() * mClockResolutionMultiple;
         if (targetRuntime > mMaxEpochTime) {
             targetRuntime = mMaxEpochTime;
