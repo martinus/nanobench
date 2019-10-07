@@ -48,13 +48,18 @@
 #include <vector>
 
 namespace ankerl {
-
+namespace nanobench {
 namespace detail {
+
+inline std::string& lastUnit() {
+    static std::string sUnit = {};
+    return sUnit;
+}
 
 #if defined(_MSC_VER)
 // see https://docs.microsoft.com/en-us/cpp/preprocessor/optimize
 #    pragma optimize("", off)
-inline void do_not_optimize_away_sink(void const*) {}
+inline void doNotOptimizeAway_sink(void const*) {}
 #    pragma optimize("", on
 
 #else
@@ -62,13 +67,11 @@ inline void do_not_optimize_away_sink(void const*) {}
 template <typename T>
 struct DoNotOptimizeAwayNeedsIndirect {
     using D = typename std::decay<T>::type;
-    constexpr static bool value = !std::is_trivially_copyable<D>::value ||
-                                  sizeof(D) > sizeof(long) || std::is_pointer<D>::value;
+    constexpr static bool value = !std::is_trivially_copyable<D>::value || sizeof(D) > sizeof(long) || std::is_pointer<D>::value;
 };
 
 template <typename T>
-auto do_not_optimize_away_sink(T const& val) ->
-    typename std::enable_if<!DoNotOptimizeAwayNeedsIndirect<T>::value>::type {
+auto doNotOptimizeAway_sink(T const& val) -> typename std::enable_if<!DoNotOptimizeAwayNeedsIndirect<T>::value>::type {
     // see https://github.com/facebook/folly/blob/master/folly/Benchmark.h
     // Tells the compiler that we read val from memory and might read/write
     // from any memory location.
@@ -76,8 +79,7 @@ auto do_not_optimize_away_sink(T const& val) ->
 }
 
 template <typename T>
-auto do_not_optimize_away_sink(T const& val) ->
-    typename std::enable_if<DoNotOptimizeAwayNeedsIndirect<T>::value>::type {
+auto doNotOptimizeAway_sink(T const& val) -> typename std::enable_if<DoNotOptimizeAwayNeedsIndirect<T>::value>::type {
     // the "r" forces compiler to make val available in a register, so it must have been loaded.
     // Only works when small enough (<= sizeof(long)), trivial, and no pointer
     asm volatile("" ::"r"(val));
@@ -106,9 +108,7 @@ typename Clock::duration clockResolution() {
     return dur;
 }
 
-static void throwOverflow();
-
-} // namespace detail
+inline void throwOverflow();
 
 namespace fmt {
 
@@ -129,15 +129,11 @@ private:
     char m_sep;
 };
 
-#if defined(__clang__)
-#    pragma clang diagnostic push
-#    pragma clang diagnostic ignored "-Wpadded"
-#endif
-
 class streamstate_restorer {
 public:
     explicit streamstate_restorer(std::ostream& s)
         : m_stream(s)
+        , m_locale(s.getloc())
         , m_precision(s.precision())
         , m_width(s.width())
         , m_fill(s.fill())
@@ -148,6 +144,7 @@ public:
     }
 
     void restore() {
+        m_stream.imbue(m_locale);
         m_stream.fill(m_fill);
         m_stream.width(m_width);
         m_stream.precision(m_precision);
@@ -158,19 +155,75 @@ public:
 
 private:
     std::ostream& m_stream;
+    std::locale m_locale;
     std::streamsize const m_precision;
     std::streamsize const m_width;
     std::ostream::char_type const m_fill;
     std::ostream::fmtflags const m_fmt_flags;
 };
 
-#if defined(__clang__)
-#    pragma clang diagnostic pop
-#endif
+struct num {
+    num(int width, int precision, double value)
+        : mWidth(width)
+        , mPrecision(precision)
+        , mValue(value) {}
+
+    int mWidth;
+    int mPrecision;
+    double mValue;
+};
+
+inline std::ostream& operator<<(std::ostream& os, num const& n) {
+    streamstate_restorer sr(os);
+    os.imbue(std::locale(std::cout.getloc(), new num_sep(',')));
+    os << std::setw(n.mWidth) << std::setprecision(n.mPrecision) << std::fixed << n.mValue;
+    return os;
+}
 
 } // namespace fmt
+} // namespace detail
 
-class nanobench {
+template <typename... Args>
+static void doNotOptimizeAway(Args&&... args) {
+    (void)std::initializer_list<int>{(detail::doNotOptimizeAway_sink(args), 0)...};
+}
+
+struct OverflowError : public std::runtime_error {
+    inline explicit OverflowError(std::string const& msg)
+        : std::runtime_error(msg) {}
+    inline explicit OverflowError(const char* msg)
+        : std::runtime_error(msg) {}
+
+    OverflowError(const OverflowError&) = default;
+    OverflowError& operator=(const OverflowError&) = default;
+    OverflowError(OverflowError&&) = default;
+    OverflowError& operator=(OverflowError&&) = default;
+    virtual ~OverflowError() = default;
+};
+
+class Result {
+public:
+    Result(double ops) noexcept
+        : mOps(ops) {}
+
+    Result() = default;
+
+    double ops() const {
+        return mOps;
+    }
+
+    // convenience wrapper
+    template <typename... Args>
+    Result& doNotOptimizeAway(Args&&... args) {
+        ::ankerl::nanobench::doNotOptimizeAway(std::forward<Args>(args)...);
+        return *this;
+    }
+
+private:
+    double mOps = {-1};
+};
+
+class Cfg {
     using Clock = std::chrono::high_resolution_clock;
 
     std::string m_name{};
@@ -179,56 +232,52 @@ class nanobench {
     size_t m_epochs{21};
     uint64_t m_clock_resolution_multiple{1000};
     std::chrono::nanoseconds m_max_epoch_time{std::chrono::milliseconds{100}};
+    Result m_relative{};
 
 public:
-    struct overflow_error : public std::runtime_error {
-        inline explicit overflow_error(std::string const& msg)
-            : std::runtime_error(msg) {}
-        inline explicit overflow_error(const char* msg)
-            : std::runtime_error(msg) {}
-
-        overflow_error(const overflow_error&) = default;
-        overflow_error& operator=(const overflow_error&) = default;
-        overflow_error(overflow_error&&) = default;
-        overflow_error& operator=(overflow_error&&) = default;
-        virtual ~overflow_error() = default;
-    };
-
-    explicit nanobench(std::string name)
-        : m_name(std::move(name)) {}
-
-    nanobench& batch(double b) noexcept {
-        m_batch = b;
+    Cfg& name(std::string n) noexcept {
+        m_name = std::move(n);
         return *this;
     }
 
-    nanobench& batch(uint64_t b) noexcept {
-        return batch(static_cast<double>(b));
+    template <typename T>
+    typename std::enable_if<std::is_arithmetic<T>::value, Cfg&>::type batch(T b) noexcept {
+        m_batch = static_cast<double>(b);
+        return *this;
+    }
+    Cfg& batch(size_t b) noexcept {
+        m_batch = static_cast<double>(b);
+        return *this;
     }
 
-    nanobench& unit(std::string unit) {
+    Cfg& relative(Result const& rel) noexcept {
+        m_relative = rel;
+        return *this;
+    }
+
+    Cfg& unit(std::string unit) {
         m_unit = std::move(unit);
         return *this;
     }
 
-    nanobench& epochs(size_t num_epochs) noexcept {
+    Cfg& epochs(size_t num_epochs) noexcept {
         m_epochs = num_epochs;
         return *this;
     }
 
     // how much should we be above the clock resolution?
-    nanobench& clock_resolution_multiple(size_t multiple) noexcept {
+    Cfg& clock_resolution_multiple(size_t multiple) noexcept {
         m_clock_resolution_multiple = multiple;
         return *this;
     }
 
-    nanobench& max_epoch_time(std::chrono::nanoseconds t) noexcept {
+    Cfg& max_epoch_time(std::chrono::nanoseconds t) noexcept {
         m_max_epoch_time = t;
         return *this;
     }
 
     template <typename Op>
-    nanobench const& run(Op op) const {
+    Result run(Op op) const {
         auto target_runtime = detail::clockResolution<Clock>() * m_clock_resolution_multiple;
 
         if (target_runtime > m_max_epoch_time) {
@@ -257,14 +306,14 @@ public:
             if (elapsed * 10 < target_runtime) {
                 if (num_iters * 10 < num_iters) {
                     detail::throwOverflow();
-                    return *this;
+                    return Result();
                 }
                 num_iters *= 10;
             } else {
                 auto mult = num_iters * static_cast<size_t>(target_runtime.count());
                 if (mult < num_iters) {
                     detail::throwOverflow();
-                    return *this;
+                    return Result();
                 }
                 num_iters = (num_iters * target_runtime) / elapsed;
                 if (num_iters == 0) {
@@ -275,20 +324,13 @@ public:
             // if we are within 2/3 of the target runtime, add it.
             if (elapsed * 3 >= target_runtime * 2) {
                 auto result =
-                    std::chrono::duration_cast<std::chrono::duration<double>>(elapsed).count() /
-                    static_cast<double>(num_iters);
+                    std::chrono::duration_cast<std::chrono::duration<double>>(elapsed).count() / static_cast<double>(num_iters);
 
                 sec_per_iter.push_back(result);
             }
         }
 
-        show_results(sec_per_iter);
-        return *this;
-    }
-
-    template <typename... Args>
-    static void do_not_optimize_away(Args&&... args) {
-        (void)std::initializer_list<int>{(detail::do_not_optimize_away_sink(args), 0)...};
+        return show_results(sec_per_iter);
     }
 
 private:
@@ -300,8 +342,7 @@ private:
         return (results[mid - 1] + results[mid]) / 2;
     }
 
-    double calc_median_absolute_percentage_error(std::vector<double> const& results,
-                                                 double median) const {
+    double calc_median_absolute_percentage_error(std::vector<double> const& results, double median) const {
         std::vector<double> absolute_percentage_errors;
         for (auto r : results) {
             absolute_percentage_errors.push_back(std::fabs(r - median) / r);
@@ -311,7 +352,7 @@ private:
         return calc_median(absolute_percentage_errors);
     }
 
-    void show_results(std::vector<double>& sec_per_iter) const {
+    Result show_results(std::vector<double>& sec_per_iter) const {
         std::vector<double> iter_per_sec;
         for (auto t : sec_per_iter) {
             iter_per_sec.push_back(1.0 / t);
@@ -322,33 +363,58 @@ private:
 
         std::sort(sec_per_iter.begin(), sec_per_iter.end());
         auto const med_sec_per_iter = calc_median(sec_per_iter);
-        auto const mdaps_sec_per_iter =
-            calc_median_absolute_percentage_error(sec_per_iter, med_sec_per_iter);
+        auto const mdaps_sec_per_iter = calc_median_absolute_percentage_error(sec_per_iter, med_sec_per_iter);
 
-        fmt::streamstate_restorer restoreStream(std::cout);
-        std::cout.imbue(std::locale(std::cout.getloc(), new fmt::num_sep(',')));
+        detail::fmt::streamstate_restorer restoreStream(std::cout);
 
         // show final result, the median
         auto const med_ns_per_op = 1e9 * med_sec_per_iter / m_batch;
         auto const med_ops = med_iter_per_sec * m_batch;
 
-        std::cout << std::fixed << std::setprecision(2) << std::setw(18) << std::right
-                  << med_ns_per_op << " ns/" << std::setw(2) << std::left << m_unit << " "
-                  << std::setw(18) << std::right << med_ops << " " << std::setw(2) << m_unit
-                  << "/s +-" << std::setw(5) << std::setprecision(1) << (mdaps_sec_per_iter * 100)
-                  << "%  " << m_name << std::endl;
+        if (detail::lastUnit() != m_unit) {
+            detail::lastUnit() = m_unit;
+            std::cout
+                << std::endl
+                << "| relative |" << std::setw(20) << std::right << ("ns/" + m_unit) << " |" << std::setw(20) << std::right
+                << (m_unit + "/s") << " |   MdAPE | benchmark" << std::endl
+                << "|---------:|--------------------:|--------------------:|--------:|:----------------------------------------------"
+                << std::endl;
+        }
+
+        // |  1208.4% |               14.15 |       70,649,422.38 |    0.3% | `std::vector<std::string> emplace + release`
+        std::cout << '|';
+        if (m_relative.ops() <= 0) {
+            std::cout << "          |";
+        } else {
+            std::cout << detail::fmt::num(8, 1, med_ops / m_relative.ops() * 100) << "% |";
+        }
+        std::cout << detail::fmt::num(20, 2, med_ns_per_op) << " |" << detail::fmt::num(20, 2, med_ops) << " |"
+                  << detail::fmt::num(7, 1, mdaps_sec_per_iter * 100) << "% | `" << m_name << "`" << std::endl;
+
+        return med_ops;
     }
 };
 
+inline Cfg name(std::string n) noexcept {
+    Cfg cfg;
+    cfg.name(std::move(n));
+    return cfg;
+}
+
+inline void tableHeader() {
+    // reset lastUnit, so it's printed next time
+    detail::lastUnit() = "";
+}
+
 namespace detail {
 
-static void throwOverflow() {
-    throw nanobench::overflow_error(
-        "Cannot find a working number of iterations for reliable results. "
-        "Maybe your code got optimized away?");
+inline void throwOverflow() {
+    throw OverflowError("Cannot find a working number of iterations for reliable results. "
+                        "Maybe your code got optimized away?");
 }
 
 } // namespace detail
+} // namespace nanobench
 } // namespace ankerl
 
 #endif
