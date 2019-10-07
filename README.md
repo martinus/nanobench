@@ -62,7 +62,7 @@ Desired output is in markdown format:
 | relative |               ns/op |               op/s  |  MdAPE  | benchmark
 |---------:|--------------------:|--------------------:|--------:|:-----------------------------------------------
 |          |                6.26 |      159,711,728.47 |    0.1% | `std::vector<std::string> reserve(ptr) + release`
-|   86.34% |                6.83 |      146,327,670.30 |    0.1% | :turtle: `std::vector<std::string> reserve() + lookup + operator=`
+|   86.34% |                6.83 |      146,327,670.30 |    0.1% | :snail: `std::vector<std::string> reserve() + lookup + operator=`
 | 1208.24% |               14.15 |       70,649,422.38 |    0.3% | :rocket: `std::vector<std::string> emplace + release`
 |        - |                   - |                   - |       - | :bug: overflow `std::vector<std::string> emplace + release`
 | 1208.24% |               14.29 |       69,984,072.59 |    0.5% | `std::vector<std::string> moving out`
