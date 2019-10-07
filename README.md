@@ -64,10 +64,10 @@ Desired output is in markdown format:
 |          |                6.26 |      159,711,728.47 |    0.1% |:snail:  | `std::vector<std::string> reserve(ptr) + release`
 |   86.34% |                6.83 |      146,327,670.30 |    0.1% |         | `std::vector<std::string> reserve() + lookup + operator=`
 | 1208.24% |               14.15 |       70,649,422.38 |    0.3% |:rocket: | `std::vector<std::string> emplace + release`
-|        - |                   - |                   - |       - |:bug:    | overflow `std::vector<std::string> emplace + release`
+|        - |                   - |                   - |       - |:boom:   | overflow `std::vector<std::string> emplace + release`
 | 1208.24% |               14.29 |       69,984,072.59 |    0.5% |         | `std::vector<std::string> moving out`
 | 1208.24% |               17.26 |       57,935,477.67 |    0.6% |         | `std::vector<std::string> = std::string()`
-| 1208.24% |               15.56 |       64,252,195.88 |   17.7% |:warning:| `std::vector<std::string> dtor & ctor`
+| 1208.24% |               15.56 |       64,252,195.88 |   17.7% |:hand:   | `std::vector<std::string> dtor & ctor`
 | 1208.24% |               15.60 |       64,113,063.62 |    0.5% |         | `std::vector<std::string> std::string().swap()`
 
 
@@ -77,10 +77,10 @@ Desired output is in markdown format:
 |          |                6.26 |      159,711,728.47 |    0.1% |:snail:  | `std::vector<std::string> reserve(ptr) + release`
 |   86.34% |                6.83 |      146,327,670.30 |    0.1% |         | `std::vector<std::string> reserve() + lookup + operator=`
 | 1208.24% |               14.15 |       70,649,422.38 |    0.3% |:rocket: | `std::vector<std::string> emplace + release`
-|        - |                   - |                   - |       - |:bug:    | overflow `std::vector<std::string> emplace + release`
+|        - |                   - |                   - |       - |:boom:   | overflow `std::vector<std::string> emplace + release`
 | 1208.24% |               14.29 |       69,984,072.59 |    0.5% |         | `std::vector<std::string> moving out`
 | 1208.24% |               17.26 |       57,935,477.67 |    0.6% |         | `std::vector<std::string> = std::string()`
-| 1208.24% |               15.56 |       64,252,195.88 |   17.7% |:warning:| `std::vector<std::string> dtor & ctor`
+| 1208.24% |               15.56 |       64,252,195.88 |   17.7% |:hand:   | `std::vector<std::string> dtor & ctor`
 | 1208.24% |               15.60 |       64,113,063.62 |    0.5% |         | `std::vector<std::string> std::string().swap()`
 ```
 
