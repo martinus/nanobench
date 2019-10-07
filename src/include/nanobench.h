@@ -108,8 +108,6 @@ typename Clock::duration clockResolution() {
     return dur;
 }
 
-inline void throwOverflow();
-
 namespace fmt {
 
 class num_sep : public std::numpunct<char> {
@@ -180,6 +178,25 @@ inline std::ostream& operator<<(std::ostream& os, num const& n) {
     return os;
 }
 
+struct MarkDownCode {
+    MarkDownCode(std::string what)
+        : mWhat(std::move(what)) {}
+
+    std::string mWhat;
+};
+
+inline std::ostream& operator<<(std::ostream& os, MarkDownCode const& mdCode) {
+    os.put('`');
+    for (char c : mdCode.mWhat) {
+        os.put(c);
+        if ('`' == c) {
+            os.put('`');
+        }
+    }
+    os.put('`');
+    return os;
+}
+
 } // namespace fmt
 } // namespace detail
 
@@ -226,7 +243,7 @@ private:
 class Cfg {
     using Clock = std::chrono::high_resolution_clock;
 
-    std::string m_name{};
+    std::string m_name{"unspecified name"};
     double m_batch{1.0};
     std::string m_unit{"op"};
     size_t m_epochs{21};
@@ -305,15 +322,13 @@ public:
             // adapt n
             if (elapsed * 10 < target_runtime) {
                 if (num_iters * 10 < num_iters) {
-                    detail::throwOverflow();
-                    return Result();
+                    return show_results(sec_per_iter, "iterations overflow. Maybe your code got optimized away?");
                 }
                 num_iters *= 10;
             } else {
                 auto mult = num_iters * static_cast<size_t>(target_runtime.count());
                 if (mult < num_iters) {
-                    detail::throwOverflow();
-                    return Result();
+                    return show_results(sec_per_iter, "iterations overflow. Maybe your code got optimized away?");
                 }
                 num_iters = (num_iters * target_runtime) / elapsed;
                 if (num_iters == 0) {
@@ -329,8 +344,7 @@ public:
                 sec_per_iter.push_back(result);
             }
         }
-
-        return show_results(sec_per_iter);
+        return show_results(sec_per_iter, "");
     }
 
 private:
@@ -352,7 +366,12 @@ private:
         return calc_median(absolute_percentage_errors);
     }
 
-    Result show_results(std::vector<double>& sec_per_iter) const {
+    Result show_results(std::vector<double>& sec_per_iter, std::string errorMessage) const {
+        if (!errorMessage.empty()) {
+            std::cout << "|        - |                   - |                   - |       - | :boom: " << errorMessage << ' '
+                      << detail::fmt::MarkDownCode(m_name) << std::endl;
+            return Result(-1);
+        }
         std::vector<double> iter_per_sec;
         for (auto t : sec_per_iter) {
             iter_per_sec.push_back(1.0 / t);
@@ -389,7 +408,13 @@ private:
             std::cout << detail::fmt::num(8, 1, med_ops / m_relative.ops() * 100) << "% |";
         }
         std::cout << detail::fmt::num(20, 2, med_ns_per_op) << " |" << detail::fmt::num(20, 2, med_ops) << " |"
-                  << detail::fmt::num(7, 1, mdaps_sec_per_iter * 100) << "% | `" << m_name << "`" << std::endl;
+                  << detail::fmt::num(7, 1, mdaps_sec_per_iter * 100) << "% | ";
+
+        if (mdaps_sec_per_iter >= 0.05) {
+            // >=5%
+            std::cout << ":hand: ";
+        }
+        std::cout << detail::fmt::MarkDownCode(m_name) << std::endl;
 
         return med_ops;
     }
@@ -406,14 +431,6 @@ inline void tableHeader() {
     detail::lastUnit() = "";
 }
 
-namespace detail {
-
-inline void throwOverflow() {
-    throw OverflowError("Cannot find a working number of iterations for reliable results. "
-                        "Maybe your code got optimized away?");
-}
-
-} // namespace detail
 } // namespace nanobench
 } // namespace ankerl
 

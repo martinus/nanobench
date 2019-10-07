@@ -45,6 +45,8 @@ TEST_CASE("comparison") {
     x = 1.0;
     ankerl::nanobench::name("1/x").relative(baseline).run([&] { x += 1 / x; }).doNotOptimizeAway(x);
 
+    ankerl::nanobench::name("noop").relative(baseline).run([&] {});
+
     x = 1.0;
     ankerl::nanobench::name("std::sqrt(x)").relative(baseline).run([&] { x += std::sqrt(x); }).doNotOptimizeAway(x);
 }
