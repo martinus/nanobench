@@ -25,20 +25,29 @@ ankerl::nanobench("string hash").batch(text.size()).unit("B").run([&] {
 ankerl::nanobench::do_not_optimize_away(result);
 ```
 
+Full fledged example with random generator, and comparison to a baseline.
+
 ```cpp
 // compare unordered_map with a baseline, use a very fast random number generator
 std::map<uint64_t, uint64_t> m;
-auto rng = ankerl::nanobench::rng();
-auto baseline = ankerl::nanobench("std::map").run([&] {
-    m[rng() & 0xfff] = 1;
-    m.erase(rng() & 0xfff);
+
+// nanobench comes with an extremely fast random number generator
+ankerl::nanobench::rng rng;
+
+// run 1000 warmup iterations before doing any measurements. This fills the map so it's size is stable.
+// remember results as the baseline
+auto baseline = ankerl::nanobench("std::map").warmup(1000).run([&] {
+    m[rng() & 0xff] = 1;
+    m.erase(rng() & 0xff);
 });
 ankerl::nanobench::do_not_optimize_away(m);
 
 std::unordered_map<uint64_t, uint64_t> uo;
-ankerl::nanobench("std::unordered_map").relative(baseline).run([&] {
-    uo[rng() & 0xfff] = 1;
-    uo.erase(rng() & 0xfff);
+
+// supply baseline results
+ankerl::nanobench("std::unordered_map").relative(baseline).warmup(1000).run([&] {
+    uo[rng() & 0xff] = 1;
+    uo.erase(rng() & 0xff);
 });
 ankerl::nanobench::do_not_optimize_away(uo);
 ```    
