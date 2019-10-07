@@ -52,15 +52,20 @@ ankerl::nanobench::do_not_optimize_away(uo);
 More helpers:
 
 ```cpp
-ankerl::nanobench::print_line(); // Draw a line for separation with -
-ankerl::nanobench::print_line('='); // Draw a line with =
-ankerl::nanobench::print_header(); 
+// begins a new table, even when unit doesn#t change
+ankerl::nanobench::table(); 
 ```
 
 Desired output is in markdown format:
 
-| relative |               ns/op |               op/s  |  MdAPE  | benchmark
-|---------:|--------------------:|--------------------:|--------:|-----------------------------------------------
+* New table is automatically started when last setting for `unit` changes.
+* `:boom:` marker added when we got an overflow (no exception thrown)
+* `:hand:` marker added when MdAPE > 5%
+* benchmark name backtick escaped with two backticks
+* Width is used as much as possible (no begin spacing)
+
+| relative |               ns/op |                op/s |   MdAPE | benchmark
+|---------:|--------------------:|--------------------:|--------:|:----------------------------------------------
 |          |                6.26 |      159,711,728.47 |    0.1% | `std::vector<std::string> reserve(ptr) + release`
 |    86.4% |                6.83 |      146,327,670.30 |    0.1% | `std::vector<std::string> reserve() + lookup + operator=`
 |  1208.4% |               14.15 |       70,649,422.38 |    0.3% | `std::vector<std::string> emplace + release`
