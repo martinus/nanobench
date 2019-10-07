@@ -67,7 +67,7 @@ Desired output is in markdown format:
 |   99.87% |               17.15 |       58,298,072.40 |    0.5% | `std::vector<std::string> emplace + release`
 | 1208.24% |               14.29 |       69,984,072.59 |    0.5% | `std::vector<std::string> moving out`
 | 1208.24% |               17.26 |       57,935,477.67 |    0.6% | `std::vector<std::string> = std::string()`
-| 1208.24% |               15.56 |       64,252,195.88 | :warning: 17.7% | `std::vector<std::string> dtor & ctor`
+| 1208.24% |               15.56 |       64,252,195.88 | :warning:17.7% | `std::vector<std::string> dtor & ctor`
 | 1208.24% |               15.60 |       64,113,063.62 |    0.5% | `std::vector<std::string> std::string().swap()`
 
 
@@ -80,7 +80,7 @@ Desired output is in markdown format:
 |   99.87% |               17.15 |       58,298,072.40 |    0.5% | `std::vector<std::string> emplace + release`
 | 1208.24% |               14.29 |       69,984,072.59 |    0.5% | `std::vector<std::string> moving out`
 | 1208.24% |               17.26 |       57,935,477.67 |    0.6% | `std::vector<std::string> = std::string()`
-| 1208.24% |               15.56 |       64,252,195.88 | :warning: 17.7% | `std::vector<std::string> dtor & ctor`
+| 1208.24% |               15.56 |       64,252,195.88 | :warning:17.7% | `std::vector<std::string> dtor & ctor`
 | 1208.24% |               15.60 |       64,113,063.62 |    0.5% | `std::vector<std::string> std::string().swap()`
 ```
 
