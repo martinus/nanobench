@@ -3,6 +3,13 @@ Single header plugin-Microbenchmark library
 
 This microbenchmarking framework is inteded to be used with other unit test frameworks like boost, google gtest, catch2, doctest, etc.
 
+The goals are:
+* fast & accurate: Benchmarks should run only as long as necessary to produce a level of accuracy thats good enough for decision making.
+* Simple to use: `#include <nanobench.h>`, and use it.
+* Work well with others
+** frameworks like boost, gtest, catch2, doctest
+** github: printing markdown tables
+
 API examples:
 
 
