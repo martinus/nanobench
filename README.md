@@ -85,6 +85,7 @@ Desired output is in markdown format:
 ```
 
 Inspirations:
+* https://github.com/ikatyang/emoji-cheat-sheet/blob/master/README.md
 * folly Benchmark https://github.com/facebook/folly/blob/master/folly/Benchmark.h
 * google Benchmark
 * nonius
