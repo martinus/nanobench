@@ -35,31 +35,32 @@
 #define ANKERL_NANOBENCH_VERSION_MINOR 0 // backwards-compatible changes
 #define ANKERL_NANOBENCH_VERSION_PATCH 1 // backwards-compatible bug fixes
 
-#include <algorithm>
-#include <chrono>
-#include <cmath>
-#include <functional>
-#include <initializer_list>
-#include <iomanip>
-#include <iostream>
-#include <string>
-#include <type_traits>
-#include <utility>
-#include <vector>
+#include <algorithm> // sort
+#include <chrono>    // high_resolution_clock
+#include <cmath>     // fabs
+#include <iomanip>   // setw, setprecision
+#include <iostream>  // cout
+#include <vector>    // manage results
 
 namespace ankerl {
 namespace nanobench {
+
+using Clock = std::chrono::high_resolution_clock;
+
+// helper stuff that only intended to be used internally
 namespace detail {
 
-inline std::string& lastUnit() {
+// remembers the unit that was last used. Once it changes, a new table header is automatically written for the next entry.
+inline std::string& lastUnitUsed() {
     static std::string sUnit = {};
     return sUnit;
 }
 
+// Windows version of do not optimize away
 #if defined(_MSC_VER)
 // see https://docs.microsoft.com/en-us/cpp/preprocessor/optimize
 #    pragma optimize("", off)
-inline void doNotOptimizeAway_sink(void const*) {}
+inline void doNotOptimizeAwaySink(void const*) {}
 #    pragma optimize("", on
 
 #else
@@ -71,7 +72,7 @@ struct DoNotOptimizeAwayNeedsIndirect {
 };
 
 template <typename T>
-auto doNotOptimizeAway_sink(T const& val) -> typename std::enable_if<!DoNotOptimizeAwayNeedsIndirect<T>::value>::type {
+auto doNotOptimizeAwaySink(T const& val) -> typename std::enable_if<!DoNotOptimizeAwayNeedsIndirect<T>::value>::type {
     // see https://github.com/facebook/folly/blob/master/folly/Benchmark.h
     // Tells the compiler that we read val from memory and might read/write
     // from any memory location.
@@ -79,7 +80,7 @@ auto doNotOptimizeAway_sink(T const& val) -> typename std::enable_if<!DoNotOptim
 }
 
 template <typename T>
-auto doNotOptimizeAway_sink(T const& val) -> typename std::enable_if<DoNotOptimizeAwayNeedsIndirect<T>::value>::type {
+auto doNotOptimizeAwaySink(T const& val) -> typename std::enable_if<DoNotOptimizeAwayNeedsIndirect<T>::value>::type {
     // the "r" forces compiler to make val available in a register, so it must have been loaded.
     // Only works when small enough (<= sizeof(long)), trivial, and no pointer
     asm volatile("" ::"r"(val));
@@ -87,36 +88,38 @@ auto doNotOptimizeAway_sink(T const& val) -> typename std::enable_if<DoNotOptimi
 
 #endif
 
-// determines best resolution of the given clock
-template <typename Clock>
-typename Clock::duration calcClockResolution(size_t numEvaluations) {
+// determines resolution of the given clock. This is done by measuring multiple times and returning the minimum time difference.
+inline Clock::duration calcClockResolution(size_t numEvaluations) noexcept {
     auto bestDuration = Clock::duration::max();
+    Clock::time_point tBegin;
+    Clock::time_point tEnd;
     for (size_t i = 0; i < numEvaluations; ++i) {
-        auto begin = Clock::now();
-        auto end = Clock::now();
-        while (begin == end) {
-            end = Clock::now();
-        }
-        bestDuration = (std::min)(bestDuration, end - begin);
+        tBegin = Clock::now();
+        do {
+            tEnd = Clock::now();
+        } while (tBegin == tEnd);
+        bestDuration = (std::min)(bestDuration, tEnd - tBegin);
     }
     return bestDuration;
 }
 
-template <typename Clock>
-typename Clock::duration clockResolution() {
-    static typename Clock::duration dur = calcClockResolution<Clock>(20);
-    return dur;
+// Calculates clock resolution once, and remembers the result
+inline Clock::duration clockResolution() noexcept {
+    static Clock::duration sResolution = calcClockResolution(20);
+    return sResolution;
 }
 
+// formatting utilities
 namespace fmt {
 
-class num_sep : public std::numpunct<char> {
+// adds thousands separator to numbers
+class NumSep : public std::numpunct<char> {
 public:
-    num_sep(char sep)
-        : m_sep(sep) {}
+    NumSep(char sep)
+        : mSep(sep) {}
 
     char do_thousands_sep() const {
-        return m_sep;
+        return mSep;
     }
 
     std::string do_grouping() const {
@@ -124,112 +127,149 @@ public:
     }
 
 private:
-    char m_sep;
+    char mSep;
 };
 
-class streamstate_restorer {
+// RAII to save & restore a stream's state
+class StreamStateRestorer {
 public:
-    explicit streamstate_restorer(std::ostream& s)
-        : m_stream(s)
-        , m_locale(s.getloc())
-        , m_precision(s.precision())
-        , m_width(s.width())
-        , m_fill(s.fill())
-        , m_fmt_flags(s.flags()) {}
+    explicit StreamStateRestorer(std::ostream& s)
+        : mStream(s)
+        , mLocale(s.getloc())
+        , mPrecision(s.precision())
+        , mWidth(s.width())
+        , mFill(s.fill())
+        , mFmtFlags(s.flags()) {}
 
-    ~streamstate_restorer() {
+    ~StreamStateRestorer() {
         restore();
     }
 
+    // sets back all stream info that we remembered at construction
     void restore() {
-        m_stream.imbue(m_locale);
-        m_stream.fill(m_fill);
-        m_stream.width(m_width);
-        m_stream.precision(m_precision);
-        m_stream.flags(m_fmt_flags);
+        mStream.imbue(mLocale);
+        mStream.precision(mPrecision);
+        mStream.width(mWidth);
+        mStream.fill(mFill);
+        mStream.flags(mFmtFlags);
     }
 
-    streamstate_restorer(streamstate_restorer const&) = delete;
+    // don't allow copying / moving
+    StreamStateRestorer(StreamStateRestorer const&) = delete;
 
 private:
-    std::ostream& m_stream;
-    std::locale m_locale;
-    std::streamsize const m_precision;
-    std::streamsize const m_width;
-    std::ostream::char_type const m_fill;
-    std::ostream::fmtflags const m_fmt_flags;
+    std::ostream& mStream;
+    std::locale mLocale;
+    std::streamsize const mPrecision;
+    std::streamsize const mWidth;
+    std::ostream::char_type const mFill;
+    std::ostream::fmtflags const mFmtFlags;
 };
 
-struct num {
-    num(int width, int precision, double value)
+// Number formatter
+class Number {
+public:
+    Number(int width, int precision, double value)
         : mWidth(width)
         , mPrecision(precision)
         , mValue(value) {}
+
+private:
+    friend std::ostream& operator<<(std::ostream& os, Number const& n);
+
+    std::ostream& write(std::ostream& os) const {
+        StreamStateRestorer restorer(os);
+        os.imbue(std::locale(os.getloc(), new NumSep(',')));
+        os << std::setw(mWidth) << std::setprecision(mPrecision) << std::fixed << mValue;
+        return os;
+    }
 
     int mWidth;
     int mPrecision;
     double mValue;
 };
 
-inline std::ostream& operator<<(std::ostream& os, num const& n) {
-    streamstate_restorer sr(os);
-    os.imbue(std::locale(std::cout.getloc(), new num_sep(',')));
-    os << std::setw(n.mWidth) << std::setprecision(n.mPrecision) << std::fixed << n.mValue;
-    return os;
+inline std::ostream& operator<<(std::ostream& os, Number const& n) {
+    return n.write(os);
 }
 
-struct MarkDownCode {
+// Formats any text as markdown inline code, escaping backticks.
+class MarkDownCode {
+public:
     MarkDownCode(std::string what)
         : mWhat(std::move(what)) {}
+
+private:
+    friend std::ostream& operator<<(std::ostream& os, MarkDownCode const& mdCode);
+
+    std::ostream& write(std::ostream& os) const {
+        os.put('`');
+        for (char c : mWhat) {
+            os.put(c);
+            if ('`' == c) {
+                os.put('`');
+            }
+        }
+        os.put('`');
+        return os;
+    }
 
     std::string mWhat;
 };
 
 inline std::ostream& operator<<(std::ostream& os, MarkDownCode const& mdCode) {
-    os.put('`');
-    for (char c : mdCode.mWhat) {
-        os.put(c);
-        if ('`' == c) {
-            os.put('`');
-        }
-    }
-    os.put('`');
-    return os;
+    return mdCode.write(os);
 }
 
 } // namespace fmt
-} // namespace detail
 
-template <typename... Args>
-static void doNotOptimizeAway(Args&&... args) {
-    (void)std::initializer_list<int>{(detail::doNotOptimizeAway_sink(args), 0)...};
+// mathy statistic stuff
+namespace statistics {
+
+// calculates median, and properly handles even number of elements too.
+inline double calcMedian(std::vector<double> const& results) {
+    auto mid = results.size() / 2;
+    if (results.size() & 1) {
+        return results[mid];
+    }
+    return (results[mid - 1] + results[mid]) / 2;
 }
 
-struct OverflowError : public std::runtime_error {
-    inline explicit OverflowError(std::string const& msg)
-        : std::runtime_error(msg) {}
-    inline explicit OverflowError(const char* msg)
-        : std::runtime_error(msg) {}
+// calculates MdAPE which is the median of percentage error
+// see https://www.spiderfinancial.com/support/documentation/numxl/reference-manual/forecasting-performance/mdape
+inline double calcMedianAbsolutePercentageError(std::vector<double> const& results, double median) {
+    std::vector<double> absolutePercentageErrors;
+    for (auto r : results) {
+        absolutePercentageErrors.push_back(std::fabs(r - median) / r);
+    }
+    std::sort(absolutePercentageErrors.begin(), absolutePercentageErrors.end());
 
-    OverflowError(const OverflowError&) = default;
-    OverflowError& operator=(const OverflowError&) = default;
-    OverflowError(OverflowError&&) = default;
-    OverflowError& operator=(OverflowError&&) = default;
-    virtual ~OverflowError() = default;
-};
+    return calcMedian(absolutePercentageErrors);
+}
 
+} // namespace statistics
+} // namespace detail
+
+// Makes sure none of the given arguments are optimized away by the compiler.
+template <typename... Args>
+void doNotOptimizeAway(Args&&... args) {
+    (void)std::initializer_list<int>{(detail::doNotOptimizeAwaySink(args), 0)...};
+}
+
+// Result returned after a benchmark has finished. Can be used as a baseline for relative().
 class Result {
 public:
-    Result(double ops) noexcept
-        : mOps(ops) {}
+    explicit Result(double ups) noexcept
+        : mUnitPerSec(ups) {}
 
     Result() = default;
 
-    double ops() const {
-        return mOps;
+    // Operations per second
+    double unitPerSec() const noexcept {
+        return mUnitPerSec;
     }
 
-    // convenience wrapper
+    // Makes sure none of the given arguments are optimized away by the compiler.
     template <typename... Args>
     Result& doNotOptimizeAway(Args&&... args) {
         ::ankerl::nanobench::doNotOptimizeAway(std::forward<Args>(args)...);
@@ -237,77 +277,87 @@ public:
     }
 
 private:
-    double mOps = {-1};
+    double mUnitPerSec = {-1};
 };
 
-class Cfg {
-    using Clock = std::chrono::high_resolution_clock;
-
-    std::string m_name{"unspecified name"};
-    double m_batch{1.0};
-    std::string m_unit{"op"};
-    size_t m_epochs{21};
-    uint64_t m_clock_resolution_multiple{1000};
-    std::chrono::nanoseconds m_max_epoch_time{std::chrono::milliseconds{100}};
-    Result m_relative{};
-
+// Configuration of a microbenchmark.
+class Config {
 public:
-    Cfg& name(std::string n) noexcept {
-        m_name = std::move(n);
+    Config(std::string n) noexcept
+        : mName(std::move(n)) {}
+
+    Config(Config&&) = default;
+    Config& operator=(Config&&) = default;
+    Config(Config const&) = default;
+    Config& operator=(Config const&) = default;
+
+    // Specifies a name for the benchmark
+    Config& name(std::string n) noexcept {
+        mName = std::move(n);
         return *this;
     }
 
+    // Set the batch size, e.g. number of processed bytes, or some other metric for the size of the processed data in each iteration.
+    // Any argument is cast to double.
     template <typename T>
-    typename std::enable_if<std::is_arithmetic<T>::value, Cfg&>::type batch(T b) noexcept {
-        m_batch = static_cast<double>(b);
-        return *this;
-    }
-    Cfg& batch(size_t b) noexcept {
-        m_batch = static_cast<double>(b);
+    Config& batch(T b) noexcept {
+        mBatch = static_cast<double>(b);
         return *this;
     }
 
-    Cfg& relative(Result const& rel) noexcept {
-        m_relative = rel;
+    // Set a baseline to compare it to. 100% it is exactly as fast as the baseline, >100% means it is faster than the baseline, <100%
+    // means it is slower than the baseline.
+    Config& relative(Result const& baseline) noexcept {
+        mRelative = baseline;
         return *this;
     }
 
-    Cfg& unit(std::string unit) {
-        m_unit = std::move(unit);
+    // Operation unit. Defaults to "op", could be e.g. "byte" for string processing.
+    // Use singular (byte, not bytes).
+    Config& unit(std::string unit) {
+        mUnit = std::move(unit);
         return *this;
     }
 
-    Cfg& epochs(size_t num_epochs) noexcept {
-        m_epochs = num_epochs;
+    // Number of epochs to evaluate. The reported result will be the median of evaluation of each epoch.
+    Config& epochs(size_t numEpochs) noexcept {
+        mNumEpochs = numEpochs;
         return *this;
     }
 
-    // how much should we be above the clock resolution?
-    Cfg& clock_resolution_multiple(size_t multiple) noexcept {
-        m_clock_resolution_multiple = multiple;
+    // Desired evaluation time is a multiple of clock resolution. Default is to be 1000 times above this measurement precision.
+    Config& clockResolutionMultiple(size_t multiple) noexcept {
+        mClockResolutionMultiple = multiple;
         return *this;
     }
 
-    Cfg& max_epoch_time(std::chrono::nanoseconds t) noexcept {
-        m_max_epoch_time = t;
+    // Sets the maximum time each epoch should take. Default is 100ms.
+    Config& maxEpochTime(std::chrono::nanoseconds t) noexcept {
+        mMaxEpochTime = t;
         return *this;
     }
 
+    // Where to write the output to? Defaults to std::cout
+    Config& out(std::ostream& out) noexcept {
+        mOut = &out;
+        return *this;
+    }
+
+    // Performs all evaluations.
     template <typename Op>
     Result run(Op op) const {
-        auto target_runtime = detail::clockResolution<Clock>() * m_clock_resolution_multiple;
-
-        if (target_runtime > m_max_epoch_time) {
-            target_runtime = m_max_epoch_time;
+        auto targetRuntime = detail::clockResolution() * mClockResolutionMultiple;
+        if (targetRuntime > mMaxEpochTime) {
+            targetRuntime = mMaxEpochTime;
         }
 
-        std::vector<double> sec_per_iter;
-        sec_per_iter.reserve(m_epochs);
+        std::vector<double> secPerIter;
+        secPerIter.reserve(mNumEpochs);
 
-        size_t num_iters = 1;
+        size_t numIters = 1;
 
-        while (sec_per_iter.size() != m_epochs) {
-            auto n = num_iters;
+        while (secPerIter.size() != mNumEpochs) {
+            auto n = numIters;
 
             // the code between before and after is very time critical. Make sure we only call op on
             // one occation, so that it is easy to inline.
@@ -320,115 +370,116 @@ public:
 
             auto elapsed = after - before;
             // adapt n
-            if (elapsed * 10 < target_runtime) {
-                if (num_iters * 10 < num_iters) {
-                    return show_results(sec_per_iter, "iterations overflow. Maybe your code got optimized away?");
+            if (elapsed * 10 < targetRuntime) {
+                if (numIters * 10 < numIters) {
+                    return showResult(secPerIter, "iterations overflow. Maybe your code got optimized away?");
                 }
-                num_iters *= 10;
+                numIters *= 10;
             } else {
-                auto mult = num_iters * static_cast<size_t>(target_runtime.count());
-                if (mult < num_iters) {
-                    return show_results(sec_per_iter, "iterations overflow. Maybe your code got optimized away?");
+                auto mult = numIters * static_cast<size_t>(targetRuntime.count());
+                if (mult < numIters) {
+                    return showResult(secPerIter, "iterations overflow. Maybe your code got optimized away?");
                 }
-                num_iters = (num_iters * target_runtime) / elapsed;
-                if (num_iters == 0) {
-                    num_iters = 1;
+                numIters = (numIters * targetRuntime) / elapsed;
+                if (numIters == 0) {
+                    numIters = 1;
                 }
             }
 
             // if we are within 2/3 of the target runtime, add it.
-            if (elapsed * 3 >= target_runtime * 2) {
+            if (elapsed * 3 >= targetRuntime * 2) {
                 auto result =
-                    std::chrono::duration_cast<std::chrono::duration<double>>(elapsed).count() / static_cast<double>(num_iters);
+                    std::chrono::duration_cast<std::chrono::duration<double>>(elapsed).count() / static_cast<double>(numIters);
 
-                sec_per_iter.push_back(result);
+                secPerIter.push_back(result);
             }
         }
-        return show_results(sec_per_iter, "");
+        return showResult(secPerIter, "");
     }
 
 private:
-    double calc_median(std::vector<double> const& results) const {
-        auto mid = results.size() / 2;
-        if (results.size() & 1) {
-            return results[mid];
-        }
-        return (results[mid - 1] + results[mid]) / 2;
-    }
-
-    double calc_median_absolute_percentage_error(std::vector<double> const& results, double median) const {
-        std::vector<double> absolute_percentage_errors;
-        for (auto r : results) {
-            absolute_percentage_errors.push_back(std::fabs(r - median) / r);
-        }
-        std::sort(absolute_percentage_errors.begin(), absolute_percentage_errors.end());
-
-        return calc_median(absolute_percentage_errors);
-    }
-
-    Result show_results(std::vector<double>& sec_per_iter, std::string errorMessage) const {
+    Result showResult(std::vector<double>& secPerIter, std::string errorMessage) const {
+        auto& os = *mOut;
         if (!errorMessage.empty()) {
-            std::cout << "|        - |                   - |                   - |       - | :boom: " << errorMessage << ' '
-                      << detail::fmt::MarkDownCode(m_name) << std::endl;
+            os << "|        - |                   - |                   - |       - | :boom: " << errorMessage << ' '
+               << detail::fmt::MarkDownCode(mName) << std::endl;
             return Result(-1);
         }
-        std::vector<double> iter_per_sec;
-        for (auto t : sec_per_iter) {
-            iter_per_sec.push_back(1.0 / t);
+        std::vector<double> iterPerSec;
+        for (auto t : secPerIter) {
+            iterPerSec.push_back(1.0 / t);
         }
 
-        std::sort(iter_per_sec.begin(), iter_per_sec.end());
-        auto const med_iter_per_sec = calc_median(iter_per_sec);
+        std::sort(iterPerSec.begin(), iterPerSec.end());
+        auto const medianIterPerSec = detail::statistics::calcMedian(iterPerSec);
 
-        std::sort(sec_per_iter.begin(), sec_per_iter.end());
-        auto const med_sec_per_iter = calc_median(sec_per_iter);
-        auto const mdaps_sec_per_iter = calc_median_absolute_percentage_error(sec_per_iter, med_sec_per_iter);
+        std::sort(secPerIter.begin(), secPerIter.end());
+        auto const medianSecPerIter = detail::statistics::calcMedian(secPerIter);
+        auto const mdapsSecPerIter = detail::statistics::calcMedianAbsolutePercentageError(secPerIter, medianSecPerIter);
 
-        detail::fmt::streamstate_restorer restoreStream(std::cout);
+        detail::fmt::StreamStateRestorer restorer(os);
 
         // show final result, the median
-        auto const med_ns_per_op = 1e9 * med_sec_per_iter / m_batch;
-        auto const med_ops = med_iter_per_sec * m_batch;
+        auto const medianNsPerUnit = 1e9 * medianSecPerIter / mBatch;
+        auto const medianUnitPerSec = medianIterPerSec * mBatch;
 
-        if (detail::lastUnit() != m_unit) {
-            detail::lastUnit() = m_unit;
-            std::cout
-                << std::endl
-                << "| relative |" << std::setw(20) << std::right << ("ns/" + m_unit) << " |" << std::setw(20) << std::right
-                << (m_unit + "/s") << " |   MdAPE | benchmark" << std::endl
-                << "|---------:|--------------------:|--------------------:|--------:|:----------------------------------------------"
-                << std::endl;
+        if (detail::lastUnitUsed() != mUnit) {
+            detail::lastUnitUsed() = mUnit;
+            os << std::endl
+               << "| relative |" << std::setw(20) << std::right << ("ns/" + mUnit) << " |" << std::setw(20) << std::right
+               << (mUnit + "/s") << " |   MdAPE | benchmark" << std::endl
+               << "|---------:|--------------------:|--------------------:|--------:|:----------------------------------------------"
+               << std::endl;
         }
 
+        // we want output that looks like this:
         // |  1208.4% |               14.15 |       70,649,422.38 |    0.3% | `std::vector<std::string> emplace + release`
-        std::cout << '|';
-        if (m_relative.ops() <= 0) {
-            std::cout << "          |";
+
+        // 1st column: relative
+        os << '|';
+        if (mRelative.unitPerSec() <= 0) {
+            // relative not set or invalid, print blank column
+            os << "          |";
         } else {
-            std::cout << detail::fmt::num(8, 1, med_ops / m_relative.ops() * 100) << "% |";
+            os << detail::fmt::Number(8, 1, medianUnitPerSec / mRelative.unitPerSec() * 100) << "% |";
         }
-        std::cout << detail::fmt::num(20, 2, med_ns_per_op) << " |" << detail::fmt::num(20, 2, med_ops) << " |"
-                  << detail::fmt::num(7, 1, mdaps_sec_per_iter * 100) << "% | ";
 
-        if (mdaps_sec_per_iter >= 0.05) {
+        // 2nd column: ns/unit
+        os << detail::fmt::Number(20, 2, medianNsPerUnit) << " |";
+
+        // 3rd column: unit/s
+        os << detail::fmt::Number(20, 2, medianUnitPerSec) << " |";
+
+        // 4th column: MdAPE
+        os << detail::fmt::Number(7, 1, mdapsSecPerIter * 100) << "% |";
+
+        // 5th column: possible symbols, possibly errormessage, benchmark name
+        if (mdapsSecPerIter >= 0.05) {
             // >=5%
-            std::cout << ":hand: ";
+            os << " :hand:";
         }
-        std::cout << detail::fmt::MarkDownCode(m_name) << std::endl;
+        os << ' ' << detail::fmt::MarkDownCode(mName) << std::endl;
 
-        return med_ops;
+        return Result(medianUnitPerSec);
     }
+
+    std::string mName = "unspecified name";
+    double mBatch = 1.0;
+    std::string mUnit = "op";
+    size_t mNumEpochs = 21;
+    uint64_t mClockResolutionMultiple = UINT64_C(1000);
+    std::chrono::nanoseconds mMaxEpochTime = std::chrono::milliseconds(100);
+    Result mRelative = {};
+    std::ostream* mOut = &std::cout;
 };
 
-inline Cfg name(std::string n) noexcept {
-    Cfg cfg;
-    cfg.name(std::move(n));
-    return cfg;
+inline Config name(std::string n) noexcept {
+    return Config(std::move(n));
 }
 
 inline void tableHeader() {
     // reset lastUnit, so it's printed next time
-    detail::lastUnit() = "";
+    detail::lastUnitUsed() = "";
 }
 
 } // namespace nanobench

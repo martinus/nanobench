@@ -4,6 +4,14 @@
 
 #include <cmath>
 
+TEST_CASE("string") {
+    std::string shortString = "hello";
+    ankerl::nanobench::name("short string").run([&] { std::string copy(shortString); });
+
+    std::string longString = "0123456789abcdefghijklmnopqrstuvwxyz";
+    ankerl::nanobench::name("long string").run([&] { std::string copy(longString); });
+}
+
 TEST_CASE("incorrect1" * doctest::skip()) {
     // compiler optimizes sin() away, because it is unused
     ankerl::nanobench::name("std::sin(2.32)").run([&] { (void)std::sin(2.32); });
