@@ -73,27 +73,21 @@ Desired output is in markdown format:
 
 | relative |               ns/op |                op/s |   MdAPE | benchmark
 |---------:|--------------------:|--------------------:|--------:|:----------------------------------------------
-|          |                6.26 |      159,711,728.47 |    0.1% | `std::vector<std::string> reserve(ptr) + release`
-|    86.4% |                6.83 |      146,327,670.30 |    0.1% | `std::vector<std::string> reserve() + lookup + operator=`
-|  1208.4% |               14.15 |       70,649,422.38 |    0.3% | `std::vector<std::string> emplace + release`
-|        - |                   - |                   - |       - | :boom: overflow `std::vector<std::string> emplace + release`
-|  1208.4% |               14.29 |       69,984,072.59 |    0.5% | `std::vector<std::string> moving out`
-|  1208.4% |               17.26 |       57,935,477.67 |    0.6% | `std::vector<std::string> = std::string()`
-|  1208.4% |               15.56 |       64,252,195.88 |   17.7% | :hand: `std::vector<std::string> dtor & ctor`
-|  1208.4% |               15.60 |       64,113,063.62 |    0.5% | `std::vector<std::string> std::string().swap()`
+|          |                0.63 |    1,598,631,578.95 |    0.0% | `x += x`
+|     6.4% |                9.80 |      102,053,712.48 |    0.1% | `std::sin(x)`
+|    11.4% |                5.49 |      182,234,083.11 |   10.7% | :hand: `std::log(x)`
+|    11.1% |                5.63 |      177,625,690.97 |    0.2% | `1/x`
+|     9.1% |                6.88 |      145,331,087.48 |    0.0% | `std::sqrt(x)`
 
 
 ```
-| relative |               ns/op |               op/s  |  MdAPE  | benchmark
-|---------:|--------------------:|--------------------:|--------:|-----------------------------------------------
-|          |                6.26 |      159,711,728.47 |    0.1% | `std::vector<std::string> reserve(ptr) + release`
-|    86.4% |                6.83 |      146,327,670.30 |    0.1% | `std::vector<std::string> reserve() + lookup + operator=`
-|  1208.4% |               14.15 |       70,649,422.38 |    0.3% | `std::vector<std::string> emplace + release`
-|        - |                   - |                   - |       - | :boom: overflow `std::vector<std::string> emplace + release`
-|  1208.4% |               14.29 |       69,984,072.59 |    0.5% | `std::vector<std::string> moving out`
-|  1208.4% |               17.26 |       57,935,477.67 |    0.6% | `std::vector<std::string> = std::string()`
-|  1208.4% |               15.56 |       64,252,195.88 |   17.7% | :hand: `std::vector<std::string> dtor & ctor`
-|  1208.4% |               15.60 |       64,113,063.62 |    0.5% | `std::vector<std::string> std::string().swap()`
+| relative |               ns/op |                op/s |   MdAPE | benchmark
+|---------:|--------------------:|--------------------:|--------:|:----------------------------------------------
+|          |                0.63 |    1,598,631,578.95 |    0.0% | `x += x`
+|     6.4% |                9.80 |      102,053,712.48 |    0.1% | `std::sin(x)`
+|    11.4% |                5.49 |      182,234,083.11 |   10.7% | :hand: `std::log(x)`
+|    11.1% |                5.63 |      177,625,690.97 |    0.2% | `1/x`
+|     9.1% |                6.88 |      145,331,087.48 |    0.0% | `std::sqrt(x)`
 ```
 
 Inspirations:
