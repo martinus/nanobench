@@ -7,31 +7,41 @@ API examples:
 
 
 ```cpp
-// simplest possible usage
-ankerl::benchmark([&]{
-    sin(34.234);
+double x = 123.0;
+ankerl::nanobench("sin(x)").run([&] {
+    x = sin(x);
 });
-```
-
-
-```cpp
-// benchmarks sin(), and makes sure it is not optimized away.
-double d = 1.0;
-ankerl::benchmark("sin").run([&] {
-    d = sin(d);
-}).noopt(d);
+ankerl::nanobench::do_not_optimize_away(x);
 ```
 
 ```cpp
-
 std::string text("hello, world");
 size_t result = 0;
 
 // prints something like "23.21 ns/B for string hash"
-ankerl::benchmark("string hash").batch(text.size()).unit("B").run([&] {
+ankerl::nanobench("string hash").batch(text.size()).unit("B").run([&] {
     result += std::hash<std::string>{}(text);
-}).noopt(result) << 
+});
+ankerl::nanobench::do_not_optimize_away(result);
 ```
+
+```cpp
+// compare unordered_map with a baseline, use a very fast random number generator
+std::map<uint64_t, uint64_t> m;
+auto rng = ankerl::nanobench::rng();
+auto baseline = ankerl::nanobench("std::map").run([&] {
+    m[rng() & 0xfff] = 1;
+    m.erase(rng() & 0xfff);
+});
+ankerl::nanobench::do_not_optimize_away(m);
+
+std::unordered_map<uint64_t, uint64_t> uo;
+ankerl::nanobench("std::unordered_map").relative(baseline).run([&] {
+    uo[rng() & 0xfff] = 1;
+    uo.erase(rng() & 0xfff);
+});
+ankerl::nanobench::do_not_optimize_away(uo);
+```    
 
 
 Inspirations:
