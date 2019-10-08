@@ -38,7 +38,7 @@ TEST_CASE("simplest_api") {
 }
 
 TEST_CASE("comparison") {
-    ankerl::nanobench::tableHeader();
+    ankerl::nanobench::forceTableHeader();
 
     double x = 1.0;
 

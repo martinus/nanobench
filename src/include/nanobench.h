@@ -50,10 +50,15 @@ using Clock = std::chrono::high_resolution_clock;
 // helper stuff that only intended to be used internally
 namespace detail {
 
-// remembers the unit that was last used. Once it changes, a new table header is automatically written for the next entry.
-inline std::string& lastUnitUsed() {
-    static std::string sUnit = {};
-    return sUnit;
+struct TableInfo {
+    std::string unit = {};
+    std::string title{};
+};
+
+// remembers the last table settings used. When it changes, a new table header is automatically written for the new entry.
+inline TableInfo& singletonLastTableSetting() {
+    static TableInfo sTableInfo = {};
+    return sTableInfo;
 }
 
 // Windows version of do not optimize away
@@ -312,6 +317,11 @@ public:
         return *this;
     }
 
+    Config& title(std::string benchmarkTitle) {
+        mBenchmarkTitle = std::move(benchmarkTitle);
+        return *this;
+    }
+
     // Number of epochs to evaluate. The reported result will be the median of evaluation of each epoch.
     Config& epochs(size_t numEpochs) noexcept {
         mNumEpochs = numEpochs;
@@ -436,11 +446,14 @@ private:
         auto const medianNsPerUnit = 1e9 * medianSecPerIter / mBatch;
         auto const medianUnitPerSec = medianIterPerSec * mBatch;
 
-        if (detail::lastUnitUsed() != mUnit) {
-            detail::lastUnitUsed() = mUnit;
+        auto& lastTableSetting = detail::singletonLastTableSetting();
+        if (lastTableSetting.title != mBenchmarkTitle || lastTableSetting.unit != mUnit) {
+            lastTableSetting.title = mBenchmarkTitle;
+            lastTableSetting.unit = mUnit;
+
             os << std::endl
                << "| relative |" << std::setw(20) << std::right << ("ns/" + mUnit) << " |" << std::setw(20) << std::right
-               << (mUnit + "/s") << " |   MdAPE | benchmark" << std::endl
+               << (mUnit + "/s") << " |   MdAPE | " << mBenchmarkTitle << std::endl
                << "|---------:|--------------------:|--------------------:|--------:|:----------------------------------------------"
                << std::endl;
         }
@@ -476,8 +489,9 @@ private:
         return Result(medianUnitPerSec);
     }
 
-    double mBatch = 1.0;
+    std::string mBenchmarkTitle = "benchmark";
     std::string mUnit = "op";
+    double mBatch = 1.0;
     size_t mNumEpochs = 51;
     uint64_t mClockResolutionMultiple = UINT64_C(1000);
     std::chrono::nanoseconds mMaxEpochTime = std::chrono::milliseconds(100);
@@ -551,9 +565,9 @@ inline Result run(std::string name, Op&& op) noexcept {
     return Config().run(std::move(name), std::forward<Op>(op));
 }
 
-inline void tableHeader() {
-    // reset lastUnit, so it's printed next time
-    detail::lastUnitUsed() = "";
+inline void forceTableHeader() {
+    // reset info, so next time header will be printed
+    detail::singletonLastTableSetting() = detail::TableInfo{};
 }
 
 } // namespace nanobench

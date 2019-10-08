@@ -95,17 +95,17 @@ Desired output is in markdown format:
 
 # Random Number Generator Benchmark
 
-| relative |         ns/uint64_t |          uint64_t/s |   MdAPE | benchmark
+| relative |         ns/uint64_t |          uint64_t/s |   MdAPE | Random Number Generators
 |---------:|--------------------:|--------------------:|--------:|:----------------------------------------------
-|          |               42.42 |       23,571,013.63 |    3.9% | `std::default_random_engine`
-|   184.7% |               22.97 |       43,533,488.57 |    2.4% | `std::mt19937`
-|   540.5% |                7.85 |      127,404,664.29 |    4.2% | `std::mt19937_64`
-|    93.3% |               45.49 |       21,983,801.54 |    1.6% | `std::ranlux24_base`
-|   125.4% |               33.84 |       29,553,663.93 |    1.4% | `std::ranlux48_base`
-|    21.5% |              197.77 |        5,056,393.68 |    5.4% | :wavy_dash: `std::ranlux24_base`
-|    12.8% |              331.11 |        3,020,180.43 |    7.0% | :wavy_dash: `std::ranlux48`
-|    69.2% |               61.33 |       16,304,619.25 |    4.1% | `std::knuth_b`
-| 2,627.2% |                1.61 |      619,246,751.63 |    0.6% | `ankerl::nanobench::Rng`
+|          |               42.52 |       23,518,566.93 |    4.1% | `std::default_random_engine`
+|   187.8% |               22.64 |       44,167,287.68 |    2.4% | `std::mt19937`
+|   587.2% |                7.24 |      138,093,729.87 |    6.3% | :wavy_dash: `std::mt19937_64`
+|    93.9% |               45.28 |       22,085,691.51 |    1.5% | `std::ranlux24_base`
+|   124.9% |               34.03 |       29,382,338.63 |    1.5% | `std::ranlux48_base`
+|    21.4% |              198.68 |        5,033,285.71 |    5.3% | :wavy_dash: `std::ranlux24_base`
+|    11.1% |              381.88 |        2,618,640.45 |    8.2% | :wavy_dash: `std::ranlux48`
+|    67.4% |               63.08 |       15,853,913.77 |    4.2% | `std::knuth_b`
+| 2,636.2% |                1.61 |      619,994,208.17 |    0.3% | `ankerl::nanobench::Rng`
 
 
 Inspirations:

@@ -14,7 +14,7 @@ ankerl::nanobench::Result bench(ankerl::nanobench::Config const& cfg, std::strin
 TEST_CASE("random_comparison") {
     // perform a few warmup calls, and since the runtime is not always stable for each
     // generator, increase the number of epochs to get more accurate numbers.
-    auto cfg = ankerl::nanobench::Config().unit("uint64_t").warmup(10000).epochs(1000);
+    auto cfg = ankerl::nanobench::Config().title("Random Number Generators").unit("uint64_t").warmup(10000).epochs(1000);
 
     // Get the baseline against which the other random engines are compared
     auto baseline = bench<std::default_random_engine>(cfg, "std::default_random_engine");
