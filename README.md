@@ -92,6 +92,22 @@ Desired output is in markdown format:
 |     9.1% |                6.88 |      145,326,219.85 |    0.0% | `std::sqrt(x)`
 ```
 
+
+# Random Number Generator Benchmark
+
+| relative |         ns/uint64_t |          uint64_t/s |   MdAPE | benchmark
+|---------:|--------------------:|--------------------:|--------:|:----------------------------------------------
+|          |               45.85 |       21,811,625.59 |    3.7% | `std::default_random_engine`
+|   188.0% |               24.39 |       41,002,162.34 |    2.1% | `std::mt19937`
+|   593.1% |                7.73 |      129,361,876.22 |    9.4% | :hand: `std::mt19937_64`
+|    98.5% |               46.53 |       21,489,212.53 |    1.6% | `std::ranlux24_base`
+|   131.2% |               34.94 |       28,624,143.56 |    1.5% | `std::ranlux48_base`
+|    22.2% |              206.20 |        4,849,737.50 |    5.8% | :hand: `std::ranlux24_base`
+|    11.4% |              401.79 |        2,488,842.86 |    8.9% | :hand: `std::ranlux48`
+|    68.7% |               66.74 |       14,982,447.33 |    3.9% | `std::knuth_b`
+| 3,528.4% |                1.30 |      769,603,170.32 |    0.5% | `ankerl::nanobench::Rng`
+
+
 Inspirations:
 * https://github.com/ikatyang/emoji-cheat-sheet/blob/master/README.md
 * folly Benchmark https://github.com/facebook/folly/blob/master/folly/Benchmark.h
