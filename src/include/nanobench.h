@@ -467,11 +467,8 @@ private:
         os << detail::fmt::Number(7, 1, mdapsSecPerIter * 100) << "% |";
 
         // 5th column: possible symbols, possibly errormessage, benchmark name
-        if (mdapsSecPerIter >= 0.1) {
-            os << " :bangbang:";
-        } else if (mdapsSecPerIter >= 0.05) {
-            os << " :question:";
-        } else if (mdapsSecPerIter >= 0.02) {
+        if (mdapsSecPerIter >= 0.05) {
+            // >=5%
             os << " :wavy_dash:";
         }
         os << ' ' << detail::fmt::MarkDownCode(name) << std::endl;
