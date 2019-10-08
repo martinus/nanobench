@@ -258,7 +258,7 @@ inline double calcMedianAbsolutePercentageError(std::vector<double> const& resul
 // Makes sure none of the given arguments are optimized away by the compiler.
 template <typename... Args>
 void doNotOptimizeAway(Args&&... args) {
-    (void)std::initializer_list<int>{(detail::doNotOptimizeAwaySink(args), 0)...};
+    (void)std::initializer_list<int>{(detail::doNotOptimizeAwaySink(std::forward<Args>(args)), 0)...};
 }
 
 // Result returned after a benchmark has finished. Can be used as a baseline for relative().

@@ -3,7 +3,7 @@
 
 #include <random>
 
-// Benchmarks how fast we can get 64bit random values
+// Benchmarks how fast we can get 64bit random values from Rng
 template <typename Rng>
 ankerl::nanobench::Result bench(ankerl::nanobench::Config const& cfg, std::string name) {
     Rng rng;
@@ -11,7 +11,7 @@ ankerl::nanobench::Result bench(ankerl::nanobench::Config const& cfg, std::strin
     return cfg.run(name, [&] { x += std::uniform_int_distribution<uint64_t>{}(rng); }).doNotOptimizeAway(x);
 }
 
-TEST_CASE("random_comparison") {
+TEST_CASE("example_random_number_generators") {
     // perform a few warmup calls, and since the runtime is not always stable for each
     // generator, increase the number of epochs to get more accurate numbers.
     auto cfg = ankerl::nanobench::Config().title("Random Number Generators").unit("uint64_t").warmup(10000).epochs(1000);
