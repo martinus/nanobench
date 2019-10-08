@@ -7,7 +7,7 @@
 #include <unordered_set>
 
 TEST_CASE("example_containers") {
-    auto cfg = ankerl::nanobench::Config().title("random insert & erase in maps").warmup(10000);
+    auto cfg = ankerl::nanobench::Config().title("random insert & erase in containers");
     ankerl::nanobench::Rng rng;
 
     std::unordered_map<uint64_t, int> uo;
@@ -17,19 +17,19 @@ TEST_CASE("example_containers") {
     });
     ankerl::nanobench::doNotOptimizeAway(&uo);
 
-    std::map<uint64_t, int> m;
-    cfg.run("std::map", [&] {
-        m[rng() & 0xff];
-        m.erase(rng() & 0xff);
-    });
-    ankerl::nanobench::doNotOptimizeAway(&uo);
-
     std::unordered_set<uint64_t> us;
     cfg.run("std::unordered_set", [&] {
         us.insert(rng() & 0xff);
         us.erase(rng() & 0xff);
     });
     ankerl::nanobench::doNotOptimizeAway(&us);
+
+    std::map<uint64_t, int> m;
+    cfg.run("std::map", [&] {
+        m[rng() & 0xff];
+        m.erase(rng() & 0xff);
+    });
+    ankerl::nanobench::doNotOptimizeAway(&uo);
 
     std::set<uint64_t> s;
     cfg.run("std::set", [&] {
