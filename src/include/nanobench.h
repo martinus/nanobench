@@ -286,6 +286,7 @@ public:
     Config(std::string n) noexcept
         : mName(std::move(n)) {}
 
+    Config() = default;
     Config(Config&&) = default;
     Config& operator=(Config&&) = default;
     Config(Config const&) = default;
@@ -343,6 +344,11 @@ public:
         return *this;
     }
 
+    Config& warmup(size_t numWarmupIters) noexcept {
+        mWarmup = numWarmupIters;
+        return *this;
+    }
+
     // Performs all evaluations.
     template <typename Op>
     Result run(Op op) const {
@@ -366,8 +372,9 @@ public:
         std::vector<double> secPerIter;
         secPerIter.reserve(mNumEpochs);
 
-        size_t numIters = 1;
+        size_t numIters = mWarmup;
 
+        bool isWarmup = mWarmup != 0;
         while (secPerIter.size() != mNumEpochs) {
             auto n = numIters;
 
@@ -399,12 +406,14 @@ public:
             }
 
             // if we are within 2/3 of the target runtime, add it.
-            if (elapsed * 3 >= targetRuntime * 2) {
+            if (elapsed * 3 >= targetRuntime * 2 && !isWarmup) {
                 auto result =
                     std::chrono::duration_cast<std::chrono::duration<double>>(elapsed).count() / static_cast<double>(numIters);
 
                 secPerIter.push_back(result);
             }
+
+            isWarmup = false;
         }
         return showResult(secPerIter, "");
     }
@@ -478,15 +487,79 @@ private:
     std::string mName = "unspecified name";
     double mBatch = 1.0;
     std::string mUnit = "op";
-    size_t mNumEpochs = 21;
+    size_t mNumEpochs = 51;
     uint64_t mClockResolutionMultiple = UINT64_C(1000);
     std::chrono::nanoseconds mMaxEpochTime = std::chrono::milliseconds(100);
     Result mRelative = {};
     std::ostream* mOut = &std::cout;
+    size_t mWarmup = 0;
 };
 
-inline Config name(std::string n) noexcept {
+// Small Fast Counting RNG, version 4
+class Rng final {
+public:
+    using state_type = std::array<uint64_t, 4>;
+    using result_type = uint64_t;
+
+    static constexpr uint64_t(min)() {
+        return 0;
+    }
+    static constexpr uint64_t(max)() {
+        return (std::numeric_limits<uint64_t>::max)();
+    }
+
+    Rng()
+        : Rng(UINT64_C(0xd3b45fd780a1b6a3)) {}
+
+    // don't allow copying, it's dangerous
+    Rng(Rng const&) = delete;
+
+    explicit Rng(uint64_t seed) noexcept
+        : mA(seed)
+        , mB(seed)
+        , mC(seed)
+        , mCounter(1) {
+        for (size_t i = 0; i < 12; ++i) {
+            operator()();
+        }
+    }
+
+    state_type state() const noexcept {
+        return {mA, mB, mC, mCounter};
+    }
+
+    void state(state_type const& state) noexcept {
+        mA = state[0];
+        mB = state[1];
+        mC = state[2];
+        mCounter = state[3];
+    }
+
+    uint64_t operator()() noexcept {
+        uint64_t const tmp = mA + mB + mCounter++;
+        mA = mB ^ (mB >> 11);
+        mB = mC + (mC << 3);
+        mC = rotl(mC, 24) + tmp;
+        return tmp;
+    }
+
+private:
+    static constexpr uint64_t rotl(uint64_t const x, int k) noexcept {
+        return (x << k) | (x >> (64 - k));
+    }
+
+    uint64_t mA;
+    uint64_t mB;
+    uint64_t mC;
+    uint64_t mCounter;
+};
+
+inline Config create(std::string n) noexcept {
     return Config(std::move(n));
+}
+
+inline Config create() noexcept {
+    return Config();
 }
 
 inline void tableHeader() {
