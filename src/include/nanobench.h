@@ -31,9 +31,9 @@
 #define ANKERL_NANOBENCH_H_INCLUDED
 
 // see https://semver.org/
-#define ANKERL_NANOBENCH_VERSION_MAJOR 0 // incompatible API changes
+#define ANKERL_NANOBENCH_VERSION_MAJOR 1 // incompatible API changes
 #define ANKERL_NANOBENCH_VERSION_MINOR 0 // backwards-compatible changes
-#define ANKERL_NANOBENCH_VERSION_PATCH 1 // backwards-compatible bug fixes
+#define ANKERL_NANOBENCH_VERSION_PATCH 0 // backwards-compatible bug fixes
 
 #include <algorithm> // sort
 #include <chrono>    // high_resolution_clock
@@ -283,20 +283,12 @@ private:
 // Configuration of a microbenchmark.
 class Config {
 public:
-    Config(std::string n) noexcept
-        : mName(std::move(n)) {}
-
     Config() = default;
+
     Config(Config&&) = default;
     Config& operator=(Config&&) = default;
     Config(Config const&) = default;
     Config& operator=(Config const&) = default;
-
-    // Specifies a name for the benchmark
-    Config& name(std::string n) noexcept {
-        mName = std::move(n);
-        return *this;
-    }
 
     // Set the batch size, e.g. number of processed bytes, or some other metric for the size of the processed data in each iteration.
     // Any argument is cast to double.
@@ -351,7 +343,7 @@ public:
 
     // Performs all evaluations.
     template <typename Op>
-    Result run(Op op) const {
+    Result run(std::string name, Op op) const {
 #if 0
         detail::Measurements measurements(mClockResolutionMultiple, mMaxEpochTime, mNumEpochs);
         do {
@@ -391,13 +383,13 @@ public:
             // adapt n
             if (elapsed * 10 < targetRuntime) {
                 if (numIters * 10 < numIters) {
-                    return showResult(secPerIter, "iterations overflow. Maybe your code got optimized away?");
+                    return showResult(name, secPerIter, "iterations overflow. Maybe your code got optimized away?");
                 }
                 numIters *= 10;
             } else {
                 auto mult = numIters * static_cast<size_t>(targetRuntime.count());
                 if (mult < numIters) {
-                    return showResult(secPerIter, "iterations overflow. Maybe your code got optimized away?");
+                    return showResult(name, secPerIter, "iterations overflow. Maybe your code got optimized away?");
                 }
                 numIters = (numIters * targetRuntime) / elapsed;
                 if (numIters == 0) {
@@ -415,15 +407,15 @@ public:
 
             isWarmup = false;
         }
-        return showResult(secPerIter, "");
+        return showResult(name, secPerIter, "");
     }
 
 private:
-    Result showResult(std::vector<double>& secPerIter, std::string errorMessage) const {
+    Result showResult(std::string const& name, std::vector<double>& secPerIter, std::string errorMessage) const {
         auto& os = *mOut;
         if (!errorMessage.empty()) {
             os << "|        - |                   - |                   - |       - | :boom: " << errorMessage << ' '
-               << detail::fmt::MarkDownCode(mName) << std::endl;
+               << detail::fmt::MarkDownCode(name) << std::endl;
             return Result(-1);
         }
         std::vector<double> iterPerSec;
@@ -479,12 +471,11 @@ private:
             // >=5%
             os << " :hand:";
         }
-        os << ' ' << detail::fmt::MarkDownCode(mName) << std::endl;
+        os << ' ' << detail::fmt::MarkDownCode(name) << std::endl;
 
         return Result(medianUnitPerSec);
     }
 
-    std::string mName = "unspecified name";
     double mBatch = 1.0;
     std::string mUnit = "op";
     size_t mNumEpochs = 51;
@@ -554,12 +545,10 @@ private:
     uint64_t mCounter;
 };
 
-inline Config create(std::string n) noexcept {
-    return Config(std::move(n));
-}
-
-inline Config create() noexcept {
-    return Config();
+// convenience helper to directly call Config().run(...)
+template <typename Op>
+inline Result run(std::string name, Op&& op) noexcept {
+    return Config().run(std::move(name), std::forward<Op>(op));
 }
 
 inline void tableHeader() {
