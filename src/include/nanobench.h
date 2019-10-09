@@ -121,33 +121,33 @@ inline TableInfo& singletonLastTableSetting() {
 }
 
 // Windows version of do not optimize away
-#if defined(_MSC_VER)
+// see https://github.com/google/benchmark/blob/master/include/benchmark/benchmark.h#L307
+// see https://github.com/facebook/folly/blob/master/folly/Benchmark.h#L280
 // see https://docs.microsoft.com/en-us/cpp/preprocessor/optimize
+#if defined(_MSC_VER)
 #    pragma optimize("", off)
 inline void doNotOptimizeAwaySink(void const*) {}
-#    pragma optimize("", on
+#    pragma optimize("", on)
+
+template <typename T>
+inline void doNotOptimizeAway(T const& val) {
+    doNotOptimizeAwaySink(&val);
+}
 
 #else
 
 template <typename T>
-struct DoNotOptimizeAwayNeedsIndirect {
-    using D = typename std::decay<T>::type;
-    constexpr static bool value = !std::is_trivially_copyable<D>::value || sizeof(D) > sizeof(long) || std::is_pointer<D>::value;
-};
-
-template <typename T>
-auto doNotOptimizeAwaySink(T const& val) -> typename std::enable_if<!DoNotOptimizeAwayNeedsIndirect<T>::value>::type {
-    // see https://github.com/facebook/folly/blob/master/folly/Benchmark.h
-    // Tells the compiler that we read val from memory and might read/write
-    // from any memory location.
-    asm volatile("" ::"m"(val) : "memory");
+void doNotOptimizeAway(T const& val) {
+    asm volatile("" : : "r,m"(val) : "memory");
 }
 
 template <typename T>
-auto doNotOptimizeAwaySink(T const& val) -> typename std::enable_if<DoNotOptimizeAwayNeedsIndirect<T>::value>::type {
-    // the "r" forces compiler to make val available in a register, so it must have been loaded.
-    // Only works when small enough (<= sizeof(long)), trivial, and no pointer
-    asm volatile("" ::"r"(val));
+void doNotOptimizeAway(T& value) {
+#    if defined(__clang__)
+    asm volatile("" : "+r,m"(value) : : "memory");
+#    else
+    asm volatile("" : "+m,r"(value) : : "memory");
+#    endif
 }
 
 #endif
@@ -291,7 +291,7 @@ inline std::ostream& operator<<(std::ostream& os, MarkDownCode const& mdCode) {
 // Makes sure none of the given arguments are optimized away by the compiler.
 template <typename... Args>
 void doNotOptimizeAway(Args&&... args) {
-    (void)std::initializer_list<int>{(detail::doNotOptimizeAwaySink(std::forward<Args>(args)), 0)...};
+    (void)std::initializer_list<int>{(detail::doNotOptimizeAway(std::forward<Args>(args)), 0)...};
 }
 
 // Result returned after a benchmark has finished. Can be used as a baseline for relative().
