@@ -39,9 +39,14 @@
 #include <chrono>    // high_resolution_clock
 #include <cmath>     // fabs
 #include <cstdlib>   // getenv
+#include <fstream>   // ifstream to parse proc files
 #include <iomanip>   // setw, setprecision
 #include <iostream>  // cout
 #include <vector>    // manage results
+
+#if __linux__
+#    include <unistd.h> //sysconf
+#endif
 
 namespace ankerl {
 namespace nanobench {
@@ -50,6 +55,56 @@ using Clock = std::chrono::high_resolution_clock;
 
 // helper stuff that only intended to be used internally
 namespace detail {
+
+template <typename T>
+T parseFile(std::string filename) {
+    std::ifstream fin(filename);
+    T num{};
+    fin >> num;
+    return num;
+}
+
+inline void printStabilityInformationOnce() {
+#if __linux__
+    static bool shouldPrint = true;
+    if (shouldPrint) {
+        shouldPrint = false;
+
+        auto nprocs = sysconf(_SC_NPROCESSORS_CONF);
+        if (nprocs <= 0) {
+            std::cerr << "Warning: Can't figure out number of processors." << std::endl;
+            return;
+        }
+
+        // check frequency scaling
+        bool isFrequencyLocked = true;
+        bool isGovernorPerformance = "performance" == parseFile<std::string>("/sys/devices/system/cpu/cpu0/cpufreq/scaling_governor");
+        for (long id = 0; id < nprocs; ++id) {
+            auto sysCpu = "/sys/devices/system/cpu/cpu" + std::to_string(id);
+            auto minFreq = parseFile<int64_t>(sysCpu + "/cpufreq/scaling_min_freq");
+            auto maxFreq = parseFile<int64_t>(sysCpu + "/cpufreq/scaling_max_freq");
+            if (minFreq != maxFreq) {
+                isFrequencyLocked = false;
+            }
+        }
+        bool isTurbo = 0 == parseFile<int>("/sys/devices/system/cpu/intel_pstate/no_turbo");
+        if (!isFrequencyLocked) {
+            std::cerr << "Warning: CPU frequency scaling enabled, results will be invalid" << std::endl;
+        }
+        if (!isGovernorPerformance) {
+            std::cerr << "Warning: CPU governor is not performance, results will be invalid" << std::endl;
+        }
+        if (isTurbo) {
+            std::cerr << "Warning: Turbo is enabled" << std::endl;
+        }
+
+        if (!isFrequencyLocked || !isGovernorPerformance || isTurbo) {
+            std::cerr << "Recommendation: use 'pyperf system tune' before benchmarking. See https://pypi.org/project/pyperf/"
+                      << std::endl;
+        }
+    }
+#endif
+}
 
 struct TableInfo {
     std::string unit = {};
@@ -380,6 +435,7 @@ public:
     // Performs all evaluations.
     template <typename Op>
     Result run(std::string name, Op&& op) const {
+        detail::printStabilityInformationOnce();
 #if 0
         detail::Measurements measurements(mClockResolutionMultiple, mMaxEpochTime, mNumEpochs);
         do {
