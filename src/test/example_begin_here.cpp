@@ -8,7 +8,7 @@
 //
 // | relative |               ns/op |                op/s |   MdAPE | benchmark
 // |---------:|--------------------:|--------------------:|--------:|:----------------------------------------------
-// |          |                6.67 |      149,913,208.14 |    0.4% | `CAS`
+// |          |                5.63 |      177,553,749.61 |    0.0% | `CAS`
 //
 // example from https://github.com/cameron314/microbench
 TEST_CASE("example_begin_here") {
