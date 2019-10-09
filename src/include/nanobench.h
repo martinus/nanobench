@@ -38,6 +38,7 @@
 #include <algorithm> // sort
 #include <chrono>    // high_resolution_clock
 #include <cmath>     // fabs
+#include <cstdlib>   // getenv
 #include <iomanip>   // setw, setprecision
 #include <iostream>  // cout
 #include <vector>    // manage results
@@ -378,7 +379,7 @@ public:
 
     // Performs all evaluations.
     template <typename Op>
-    Result run(std::string name, Op op) const {
+    Result run(std::string name, Op&& op) const {
 #if 0
         detail::Measurements measurements(mClockResolutionMultiple, mMaxEpochTime, mNumEpochs);
         do {
@@ -400,6 +401,13 @@ public:
         secPerUnit.reserve(mNumEpochs);
 
         size_t numIters = mWarmup;
+
+        // check environment variable NANOBENCH_ENDLESS
+        auto endless = std::getenv("NANOBENCH_ENDLESS");
+        if (endless && endless == name) {
+            std::cout << "NANOBENCH_ENDLESS set: running '" << name << "' endlessly" << std::endl;
+            numIters = (std::numeric_limits<size_t>::max)();
+        }
 
         bool isWarmup = mWarmup != 0;
         while (secPerUnit.size() != mNumEpochs) {
