@@ -227,32 +227,6 @@ inline std::ostream& operator<<(std::ostream& os, MarkDownCode const& mdCode) {
 }
 
 } // namespace fmt
-
-// mathy statistic stuff
-namespace statistics {
-
-// calculates median, and properly handles even number of elements too.
-inline double calcMedian(std::vector<double> const& results) {
-    auto mid = results.size() / 2;
-    if (results.size() & 1) {
-        return results[mid];
-    }
-    return (results[mid - 1] + results[mid]) / 2;
-}
-
-// calculates MdAPE which is the median of percentage error
-// see https://www.spiderfinancial.com/support/documentation/numxl/reference-manual/forecasting-performance/mdape
-inline double calcMedianAbsolutePercentageError(std::vector<double> const& results, double median) {
-    std::vector<double> absolutePercentageErrors;
-    for (auto r : results) {
-        absolutePercentageErrors.push_back(std::fabs(r - median) / r);
-    }
-    std::sort(absolutePercentageErrors.begin(), absolutePercentageErrors.end());
-
-    return calcMedian(absolutePercentageErrors);
-}
-
-} // namespace statistics
 } // namespace detail
 
 // Makes sure none of the given arguments are optimized away by the compiler.
@@ -264,17 +238,38 @@ void doNotOptimizeAway(Args&&... args) {
 // Result returned after a benchmark has finished. Can be used as a baseline for relative().
 class Result {
 public:
-    explicit Result(double ups) noexcept
-        : mUnitPerSec(ups) {}
+    explicit Result(std::string const& unit, std::vector<std::chrono::duration<double>> secPerUnit) noexcept
+        : mUnit(unit) {
+        std::sort(secPerUnit.begin(), secPerUnit.end());
+        mMinimum = secPerUnit.front();
+        mMaximum = secPerUnit.back();
+        mMedian = calcMedian(secPerUnit);
+        mMedianAbsolutePercentError = calcMedianAbsolutePercentageError(secPerUnit, mMedian);
+    }
 
     Result() = default;
 
-    // Operations per second
-    double unitPerSec() const noexcept {
-        return mUnitPerSec;
+    std::string const& unit() const noexcept {
+        return mUnit;
     }
 
-    // Makes sure none of the given arguments are optimized away by the compiler.
+    std::chrono::duration<double> median() const noexcept {
+        return mMedian;
+    }
+
+    double medianAbsolutePercentError() const noexcept {
+        return mMedianAbsolutePercentError;
+    }
+
+    std::chrono::duration<double> minimum() const noexcept {
+        return mMinimum;
+    }
+
+    std::chrono::duration<double> maximum() const noexcept {
+        return mMaximum;
+    }
+
+    // Convenience: makes sure none of the given arguments are optimized away by the compiler.
     template <typename... Args>
     Result& doNotOptimizeAway(Args&&... args) {
         ::ankerl::nanobench::doNotOptimizeAway(std::forward<Args>(args)...);
@@ -282,7 +277,37 @@ public:
     }
 
 private:
-    double mUnitPerSec = {-1};
+    // calculates median, and properly handles even number of elements too.
+    template <typename T>
+    static T calcMedian(std::vector<T> const& sortedResults) {
+        auto mid = sortedResults.size() / 2;
+        if (sortedResults.size() & 1) {
+            return sortedResults[mid];
+        }
+        return (sortedResults[mid - 1] + sortedResults[mid]) / 2;
+    }
+
+    // calculates MdAPE which is the median of percentage error
+    // see https://www.spiderfinancial.com/support/documentation/numxl/reference-manual/forecasting-performance/mdape
+    static double calcMedianAbsolutePercentageError(std::vector<std::chrono::duration<double>> const& results,
+                                                    std::chrono::duration<double> median) {
+        std::vector<double> absolutePercentageErrors;
+        for (auto r : results) {
+            auto percent = (r - median) / r;
+            if (percent < 0) {
+                percent = -percent;
+            }
+            absolutePercentageErrors.push_back(percent);
+        }
+        std::sort(absolutePercentageErrors.begin(), absolutePercentageErrors.end());
+        return calcMedian(absolutePercentageErrors);
+    }
+
+    std::string mUnit = "";
+    std::chrono::duration<double> mMedian{};
+    double mMedianAbsolutePercentError{};
+    std::chrono::duration<double> mMinimum{};
+    std::chrono::duration<double> mMaximum{};
 };
 
 // Configuration of a microbenchmark.
@@ -371,13 +396,13 @@ public:
             targetRuntime = mMaxEpochTime;
         }
 
-        std::vector<double> secPerIter;
-        secPerIter.reserve(mNumEpochs);
+        std::vector<std::chrono::duration<double>> secPerUnit;
+        secPerUnit.reserve(mNumEpochs);
 
         size_t numIters = mWarmup;
 
         bool isWarmup = mWarmup != 0;
-        while (secPerIter.size() != mNumEpochs) {
+        while (secPerUnit.size() != mNumEpochs) {
             auto n = numIters;
 
             // the code between before and after is very time critical. Make sure we only call op on
@@ -393,13 +418,13 @@ public:
             // adapt n
             if (elapsed * 10 < targetRuntime) {
                 if (numIters * 10 < numIters) {
-                    return showResult(name, secPerIter, "iterations overflow. Maybe your code got optimized away?");
+                    return showResult(name, secPerUnit, "iterations overflow. Maybe your code got optimized away?");
                 }
                 numIters *= 10;
             } else {
                 auto mult = numIters * static_cast<size_t>(targetRuntime.count());
                 if (mult < numIters) {
-                    return showResult(name, secPerIter, "iterations overflow. Maybe your code got optimized away?");
+                    return showResult(name, secPerUnit, "iterations overflow. Maybe your code got optimized away?");
                 }
                 numIters = (numIters * targetRuntime) / elapsed;
                 if (numIters == 0) {
@@ -409,43 +434,28 @@ public:
 
             // if we are within 2/3 of the target runtime, add it.
             if (elapsed * 3 >= targetRuntime * 2 && !isWarmup) {
-                auto result =
-                    std::chrono::duration_cast<std::chrono::duration<double>>(elapsed).count() / static_cast<double>(numIters);
-
-                secPerIter.push_back(result);
+                secPerUnit.push_back(std::chrono::duration_cast<std::chrono::duration<double>>(elapsed) /
+                                     (mBatch * static_cast<double>(numIters)));
             }
 
             isWarmup = false;
         }
-        return showResult(name, secPerIter, "");
+        return showResult(name, secPerUnit, "");
     }
 
 private:
-    Result showResult(std::string const& name, std::vector<double>& secPerIter, std::string errorMessage) const {
+    Result showResult(std::string const& name, std::vector<std::chrono::duration<double>>& secPerUnit,
+                      std::string errorMessage) const {
         auto& os = *mOut;
         if (!errorMessage.empty()) {
             os << "|        - |                   - |                   - |       - | :boom: " << errorMessage << ' '
                << detail::fmt::MarkDownCode(name) << std::endl;
-            return Result(-1);
-        }
-        std::vector<double> iterPerSec;
-        for (auto t : secPerIter) {
-            iterPerSec.push_back(1.0 / t);
+            return Result();
         }
 
-        std::sort(iterPerSec.begin(), iterPerSec.end());
-        auto const medianIterPerSec = detail::statistics::calcMedian(iterPerSec);
-
-        std::sort(secPerIter.begin(), secPerIter.end());
-        auto const medianSecPerIter = detail::statistics::calcMedian(secPerIter);
-        auto const mdapsSecPerIter = detail::statistics::calcMedianAbsolutePercentageError(secPerIter, medianSecPerIter);
+        Result result(mUnit, secPerUnit);
 
         detail::fmt::StreamStateRestorer restorer(os);
-
-        // show final result, the median
-        auto const medianNsPerUnit = 1e9 * medianSecPerIter / mBatch;
-        auto const medianUnitPerSec = medianIterPerSec * mBatch;
-
         auto& lastTableSetting = detail::singletonLastTableSetting();
         if (lastTableSetting.title != mBenchmarkTitle || lastTableSetting.unit != mUnit) {
             lastTableSetting.title = mBenchmarkTitle;
@@ -463,30 +473,30 @@ private:
 
         // 1st column: relative
         os << '|';
-        if (mRelative.unitPerSec() <= 0) {
+        if (mRelative.median() <= std::chrono::duration<double>::zero()) {
             // relative not set or invalid, print blank column
             os << "          |";
         } else {
-            os << detail::fmt::Number(8, 1, medianUnitPerSec / mRelative.unitPerSec() * 100) << "% |";
+            os << detail::fmt::Number(8, 1, mRelative.median() / result.median() * 100) << "% |";
         }
 
         // 2nd column: ns/unit
-        os << detail::fmt::Number(20, 2, medianNsPerUnit) << " |";
+        os << detail::fmt::Number(20, 2, 1e9 * result.median().count()) << " |";
 
         // 3rd column: unit/s
-        os << detail::fmt::Number(20, 2, medianUnitPerSec) << " |";
+        os << detail::fmt::Number(20, 2, 1 / result.median().count()) << " |";
 
         // 4th column: MdAPE
-        os << detail::fmt::Number(7, 1, mdapsSecPerIter * 100) << "% |";
+        os << detail::fmt::Number(7, 1, result.medianAbsolutePercentError() * 100) << "% |";
 
         // 5th column: possible symbols, possibly errormessage, benchmark name
-        if (mdapsSecPerIter >= 0.05) {
+        if (result.medianAbsolutePercentError() >= 0.05) {
             // >=5%
             os << " :wavy_dash:";
         }
         os << ' ' << detail::fmt::MarkDownCode(name) << std::endl;
 
-        return Result(medianUnitPerSec);
+        return result;
     }
 
     std::string mBenchmarkTitle = "benchmark";
@@ -495,7 +505,7 @@ private:
     size_t mNumEpochs = 51;
     uint64_t mClockResolutionMultiple = UINT64_C(1000);
     std::chrono::nanoseconds mMaxEpochTime = std::chrono::milliseconds(100);
-    Result mRelative = {};
+    Result mRelative{};
     std::ostream* mOut = &std::cout;
     size_t mWarmup = 0;
 };
