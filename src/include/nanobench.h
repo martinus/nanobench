@@ -65,11 +65,14 @@ T parseFile(std::string filename) {
 }
 
 inline void printStabilityInformationOnce() {
-#if __linux__
     static bool shouldPrint = true;
     if (shouldPrint) {
         shouldPrint = false;
+#if !defined(NDEBUG)
+        std::cerr << "Warning: NDEBUG not defined, this is a debug build" << std::endl;
+#endif
 
+#if __linux__
         auto nprocs = sysconf(_SC_NPROCESSORS_CONF);
         if (nprocs <= 0) {
             std::cerr << "Warning: Can't figure out number of processors." << std::endl;
@@ -102,8 +105,8 @@ inline void printStabilityInformationOnce() {
             std::cerr << "Recommendation: use 'pyperf system tune' before benchmarking. See https://pypi.org/project/pyperf/"
                       << std::endl;
         }
-    }
 #endif
+    }
 }
 
 struct TableInfo {
