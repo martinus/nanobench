@@ -39,6 +39,7 @@
 #include <chrono>    // high_resolution_clock
 #include <cmath>     // fabs
 #include <cstdlib>   // getenv
+#include <cstring>   // memcpy
 #include <fstream>   // ifstream to parse proc files
 #include <iomanip>   // setw, setprecision
 #include <iostream>  // cout
@@ -131,6 +132,36 @@ private:
     std::chrono::duration<double> mMaximum{};
 };
 
+// Small Fast Counting RNG, version 4
+class Rng final {
+public:
+    using state_type = std::array<uint64_t, 4>;
+    using result_type = uint64_t;
+
+    static constexpr uint64_t(min)();
+    static constexpr uint64_t(max)();
+
+    inline constexpr Rng();
+
+    // don't allow copying, it's dangerous
+    Rng(Rng const&) = delete;
+
+    inline constexpr explicit Rng(uint64_t seed) noexcept;
+
+    inline constexpr state_type state() const noexcept;
+    inline constexpr void state(state_type const& state) noexcept;
+    inline constexpr uint64_t operator()() noexcept;
+    inline constexpr double uniform01() noexcept;
+
+private:
+    inline static constexpr uint64_t rotl(uint64_t const x, int k) noexcept;
+
+    uint64_t mA;
+    uint64_t mB;
+    uint64_t mC;
+    uint64_t mCounter;
+};
+
 // helper stuff that only intended to be used internally
 namespace detail {
 
@@ -192,6 +223,7 @@ private:
     std::string mName{};
     Result mResult{};
     bool mIsWarmup = false;
+    Rng mRng{};
 };
 
 // formatting utilities
@@ -328,35 +360,6 @@ private:
     Result mRelative{};
     std::ostream* mOut = &std::cout;
     size_t mWarmup = 0;
-};
-
-// Small Fast Counting RNG, version 4
-class Rng final {
-public:
-    using state_type = std::array<uint64_t, 4>;
-    using result_type = uint64_t;
-
-    static constexpr uint64_t(min)();
-    static constexpr uint64_t(max)();
-
-    inline constexpr Rng();
-
-    // don't allow copying, it's dangerous
-    Rng(Rng const&) = delete;
-
-    inline constexpr explicit Rng(uint64_t seed) noexcept;
-
-    inline constexpr state_type state() const noexcept;
-    inline constexpr void state(state_type const& state) noexcept;
-    inline constexpr uint64_t operator()() noexcept;
-
-private:
-    inline static constexpr uint64_t rotl(uint64_t const x, int k) noexcept;
-
-    uint64_t mA;
-    uint64_t mB;
-    uint64_t mC;
-    uint64_t mCounter;
 };
 
 // convenience helper to directly call Config().run(...)
@@ -517,40 +520,41 @@ size_t Measurements::numIters() const noexcept {
 }
 
 void Measurements::add(std::chrono::nanoseconds elapsed) noexcept {
-    // adapt n
-    if (elapsed * 10 < mTargetRuntime) {
-        if (mNumIters * 10 < mNumIters) {
-            mResult = showResult(mName, mSecPerUnit,
-                                 "iterations overflow at " + std::to_string(mNumIters) + ". Maybe your code got optimized away?");
-            mNumIters = 0;
-            return;
-        }
-        mNumIters *= 10;
-    } else {
-        auto mult = mNumIters * static_cast<size_t>(mTargetRuntime.count());
-        if (mult < mNumIters) {
-            mResult = showResult(mName, mSecPerUnit,
-                                 "iterations overflow at " + std::to_string(mNumIters) + ". Maybe your code got optimized away?");
-            mNumIters = 0;
-            return;
-        }
-        mNumIters = (mNumIters * mTargetRuntime) / elapsed;
-        if (mNumIters == 0) {
-            mNumIters = 1;
-        }
-    }
-
     // if we are within 2/3 of the target runtime, add it.
+    auto doubleElapsed = std::chrono::duration_cast<std::chrono::duration<double>>(elapsed);
     if (elapsed * 3 >= mTargetRuntime * 2 && !mIsWarmup) {
-        mSecPerUnit.push_back(std::chrono::duration_cast<std::chrono::duration<double>>(elapsed) /
-                              (mConfig.batch() * static_cast<double>(mNumIters)));
+        mSecPerUnit.push_back(doubleElapsed / (mConfig.batch() * static_cast<double>(mNumIters)));
         if (mSecPerUnit.size() == mConfig.epochs()) {
+            // we got all the results that we need! bail out
             mResult = showResult(mName, mSecPerUnit, "");
             mNumIters = 0;
             return;
         }
     }
 
+    // we calculate in double values, so we can't get an overflow.
+    double newIters = static_cast<double>(mNumIters);
+    if (elapsed * 10 < mTargetRuntime) {
+        // we are far below the target runtime. Multiply iterations by 10 (with overflow check)
+        newIters *= 10.0;
+    } else {
+        // less than 10x below target runtime, try to calculate it precisely
+        newIters *= std::chrono::duration_cast<std::chrono::duration<double>>(mTargetRuntime) / doubleElapsed;
+    }
+
+    // add 0-10% of noise
+    newIters *= 1 + 0.1 * mRng.uniform01();
+    if (newIters >= static_cast<double>((std::numeric_limits<size_t>::max)())) {
+        // overflow
+        mResult = showResult(mName, mSecPerUnit, "iterations overflow. Maybe your code got optimized away?");
+        mNumIters = 0;
+        return;
+    }
+    mNumIters = static_cast<size_t>(newIters);
+    if (mNumIters <= 0) {
+        // underflow
+        mNumIters = 1;
+    }
     mIsWarmup = false;
 }
 
@@ -907,6 +911,15 @@ constexpr uint64_t Rng::operator()() noexcept {
     mB = mC + (mC << 3);
     mC = rotl(mC, 24) + tmp;
     return tmp;
+}
+
+// see http://prng.di.unimi.it/
+constexpr double Rng::uniform01() noexcept {
+    static_assert(sizeof(uint64_t) == sizeof(double), "sizeof(uint64_t) == sizeof(double)");
+    uint64_t i = UINT64_C(0x3FF) << 52U | operator()() >> 12U;
+    double d{};
+    std::memcpy(&d, &i, sizeof(uint64_t));
+    return d - 1.0;
 }
 
 constexpr uint64_t Rng::rotl(uint64_t const x, int k) noexcept {
