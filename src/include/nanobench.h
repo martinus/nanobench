@@ -98,8 +98,6 @@ class Rng;
 namespace ankerl {
 namespace nanobench {
 
-using Clock = std::chrono::high_resolution_clock;
-
 // Result returned after a benchmark has finished. Can be used as a baseline for relative().
 class Result {
 public:
