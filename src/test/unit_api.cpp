@@ -46,18 +46,19 @@ TEST_CASE("comparison") {
 
     auto cfg = ankerl::nanobench::Config().relative(baseline);
 
-    x = 1.0;
+    x = 1.123;
     cfg.run("std::sin(x)", [&] { x += std::sin(x); }).doNotOptimizeAway(x);
 
-    x = 1.0;
+    // The compiler might be smart enough to optimize this away, since log(1) = 1.
+    x = 1.123;
     cfg.run("std::log(x)", [&] { x += std::log(x); }).doNotOptimizeAway(x);
 
-    x = 1.0;
+    x = 1.123;
     cfg.run("1/x", [&] { x += 1 / x; }).doNotOptimizeAway(x);
 
     cfg.run("noop", [&] {});
 
-    x = 1.0;
+    x = 1.123;
     cfg.run("std::sqrt(x)", [&] { x += std::sqrt(x); }).doNotOptimizeAway(x);
 }
 
