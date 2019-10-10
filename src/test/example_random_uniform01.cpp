@@ -7,7 +7,8 @@ TEST_CASE("example_random_uniform01") {
     ankerl::nanobench::Config cfg;
     cfg.title("random double in [0, 1(");
 
-    std::default_random_engine defaultRng;
+    std::random_device dev;
+    std::default_random_engine defaultRng(dev());
     double d = 0;
     auto baseline = cfg.run("std::default_random_engine & std::uniform_real_distribution",
                             [&] { d += std::uniform_real_distribution<>{}(defaultRng); })

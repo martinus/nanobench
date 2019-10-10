@@ -13,18 +13,19 @@ TEST_CASE("example_containers") {
     // creates a random number generator to use in the benchmarks
     ankerl::nanobench::Rng rng;
     std::set<uint64_t> s;
+    uint64_t const bitmask = UINT64_C(0xff);
     cfg.run("std::set",
             [&] {
-                s.insert(rng() & 0xff);
-                s.erase(rng() & 0xff);
+                s.insert(rng() & bitmask);
+                s.erase(rng() & bitmask);
             })
         .doNotOptimizeAway(s);
 
     std::unordered_set<uint64_t> us;
     cfg.run("std::unordered_set",
             [&] {
-                us.insert(rng() & 0xff);
-                us.erase(rng() & 0xff);
+                us.insert(rng() & bitmask);
+                us.erase(rng() & bitmask);
             })
         .doNotOptimizeAway(us);
 }

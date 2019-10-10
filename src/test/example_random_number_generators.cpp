@@ -6,7 +6,8 @@
 // Benchmarks how fast we can get 64bit random values from Rng
 template <typename Rng>
 ankerl::nanobench::Result bench(ankerl::nanobench::Config const& cfg, std::string name) {
-    Rng rng;
+    std::random_device dev;
+    Rng rng(dev());
     uint64_t x = 0;
     return cfg.run(name, [&] { x += std::uniform_int_distribution<uint64_t>{}(rng); }).doNotOptimizeAway(x);
 }

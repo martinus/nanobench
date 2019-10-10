@@ -65,14 +65,10 @@ class IterationLogic;
 namespace ankerl {
 namespace nanobench {
 
-// Makes sure none of the given arguments are optimized away by the compiler.
-template <typename... Args>
-void doNotOptimizeAway(Args&&... args);
-
 // Result returned after a benchmark has finished. Can be used as a baseline for relative().
 class Result {
 public:
-    Result(std::string const& unit, std::chrono::duration<double> const* secPerUnit, size_t size) noexcept;
+    Result(std::string unit, std::chrono::duration<double> const* secPerUnit, size_t size) noexcept;
     Result() noexcept;
 
     std::string const& unit() const noexcept;
@@ -105,9 +101,12 @@ public:
 
     // don't allow copying, it's dangerous
     Rng(Rng const&) = delete;
+    Rng& operator=(Rng const&) = delete;
 
     // moving is ok
-    Rng(Rng&&) = default;
+    Rng(Rng&&) noexcept = default;
+    Rng& operator=(Rng&&) noexcept = default;
+    ~Rng() noexcept = default;
 
     explicit Rng(uint64_t seed) noexcept;
     Rng copy() const noexcept;
@@ -119,7 +118,7 @@ public:
     inline double uniform01() noexcept;
 
 private:
-    static constexpr uint64_t rotl(uint64_t const x, int k) noexcept;
+    static constexpr uint64_t rotl(uint64_t x, unsigned k) noexcept;
 
     uint64_t mA;
     uint64_t mB;
@@ -132,10 +131,11 @@ class Config {
 public:
     Config();
 
-    Config(Config&&);
-    Config& operator=(Config&&);
-    Config(Config const&);
-    Config& operator=(Config const&);
+    Config(Config&& other) noexcept;
+    Config& operator=(Config&& other) noexcept;
+    Config(Config const& other);
+    Config& operator=(Config const& other);
+    ~Config() noexcept;
 
     // Set the batch size, e.g. number of processed bytes, or some other metric for the size of the processed data in each iteration.
     // Any argument is cast to double.
@@ -173,17 +173,17 @@ public:
 
     // Performs all evaluations.
     template <typename Op>
-    Result run(std::string name, Op op) const;
+    Result run(std::string const& name, Op op) const;
 
 private:
-    std::string mBenchmarkTitle;
-    std::string mUnit;
-    double mBatch;
-    size_t mNumEpochs;
-    uint64_t mClockResolutionMultiple;
-    std::chrono::nanoseconds mMaxEpochTime;
-    Result mRelative;
-    size_t mWarmup;
+    std::string mBenchmarkTitle = "benchmark";
+    std::string mUnit = "op";
+    double mBatch = 1.0;
+    size_t mNumEpochs = 51;
+    size_t mClockResolutionMultiple = static_cast<size_t>(1000);
+    std::chrono::nanoseconds mMaxEpochTime = std::chrono::milliseconds(100);
+    Result mRelative{};
+    size_t mWarmup = 0;
 };
 
 // Makes sure none of the given arguments are optimized away by the compiler.
@@ -203,30 +203,41 @@ template <typename T>
 void doNotOptimizeAway(T const& val);
 
 // internally used, but visible because run() is templated
+#if defined(__clang__)
+#    pragma clang diagnostic push
+#    pragma clang diagnostic ignored "-Wpadded"
+#endif
 class IterationLogic {
 public:
-    IterationLogic(Config const& config, std::string const& name) noexcept;
+    IterationLogic(Config const& config, std::string name) noexcept;
     ~IterationLogic() noexcept;
+
     IterationLogic(IterationLogic const&) = delete;
     IterationLogic& operator=(IterationLogic const&) = delete;
+    IterationLogic(IterationLogic&&) = delete;
+    IterationLogic& operator=(IterationLogic&&) = delete;
+
     size_t numIters() const noexcept;
-    void add(std::chrono::nanoseconds runtime) noexcept;
+    void add(std::chrono::nanoseconds elapsed) noexcept;
     Result const& result() const;
 
 private:
-    Result showResult(std::string errorMessage) const;
+    Result showResult(std::string const& errorMessage) const;
 
     Config const& mConfig;
-    std::chrono::nanoseconds mTargetRuntime;
+    std::chrono::nanoseconds mTargetRuntime{};
     // we don't use a vector here so we can get away with not including vector in the public interface
-    std::chrono::duration<double>* mSecPerUnit;
-    size_t mSecPerUnitIndex;
-    size_t mNumIters;
+    std::chrono::duration<double>* mSecPerUnit = nullptr;
+    size_t mSecPerUnitIndex = 0;
+    size_t mNumIters = 0;
     std::string mName;
-    Result mResult;
-    bool mIsWarmup;
-    Rng mRng;
+    Result mResult{};
+    Rng mRng{};
+    bool mIsWarmup = false;
 };
+#if defined(__clang__)
+#    pragma clang diagnostic pop
+#endif
 
 } // namespace detail
 } // namespace nanobench
@@ -248,9 +259,9 @@ constexpr uint64_t(Rng::max)() {
 
 uint64_t Rng::operator()() noexcept {
     uint64_t tmp = mA + mB + mCounter++;
-    mA = mB ^ (mB >> 11);
-    mB = mC + (mC << 3);
-    mC = rotl(mC, 24) + tmp;
+    mA = mB ^ (mB >> 11U);
+    mB = mC + (mC << 3U);
+    mC = rotl(mC, 24U) + tmp;
     return tmp;
 }
 
@@ -259,18 +270,20 @@ double Rng::uniform01() noexcept {
     union {
         uint64_t i;
         double d;
-    } x;
-    x.i = (UINT64_C(0x3ff) << 52) | (operator()() >> 12);
+    } x{};
+    // NOLINTNEXTLINE(cppcoreguidelines-pro-type-union-access)
+    x.i = (UINT64_C(0x3ff) << 52U) | (operator()() >> 12U);
+    // NOLINTNEXTLINE(cppcoreguidelines-pro-type-union-access)
     return x.d - 1.0;
 }
 
-constexpr uint64_t Rng::rotl(uint64_t const x, int k) noexcept {
-    return (x << k) | (x >> (64 - k));
+constexpr uint64_t Rng::rotl(uint64_t x, unsigned k) noexcept {
+    return (x << k) | (x >> (64U - k));
 }
 
 // Performs all evaluations.
 template <typename Op>
-Result Config::run(std::string name, Op op) const {
+Result Config::run(std::string const& name, Op op) const {
     // It is important that this method is kept short so the compiler can do better optimizations/ inlining of op()
     detail::IterationLogic iterationLogic(*this, name);
 
@@ -324,14 +337,17 @@ void doNotOptimizeAway(T const& val) {
 #else
 template <typename T>
 void doNotOptimizeAway(T const& val) {
+    // NOLINTNEXTLINE(hicpp-no-assembler)
     asm volatile("" : : "r,m"(val) : "memory");
 }
 
 template <typename T>
 void doNotOptimizeAway(T& value) {
 #    if defined(__clang__)
+    // NOLINTNEXTLINE(hicpp-no-assembler)
     asm volatile("" : "+r,m"(value) : : "memory");
 #    else
+    // NOLINTNEXTLINE(hicpp-no-assembler)
     asm volatile("" : "+m,r"(value) : : "memory");
 #    endif
 }
@@ -389,17 +405,13 @@ namespace nanobench {
 namespace detail {
 
 template <typename T>
-T parseFile(std::string filename);
+T parseFile(std::string const& filename);
 
 void printStabilityInformationOnce();
 
-struct TableInfo {
-    std::string unit{};
-    std::string title{};
-};
-
 // remembers the last table settings used. When it changes, a new table header is automatically written for the new entry.
-TableInfo& singletonLastTableSetting();
+uint64_t& singletonLastTableSettingsHash() noexcept;
+uint64_t calcTableSettingsHash(std::string const& unit, std::string const& title) noexcept;
 
 // determines resolution of the given clock. This is done by measuring multiple times and returning the minimum time difference.
 Clock::duration calcClockResolution(size_t numEvaluations) noexcept;
@@ -409,28 +421,39 @@ inline Clock::duration clockResolution() noexcept;
 
 // calculates median, and properly handles even number of elements too.
 template <typename T>
-T calcMedian(T const* sortedResults, size_t numResults) noexcept;
+T calcMedian(T const* sortedResults, size_t size) noexcept;
 
 // calculates MdAPE which is the median of percentage error
 // see https://www.spiderfinancial.com/support/documentation/numxl/reference-manual/forecasting-performance/mdape
-double calcMedianAbsolutePercentageError(std::chrono::duration<double> const* results, size_t numResults,
+double calcMedianAbsolutePercentageError(std::chrono::duration<double> const* results, size_t size,
                                          std::chrono::duration<double> median) noexcept;
 
 // formatting utilities
 namespace fmt {
 
 // adds thousands separator to numbers
+#    if defined(__clang__)
+#        pragma clang diagnostic push
+#        pragma clang diagnostic ignored "-Wpadded"
+#    endif
 class NumSep : public std::numpunct<char> {
 public:
-    NumSep(char sep);
-    char do_thousands_sep() const;
-    std::string do_grouping() const;
+    explicit NumSep(char sep);
+    char do_thousands_sep() const override;
+    std::string do_grouping() const override;
 
 private:
     char mSep;
 };
+#    if defined(__clang__)
+#        pragma clang diagnostic pop
+#    endif
 
 // RAII to save & restore a stream's state
+#    if defined(__clang__)
+#        pragma clang diagnostic push
+#        pragma clang diagnostic ignored "-Wpadded"
+#    endif
 class StreamStateRestorer {
 public:
     explicit StreamStateRestorer(std::ostream& s);
@@ -441,6 +464,9 @@ public:
 
     // don't allow copying / moving
     StreamStateRestorer(StreamStateRestorer const&) = delete;
+    StreamStateRestorer& operator=(StreamStateRestorer const&) = delete;
+    StreamStateRestorer(StreamStateRestorer&&) = delete;
+    StreamStateRestorer& operator=(StreamStateRestorer&&) = delete;
 
 private:
     std::ostream& mStream;
@@ -450,6 +476,9 @@ private:
     std::ostream::char_type const mFill;
     std::ostream::fmtflags const mFmtFlags;
 };
+#    if defined(__clang__)
+#        pragma clang diagnostic pop
+#    endif
 
 // Number formatter
 class Number {
@@ -470,7 +499,7 @@ std::ostream& operator<<(std::ostream& os, Number const& n);
 // Formats any text as markdown code, escaping backticks.
 class MarkDownCode {
 public:
-    MarkDownCode(std::string what);
+    explicit MarkDownCode(std::string what);
 
 private:
     friend std::ostream& operator<<(std::ostream& os, MarkDownCode const& mdCode);
@@ -493,7 +522,7 @@ namespace nanobench {
 namespace detail {
 
 template <typename T>
-T parseFile(std::string filename) {
+T parseFile(std::string const& filename) {
     std::ifstream fin(filename);
     T num{};
     fin >> num;
@@ -546,9 +575,28 @@ void printStabilityInformationOnce() {
 }
 
 // remembers the last table settings used. When it changes, a new table header is automatically written for the new entry.
-TableInfo& singletonLastTableSetting() {
-    static TableInfo sTableInfo = {};
-    return sTableInfo;
+uint64_t& singletonLastTableSettingsHash() noexcept {
+    static uint64_t sTableSettingHash = {};
+    return sTableSettingHash;
+}
+
+inline uint64_t fnv1a(std::string const& str) noexcept {
+    auto val = UINT64_C(14695981039346656037);
+    for (auto c : str) {
+        val = (val ^ static_cast<size_t>(c)) * UINT64_C(1099511628211);
+    }
+    return val;
+}
+
+inline void hash_combine(uint64_t* seed, uint64_t val) {
+    *seed ^= val + UINT64_C(0x9e3779b9) + (*seed << 6U) + (*seed >> 2U);
+}
+
+inline uint64_t calcTableSettingsHash(Config const& cfg) noexcept {
+    uint64_t h = 0;
+    hash_combine(&h, fnv1a(cfg.unit()));
+    hash_combine(&h, fnv1a(cfg.title()));
+    return h;
 }
 
 // determines resolution of the given clock. This is done by measuring multiple times and returning the minimum time difference.
@@ -575,11 +623,11 @@ Clock::duration clockResolution() noexcept {
 // calculates median, and properly handles even number of elements too.
 template <typename T>
 T calcMedian(T const* sortedResults, size_t size) noexcept {
-    auto mid = size / 2;
-    if (size & 1) {
+    auto mid = size / 2U;
+    if (size & 1U) {
         return sortedResults[mid];
     }
-    return (sortedResults[mid - 1] + sortedResults[mid]) / 2;
+    return (sortedResults[mid - 1U] + sortedResults[mid]) / 2U;
 }
 
 // calculates MdAPE which is the median of percentage error
@@ -599,16 +647,9 @@ double calcMedianAbsolutePercentageError(std::chrono::duration<double> const* re
     return calcMedian(absolutePercentageErrors.data(), absolutePercentageErrors.size());
 }
 
-IterationLogic::IterationLogic(Config const& config, std::string const& name) noexcept
+IterationLogic::IterationLogic(Config const& config, std::string name) noexcept
     : mConfig(config)
-    , mTargetRuntime()
-    , mSecPerUnit(nullptr)
-    , mSecPerUnitIndex(0)
-    , mNumIters(0)
-    , mName{name}
-    , mResult()
-    , mIsWarmup(false)
-    , mRng() {
+    , mName(std::move(name)) {
     printStabilityInformationOnce();
 
     mTargetRuntime = detail::clockResolution() * mConfig.clockResolutionMultiple();
@@ -622,7 +663,7 @@ IterationLogic::IterationLogic(Config const& config, std::string const& name) no
 
     // check environment variable NANOBENCH_ENDLESS
     auto endless = std::getenv("NANOBENCH_ENDLESS");
-    if (endless && endless == name) {
+    if (nullptr != endless && endless == name) {
         std::cout << "NANOBENCH_ENDLESS set: running '" << name << "' endlessly" << std::endl;
         mNumIters = (std::numeric_limits<size_t>::max)();
     }
@@ -633,7 +674,7 @@ IterationLogic::IterationLogic(Config const& config, std::string const& name) no
     }
 } // namespace detail
 
-IterationLogic::~IterationLogic() {
+IterationLogic::~IterationLogic() noexcept {
     delete[] mSecPerUnit;
 }
 
@@ -656,7 +697,7 @@ void IterationLogic::add(std::chrono::nanoseconds elapsed) noexcept {
     }
 
     // we calculate in double values, so we can't get an overflow.
-    double newIters = static_cast<double>(mNumIters);
+    auto newIters = static_cast<double>(mNumIters);
     if (elapsed * 10 < mTargetRuntime) {
         // we are far below the target runtime. Multiply iterations by 10 (with overflow check)
         newIters *= 10.0;
@@ -685,7 +726,7 @@ Result const& IterationLogic::result() const {
     return mResult;
 }
 
-Result IterationLogic::showResult(std::string errorMessage) const {
+Result IterationLogic::showResult(std::string const& errorMessage) const {
     auto& os = std::cout;
     if (!errorMessage.empty()) {
         os << "|        - |                   - |                   - |       - | :boom: " << errorMessage << ' '
@@ -696,10 +737,9 @@ Result IterationLogic::showResult(std::string errorMessage) const {
     Result result(mConfig.unit(), mSecPerUnit, mSecPerUnitIndex);
 
     detail::fmt::StreamStateRestorer restorer(os);
-    auto& lastTableSetting = detail::singletonLastTableSetting();
-    if (lastTableSetting.title != mConfig.title() || lastTableSetting.unit != mConfig.unit()) {
-        lastTableSetting.title = mConfig.title();
-        lastTableSetting.unit = mConfig.unit();
+    auto h = calcTableSettingsHash(mConfig);
+    if (h != singletonLastTableSettingsHash()) {
+        singletonLastTableSettingsHash() = h;
 
         os << std::endl
            << "| relative |" << std::setw(20) << std::right << ("ns/" + mConfig.unit()) << " |" << std::setw(20) << std::right
@@ -816,8 +856,8 @@ std::ostream& operator<<(std::ostream& os, MarkDownCode const& mdCode) {
 } // namespace detail
 
 // Result returned after a benchmark has finished. Can be used as a baseline for relative().
-Result::Result(std::string const& unit, std::chrono::duration<double> const* secPerUnitData, size_t size) noexcept
-    : mUnit(unit) {
+Result::Result(std::string unit, std::chrono::duration<double> const* secPerUnitData, size_t size) noexcept
+    : mUnit(std::move(unit)) {
 
     std::vector<std::chrono::duration<double>> secPerUnit(secPerUnitData, secPerUnitData + size);
     std::sort(secPerUnit.begin(), secPerUnit.end());
@@ -850,20 +890,12 @@ std::chrono::duration<double> Result::maximum() const noexcept {
 }
 
 // Configuration of a microbenchmark.
-Config::Config()
-    : mBenchmarkTitle("benchmark")
-    , mUnit("op")
-    , mBatch(1.0)
-    , mNumEpochs(51)
-    , mClockResolutionMultiple(UINT64_C(1000))
-    , mMaxEpochTime(std::chrono::milliseconds(100))
-    , mRelative()
-    , mWarmup(0) {}
-
-Config::Config(Config&&) = default;
-Config& Config::operator=(Config&&) = default;
+Config::Config() = default;
+Config::Config(Config&&) noexcept = default;
+Config& Config::operator=(Config&&) noexcept = default;
 Config::Config(Config const&) = default;
 Config& Config::operator=(Config const&) = default;
+Config::~Config() noexcept = default;
 
 double Config::batch() const noexcept {
     return mBatch;
@@ -954,11 +986,11 @@ Rng Rng::copy() const noexcept {
     return r;
 }
 
-void Rng::assign(Rng const& rng) noexcept {
-    mA = rng.mA;
-    mB = rng.mB;
-    mC = rng.mC;
-    mCounter = rng.mCounter;
+void Rng::assign(Rng const& other) noexcept {
+    mA = other.mA;
+    mB = other.mB;
+    mC = other.mC;
+    mCounter = other.mCounter;
 }
 
 } // namespace nanobench

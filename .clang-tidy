@@ -19,8 +19,10 @@ Checks: "*,\
   -cppcoreguidelines-pro-bounds-array-to-pointer-decay,\
   -fuchsia-overloaded-operator,\
   -fuchsia-default-arguments,\
-  -fuchsia-multiple-inheritance,
-  -cert-err58-cpp"
+  -fuchsia-multiple-inheritance,\
+  -misc-definitions-in-headers,\
+  -cert-err58-cpp,\
+  -clang-diagnostic-padded"
 WarningsAsErrors: "*"
 HeaderFilterRegex: 'nanobench\.h'
 ...

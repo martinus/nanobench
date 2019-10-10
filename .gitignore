@@ -2,5 +2,3 @@
 **/*.ppm
 **/perf.data
 **/perf.data.old
-build/
-bin/

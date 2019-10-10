@@ -6,10 +6,10 @@
 TEST_CASE("string") {
     std::string shortString = "hello";
     ankerl::nanobench::Config cfg;
-    cfg.run("short string", [&] { std::string copy(shortString); });
+    cfg.run("short string", [&] { (void)std::string(shortString); });
 
     std::string longString = "0123456789abcdefghijklmnopqrstuvwxyz";
-    cfg.run("long string", [&] { std::string copy(longString); });
+    cfg.run("long string", [&] { (void)std::string(longString); });
 }
 
 TEST_CASE("incorrect1") {
