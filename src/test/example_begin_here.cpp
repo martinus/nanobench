@@ -14,5 +14,7 @@
 TEST_CASE("example_begin_here") {
     int y = 0;
     std::atomic<int> x(0);
-    ankerl::nanobench::run("CAS", [&] { x.compare_exchange_strong(y, 0); });
+    
+    ankerl::nanobench::Config cfg;
+    cfg.run("CAS", [&] { x.compare_exchange_strong(y, 0); });
 }

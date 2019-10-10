@@ -268,12 +268,6 @@ constexpr uint64_t Rng::rotl(uint64_t const x, int k) noexcept {
     return (x << k) | (x >> (64 - k));
 }
 
-// convenience helper to directly call Config().run(...)
-template <typename Op>
-Result run(std::string name, Op op) noexcept {
-    return Config().run(std::move(name), op);
-}
-
 // Performs all evaluations.
 template <typename Op>
 Result Config::run(std::string name, Op op) const {
@@ -525,11 +519,6 @@ std::ostream& operator<<(std::ostream& os, MarkDownCode const& mdCode);
 
 } // namespace fmt
 } // namespace detail
-
-// convenience helper to directly call Config().run(...)
-template <typename Op>
-Result run(std::string name, Op op) noexcept;
-
 } // namespace nanobench
 } // namespace ankerl
 

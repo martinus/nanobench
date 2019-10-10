@@ -40,7 +40,7 @@ TEST_CASE("example_uniform01") {
                             [&] { d += std::uniform_real_distribution<>{}(defaultRng); })
                         .doNotOptimizeAway(d);
 
-    cfg = cfg.relative(baseline);
+    cfg.relative(baseline);
 
     ankerl::nanobench::Rng nanobenchRng;
     d = 0;
