@@ -54,7 +54,7 @@ class Rng;
 
 namespace detail {
 
-class Measurements;
+class IterationLogic;
 
 } // namespace detail
 } // namespace nanobench
@@ -203,12 +203,12 @@ template <typename T>
 void doNotOptimizeAway(T const& val);
 
 // internally used, but visible because run() is templated
-class Measurements {
+class IterationLogic {
 public:
-    Measurements(Config const& config, std::string const& name) noexcept;
-    ~Measurements() noexcept;
-    Measurements(Measurements const&) = delete;
-    Measurements& operator=(Measurements const&) = delete;
+    IterationLogic(Config const& config, std::string const& name) noexcept;
+    ~IterationLogic() noexcept;
+    IterationLogic(IterationLogic const&) = delete;
+    IterationLogic& operator=(IterationLogic const&) = delete;
     size_t numIters() const noexcept;
     void add(std::chrono::nanoseconds runtime) noexcept;
     Result const& result() const;
@@ -272,17 +272,17 @@ constexpr uint64_t Rng::rotl(uint64_t const x, int k) noexcept {
 template <typename Op>
 Result Config::run(std::string name, Op op) const {
     // It is important that this method is kept short so the compiler can do better optimizations/ inlining of op()
-    detail::Measurements measurements(*this, name);
+    detail::IterationLogic iterationLogic(*this, name);
 
-    while (auto n = measurements.numIters()) {
+    while (auto n = iterationLogic.numIters()) {
         Clock::time_point before = Clock::now();
         while (n-- > 0) {
             op();
         }
         Clock::time_point after = Clock::now();
-        measurements.add(after - before);
+        iterationLogic.add(after - before);
     }
-    return measurements.result();
+    return iterationLogic.result();
 }
 
 // Set the batch size, e.g. number of processed bytes, or some other metric for the size of the processed data in each iteration.
@@ -321,9 +321,7 @@ template <typename T>
 void doNotOptimizeAway(T const& val) {
     doNotOptimizeAwaySink(&val);
 }
-
 #else
-
 template <typename T>
 void doNotOptimizeAway(T const& val) {
     asm volatile("" : : "r,m"(val) : "memory");
@@ -337,7 +335,6 @@ void doNotOptimizeAway(T& value) {
     asm volatile("" : "+m,r"(value) : : "memory");
 #    endif
 }
-
 #endif
 
 } // namespace detail
@@ -356,40 +353,7 @@ void doNotOptimizeAway(T& value) {
 #    include <iomanip>   // setw, setprecision
 #    include <iostream>  // cout
 #    include <vector>    // manage results
-
-// macros /////////////////////////////////////////////////////////////////////////////////////////
-
-// all non-argument macros should use this facility. See
-// https://www.fluentcpp.com/2019/05/28/better-macros-better-flags/
-#    define ANKERL_NANOBENCH(x) ANKERL_NANOBENCH_PRIVATE_DEFINITION_##x()
-
-#    define ANKERL_NANOBENCH_PRIVATE_DEFINITION_WINDOWS() 0
-#    define ANKERL_NANOBENCH_PRIVATE_DEFINITION_LINUX() 0
-#    if __linux__
-#        undef ANKERL_NANOBENCH_PRIVATE_DEFINITION_LINUX
-#        define ANKERL_NANOBENCH_PRIVATE_DEFINITION_LINUX() 1
-#    elif _WIN32
-#        undef ANKERL_NANOBENCH_PRIVATE_DEFINITION_WINDOWS
-#        define ANKERL_NANOBENCH_PRIVATE_DEFINITION_WINDOWS() 1
-#    endif
-
-// noinline
-#    if ANKERL_NANOBENCH(WINDOWS)
-#        define ANKERL_NANOBENCH_PRIVATE_DEFINITION_NOINLINE() __declspec(noinline)
-#    else
-#        define ANKERL_NANOBENCH_PRIVATE_DEFINITION_NOINLINE() __attribute__((noinline))
-#    endif
-
-// debug
-#    if !defined(NDEBUG)
-#        define ANKERL_NANOBENCH_PRIVATE_DEFINITION_DEBUG() 1
-#    else
-#        define ANKERL_NANOBENCH_PRIVATE_DEFINITION_DEBUG() 0
-#    endif
-
-// platform specific includes //////////////////////////////////////////////////////////////////////
-
-#    if ANKERL_NANOBENCH(LINUX)
+#    if defined(__linux__)
 #        include <unistd.h> //sysconf
 #    endif
 
@@ -540,11 +504,11 @@ void printStabilityInformationOnce() {
     static bool shouldPrint = true;
     if (shouldPrint) {
         shouldPrint = false;
-#    if ANKERL_NANOBENCH(DEBUG)
+#    if !defined(NDEBUG)
         std::cerr << "Warning: NDEBUG not defined, this is a debug build" << std::endl;
 #    endif
 
-#    if ANKERL_NANOBENCH(LINUX)
+#    if defined(__linux__)
         auto nprocs = sysconf(_SC_NPROCESSORS_CONF);
         if (nprocs <= 0) {
             std::cerr << "Warning: Can't figure out number of processors." << std::endl;
@@ -635,7 +599,7 @@ double calcMedianAbsolutePercentageError(std::chrono::duration<double> const* re
     return calcMedian(absolutePercentageErrors.data(), absolutePercentageErrors.size());
 }
 
-Measurements::Measurements(Config const& config, std::string const& name) noexcept
+IterationLogic::IterationLogic(Config const& config, std::string const& name) noexcept
     : mConfig(config)
     , mTargetRuntime()
     , mSecPerUnit(nullptr)
@@ -669,15 +633,15 @@ Measurements::Measurements(Config const& config, std::string const& name) noexce
     }
 } // namespace detail
 
-Measurements::~Measurements() {
+IterationLogic::~IterationLogic() {
     delete[] mSecPerUnit;
 }
 
-size_t Measurements::numIters() const noexcept {
+size_t IterationLogic::numIters() const noexcept {
     return mNumIters;
 }
 
-void Measurements::add(std::chrono::nanoseconds elapsed) noexcept {
+void IterationLogic::add(std::chrono::nanoseconds elapsed) noexcept {
     // if we are within 2/3 of the target runtime, add it.
     auto doubleElapsed = std::chrono::duration_cast<std::chrono::duration<double>>(elapsed);
     if (elapsed * 3 >= mTargetRuntime * 2 && !mIsWarmup) {
@@ -717,11 +681,11 @@ void Measurements::add(std::chrono::nanoseconds elapsed) noexcept {
     mIsWarmup = false;
 }
 
-Result const& Measurements::result() const {
+Result const& IterationLogic::result() const {
     return mResult;
 }
 
-Result Measurements::showResult(std::string errorMessage) const {
+Result IterationLogic::showResult(std::string errorMessage) const {
     auto& os = std::cout;
     if (!errorMessage.empty()) {
         os << "|        - |                   - |                   - |       - | :boom: " << errorMessage << ' '
@@ -1000,6 +964,5 @@ void Rng::assign(Rng const& rng) noexcept {
 } // namespace nanobench
 } // namespace ankerl
 
-#endif
-
-#endif
+#endif // ANKERL_NANOBENCH_IMPLEMENT
+#endif // ANKERL_NANOBENCH_H_INCLUDED
