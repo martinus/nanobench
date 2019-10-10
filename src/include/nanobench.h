@@ -677,7 +677,15 @@ IterationLogic::IterationLogic(Config const& config, std::string name) noexcept
     mNumIters = mConfig.warmup();
 
     // check environment variable NANOBENCH_ENDLESS
+#    if defined(_MSC_VER)
+#        pragma warning(push)
+#        pragma warning(disable : 4996) // getenv': This function or variable may be unsafe.
+#    endif
     auto endless = std::getenv("NANOBENCH_ENDLESS");
+#    if defined(_MSC_VER)
+#        pragma warning(pop)
+#    endif
+
     if (nullptr != endless && endless == name) {
         std::cout << "NANOBENCH_ENDLESS set: running '" << name << "' endlessly" << std::endl;
         mNumIters = (std::numeric_limits<size_t>::max)();
