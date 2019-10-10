@@ -78,8 +78,9 @@ Runs for 30ms and prints this table:
 |    65.8% |               66.82 |       14,965,403.16 |    1.6% | `std::knuth_b`
 | 2,060.4% |                2.14 |      468,304,293.34 |    0.1% | `ankerl::nanobench::Rng`
 
+It shows that `ankerl::nanobench::Rng` is by far the fastest RNG, and has the least amount of fluctuation. It takes only 2.14ns to generate a random `uint64_t`, so ~470 million calls per seconds are possible.
 
-This microbenchmarking framework is inteded to be used with other unit test frameworks like boost, google gtest, catch2, doctest, etc.
+
 
 The goals are:
 * fast & accurate: Benchmarks should run only as long as necessary to produce a level of accuracy thats good enough for decision making.
