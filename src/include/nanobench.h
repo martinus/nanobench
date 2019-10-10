@@ -40,9 +40,7 @@
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 
 #include <chrono>
-#include <initializer_list>
 #include <string>
-#include <utility> // forward
 
 // declarations ///////////////////////////////////////////////////////////////////////////////////
 
@@ -54,26 +52,9 @@ class Config;
 class Result;
 class Rng;
 
-// Makes sure none of the given arguments are optimized away by the compiler.
-template <typename... Args>
-void doNotOptimizeAway(Args&&... args);
-
 namespace detail {
 
 class Measurements;
-
-#if defined(_MSC_VER)
-void doNotOptimizeAwaySink(void const*);
-
-#else
-
-template <typename T>
-void doNotOptimizeAway(T& value);
-
-#endif
-
-template <typename T>
-void doNotOptimizeAway(T const& val);
 
 } // namespace detail
 } // namespace nanobench
@@ -84,13 +65,15 @@ void doNotOptimizeAway(T const& val);
 namespace ankerl {
 namespace nanobench {
 
-void forceTableHeader();
+// Makes sure none of the given arguments are optimized away by the compiler.
+template <typename... Args>
+void doNotOptimizeAway(Args&&... args);
 
 // Result returned after a benchmark has finished. Can be used as a baseline for relative().
 class Result {
 public:
     Result(std::string const& unit, std::chrono::duration<double> const* secPerUnit, size_t size) noexcept;
-    Result();
+    Result() noexcept;
 
     std::string const& unit() const noexcept;
     std::chrono::duration<double> median() const noexcept;
@@ -103,16 +86,7 @@ public:
     Result& doNotOptimizeAway(Args&&... args);
 
 private:
-    // calculates median, and properly handles even number of elements too.
-    template <typename T>
-    static T calcMedian(T const* sortedResults, size_t numResults);
-
-    // calculates MdAPE which is the median of percentage error
-    // see https://www.spiderfinancial.com/support/documentation/numxl/reference-manual/forecasting-performance/mdape
-    static double calcMedianAbsolutePercentageError(std::chrono::duration<double> const* results, size_t numResults,
-                                                    std::chrono::duration<double> median);
-
-    std::string mUnit = "";
+    std::string mUnit{};
     std::chrono::duration<double> mMedian{};
     double mMedianAbsolutePercentError{};
     std::chrono::duration<double> mMinimum{};
@@ -127,22 +101,22 @@ public:
     static constexpr uint64_t(min)();
     static constexpr uint64_t(max)();
 
-    constexpr Rng();
+    Rng();
 
     // don't allow copying, it's dangerous
     Rng(Rng const&) = delete;
 
     // moving is ok
-    constexpr Rng(Rng&&) = default;
+    Rng(Rng&&) = default;
 
-    constexpr explicit Rng(uint64_t seed) noexcept;
+    explicit Rng(uint64_t seed) noexcept;
+    Rng copy() const noexcept;
+    void assign(Rng const& other) noexcept;
 
-    constexpr Rng copy() const noexcept;
-    constexpr void assign(Rng const& other) noexcept;
-    constexpr uint64_t operator()() noexcept;
-
+    // that one's inline so it is fast
+    inline uint64_t operator()() noexcept;
     // random double in range [0, 1(
-    double uniform01() noexcept;
+    inline double uniform01() noexcept;
 
 private:
     static constexpr uint64_t rotl(uint64_t const x, int k) noexcept;
@@ -214,39 +188,44 @@ private:
 
 // Makes sure none of the given arguments are optimized away by the compiler.
 template <typename... Args>
-void doNotOptimizeAway(Args&&... args) {
-    (void)std::initializer_list<int>{(detail::doNotOptimizeAway(std::forward<Args>(args)), 0)...};
-}
+void doNotOptimizeAway(Args&&... args);
 
 namespace detail {
 
+#if defined(_MSC_VER)
+void doNotOptimizeAwaySink(void const*);
+#else
+template <typename T>
+void doNotOptimizeAway(T& value);
+#endif
+
+template <typename T>
+void doNotOptimizeAway(T const& val);
+
+// internally used, but visible because run() is templated
 class Measurements {
 public:
     Measurements(Config const& config, std::string const& name) noexcept;
     ~Measurements() noexcept;
-
     Measurements(Measurements const&) = delete;
     Measurements& operator=(Measurements const&) = delete;
-
     size_t numIters() const noexcept;
     void add(std::chrono::nanoseconds runtime) noexcept;
-
     Result const& result() const;
 
 private:
     Result showResult(std::string errorMessage) const;
 
     Config const& mConfig;
-    std::chrono::nanoseconds mTargetRuntime{};
-
+    std::chrono::nanoseconds mTargetRuntime;
     // we don't use a vector here so we can get away with not including vector in the public interface
-    std::chrono::duration<double>* mSecPerUnit = nullptr;
-    size_t mSecPerUnitIndex = 0;
-    size_t mNumIters = 0;
-    std::string mName{};
-    Result mResult{};
-    bool mIsWarmup = false;
-    Rng mRng{};
+    std::chrono::duration<double>* mSecPerUnit;
+    size_t mSecPerUnitIndex;
+    size_t mNumIters;
+    std::string mName;
+    Result mResult;
+    bool mIsWarmup;
+    Rng mRng;
 };
 
 } // namespace detail
@@ -267,41 +246,22 @@ constexpr uint64_t(Rng::max)() {
     return (std::numeric_limits<uint64_t>::max)();
 }
 
-constexpr Rng::Rng()
-    : Rng(UINT64_C(0xd3b45fd780a1b6a3)) {}
-
-constexpr Rng::Rng(uint64_t seed) noexcept
-    : mA(seed)
-    , mB(seed)
-    , mC(seed)
-    , mCounter(1) {
-    for (size_t i = 0; i < 12; ++i) {
-        operator()();
-    }
-}
-
-constexpr Rng Rng::copy() const noexcept {
-    Rng r;
-    r.mA = mA;
-    r.mB = mB;
-    r.mC = mC;
-    r.mCounter = mCounter;
-    return r;
-}
-
-constexpr void Rng::assign(Rng const& rng) noexcept {
-    mA = rng.mA;
-    mB = rng.mB;
-    mC = rng.mC;
-    mCounter = rng.mCounter;
-}
-
-constexpr uint64_t Rng::operator()() noexcept {
+uint64_t Rng::operator()() noexcept {
     uint64_t tmp = mA + mB + mCounter++;
     mA = mB ^ (mB >> 11);
     mB = mC + (mC << 3);
     mC = rotl(mC, 24) + tmp;
     return tmp;
+}
+
+// see http://prng.di.unimi.it/
+double Rng::uniform01() noexcept {
+    union {
+        uint64_t i;
+        double d;
+    } x;
+    x.i = (UINT64_C(0x3ff) << 52) | (operator()() >> 12);
+    return x.d - 1.0;
 }
 
 constexpr uint64_t Rng::rotl(uint64_t const x, int k) noexcept {
@@ -342,8 +302,14 @@ Config& Config::batch(T b) noexcept {
 // Convenience: makes sure none of the given arguments are optimized away by the compiler.
 template <typename... Args>
 Result& Result::doNotOptimizeAway(Args&&... args) {
-    ::ankerl::nanobench::doNotOptimizeAway(std::forward<Args>(args)...);
+    (void)std::initializer_list<int>{(detail::doNotOptimizeAway(std::forward<Args>(args)), 0)...};
     return *this;
+}
+
+// Makes sure none of the given arguments are optimized away by the compiler.
+template <typename... Args>
+void doNotOptimizeAway(Args&&... args) {
+    (void)std::initializer_list<int>{(detail::doNotOptimizeAway(std::forward<Args>(args)), 0)...};
 }
 
 namespace detail {
@@ -392,7 +358,6 @@ void doNotOptimizeAway(T& value) {
 
 #    include <algorithm> // sort
 #    include <cstdlib>   // getenv
-#    include <cstring>   // memcpy
 #    include <fstream>   // ifstream to parse proc files
 #    include <iomanip>   // setw, setprecision
 #    include <iostream>  // cout
@@ -406,7 +371,6 @@ void doNotOptimizeAway(T& value) {
 
 #    define ANKERL_NANOBENCH_PRIVATE_DEFINITION_WINDOWS() 0
 #    define ANKERL_NANOBENCH_PRIVATE_DEFINITION_LINUX() 0
-
 #    if __linux__
 #        undef ANKERL_NANOBENCH_PRIVATE_DEFINITION_LINUX
 #        define ANKERL_NANOBENCH_PRIVATE_DEFINITION_LINUX() 1
@@ -415,11 +379,18 @@ void doNotOptimizeAway(T& value) {
 #        define ANKERL_NANOBENCH_PRIVATE_DEFINITION_WINDOWS() 1
 #    endif
 
-// inline
+// noinline
 #    if ANKERL_NANOBENCH(WINDOWS)
 #        define ANKERL_NANOBENCH_PRIVATE_DEFINITION_NOINLINE() __declspec(noinline)
 #    else
 #        define ANKERL_NANOBENCH_PRIVATE_DEFINITION_NOINLINE() __attribute__((noinline))
+#    endif
+
+// debug
+#    if !defined(NDEBUG)
+#        define ANKERL_NANOBENCH_PRIVATE_DEFINITION_DEBUG() 1
+#    else
+#        define ANKERL_NANOBENCH_PRIVATE_DEFINITION_DEBUG() 0
 #    endif
 
 // platform specific includes //////////////////////////////////////////////////////////////////////
@@ -476,7 +447,16 @@ TableInfo& singletonLastTableSetting();
 Clock::duration calcClockResolution(size_t numEvaluations) noexcept;
 
 // Calculates clock resolution once, and remembers the result
-Clock::duration clockResolution() noexcept;
+inline Clock::duration clockResolution() noexcept;
+
+// calculates median, and properly handles even number of elements too.
+template <typename T>
+T calcMedian(T const* sortedResults, size_t numResults) noexcept;
+
+// calculates MdAPE which is the median of percentage error
+// see https://www.spiderfinancial.com/support/documentation/numxl/reference-manual/forecasting-performance/mdape
+double calcMedianAbsolutePercentageError(std::chrono::duration<double> const* results, size_t numResults,
+                                         std::chrono::duration<double> median) noexcept;
 
 // formatting utilities
 namespace fmt {
@@ -571,11 +551,11 @@ void printStabilityInformationOnce() {
     static bool shouldPrint = true;
     if (shouldPrint) {
         shouldPrint = false;
-#    if !defined(NDEBUG)
+#    if ANKERL_NANOBENCH(DEBUG)
         std::cerr << "Warning: NDEBUG not defined, this is a debug build" << std::endl;
 #    endif
 
-#    if __linux__
+#    if ANKERL_NANOBENCH(LINUX)
         auto nprocs = sysconf(_SC_NPROCESSORS_CONF);
         if (nprocs <= 0) {
             std::cerr << "Warning: Can't figure out number of processors." << std::endl;
@@ -639,9 +619,43 @@ Clock::duration clockResolution() noexcept {
     return sResolution;
 }
 
+// calculates median, and properly handles even number of elements too.
+template <typename T>
+T calcMedian(T const* sortedResults, size_t size) noexcept {
+    auto mid = size / 2;
+    if (size & 1) {
+        return sortedResults[mid];
+    }
+    return (sortedResults[mid - 1] + sortedResults[mid]) / 2;
+}
+
+// calculates MdAPE which is the median of percentage error
+// see https://www.spiderfinancial.com/support/documentation/numxl/reference-manual/forecasting-performance/mdape
+double calcMedianAbsolutePercentageError(std::chrono::duration<double> const* results, size_t size,
+                                         std::chrono::duration<double> median) noexcept {
+    std::vector<double> absolutePercentageErrors;
+    for (size_t i = 0; i < size; ++i) {
+        auto const& r = results[i];
+        auto percent = (r - median) / r;
+        if (percent < 0) {
+            percent = -percent;
+        }
+        absolutePercentageErrors.push_back(percent);
+    }
+    std::sort(absolutePercentageErrors.begin(), absolutePercentageErrors.end());
+    return calcMedian(absolutePercentageErrors.data(), absolutePercentageErrors.size());
+}
+
 Measurements::Measurements(Config const& config, std::string const& name) noexcept
     : mConfig(config)
-    , mName(name) {
+    , mTargetRuntime()
+    , mSecPerUnit(nullptr)
+    , mSecPerUnitIndex(0)
+    , mNumIters(0)
+    , mName{name}
+    , mResult()
+    , mIsWarmup(false)
+    , mRng() {
     printStabilityInformationOnce();
 
     mTargetRuntime = detail::clockResolution() * mConfig.clockResolutionMultiple();
@@ -664,7 +678,7 @@ Measurements::Measurements(Config const& config, std::string const& name) noexce
     if (mNumIters == 0) {
         mNumIters = 1;
     }
-}
+} // namespace detail
 
 Measurements::~Measurements() {
     delete[] mSecPerUnit;
@@ -856,11 +870,11 @@ Result::Result(std::string const& unit, std::chrono::duration<double> const* sec
     std::sort(secPerUnit.begin(), secPerUnit.end());
     mMinimum = secPerUnit.front();
     mMaximum = secPerUnit.back();
-    mMedian = calcMedian(secPerUnit.data(), secPerUnit.size());
-    mMedianAbsolutePercentError = calcMedianAbsolutePercentageError(secPerUnit.data(), secPerUnit.size(), mMedian);
+    mMedian = detail::calcMedian(secPerUnit.data(), secPerUnit.size());
+    mMedianAbsolutePercentError = detail::calcMedianAbsolutePercentageError(secPerUnit.data(), secPerUnit.size(), mMedian);
 }
 
-Result::Result() = default;
+Result::Result() noexcept = default;
 
 std::string const& Result::unit() const noexcept {
     return mUnit;
@@ -880,33 +894,6 @@ std::chrono::duration<double> Result::minimum() const noexcept {
 
 std::chrono::duration<double> Result::maximum() const noexcept {
     return mMaximum;
-}
-
-// calculates median, and properly handles even number of elements too.
-template <typename T>
-T Result::calcMedian(T const* sortedResults, size_t size) {
-    auto mid = size / 2;
-    if (size & 1) {
-        return sortedResults[mid];
-    }
-    return (sortedResults[mid - 1] + sortedResults[mid]) / 2;
-}
-
-// calculates MdAPE which is the median of percentage error
-// see https://www.spiderfinancial.com/support/documentation/numxl/reference-manual/forecasting-performance/mdape
-double Result::calcMedianAbsolutePercentageError(std::chrono::duration<double> const* results, size_t size,
-                                                 std::chrono::duration<double> median) {
-    std::vector<double> absolutePercentageErrors;
-    for (size_t i = 0; i < size; ++i) {
-        auto const& r = results[i];
-        auto percent = (r - median) / r;
-        if (percent < 0) {
-            percent = -percent;
-        }
-        absolutePercentageErrors.push_back(percent);
-    }
-    std::sort(absolutePercentageErrors.begin(), absolutePercentageErrors.end());
-    return calcMedian(absolutePercentageErrors.data(), absolutePercentageErrors.size());
 }
 
 // Configuration of a microbenchmark.
@@ -992,19 +979,33 @@ size_t Config::warmup() const noexcept {
     return mWarmup;
 }
 
-void forceTableHeader() {
-    // reset info, so next time header will be printed
-    detail::singletonLastTableSetting() = detail::TableInfo{};
+Rng::Rng()
+    : Rng(UINT64_C(0xd3b45fd780a1b6a3)) {}
+
+Rng::Rng(uint64_t seed) noexcept
+    : mA(seed)
+    , mB(seed)
+    , mC(seed)
+    , mCounter(1) {
+    for (size_t i = 0; i < 12; ++i) {
+        operator()();
+    }
 }
 
-// put this into the implementation part so we don't have to include cstring for std::memcpy
-// see http://prng.di.unimi.it/
-double Rng::uniform01() noexcept {
-    static_assert(sizeof(uint64_t) == sizeof(double), "sizeof(uint64_t) == sizeof(double)");
-    uint64_t i = UINT64_C(0x3FF) << 52U | operator()() >> 12U;
-    double d{};
-    std::memcpy(&d, &i, sizeof(uint64_t));
-    return d - 1.0;
+Rng Rng::copy() const noexcept {
+    Rng r;
+    r.mA = mA;
+    r.mB = mB;
+    r.mC = mC;
+    r.mCounter = mCounter;
+    return r;
+}
+
+void Rng::assign(Rng const& rng) noexcept {
+    mA = rng.mA;
+    mB = rng.mB;
+    mC = rng.mC;
+    mCounter = rng.mCounter;
 }
 
 } // namespace nanobench

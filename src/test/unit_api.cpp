@@ -1,6 +1,6 @@
-#include <app/doctest.h>
-
 #include <nanobench.h>
+
+#include <app/doctest.h>
 
 #include <cmath>
 
@@ -12,7 +12,7 @@ TEST_CASE("string") {
     ankerl::nanobench::run("long string", [&] { std::string copy(longString); });
 }
 
-TEST_CASE("incorrect1" * doctest::skip()) {
+TEST_CASE("incorrect1") {
     // compiler optimizes sin() away, because it is unused
     ankerl::nanobench::run("std::sin(2.32)", [&] { (void)std::sin(2.32); });
 }
@@ -22,7 +22,7 @@ TEST_CASE("incorrect2") {
     ankerl::nanobench::run("std::sin(2.32)", [&] { ankerl::nanobench::doNotOptimizeAway(std::sin(2.32)); });
 }
 
-TEST_CASE("incorrect3" * doctest::skip()) {
+TEST_CASE("incorrect3") {
     // we produce a side effect by always modifying x, but the result is never used so the compiler
     // might still optimize it away
     double x = 123.4;
@@ -38,8 +38,6 @@ TEST_CASE("simplest_api") {
 }
 
 TEST_CASE("comparison") {
-    ankerl::nanobench::forceTableHeader();
-
     double x = 1.0;
 
     auto baseline = ankerl::nanobench::Config().run("x += x", [&] { x += x; }).doNotOptimizeAway(x);

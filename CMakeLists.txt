@@ -1,7 +1,7 @@
 cmake_minimum_required(VERSION 3.5)
 project(nanobench LANGUAGES CXX)
 
-set(NB_cxx_standard "14" CACHE STRING "C++ standard, e.g. 11, 14, 17")
+set(NB_cxx_standard "11" CACHE STRING "C++ standard, e.g. 11, 14, 17")
 
 set(CMAKE_CXX_STANDARD ${NB_cxx_standard})
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
