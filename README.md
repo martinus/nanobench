@@ -3,9 +3,9 @@ Simple, fast & accurate microbenchmarking functinality for >= C++11.
 
 C++ Developers often already have unit test frameworks in place, like [Boost.Test](https://www.boost.org/doc/libs/1_71_0/libs/test/doc/html/index.html) or [gtest](https://github.com/google/googletest), but no good functionality for benchmarking. While libraries like [google/benchmark](https://github.com/google/benchmark) exist, integrating these in an existing codebase if often not simple. Now with [nanobench](https://github.com/martinus/nanobench/), adding benchmarks functionality becomes very easy. 
 
-nanobench is:
-* easy to integrate - single header.
-* Fast: optimal runtime is calculated based on the clock's accuracy.
+`ankerl::nanobench` is:
+* Easy to integrate - single header.
+* Fast: required runtime is calculated based on the clock's accuracy.
 * Accurate: robust statistcs: median runtime of multiple epochs, and median absolute percent error (similar to [MAPD](https://en.wikipedia.org/wiki/Mean_absolute_percentage_error) but more robust against outliers)
 * Warns when System not prepared for benchmarking (turbo mode, frequency scaling, debug mode, ...)
 * Fast to compile
@@ -37,14 +37,16 @@ Which means that one `x.compare_exchange_strong(y, 0);` call takes 5.83ns on my 
 
 ## Advanced Example
 
-Easily integratable into any test framework like e.g. [doctest](https://github.com/onqtam/doctest). First put the implementation into a separate cpp file [nanobench.cpp](src/test/app/nanobench.cpp), so the benchmarks compile very fast:
+Easily integratable into any test framework like e.g. [doctest](https://github.com/onqtam/doctest). First put the implementation into a separate cpp file [nanobench.cpp](src/test/app/nanobench.cpp):
 
 ```cpp
 #define ANKERL_NANOBENCH_IMPLEMENT
 #include <nanobench.h>
 ```
 
-I have implemented a comparison of multiple random number generators in a test [example_random_number_generators.cpp](src/test/example_random_number_generators.cpp). Here several RNGs are compared to a baseline calculated from `std::default_random_engine`. 
+This compiles most of nanobench, and is relatively slow - but only needs to be done once.
+
+Usage of nanobench benchmarking featuers compiles very fast. I have implemented a comparison of multiple random number generators in a test [example_random_number_generators.cpp](src/test/example_random_number_generators.cpp). Here several RNGs are compared to a baseline calculated from `std::default_random_engine`:
 
 ```cpp
 #include <nanobench.h>
@@ -99,7 +101,7 @@ Runs for 30ms and prints this table:
 It shows that `ankerl::nanobench::Rng` is by far the fastest RNG, and has the least amount of fluctuation. It takes only 2.14ns to generate a random `uint64_t`, so ~470 million calls per seconds are possible.
 
 
-## Alternatives
+# Alternatives
 * [moodycamel::microbench](https://github.com/cameron314/microbench) moodycamel's microbench, probably closest to this library in spirit
 * [folly Benchmark](https://github.com/facebook/folly/blob/master/folly/Benchmark.h) Part of facebook's folly
 * [google Benchmark](https://github.com/google/benchmark) 
