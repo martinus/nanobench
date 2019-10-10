@@ -1,7 +1,7 @@
 # nanobench
 Single header plugin-Microbenchmark library
 
-## Motivating Example:
+## Simple Example
 
 This code from [full_example.cpp](src/scripts/full_example.cpp):
 
@@ -24,10 +24,18 @@ Compiled with `g++ -O2 -DNDEBUG full_example.cpp -I../include -o full_example` r
 |---------:|--------------------:|--------------------:|--------:|:----------------------------------------------
 |          |                5.83 |      171,586,715.87 |    0.1% | `compare_exchange_strong`
 
+Which means that one `x.compare_exchange_strong(y, 0);` call takes 5.83ns on my machine, or 171 million operations per second. Runtime fluctuates by around 0.1%, so the results are very stable.
 
-## More Complex Example
+## Complex Example
 
-Easily integratable into any test framework like e.g. [doctest](https://github.com/onqtam/doctest), a comparison of multiple random number generators from [example_random_number_generators.cpp](src/test/example_random_number_generators.cpp):
+Easily integratable into any test framework like e.g. [doctest](https://github.com/onqtam/doctest). First put the implementation into a separate cpp file [nanobench.cpp](src/test/app/nanobench.cpp), so the benchmarks compile very fast:
+
+```cpp
+#define ANKERL_NANOBENCH_IMPLEMENT
+#include <nanobench.h>
+```
+
+I have implemented a comparison of multiple random number generators in a test [example_random_number_generators.cpp](src/test/example_random_number_generators.cpp). Here several RNGs are compared to a baseline calculated from `std::default_random_engine`. 
 
 ```cpp
 #include <nanobench.h>
