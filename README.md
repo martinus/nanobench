@@ -1,6 +1,84 @@
 # nanobench
 Single header plugin-Microbenchmark library
 
+## Motivating Example:
+
+This code from [full_example.cpp](src/scripts/full_example.cpp):
+
+```cpp
+#define ANKERL_NANOBENCH_IMPLEMENT
+#include <nanobench.h>
+
+#include <atomic>
+
+int main() {
+    int y = 0;
+    std::atomic<int> x(0);
+    ankerl::nanobench::Config().run("compare_exchange_strong", [&] { x.compare_exchange_strong(y, 0); });
+}
+```
+
+Compiled with `g++ -O2 -DNDEBUG full_example.cpp -I../include -o full_example` runs for 5ms and then prints this markdown table:
+
+| relative |               ns/op |                op/s |   MdAPE | benchmark
+|---------:|--------------------:|--------------------:|--------:|:----------------------------------------------
+|          |                5.83 |      171,586,715.87 |    0.1% | `compare_exchange_strong`
+
+
+## More Complex Example
+
+Easily integratable into any test framework like e.g. [doctest](https://github.com/onqtam/doctest), a comparison of multiple random number generators from [example_random_number_generators.cpp](src/test/example_random_number_generators.cpp):
+
+```cpp
+#include <nanobench.h>
+#include <thirdparty/doctest/doctest.h>
+
+#include <random>
+
+// Benchmarks how fast we can get 64bit random values from Rng
+template <typename Rng>
+ankerl::nanobench::Result bench(ankerl::nanobench::Config const& cfg, std::string name) {
+    Rng rng;
+    uint64_t x = 0;
+    return cfg.run(name, [&] { x += std::uniform_int_distribution<uint64_t>{}(rng); }).doNotOptimizeAway(x);
+}
+
+TEST_CASE("example_random_number_generators") {
+    // perform a few warmup calls, and since the runtime is not always stable for each
+    // generator, increase the number of epochs to get more accurate numbers.
+    ankerl::nanobench::Config cfg;
+    cfg.title("Random Number Generators").unit("uint64_t").warmup(10000).epochs(100);
+
+    // Get the baseline against which the other random engines are compared
+    auto baseline = bench<std::default_random_engine>(cfg, "std::default_random_engine");
+    cfg.relative(baseline);
+
+    // benchmark all remaining random engines
+    bench<std::mt19937>(cfg, "std::mt19937");
+    bench<std::mt19937_64>(cfg, "std::mt19937_64");
+    bench<std::ranlux24_base>(cfg, "std::ranlux24_base");
+    bench<std::ranlux48_base>(cfg, "std::ranlux48_base");
+    bench<std::ranlux24>(cfg, "std::ranlux24_base");
+    bench<std::ranlux48>(cfg, "std::ranlux48");
+    bench<std::knuth_b>(cfg, "std::knuth_b");
+    bench<ankerl::nanobench::Rng>(cfg, "ankerl::nanobench::Rng");
+}
+```
+Runs for 30ms and prints this table:
+
+| relative |         ns/uint64_t |          uint64_t/s |   MdAPE | Random Number Generators
+|---------:|--------------------:|--------------------:|--------:|:----------------------------------------------
+|          |               44.00 |       22,728,914.36 |    1.6% | `std::default_random_engine`
+|   195.2% |               22.54 |       44,374,030.10 |    4.0% | `std::mt19937`
+|   549.5% |                8.01 |      124,897,086.47 |    2.1% | `std::mt19937_64`
+|    93.0% |               47.31 |       21,138,957.42 |    0.6% | `std::ranlux24_base`
+|   125.1% |               35.17 |       28,434,788.37 |    0.8% | `std::ranlux48_base`
+|    21.5% |              204.57 |        4,888,285.22 |    1.8% | `std::ranlux24_base`
+|    12.7% |              345.82 |        2,891,635.94 |    3.0% | `std::ranlux48`
+|    65.8% |               66.82 |       14,965,403.16 |    1.6% | `std::knuth_b`
+| 2,060.4% |                2.14 |      468,304,293.34 |    0.1% | `ankerl::nanobench::Rng`
+
+
 This microbenchmarking framework is inteded to be used with other unit test frameworks like boost, google gtest, catch2, doctest, etc.
 
 The goals are:
@@ -10,8 +88,10 @@ The goals are:
 ** frameworks like boost, gtest, catch2, doctest
 ** github: printing markdown tables
 
-API examples:
+## ExAPI examples:
 
+
+[atomic](src/test/example_atomic.cpp)
 
 ```cpp
 double x = 123.0;
