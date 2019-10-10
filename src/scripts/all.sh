@@ -28,18 +28,6 @@ function build() {
     cd ${ORIGINDIR}
 }
 
-
-build "g++-5" "11" "OFF"
-build "g++-5" "14" "OFF"
-build "g++-5" "17" "OFF"
-
-build "g++-6" "11" "OFF"
-build "g++-6" "14" "OFF"
-build "g++-6" "17" "OFF"
-
-build "g++-7" "11" "OFF"
-build "g++-7" "14" "OFF"
-build "g++-7" "17" "OFF"
 #build "g++-4.9" "11" "OFF" "-m32"
 #build "g++-4.9" "14" "OFF" "-m32"
 
