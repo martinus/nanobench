@@ -5,17 +5,6 @@ dist: xenial
 matrix:
   include:
 
-  # g++ 4.9
-  - os: linux
-    compiler: gcc
-    env:
-    - COMPILER=g++-4.9
-    - CMAKE_OPTIONS="-DNB_cxx_standard=11"
-    addons:
-      apt:
-        sources: ['ubuntu-toolchain-r-test']
-        packages: ['g++-4.9']        
-
   # g++-8
   - os: linux
     compiler: gcc
