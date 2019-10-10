@@ -39,6 +39,19 @@
 // public facing api - as minimal as possible
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 
+#define ANKERL(x) ANKERL_PRIVATE_##x()
+#define ANKERL_PRIVATE_CXX() __cplusplus
+#define ANKERL_PRIVATE_CXX98() 199711L
+#define ANKERL_PRIVATE_CXX11() 201103L
+#define ANKERL_PRIVATE_CXX14() 201402L
+#define ANKERL_PRIVATE_CXX17() 201703L
+
+#if ANKERL(CXX) >= ANKERL(CXX17)
+#    define ANKERL_PRIVATE_NODISCARD() [[nodiscard]]
+#else
+#    define ANKERL_PRIVATE_NODISCARD()
+#endif
+
 #include <chrono>
 #include <string>
 
@@ -68,14 +81,14 @@ namespace nanobench {
 // Result returned after a benchmark has finished. Can be used as a baseline for relative().
 class Result {
 public:
-    Result(std::string unit, std::chrono::duration<double> const* secPerUnit, size_t size) noexcept;
+    Result(std::string u, std::chrono::duration<double> const* secPerUnit, size_t size) noexcept;
     Result() noexcept;
 
-    std::string const& unit() const noexcept;
-    std::chrono::duration<double> median() const noexcept;
-    double medianAbsolutePercentError() const noexcept;
-    std::chrono::duration<double> minimum() const noexcept;
-    std::chrono::duration<double> maximum() const noexcept;
+    ANKERL(NODISCARD) std::string const& unit() const noexcept;
+    ANKERL(NODISCARD) std::chrono::duration<double> median() const noexcept;
+    ANKERL(NODISCARD) double medianAbsolutePercentError() const noexcept;
+    ANKERL(NODISCARD) std::chrono::duration<double> minimum() const noexcept;
+    ANKERL(NODISCARD) std::chrono::duration<double> maximum() const noexcept;
 
     // Convenience: makes sure none of the given arguments are optimized away by the compiler.
     template <typename... Args>
@@ -109,7 +122,7 @@ public:
     ~Rng() noexcept = default;
 
     explicit Rng(uint64_t seed) noexcept;
-    Rng copy() const noexcept;
+    ANKERL(NODISCARD) Rng copy() const noexcept;
     void assign(Rng const& other) noexcept;
 
     // that one's inline so it is fast
@@ -133,43 +146,45 @@ public:
 
     Config(Config&& other) noexcept;
     Config& operator=(Config&& other) noexcept;
+
     Config(Config const& other);
     Config& operator=(Config const& other);
+
     ~Config() noexcept;
 
     // Set the batch size, e.g. number of processed bytes, or some other metric for the size of the processed data in each iteration.
     // Any argument is cast to double.
     template <typename T>
     Config& batch(T b) noexcept;
-    double batch() const noexcept;
+    ANKERL(NODISCARD) double batch() const noexcept;
 
     // Set a baseline to compare it to. 100% it is exactly as fast as the baseline, >100% means it is faster than the baseline, <100%
     // means it is slower than the baseline.
     Config& relative(Result const& baseline) noexcept;
-    Result const& relative() const noexcept;
+    ANKERL(NODISCARD) Result const& relative() const noexcept;
 
     // Operation unit. Defaults to "op", could be e.g. "byte" for string processing.
     // Use singular (byte, not bytes).
     Config& unit(std::string unit);
-    std::string const& unit() const noexcept;
+    ANKERL(NODISCARD) std::string const& unit() const noexcept;
 
     Config& title(std::string benchmarkTitle);
-    std::string const& title() const noexcept;
+    ANKERL(NODISCARD) std::string const& title() const noexcept;
 
     // Number of epochs to evaluate. The reported result will be the median of evaluation of each epoch.
     Config& epochs(size_t numEpochs) noexcept;
-    size_t epochs() const noexcept;
+    ANKERL(NODISCARD) size_t epochs() const noexcept;
 
     // Desired evaluation time is a multiple of clock resolution. Default is to be 1000 times above this measurement precision.
     Config& clockResolutionMultiple(size_t multiple) noexcept;
-    size_t clockResolutionMultiple() const noexcept;
+    ANKERL(NODISCARD) size_t clockResolutionMultiple() const noexcept;
 
     // Sets the maximum time each epoch should take. Default is 100ms.
     Config& maxEpochTime(std::chrono::nanoseconds t) noexcept;
-    std::chrono::nanoseconds maxEpochTime() const noexcept;
+    ANKERL(NODISCARD) std::chrono::nanoseconds maxEpochTime() const noexcept;
 
     Config& warmup(size_t numWarmupIters) noexcept;
-    size_t warmup() const noexcept;
+    ANKERL(NODISCARD) size_t warmup() const noexcept;
 
     // Performs all evaluations.
     template <typename Op>
@@ -217,12 +232,12 @@ public:
     IterationLogic(IterationLogic&&) = delete;
     IterationLogic& operator=(IterationLogic&&) = delete;
 
-    size_t numIters() const noexcept;
+    ANKERL(NODISCARD) size_t numIters() const noexcept;
     void add(std::chrono::nanoseconds elapsed) noexcept;
-    Result const& result() const;
+    ANKERL(NODISCARD) Result const& result() const;
 
 private:
-    Result showResult(std::string const& errorMessage) const;
+    ANKERL(NODISCARD) Result showResult(std::string const& errorMessage) const;
 
     Config const& mConfig;
     std::chrono::nanoseconds mTargetRuntime{};
@@ -583,7 +598,7 @@ uint64_t& singletonLastTableSettingsHash() noexcept {
 inline uint64_t fnv1a(std::string const& str) noexcept {
     auto val = UINT64_C(14695981039346656037);
     for (auto c : str) {
-        val = (val ^ static_cast<size_t>(c)) * UINT64_C(1099511628211);
+        val = (val ^ static_cast<uint8_t>(c)) * UINT64_C(1099511628211);
     }
     return val;
 }
@@ -734,7 +749,7 @@ Result IterationLogic::showResult(std::string const& errorMessage) const {
         return Result();
     }
 
-    Result result(mConfig.unit(), mSecPerUnit, mSecPerUnitIndex);
+    Result r(mConfig.unit(), mSecPerUnit, mSecPerUnitIndex);
 
     detail::fmt::StreamStateRestorer restorer(os);
     auto h = calcTableSettingsHash(mConfig);
@@ -757,26 +772,26 @@ Result IterationLogic::showResult(std::string const& errorMessage) const {
         // relative not set or invalid, print blank column
         os << "          |";
     } else {
-        os << detail::fmt::Number(8, 1, mConfig.relative().median() / result.median() * 100) << "% |";
+        os << detail::fmt::Number(8, 1, mConfig.relative().median() / r.median() * 100) << "% |";
     }
 
     // 2nd column: ns/unit
-    os << detail::fmt::Number(20, 2, 1e9 * result.median().count()) << " |";
+    os << detail::fmt::Number(20, 2, 1e9 * r.median().count()) << " |";
 
     // 3rd column: unit/s
-    os << detail::fmt::Number(20, 2, 1 / result.median().count()) << " |";
+    os << detail::fmt::Number(20, 2, 1 / r.median().count()) << " |";
 
     // 4th column: MdAPE
-    os << detail::fmt::Number(7, 1, result.medianAbsolutePercentError() * 100) << "% |";
+    os << detail::fmt::Number(7, 1, r.medianAbsolutePercentError() * 100) << "% |";
 
     // 5th column: possible symbols, possibly errormessage, benchmark name
-    if (result.medianAbsolutePercentError() >= 0.05) {
+    if (r.medianAbsolutePercentError() >= 0.05) {
         // >=5%
         os << " :wavy_dash:";
     }
     os << ' ' << detail::fmt::MarkDownCode(mName) << std::endl;
 
-    return result;
+    return r;
 }
 
 // formatting utilities
@@ -856,8 +871,8 @@ std::ostream& operator<<(std::ostream& os, MarkDownCode const& mdCode) {
 } // namespace detail
 
 // Result returned after a benchmark has finished. Can be used as a baseline for relative().
-Result::Result(std::string unit, std::chrono::duration<double> const* secPerUnitData, size_t size) noexcept
-    : mUnit(std::move(unit)) {
+Result::Result(std::string u, std::chrono::duration<double> const* secPerUnitData, size_t size) noexcept
+    : mUnit(std::move(u)) {
 
     std::vector<std::chrono::duration<double>> secPerUnit(secPerUnitData, secPerUnitData + size);
     std::sort(secPerUnit.begin(), secPerUnit.end());
@@ -913,8 +928,8 @@ Result const& Config::relative() const noexcept {
 
 // Operation unit. Defaults to "op", could be e.g. "byte" for string processing.
 // Use singular (byte, not bytes).
-Config& Config::unit(std::string unit) {
-    mUnit = std::move(unit);
+Config& Config::unit(std::string u) {
+    mUnit = std::move(u);
     return *this;
 }
 std::string const& Config::unit() const noexcept {

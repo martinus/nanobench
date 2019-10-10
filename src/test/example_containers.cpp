@@ -14,12 +14,13 @@ TEST_CASE("example_containers") {
     ankerl::nanobench::Rng rng;
     std::set<uint64_t> s;
     uint64_t const bitmask = UINT64_C(0xff);
+
     cfg.run("std::set",
             [&] {
                 s.insert(rng() & bitmask);
                 s.erase(rng() & bitmask);
             })
-        .doNotOptimizeAway(s);
+        .doNotOptimizeAway(&s);
 
     std::unordered_set<uint64_t> us;
     cfg.run("std::unordered_set",
@@ -27,5 +28,5 @@ TEST_CASE("example_containers") {
                 us.insert(rng() & bitmask);
                 us.erase(rng() & bitmask);
             })
-        .doNotOptimizeAway(us);
+        .doNotOptimizeAway(&us);
 }
