@@ -1,6 +1,5 @@
 #include <nanobench.h>
-
-#include <app/doctest.h>
+#include <thirdparty/doctest/doctest.h>
 
 #include <cmath>
 

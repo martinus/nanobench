@@ -1,5 +1,5 @@
-#include <app/doctest.h>
 #include <nanobench.h>
+#include <thirdparty/doctest/doctest.h>
 
 #include <random>
 
@@ -14,7 +14,8 @@ ankerl::nanobench::Result bench(ankerl::nanobench::Config const& cfg, std::strin
 TEST_CASE("example_random_number_generators") {
     // perform a few warmup calls, and since the runtime is not always stable for each
     // generator, increase the number of epochs to get more accurate numbers.
-    auto cfg = ankerl::nanobench::Config().title("Random Number Generators").unit("uint64_t").warmup(10000).epochs(100);
+    ankerl::nanobench::Config cfg;
+    cfg.title("Random Number Generators").unit("uint64_t").warmup(10000).epochs(100);
 
     // Get the baseline against which the other random engines are compared
     auto baseline = bench<std::default_random_engine>(cfg, "std::default_random_engine");
@@ -29,24 +30,4 @@ TEST_CASE("example_random_number_generators") {
     bench<std::ranlux48>(cfg, "std::ranlux48");
     bench<std::knuth_b>(cfg, "std::knuth_b");
     bench<ankerl::nanobench::Rng>(cfg, "ankerl::nanobench::Rng");
-}
-
-TEST_CASE("example_uniform01") {
-    auto cfg = ankerl::nanobench::Config().title("random double in [0, 1(");
-
-    std::default_random_engine defaultRng;
-    double d = 0;
-    auto baseline = cfg.run("std::default_random_engine & std::uniform_real_distribution",
-                            [&] { d += std::uniform_real_distribution<>{}(defaultRng); })
-                        .doNotOptimizeAway(d);
-
-    cfg.relative(baseline);
-
-    ankerl::nanobench::Rng nanobenchRng;
-    d = 0;
-    cfg.run("ankerl::nanobench::Rng & std::uniform_real_distribution", [&] { d += std::uniform_real_distribution<>{}(nanobenchRng); })
-        .doNotOptimizeAway(d);
-
-    d = 0;
-    cfg.run("nanobenchRng.uniform01()", [&] { d += nanobenchRng.uniform01(); }).doNotOptimizeAway(d);
 }
