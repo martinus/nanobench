@@ -22,6 +22,6 @@ Checks: "*,\
   -fuchsia-multiple-inheritance,
   -cert-err58-cpp"
 WarningsAsErrors: "*"
-HeaderFilterRegex: 'robin_hood\.h'
+HeaderFilterRegex: 'nanobench\.h'
 ...
 
