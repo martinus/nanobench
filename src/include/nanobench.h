@@ -249,6 +249,7 @@ private:
     Result mResult{};
     Rng mRng{};
     bool mIsWarmup = false;
+    bool mIsTargetElapsedReached = false;
 };
 #if defined(__clang__)
 #    pragma clang diagnostic pop
@@ -712,7 +713,8 @@ size_t IterationLogic::numIters() const noexcept {
 void IterationLogic::add(std::chrono::nanoseconds elapsed) noexcept {
     // if we are within 2/3 of the target runtime, add it.
     auto doubleElapsed = std::chrono::duration_cast<std::chrono::duration<double>>(elapsed);
-    if (elapsed * 3 >= mTargetRuntime * 2 && !mIsWarmup) {
+    if (!mIsWarmup && (mIsTargetElapsedReached || elapsed * 3 >= mTargetRuntime * 2)) {
+        mIsTargetElapsedReached = true;
         mSecPerUnit[mSecPerUnitIndex] = doubleElapsed / (mConfig.batch() * static_cast<double>(mNumIters));
         ++mSecPerUnitIndex;
         if (mSecPerUnitIndex == mConfig.epochs()) {
