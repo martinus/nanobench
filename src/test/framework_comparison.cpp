@@ -5,7 +5,7 @@
 #include <random>
 #include <thread>
 
-TEST_CASE("comparison_of_frameworks") {
+TEST_CASE("framework_comparison") {
     ankerl::nanobench::Config cfg;
     cfg.title("framework comparison");
 
