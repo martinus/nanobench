@@ -147,6 +147,7 @@ function(add_compile_flags_target target)
             /wd4774 # 'swprintf_s' : format string expected in argument 3 is not a string literal
 
             /wd5045 # Compiler will insert Spectre mitigation for memory load if /Qspectre switch specified
+            /wd5039 #: '_Thrd_start': pointer or reference to potentially throwing function passed to extern C function under -EHc. Undefined behavior
         )
     endif()
 
