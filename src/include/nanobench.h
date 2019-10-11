@@ -39,17 +39,17 @@
 // public facing api - as minimal as possible
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 
-#define ANKERL(x) ANKERL_PRIVATE_##x()
-#define ANKERL_PRIVATE_CXX() __cplusplus
-#define ANKERL_PRIVATE_CXX98() 199711L
-#define ANKERL_PRIVATE_CXX11() 201103L
-#define ANKERL_PRIVATE_CXX14() 201402L
-#define ANKERL_PRIVATE_CXX17() 201703L
+#define ANKERL_NANOBENCH(x) ANKERL_NANOBENCH_PRIVATE_##x()
+#define ANKERL_NANOBENCH_PRIVATE_CXX() __cplusplus
+#define ANKERL_NANOBENCH_PRIVATE_CXX98() 199711L
+#define ANKERL_NANOBENCH_PRIVATE_CXX11() 201103L
+#define ANKERL_NANOBENCH_PRIVATE_CXX14() 201402L
+#define ANKERL_NANOBENCH_PRIVATE_CXX17() 201703L
 
-#if ANKERL(CXX) >= ANKERL(CXX17)
-#    define ANKERL_PRIVATE_NODISCARD() [[nodiscard]]
+#if ANKERL_NANOBENCH(CXX) >= ANKERL_NANOBENCH(CXX17)
+#    define ANKERL_NANOBENCH_PRIVATE_NODISCARD() [[nodiscard]]
 #else
-#    define ANKERL_PRIVATE_NODISCARD()
+#    define ANKERL_NANOBENCH_PRIVATE_NODISCARD()
 #endif
 
 #include <chrono>
@@ -84,11 +84,11 @@ public:
     Result(std::string u, std::chrono::duration<double> const* secPerUnit, size_t size) noexcept;
     Result() noexcept;
 
-    ANKERL(NODISCARD) std::string const& unit() const noexcept;
-    ANKERL(NODISCARD) std::chrono::duration<double> median() const noexcept;
-    ANKERL(NODISCARD) double medianAbsolutePercentError() const noexcept;
-    ANKERL(NODISCARD) std::chrono::duration<double> minimum() const noexcept;
-    ANKERL(NODISCARD) std::chrono::duration<double> maximum() const noexcept;
+    ANKERL_NANOBENCH(NODISCARD) std::string const& unit() const noexcept;
+    ANKERL_NANOBENCH(NODISCARD) std::chrono::duration<double> median() const noexcept;
+    ANKERL_NANOBENCH(NODISCARD) double medianAbsolutePercentError() const noexcept;
+    ANKERL_NANOBENCH(NODISCARD) std::chrono::duration<double> minimum() const noexcept;
+    ANKERL_NANOBENCH(NODISCARD) std::chrono::duration<double> maximum() const noexcept;
 
     // Convenience: makes sure none of the given arguments are optimized away by the compiler.
     template <typename... Args>
@@ -122,7 +122,7 @@ public:
     ~Rng() noexcept = default;
 
     explicit Rng(uint64_t seed) noexcept;
-    ANKERL(NODISCARD) Rng copy() const noexcept;
+    ANKERL_NANOBENCH(NODISCARD) Rng copy() const noexcept;
     void assign(Rng const& other) noexcept;
 
     // that one's inline so it is fast
@@ -156,35 +156,35 @@ public:
     // Any argument is cast to double.
     template <typename T>
     Config& batch(T b) noexcept;
-    ANKERL(NODISCARD) double batch() const noexcept;
+    ANKERL_NANOBENCH(NODISCARD) double batch() const noexcept;
 
     // Set a baseline to compare it to. 100% it is exactly as fast as the baseline, >100% means it is faster than the baseline, <100%
     // means it is slower than the baseline.
     Config& relative(Result const& baseline) noexcept;
-    ANKERL(NODISCARD) Result const& relative() const noexcept;
+    ANKERL_NANOBENCH(NODISCARD) Result const& relative() const noexcept;
 
     // Operation unit. Defaults to "op", could be e.g. "byte" for string processing.
     // Use singular (byte, not bytes).
     Config& unit(std::string unit);
-    ANKERL(NODISCARD) std::string const& unit() const noexcept;
+    ANKERL_NANOBENCH(NODISCARD) std::string const& unit() const noexcept;
 
     Config& title(std::string benchmarkTitle);
-    ANKERL(NODISCARD) std::string const& title() const noexcept;
+    ANKERL_NANOBENCH(NODISCARD) std::string const& title() const noexcept;
 
     // Number of epochs to evaluate. The reported result will be the median of evaluation of each epoch.
     Config& epochs(size_t numEpochs) noexcept;
-    ANKERL(NODISCARD) size_t epochs() const noexcept;
+    ANKERL_NANOBENCH(NODISCARD) size_t epochs() const noexcept;
 
     // Desired evaluation time is a multiple of clock resolution. Default is to be 1000 times above this measurement precision.
     Config& clockResolutionMultiple(size_t multiple) noexcept;
-    ANKERL(NODISCARD) size_t clockResolutionMultiple() const noexcept;
+    ANKERL_NANOBENCH(NODISCARD) size_t clockResolutionMultiple() const noexcept;
 
     // Sets the maximum time each epoch should take. Default is 100ms.
     Config& maxEpochTime(std::chrono::nanoseconds t) noexcept;
-    ANKERL(NODISCARD) std::chrono::nanoseconds maxEpochTime() const noexcept;
+    ANKERL_NANOBENCH(NODISCARD) std::chrono::nanoseconds maxEpochTime() const noexcept;
 
     Config& warmup(size_t numWarmupIters) noexcept;
-    ANKERL(NODISCARD) size_t warmup() const noexcept;
+    ANKERL_NANOBENCH(NODISCARD) size_t warmup() const noexcept;
 
     // Performs all evaluations.
     template <typename Op>
@@ -232,12 +232,12 @@ public:
     IterationLogic(IterationLogic&&) = delete;
     IterationLogic& operator=(IterationLogic&&) = delete;
 
-    ANKERL(NODISCARD) size_t numIters() const noexcept;
+    ANKERL_NANOBENCH(NODISCARD) size_t numIters() const noexcept;
     void add(std::chrono::nanoseconds elapsed) noexcept;
-    ANKERL(NODISCARD) Result const& result() const;
+    ANKERL_NANOBENCH(NODISCARD) Result const& result() const;
 
 private:
-    ANKERL(NODISCARD) Result showResult(std::string const& errorMessage) const;
+    ANKERL_NANOBENCH(NODISCARD) Result showResult(std::string const& errorMessage) const;
 
     Config const& mConfig;
     std::chrono::nanoseconds mTargetRuntime{};
