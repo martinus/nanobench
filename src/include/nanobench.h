@@ -336,20 +336,14 @@ void doNotOptimizeAway(Args&&... args) {
 
 namespace detail {
 
-// Windows version of do not optimize away
-// see https://github.com/google/benchmark/blob/master/include/benchmark/benchmark.h#L307
-// see https://github.com/facebook/folly/blob/master/folly/Benchmark.h#L280
-// see https://docs.microsoft.com/en-us/cpp/preprocessor/optimize
 #if defined(_MSC_VER)
-#    pragma optimize("", off)
-void doNotOptimizeAwaySink(void const*) {}
-#    pragma optimize("", on)
-
 template <typename T>
 void doNotOptimizeAway(T const& val) {
     doNotOptimizeAwaySink(&val);
 }
+
 #else
+
 template <typename T>
 void doNotOptimizeAway(T const& val) {
     // NOLINTNEXTLINE(hicpp-no-assembler)
@@ -535,6 +529,16 @@ std::ostream& operator<<(std::ostream& os, MarkDownCode const& mdCode);
 namespace ankerl {
 namespace nanobench {
 namespace detail {
+
+// Windows version of do not optimize away
+// see https://github.com/google/benchmark/blob/master/include/benchmark/benchmark.h#L307
+// see https://github.com/facebook/folly/blob/master/folly/Benchmark.h#L280
+// see https://docs.microsoft.com/en-us/cpp/preprocessor/optimize
+#    if defined(_MSC_VER)
+#        pragma optimize("", off)
+void doNotOptimizeAwaySink(void const*) {}
+#        pragma optimize("", on)
+#    endif
 
 template <typename T>
 T parseFile(std::string const& filename) {
