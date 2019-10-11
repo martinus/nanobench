@@ -23,7 +23,7 @@ TEST_CASE("framework_comparison") {
         // each run, perform a random number of rng calls
         auto iterations = rng() & UINT64_C(0xfff);
         for (uint64_t i = 0; i < iterations; ++i) {
-            rng();
+            (void)rng();
         }
     });
 }
