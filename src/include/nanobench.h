@@ -514,13 +514,13 @@ std::ostream& operator<<(std::ostream& os, Number const& n);
 // Formats any text as markdown code, escaping backticks.
 class MarkDownCode {
 public:
-    explicit MarkDownCode(std::string what);
+    explicit MarkDownCode(std::string const& what);
 
 private:
     friend std::ostream& operator<<(std::ostream& os, MarkDownCode const& mdCode);
     std::ostream& write(std::ostream& os) const;
 
-    std::string mWhat;
+    std::string mWhat{};
 };
 
 std::ostream& operator<<(std::ostream& os, MarkDownCode const& mdCode);
@@ -856,19 +856,20 @@ std::ostream& operator<<(std::ostream& os, Number const& n) {
 }
 
 // Formats any text as markdown code, escaping backticks.
-MarkDownCode::MarkDownCode(std::string what)
-    : mWhat(std::move(what)) {}
-
-std::ostream& MarkDownCode::write(std::ostream& os) const {
-    os.put('`');
-    for (char c : mWhat) {
-        os.put(c);
+MarkDownCode::MarkDownCode(std::string const& what) {
+    mWhat.reserve(what.size() + 2);
+    mWhat.push_back('`');
+    for (char c : what) {
+        mWhat.push_back(c);
         if ('`' == c) {
-            os.put('`');
+            mWhat.push_back('`');
         }
     }
-    os.put('`');
-    return os;
+    mWhat.push_back('`');
+}
+
+std::ostream& MarkDownCode::write(std::ostream& os) const {
+    return os << mWhat;
 }
 
 std::ostream& operator<<(std::ostream& os, MarkDownCode const& mdCode) {
