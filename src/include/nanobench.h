@@ -40,6 +40,7 @@
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 
 #define ANKERL_NANOBENCH(x) ANKERL_NANOBENCH_PRIVATE_##x()
+
 #define ANKERL_NANOBENCH_PRIVATE_CXX() __cplusplus
 #define ANKERL_NANOBENCH_PRIVATE_CXX98() 199711L
 #define ANKERL_NANOBENCH_PRIVATE_CXX11() 201103L
@@ -183,8 +184,12 @@ public:
     Config& maxEpochTime(std::chrono::nanoseconds t) noexcept;
     ANKERL_NANOBENCH(NODISCARD) std::chrono::nanoseconds maxEpochTime() const noexcept;
 
-    Config& warmup(size_t numWarmupIters) noexcept;
-    ANKERL_NANOBENCH(NODISCARD) size_t warmup() const noexcept;
+    // Sets the minimum time each epoch should take. Default is zero, so clockResolutionMultiple() can do it's guessing.
+    Config& minEpochTime(std::chrono::nanoseconds t) noexcept;
+    ANKERL_NANOBENCH(NODISCARD) std::chrono::nanoseconds minEpochTime() const noexcept;
+
+    Config& warmup(uint64_t numWarmupIters) noexcept;
+    ANKERL_NANOBENCH(NODISCARD) uint64_t warmup() const noexcept;
 
     // Performs all evaluations.
     template <typename Op>
@@ -197,6 +202,7 @@ private:
     size_t mNumEpochs = 51;
     size_t mClockResolutionMultiple = static_cast<size_t>(1000);
     std::chrono::nanoseconds mMaxEpochTime = std::chrono::milliseconds(100);
+    std::chrono::nanoseconds mMinEpochTime{};
     Result mRelative{};
     size_t mWarmup = 0;
 };
@@ -237,19 +243,31 @@ public:
     ANKERL_NANOBENCH(NODISCARD) Result const& result() const;
 
 private:
+    enum class State { warmup, upscaling_runtime, measuring, endless };
+
     ANKERL_NANOBENCH(NODISCARD) Result showResult(std::string const& errorMessage) const;
+    ANKERL_NANOBENCH(NODISCARD) bool isCloseEnoughForMeasurements(std::chrono::nanoseconds elapsed) const noexcept;
+    ANKERL_NANOBENCH(NODISCARD) uint64_t calcBestNumIters(std::chrono::nanoseconds elapsed, uint64_t iters) noexcept;
+    void upscale(std::chrono::nanoseconds elapsed);
+
+    void addMeasurement(std::chrono::nanoseconds elapsed) noexcept;
+
+    uint64_t mNumIters = 1;
 
     Config const& mConfig;
-    std::chrono::nanoseconds mTargetRuntime{};
+    std::chrono::nanoseconds mTargetRuntimePerEpoch{};
+
     // we don't use a vector here so we can get away with not including vector in the public interface
     std::chrono::duration<double>* mSecPerUnit = nullptr;
     size_t mSecPerUnitIndex = 0;
-    size_t mNumIters = 0;
     std::string mName;
     Result mResult{};
     Rng mRng{};
-    bool mIsWarmup = false;
-    bool mIsTargetElapsedReached = false;
+
+    std::chrono::nanoseconds mTotalElapsed{};
+    uint64_t mTotalNumIters = 0;
+
+    State mState = State::upscaling_runtime;
 };
 #if defined(__clang__)
 #    pragma clang diagnostic pop
@@ -414,6 +432,8 @@ namespace nanobench {
 // helper stuff that only intended to be used internally
 namespace detail {
 
+bool isEndlessRunning(std::string const& name);
+
 template <typename T>
 T parseFile(std::string const& filename);
 
@@ -549,6 +569,19 @@ T parseFile(std::string const& filename) {
     return num;
 }
 
+bool isEndlessRunning(std::string const& name) {
+#    if defined(_MSC_VER)
+#        pragma warning(push)
+#        pragma warning(disable : 4996) // getenv': This function or variable may be unsafe.
+#    endif
+    auto endless = std::getenv("NANOBENCH_ENDLESS");
+#    if defined(_MSC_VER)
+#        pragma warning(pop)
+#    endif
+
+    return nullptr != endless && endless == name;
+}
+
 void printStabilityInformationOnce() {
     static bool shouldPrint = true;
     if (shouldPrint) {
@@ -672,83 +705,137 @@ IterationLogic::IterationLogic(Config const& config, std::string name) noexcept
     , mName(std::move(name)) {
     printStabilityInformationOnce();
 
-    mTargetRuntime = detail::clockResolution() * mConfig.clockResolutionMultiple();
-    if (mTargetRuntime > mConfig.maxEpochTime()) {
-        mTargetRuntime = mConfig.maxEpochTime();
+    // determine target runtime per epoch
+    mTargetRuntimePerEpoch = detail::clockResolution() * mConfig.clockResolutionMultiple();
+    if (mTargetRuntimePerEpoch > mConfig.maxEpochTime()) {
+        mTargetRuntimePerEpoch = mConfig.maxEpochTime();
+    }
+    if (mTargetRuntimePerEpoch < mConfig.minEpochTime()) {
+        mTargetRuntimePerEpoch = mConfig.minEpochTime();
     }
 
+    // prepare array for measurement results
     mSecPerUnit = new std::chrono::duration<double>[mConfig.epochs()];
     mSecPerUnitIndex = 0;
-    mNumIters = mConfig.warmup();
 
-    // check environment variable NANOBENCH_ENDLESS
-#    if defined(_MSC_VER)
-#        pragma warning(push)
-#        pragma warning(disable : 4996) // getenv': This function or variable may be unsafe.
-#    endif
-    auto endless = std::getenv("NANOBENCH_ENDLESS");
-#    if defined(_MSC_VER)
-#        pragma warning(pop)
-#    endif
-
-    if (nullptr != endless && endless == name) {
+    if (isEndlessRunning(mName)) {
         std::cout << "NANOBENCH_ENDLESS set: running '" << name << "' endlessly" << std::endl;
-        mNumIters = (std::numeric_limits<size_t>::max)();
-    }
-
-    mIsWarmup = mConfig.warmup() != 0;
-    if (mNumIters == 0) {
+        mNumIters = (std::numeric_limits<uint64_t>::max)();
+        mState = State::endless;
+    } else if (0 != mConfig.warmup()) {
+        mNumIters = mConfig.warmup();
+        mState = State::warmup;
+    } else {
         mNumIters = 1;
+        mState = State::upscaling_runtime;
     }
-} // namespace detail
+}
 
 IterationLogic::~IterationLogic() noexcept {
     delete[] mSecPerUnit;
 }
 
-size_t IterationLogic::numIters() const noexcept {
+uint64_t IterationLogic::numIters() const noexcept {
     return mNumIters;
 }
 
-void IterationLogic::add(std::chrono::nanoseconds elapsed) noexcept {
-    // if we are within 2/3 of the target runtime, add it.
+bool IterationLogic::isCloseEnoughForMeasurements(std::chrono::nanoseconds elapsed) const noexcept {
+    return elapsed * 3 >= mTargetRuntimePerEpoch * 2;
+}
+
+// directly calculates new iters based on elapsed&iters, and adds a 10% noise. Makes sure we don't underflow.
+uint64_t IterationLogic::calcBestNumIters(std::chrono::nanoseconds elapsed, uint64_t iters) noexcept {
     auto doubleElapsed = std::chrono::duration_cast<std::chrono::duration<double>>(elapsed);
-    if (!mIsWarmup && (mIsTargetElapsedReached || elapsed * 3 >= mTargetRuntime * 2)) {
-        mIsTargetElapsedReached = true;
-        mSecPerUnit[mSecPerUnitIndex] = doubleElapsed / (mConfig.batch() * static_cast<double>(mNumIters));
-        ++mSecPerUnitIndex;
-        if (mSecPerUnitIndex == mConfig.epochs()) {
-            // we got all the results that we need! bail out
-            mResult = showResult("");
+    auto doubleTargetRuntimePerEpoch = std::chrono::duration_cast<std::chrono::duration<double>>(mTargetRuntimePerEpoch);
+    auto doubleNewIters = doubleTargetRuntimePerEpoch / doubleElapsed * static_cast<double>(iters);
+
+    // add 10% noise
+    doubleNewIters *= 1.0 + 0.1 * mRng.uniform01();
+
+    // +0.5 for correct rounding when casting
+    doubleNewIters += 0.5;
+
+    auto newIters = static_cast<uint64_t>(doubleNewIters);
+    if (newIters == 0) {
+        // make sure we don't underflow
+        return 1;
+    }
+    return newIters;
+}
+
+void IterationLogic::addMeasurement(std::chrono::nanoseconds elapsed) noexcept {
+    auto doubleElapsed = std::chrono::duration_cast<std::chrono::duration<double>>(elapsed);
+    mSecPerUnit[mSecPerUnitIndex] = doubleElapsed / (mConfig.batch() * static_cast<double>(mNumIters));
+    ++mSecPerUnitIndex;
+}
+
+void IterationLogic::upscale(std::chrono::nanoseconds elapsed) {
+    if (elapsed * 10 < mTargetRuntimePerEpoch) {
+        // we are far below the target runtime. Multiply iterations by 10 (with overflow check)
+        if (mNumIters * 10 < mNumIters) {
+            // overflow :-(
+            mResult = showResult("iterations overflow. Maybe your code got optimized away?");
             mNumIters = 0;
             return;
         }
-    }
-
-    // we calculate in double values, so we can't get an overflow.
-    auto newIters = static_cast<double>(mNumIters);
-    if (elapsed * 10 < mTargetRuntime) {
-        // we are far below the target runtime. Multiply iterations by 10 (with overflow check)
-        newIters *= 10.0;
+        mNumIters *= 10;
     } else {
-        // less than 10x below target runtime, try to calculate it precisely
-        newIters *= std::chrono::duration_cast<std::chrono::duration<double>>(mTargetRuntime) / doubleElapsed;
+        mNumIters = calcBestNumIters(elapsed, mNumIters);
+    }
+}
+
+void IterationLogic::add(std::chrono::nanoseconds elapsed) noexcept {
+    switch (mState) {
+    case State::warmup:
+        if (isCloseEnoughForMeasurements(elapsed)) {
+            // if elapsed is close enough, we can skip upscaling and go right to measurements
+            // still, we don't add the result to the measurements.
+            mState = State::measuring;
+            mNumIters = calcBestNumIters(elapsed, mNumIters);
+        } else {
+            // not close enough: switch to upscaling
+            mState = State::upscaling_runtime;
+            upscale(elapsed);
+        }
+        break;
+
+    case State::upscaling_runtime:
+        if (isCloseEnoughForMeasurements(elapsed)) {
+            // if we are close enough, add measurement and switch to always measuring
+            mState = State::measuring;
+            mTotalElapsed += elapsed;
+            mTotalNumIters += mNumIters;
+            mNumIters = calcBestNumIters(mTotalElapsed, mTotalNumIters);
+            addMeasurement(elapsed);
+        } else {
+            upscale(elapsed);
+        }
+        break;
+
+    case State::measuring:
+        // just add measurements - no questions asked. Even when runtime is low. But we can't ignore
+        // that fluctuation, or else we would bias the result
+        mTotalElapsed += elapsed;
+        mTotalNumIters += mNumIters;
+        mNumIters = calcBestNumIters(mTotalElapsed, mTotalNumIters);
+        addMeasurement(elapsed);
+        break;
+
+    case State::endless:
+        mNumIters = (std::numeric_limits<uint64_t>::max)();
+        break;
+
+    default:
+        // shouldn't happen
+        mNumIters = 0;
+        break;
     }
 
-    // add 0-10% of noise
-    newIters *= 1 + 0.1 * mRng.uniform01();
-    if (newIters >= static_cast<double>((std::numeric_limits<size_t>::max)())) {
-        // overflow
-        mResult = showResult("iterations overflow. Maybe your code got optimized away?");
+    if (mSecPerUnitIndex == mConfig.epochs()) {
+        // we got all the results that we need, finish it
+        mResult = showResult("");
         mNumIters = 0;
-        return;
     }
-    mNumIters = static_cast<size_t>(newIters);
-    if (mNumIters <= 0) {
-        // underflow
-        mNumIters = 1;
-    }
-    mIsWarmup = false;
 }
 
 Result const& IterationLogic::result() const {
@@ -986,11 +1073,20 @@ std::chrono::nanoseconds Config::maxEpochTime() const noexcept {
     return mMaxEpochTime;
 }
 
-Config& Config::warmup(size_t numWarmupIters) noexcept {
+// Sets the maximum time each epoch should take. Default is 100ms.
+Config& Config::minEpochTime(std::chrono::nanoseconds t) noexcept {
+    mMinEpochTime = t;
+    return *this;
+}
+std::chrono::nanoseconds Config::minEpochTime() const noexcept {
+    return mMinEpochTime;
+}
+
+Config& Config::warmup(uint64_t numWarmupIters) noexcept {
     mWarmup = numWarmupIters;
     return *this;
 }
-size_t Config::warmup() const noexcept {
+uint64_t Config::warmup() const noexcept {
     return mWarmup;
 }
 
