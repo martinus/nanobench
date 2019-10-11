@@ -176,7 +176,7 @@ public:
     Config& epochs(size_t numEpochs) noexcept;
     ANKERL_NANOBENCH(NODISCARD) size_t epochs() const noexcept;
 
-    // Desired evaluation time is a multiple of clock resolution. Default is to be 1000 times above this measurement precision.
+    // Desired evaluation time is a multiple of clock resolution.
     Config& clockResolutionMultiple(size_t multiple) noexcept;
     ANKERL_NANOBENCH(NODISCARD) size_t clockResolutionMultiple() const noexcept;
 
@@ -187,6 +187,10 @@ public:
     // Sets the minimum time each epoch should take. Default is zero, so clockResolutionMultiple() can do it's guessing.
     Config& minEpochTime(std::chrono::nanoseconds t) noexcept;
     ANKERL_NANOBENCH(NODISCARD) std::chrono::nanoseconds minEpochTime() const noexcept;
+
+    // For high MdAPE, you might want to increase the minimum number of iterations per epoch.
+    Config& minEpochIterations(uint64_t numIters) noexcept;
+    ANKERL_NANOBENCH(NODISCARD) uint64_t minEpochIterations() const noexcept;
 
     Config& warmup(uint64_t numWarmupIters) noexcept;
     ANKERL_NANOBENCH(NODISCARD) uint64_t warmup() const noexcept;
@@ -200,11 +204,12 @@ private:
     std::string mUnit = "op";
     double mBatch = 1.0;
     size_t mNumEpochs = 51;
-    size_t mClockResolutionMultiple = static_cast<size_t>(1000);
+    size_t mClockResolutionMultiple = static_cast<size_t>(2000);
     std::chrono::nanoseconds mMaxEpochTime = std::chrono::milliseconds(100);
     std::chrono::nanoseconds mMinEpochTime{};
+    uint64_t mMinEpochIterations{1};
     Result mRelative{};
-    size_t mWarmup = 0;
+    uint64_t mWarmup = 0;
 };
 
 // Makes sure none of the given arguments are optimized away by the compiler.
@@ -238,7 +243,7 @@ public:
     IterationLogic(IterationLogic&&) = delete;
     IterationLogic& operator=(IterationLogic&&) = delete;
 
-    ANKERL_NANOBENCH(NODISCARD) size_t numIters() const noexcept;
+    ANKERL_NANOBENCH(NODISCARD) uint64_t numIters() const noexcept;
     void add(std::chrono::nanoseconds elapsed) noexcept;
     ANKERL_NANOBENCH(NODISCARD) Result const& result() const;
 
@@ -250,7 +255,7 @@ private:
     ANKERL_NANOBENCH(NODISCARD) uint64_t calcBestNumIters(std::chrono::nanoseconds elapsed, uint64_t iters) noexcept;
     void upscale(std::chrono::nanoseconds elapsed);
 
-    void addMeasurement(std::chrono::nanoseconds elapsed) noexcept;
+    void addMeasurement(std::chrono::nanoseconds elapsed, uint64_t numIters) noexcept;
 
     uint64_t mNumIters = 1;
 
@@ -399,6 +404,12 @@ void doNotOptimizeAway(T& value) {
 #    include <vector>    // manage results
 #    if defined(__linux__)
 #        include <unistd.h> //sysconf
+#    endif
+
+#    ifdef ANKERL_NANOBENCH_LOG_ENABLED
+#        define ANKERL_NANOBENCH_LOG(x) std::cout << __FUNCTION__ << "@" << __LINE__ << ": " << x << std::endl
+#    else
+#        define ANKERL_NANOBENCH_LOG(x)
 #    endif
 
 // declarations ///////////////////////////////////////////////////////////////////////////////////
@@ -726,7 +737,7 @@ IterationLogic::IterationLogic(Config const& config, std::string name) noexcept
         mNumIters = mConfig.warmup();
         mState = State::warmup;
     } else {
-        mNumIters = 1;
+        mNumIters = mConfig.minEpochIterations();
         mState = State::upscaling_runtime;
     }
 }
@@ -736,6 +747,7 @@ IterationLogic::~IterationLogic() noexcept {
 }
 
 uint64_t IterationLogic::numIters() const noexcept {
+    ANKERL_NANOBENCH_LOG(mName << ": mNumIters=" << mNumIters);
     return mNumIters;
 }
 
@@ -749,23 +761,20 @@ uint64_t IterationLogic::calcBestNumIters(std::chrono::nanoseconds elapsed, uint
     auto doubleTargetRuntimePerEpoch = std::chrono::duration_cast<std::chrono::duration<double>>(mTargetRuntimePerEpoch);
     auto doubleNewIters = doubleTargetRuntimePerEpoch / doubleElapsed * static_cast<double>(iters);
 
-    // add 10% noise
+    auto doubleMinEpochIters = static_cast<double>(mConfig.minEpochIterations());
+    if (doubleNewIters < doubleMinEpochIters) {
+        doubleNewIters = doubleMinEpochIters;
+    }
     doubleNewIters *= 1.0 + 0.1 * mRng.uniform01();
 
     // +0.5 for correct rounding when casting
-    doubleNewIters += 0.5;
-
-    auto newIters = static_cast<uint64_t>(doubleNewIters);
-    if (newIters == 0) {
-        // make sure we don't underflow
-        return 1;
-    }
-    return newIters;
+    // NOLINTNEXTLINE(bugprone-incorrect-roundings)
+    return static_cast<uint64_t>(doubleNewIters + 0.5);
 }
 
-void IterationLogic::addMeasurement(std::chrono::nanoseconds elapsed) noexcept {
+void IterationLogic::addMeasurement(std::chrono::nanoseconds elapsed, uint64_t numIters) noexcept {
     auto doubleElapsed = std::chrono::duration_cast<std::chrono::duration<double>>(elapsed);
-    mSecPerUnit[mSecPerUnitIndex] = doubleElapsed / (mConfig.batch() * static_cast<double>(mNumIters));
+    mSecPerUnit[mSecPerUnitIndex] = doubleElapsed / (mConfig.batch() * static_cast<double>(numIters));
     ++mSecPerUnitIndex;
 }
 
@@ -785,6 +794,10 @@ void IterationLogic::upscale(std::chrono::nanoseconds elapsed) {
 }
 
 void IterationLogic::add(std::chrono::nanoseconds elapsed) noexcept {
+#    ifdef ANKERL_NANOBENCH_LOG_ENABLED
+    auto oldIters = mNumIters;
+#    endif
+
     switch (mState) {
     case State::warmup:
         if (isCloseEnoughForMeasurements(elapsed)) {
@@ -805,8 +818,8 @@ void IterationLogic::add(std::chrono::nanoseconds elapsed) noexcept {
             mState = State::measuring;
             mTotalElapsed += elapsed;
             mTotalNumIters += mNumIters;
+            addMeasurement(elapsed, mNumIters);
             mNumIters = calcBestNumIters(mTotalElapsed, mTotalNumIters);
-            addMeasurement(elapsed);
         } else {
             upscale(elapsed);
         }
@@ -817,17 +830,12 @@ void IterationLogic::add(std::chrono::nanoseconds elapsed) noexcept {
         // that fluctuation, or else we would bias the result
         mTotalElapsed += elapsed;
         mTotalNumIters += mNumIters;
+        addMeasurement(elapsed, mNumIters);
         mNumIters = calcBestNumIters(mTotalElapsed, mTotalNumIters);
-        addMeasurement(elapsed);
         break;
 
     case State::endless:
         mNumIters = (std::numeric_limits<uint64_t>::max)();
-        break;
-
-    default:
-        // shouldn't happen
-        mNumIters = 0;
         break;
     }
 
@@ -836,6 +844,11 @@ void IterationLogic::add(std::chrono::nanoseconds elapsed) noexcept {
         mResult = showResult("");
         mNumIters = 0;
     }
+
+    ANKERL_NANOBENCH_LOG(mName << ": " << detail::fmt::Number(20, 3, static_cast<double>(elapsed.count())) << " elapsed, "
+                               << detail::fmt::Number(20, 3, static_cast<double>(mTargetRuntimePerEpoch.count()))
+                               << " target. oldIters=" << oldIters << ", mNumIters=" << mNumIters
+                               << ", mState=" << static_cast<int>(mState));
 }
 
 Result const& IterationLogic::result() const {
@@ -888,7 +901,12 @@ Result IterationLogic::showResult(std::string const& errorMessage) const {
     // 5th column: possible symbols, possibly errormessage, benchmark name
     if (r.medianAbsolutePercentError() >= 0.05) {
         // >=5%
-        os << " :wavy_dash:";
+        auto avgIters = static_cast<double>(mTotalNumIters) / static_cast<double>(mConfig.epochs());
+        // NOLINTNEXTLINE(bugprone-incorrect-roundings)
+        auto suggestedIters = static_cast<uint64_t>(avgIters * 10 + 0.5);
+
+        os << " :wavy_dash: Unstable with ~" << detail::fmt::Number(1, 1, avgIters) << " iters. Try `minEpochIterations("
+           << suggestedIters << ")` ";
     }
     os << ' ' << detail::fmt::MarkDownCode(mName) << std::endl;
 
@@ -1080,6 +1098,14 @@ Config& Config::minEpochTime(std::chrono::nanoseconds t) noexcept {
 }
 std::chrono::nanoseconds Config::minEpochTime() const noexcept {
     return mMinEpochTime;
+}
+
+Config& Config::minEpochIterations(uint64_t numIters) noexcept {
+    mMinEpochIterations = (numIters == 0) ? 1 : numIters;
+    return *this;
+}
+uint64_t Config::minEpochIterations() const noexcept {
+    return mMinEpochIterations;
 }
 
 Config& Config::warmup(uint64_t numWarmupIters) noexcept {
