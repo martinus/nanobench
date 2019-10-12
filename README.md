@@ -142,7 +142,7 @@ seconds are possible.
 
 # Comparison
 
-I've implemented three different benchmarks in [google Benchmark](https://github.com/google/benchmark) and nanobench for comparison.
+I've implemented three different benchmarks in [google Benchmark](https://github.com/google/benchmark), [nonius](https://github.com/libnonius/nonius), and [nanobench](https://github.com/martinus/nanobench) for comparison. All benchmarks are run on an i7-8700 CPU locked at 3.2GHz, using [pyperf system tune](https://pyperf.readthedocs.io/en/latest/system.html).
 
 ## Google Benchmark
 
