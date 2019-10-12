@@ -136,6 +136,8 @@ I've implemented three different benchmarks in [google Benchmark](https://github
 
 ## Google Benchmark
 
+### Sourcecode
+
 ```cpp
 #include "benchmark.h"
 
@@ -175,6 +177,8 @@ BENCHMARK(ComparisonFluctuating);
 BENCHMARK_MAIN();
 ```
 
+### Results
+
 Compiled & linked with `g++ -O2 main.cpp -L/home/martinus/git/benchmark/build/src -lbenchmark -lpthread -o gbench`, executing it gives this result:
 
 ```
@@ -196,10 +200,92 @@ ComparisonSlow          10137913 ns         3920 ns         1000
 ComparisonFluctuating        993 ns          992 ns       706946
 ```
 
-The tests take 0.365s, 11.274 sec, 0.828sec
+Running the tests individually takes 0.365s, 11.274 sec, 0.828sec.
+
+## nonius
+
+### Sourcecode
+
+```cpp
+#define NONIUS_RUNNER
+#include <nonius/nonius_single.h++>
+
+#include <chrono>
+#include <random>
+#include <thread>
+
+NONIUS_PARAM(X, UINT64_C(1))
+
+template <typename Fn>
+struct volatilize_fn {
+    Fn fn;
+    auto operator()() const -> decltype(fn()) {
+        volatile auto x = fn();
+        return x;
+    }
+};
+
+template <typename Fn>
+auto volatilize(Fn&& fn) -> volatilize_fn<typename std::decay<Fn>::type> {
+    return {std::forward<Fn>(fn)};
+}
+
+NONIUS_BENCHMARK("x += x", [](nonius::chronometer meter) {
+    auto x = meter.param<X>();
+    meter.measure(volatilize([&]() { return x += x; }));
+})
+
+NONIUS_BENCHMARK("sleep 10ms", [] { std::this_thread::sleep_for(std::chrono::milliseconds(10)); })
+
+NONIUS_BENCHMARK("random fluctuations", [](nonius::chronometer meter) {
+    std::random_device dev;
+    std::mt19937_64 rng(dev());
+    meter.measure([&] {
+        // each run, perform a random number of rng calls
+        auto iterations = rng() & UINT64_C(0xff);
+        for (uint64_t i = 0; i < iterations; ++i) {
+            (void)rng();
+        }
+    });
+})
+```
+
+The tests individually take 0.713sec, 1.883sec, 0.819sec. Plus a startup overhead of 1.611sec.
+
+### Results
+
+```
+clock resolution: mean is 22.0426 ns (20480002 iterations)
+
+
+new round for parameters
+  X = 1
+
+benchmarking x += x
+collecting 100 samples, 56376 iterations each, in estimated 0 ns
+mean: 0.391109 ns, lb 0.391095 ns, ub 0.391135 ns, ci 0.95
+std dev: 9.50619e-05 ns, lb 6.25215e-05 ns, ub 0.000167224 ns, ci 0.95
+found 4 outliers among 100 samples (4%)
+variance is unaffected by outliers
+
+benchmarking sleep 10ms
+collecting 100 samples, 1 iterations each, in estimated 1013.66 ms
+mean: 10.1258 ms, lb 10.1189 ms, ub 10.1313 ms, ci 0.95
+std dev: 31.1777 μs, lb 26.5814 μs, ub 35.4952 μs, ci 0.95
+found 13 outliers among 100 samples (13%)
+variance is unaffected by outliers
+
+benchmarking random fluctuations
+collecting 100 samples, 23 iterations each, in estimated 2.2724 ms
+mean: 1016.26 ns, lb 991.161 ns, ub 1041.66 ns, ci 0.95
+std dev: 128.963 ns, lb 109.803 ns, ub 159.509 ns, ci 0.95
+found 2 outliers among 100 samples (2%)
+variance is severely inflated by outliers
+```
 
 ## ankerl::nanobench
 
+### Sourcecode
 I use doctest as a unit test framework. 
 
 ```cpp
@@ -234,7 +320,7 @@ TEST_CASE("comparison_fluctuating") {
 }
 ```
 
-Gives this markdown output:
+### Results
 
 ```
 | relative |               ns/op |                op/s |   MdAPE | framework comparison
@@ -258,7 +344,7 @@ The tests take 0.004s, 0.519s, 0.004s. Note that the last one shows a warning th
 
 Now it runs for 0.025ms and MdAPE has decreased, showing that the results are more stable.
 
-# Alternatives
+# More Links
 * [moodycamel::microbench](https://github.com/cameron314/microbench) moodycamel's microbench, probably closest to this library in spirit
 * [folly Benchmark](https://github.com/facebook/folly/blob/master/folly/Benchmark.h) Part of facebook's folly
 * [google Benchmark](https://github.com/google/benchmark) 
