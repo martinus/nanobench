@@ -105,18 +105,18 @@ Runs for 30ms and prints this table:
 
 | relative |         ns/uint64_t |          uint64_t/s |   MdAPE | Random Number Generators
 |---------:|--------------------:|--------------------:|--------:|:----------------------------------------------
-|          |               44.00 |       22,728,914.36 |    1.6% | `std::default_random_engine`
-|   195.2% |               22.54 |       44,374,030.10 |    4.0% | `std::mt19937`
-|   549.5% |                8.01 |      124,897,086.47 |    2.1% | `std::mt19937_64`
-|    93.0% |               47.31 |       21,138,957.42 |    0.6% | `std::ranlux24_base`
-|   125.1% |               35.17 |       28,434,788.37 |    0.8% | `std::ranlux48_base`
-|    21.5% |              204.57 |        4,888,285.22 |    1.8% | `std::ranlux24_base`
-|    12.7% |              345.82 |        2,891,635.94 |    3.0% | `std::ranlux48`
-|    65.8% |               66.82 |       14,965,403.16 |    1.6% | `std::knuth_b`
-| 2,060.4% |                2.14 |      468,304,293.34 |    0.1% | `ankerl::nanobench::Rng`
+|          |               42.35 |       23,610,881.52 |    1.2% | `std::default_random_engine`
+|   194.0% |               21.83 |       45,806,510.84 |    1.3% | `std::mt19937`
+|   550.3% |                7.70 |      129,937,795.08 |    1.5% | `std::mt19937_64`
+|    93.1% |               45.50 |       21,979,820.90 |    0.4% | `std::ranlux24_base`
+|   125.1% |               33.84 |       29,547,222.95 |    0.4% | `std::ranlux48_base`
+|    21.0% |              201.67 |        4,958,600.91 |    1.3% | `std::ranlux24_base`
+|    11.2% |              377.41 |        2,649,623.47 |    1.8% | `std::ranlux48`
+|    68.2% |               62.06 |       16,112,467.22 |    1.3% | `std::knuth_b`
+| 2,054.4% |                2.06 |      485,071,457.01 |    0.1% | `ankerl::nanobench::Rng`
 
 It shows that `ankerl::nanobench::Rng` is by far the fastest RNG, and has the least amount of
-fluctuation. It takes only 2.14ns to generate a random `uint64_t`, so ~470 million calls per
+fluctuation. It takes only 2.06ns to generate a random `uint64_t`, so ~485 million calls per
 seconds are possible.
 
 # Alternatives
