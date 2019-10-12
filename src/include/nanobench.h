@@ -899,16 +899,20 @@ Result IterationLogic::showResult(std::string const& errorMessage) const {
     os << detail::fmt::Number(7, 1, r.medianAbsolutePercentError() * 100) << "% |";
 
     // 5th column: possible symbols, possibly errormessage, benchmark name
-    if (r.medianAbsolutePercentError() >= 0.05) {
-        // >=5%
+    auto showUnstable = r.medianAbsolutePercentError() >= 0.05;
+    if (showUnstable) {
+        os << " :wavy_dash:";
+    }
+    os << ' ' << detail::fmt::MarkDownCode(mName);
+    if (showUnstable) {
         auto avgIters = static_cast<double>(mTotalNumIters) / static_cast<double>(mConfig.epochs());
         // NOLINTNEXTLINE(bugprone-incorrect-roundings)
         auto suggestedIters = static_cast<uint64_t>(avgIters * 10 + 0.5);
 
-        os << " :wavy_dash: Unstable with ~" << detail::fmt::Number(1, 1, avgIters) << " iters. Increase with e.g. `minEpochIterations("
-           << suggestedIters << ")` ";
+        os << " Unstable with ~" << detail::fmt::Number(1, 1, avgIters) << " iters. Increase `minEpochIterations` to e.g. "
+           << suggestedIters;
     }
-    os << ' ' << detail::fmt::MarkDownCode(mName) << std::endl;
+    os << std::endl;
 
     return r;
 }

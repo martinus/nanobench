@@ -239,16 +239,16 @@ Gives this markdown output:
 ```
 | relative |               ns/op |                op/s |   MdAPE | framework comparison
 |---------:|--------------------:|--------------------:|--------:|:----------------------------------------------
-|          |                0.31 |    3,195,870,694.33 |    0.0% | `x += x`
-|          |       10,142,042.00 |               98.60 |    0.0% | `sleep 10ms`
-|          |            1,001.68 |          998,318.62 |    5.4% | :wavy_dash: Unstable with ~40.8 iters. Increase with e.g. `minEpochIterations(408)`  `random fluctuations`
+|          |                0.31 |    3,195,591,912.16 |    0.0% | `x += x`
+|          |       10,141,464.00 |               98.61 |    0.0% | `sleep 10ms`
+|          |              987.53 |        1,012,631.24 |    5.9% | :wavy_dash: `random fluctuations` Unstable with ~37.8 iters. Increase `minEpochIterations` to e.g. 378
 ```
 
 | relative |               ns/op |                op/s |   MdAPE | framework comparison
 |---------:|--------------------:|--------------------:|--------:|:----------------------------------------------
-|          |                0.31 |    3,195,870,694.33 |    0.0% | `x += x`
-|          |       10,142,042.00 |               98.60 |    0.0% | `sleep 10ms`
-|          |            1,001.68 |          998,318.62 |    5.4% | :wavy_dash: Unstable with ~40.8 iters. Increase with e.g. `minEpochIterations(408)`  `random fluctuations`
+|          |                0.31 |    3,195,591,912.16 |    0.0% | `x += x`
+|          |       10,141,464.00 |               98.61 |    0.0% | `sleep 10ms`
+|          |              987.53 |        1,012,631.24 |    5.9% | :wavy_dash: `random fluctuations` Unstable with ~37.8 iters. Increase `minEpochIterations` to e.g. 378
 
 The tests take 0.004s, 0.519s, 0.004s. Note that the last one shows a warning that results were unreliable due to fluctuating, it recommends increasing the minimum number of iterations per epoch. I do that and run the test again:
 
