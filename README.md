@@ -223,7 +223,7 @@ TEST_CASE("example_random_number_generators") {
     // perform a few warmup calls, and since the runtime is not always stable for each
     // generator, increase the number of epochs to get more accurate numbers.
     ankerl::nanobench::Config cfg;
-    cfg.title("Random Number Generators").unit("uint64_t").warmup(10000).epochs(100);
+    cfg.title("Random Number Generators").unit("uint64_t").warmup(100);
 
     // Get the baseline against which the other random engines are compared
     auto baseline = bench<std::default_random_engine>(cfg, "std::default_random_engine");
@@ -241,19 +241,19 @@ TEST_CASE("example_random_number_generators") {
 }
 ```
 
-Runs for 30ms and prints this table:
+Runs for 18ms and prints this table:
 
 | relative |         ns/uint64_t |          uint64_t/s |   MdAPE | Random Number Generators
 |---------:|--------------------:|--------------------:|--------:|:----------------------------------------------
-|          |               42.35 |       23,610,881.52 |    1.2% | `std::default_random_engine`
-|   194.0% |               21.83 |       45,806,510.84 |    1.3% | `std::mt19937`
-|   550.3% |                7.70 |      129,937,795.08 |    1.5% | `std::mt19937_64`
-|    93.1% |               45.50 |       21,979,820.90 |    0.4% | `std::ranlux24_base`
-|   125.1% |               33.84 |       29,547,222.95 |    0.4% | `std::ranlux48_base`
-|    21.0% |              201.67 |        4,958,600.91 |    1.3% | `std::ranlux24_base`
-|    11.2% |              377.41 |        2,649,623.47 |    1.8% | `std::ranlux48`
-|    68.2% |               62.06 |       16,112,467.22 |    1.3% | `std::knuth_b`
-| 2,054.4% |                2.06 |      485,071,457.01 |    0.1% | `ankerl::nanobench::Rng`
+|          |               42.25 |       23,668,176.85 |    1.1% | `std::default_random_engine`
+|   193.1% |               21.88 |       45,712,836.12 |    2.1% | `std::mt19937`
+|   572.1% |                7.39 |      135,397,066.78 |    1.0% | `std::mt19937_64`
+|    89.5% |               47.19 |       21,192,450.36 |    0.6% | `std::ranlux24_base`
+|   119.9% |               35.23 |       28,384,568.54 |    0.6% | `std::ranlux48_base`
+|    21.0% |              200.76 |        4,980,979.23 |    1.1% | `std::ranlux24_base`
+|    11.4% |              369.46 |        2,706,636.37 |    1.8% | `std::ranlux48`
+|    66.6% |               63.41 |       15,769,698.89 |    1.4% | `std::knuth_b`
+| 2,049.4% |                2.06 |      485,045,939.09 |    0.1% | `ankerl::nanobench::Rng`
 
 It shows that `ankerl::nanobench::Rng` is by far the fastest RNG, and has the least amount of
 fluctuation. It takes only 2.06ns to generate a random `uint64_t`, so ~485 million calls per

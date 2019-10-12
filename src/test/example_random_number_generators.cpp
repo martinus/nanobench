@@ -16,7 +16,7 @@ TEST_CASE("example_random_number_generators") {
     // perform a few warmup calls, and since the runtime is not always stable for each
     // generator, increase the number of epochs to get more accurate numbers.
     ankerl::nanobench::Config cfg;
-    cfg.title("Random Number Generators").unit("uint64_t").warmup(10000).epochs(100);
+    cfg.title("Random Number Generators").unit("uint64_t").warmup(100);
 
     // Get the baseline against which the other random engines are compared
     auto baseline = bench<std::default_random_engine>(cfg, "std::default_random_engine");
