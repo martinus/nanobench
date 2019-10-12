@@ -10,7 +10,10 @@
    * [Features](#features)
    * [Examples](#examples)
       * [Simple Example](#simple-example)
-      * [Advanced Example](#advanced-example)
+      * [Something Fast](#something-fast)
+      * [Something Slow](#something-slow)
+      * [Something Unstable](#something-unstable)
+      * [Comparing Results](#comparing-results)
    * [Comparison](#comparison)
       * [Google Benchmark](#google-benchmark)
          * [Sourcecode](#sourcecode)
@@ -27,7 +30,7 @@
          * [Results](#results-3)
    * [More Links](#more-links)
 
-<!-- Added by: martinus, at: Sa Okt 12 23:01:59 CEST 2019 -->
+<!-- Added by: martinus, at: Sa Okt 12 23:24:47 CEST 2019 -->
 
 <!--te-->
 
@@ -80,7 +83,7 @@ prints this markdown table:
 Which means that one `x.compare_exchange_strong(y, 0);` call takes 5.83ns on my machine, or 171 million
 operations per second. Runtime fluctuates by around 0.1%, so the results are very stable.
 
-## Benchmarking Something Fast
+## Something Fast
 
 Let's benchmarks how fast we can do `x += x` for `uint64_t`:
 
@@ -114,7 +117,7 @@ This time the benchmark runs for 2.2ms and gives us a good result:
 
 It's a very stable result. One run the op/s is 3,196 million/sec, the next time I execute it I get 3,195 million/sec.
 
-## Benchmarking Something Slow
+## Something Slow
 
 Let's benchmark if sleeping for 10ms really takes 10ms.
 
@@ -134,7 +137,7 @@ After 517ms I get
 
 So we actually take 10.141ms instead of 10ms. Next time I run it, I get 10.141. Also a very stable result.
 
-## Benchmarking Something Unstable
+## Something Unstable
 
 Lets create an extreme artifical test that's hard to benchmark, because runtime fluctuates randomly: Each iteration randomly skip between 0-254 random numbers:
 
