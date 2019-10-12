@@ -9,8 +9,18 @@
       * [Advanced Example](#advanced-example)
    * [Comparison](#comparison)
       * [Google Benchmark](#google-benchmark)
+         * [Sourcecode](#sourcecode)
+         * [Results](#results)
+      * [nonius](#nonius)
+         * [Sourcecode](#sourcecode-1)
+         * [Results](#results-1)
       * [ankerl::nanobench](#ankerlnanobench)
-   * [Alternatives](#alternatives)
+         * [Sourcecode](#sourcecode-2)
+         * [Results](#results-2)
+   * [More Links](#more-links)
+
+<!-- Added by: martinus, at: Sa Okt 12 14:54:57 CEST 2019 -->
+
 <!--te-->
 
 Simple, fast, accurate microbenchmarking functionality for C++11/14/17/20.
