@@ -29,14 +29,21 @@
 
 Simple, fast, accurate microbenchmarking functionality for C++11/14/17/20.
 
-**ankerl::nanobench** is:
-* Easy to integrate - single header.
-* Easy to use: Automatic configuration
 * Fast: runtime is based based on the clock's accuracy
 * Accurate: overhead for measurements is kept as small as possible
 * Robust: Multiple evaluations (epochs) give robust statistics which protects against outliers. Warns when System
   not prepared for benchmarking (turbo mode, frequency scaling, debug mode, ...)
 * Fast to compile
+
+# Features
+
+* Single header library: you only need `nanobench.h`. Nothing else.
+* Easily integratable in any unit test framework: Pure C++. no Macros, no runners, no global registrations
+* Zero configuration: Automatically detects number of iterations for accurate measurements.
+* Fast execution: runtime is based on the clock's accuracy
+* Warns when system is not configured for benchmarking (currently only in Linux)
+* Warns at unstable results - with suggestions
+* Output in Markdown table format
 
 # Examples
 
