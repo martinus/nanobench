@@ -3,6 +3,8 @@
 [![Travis CI Build Status](https://travis-ci.com/martinus/nanobench.svg?branch=master)](https://travis-ci.com/martinus/nanobench)
 [![Appveyor Build Status](https://ci.appveyor.com/api/projects/status/github/martinus/nanobench?branch=master&svg=true)](https://ci.appveyor.com/project/martinus/nanobench)
 
+`ankerl::nanobench` is a platform independent microbenchmarking library for C++11/14/17/20.
+
 <!--ts-->
    * [Examples](#examples)
       * [Simple Example](#simple-example)
