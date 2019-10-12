@@ -857,13 +857,6 @@ Result const& IterationLogic::result() const {
 
 Result IterationLogic::showResult(std::string const& errorMessage) const {
     auto& os = std::cout;
-    if (!errorMessage.empty()) {
-        os << "|        - |                   - |                   - |       - | :boom: " << errorMessage << ' '
-           << detail::fmt::MarkDownCode(mName) << std::endl;
-        return Result();
-    }
-
-    Result r(mConfig.unit(), mSecPerUnit, mSecPerUnitIndex);
 
     detail::fmt::StreamStateRestorer restorer(os);
     auto h = calcTableSettingsHash(mConfig);
@@ -876,6 +869,14 @@ Result IterationLogic::showResult(std::string const& errorMessage) const {
            << "|---------:|--------------------:|--------------------:|--------:|:----------------------------------------------"
            << std::endl;
     }
+
+    if (!errorMessage.empty()) {
+        os << "|        - |                   - |                   - |       - | :boom: " << errorMessage << ' '
+           << detail::fmt::MarkDownCode(mName) << std::endl;
+        return Result();
+    }
+
+    Result r(mConfig.unit(), mSecPerUnit, mSecPerUnitIndex);
 
     // we want output that looks like this:
     // |  1208.4% |               14.15 |       70,649,422.38 |    0.3% | `std::vector<std::string> emplace + release`
