@@ -7,6 +7,7 @@
 `ankerl::nanobench` is a platform independent microbenchmarking library for C++11/14/17/20.
 
 <!--ts-->
+   * [Features](#features)
    * [Examples](#examples)
       * [Simple Example](#simple-example)
       * [Advanced Example](#advanced-example)
@@ -21,9 +22,12 @@
          * [Sourcecode](#sourcecode-2)
          * [Results](#results-2)
       * [Celero](#celero)
+      * [Picobench](#picobench)
+         * [Sourcecode](#sourcecode-3)
+         * [Results](#results-3)
    * [More Links](#more-links)
 
-<!-- Added by: martinus, at: Sa Okt 12 19:12:01 CEST 2019 -->
+<!-- Added by: martinus, at: Sa Okt 12 23:01:59 CEST 2019 -->
 
 <!--te-->
 
@@ -76,7 +80,111 @@ prints this markdown table:
 Which means that one `x.compare_exchange_strong(y, 0);` call takes 5.83ns on my machine, or 171 million
 operations per second. Runtime fluctuates by around 0.1%, so the results are very stable.
 
-## Advanced Example
+## Benchmarking Something Fast
+
+Let's benchmarks how fast we can do `x += x` for `uint64_t`:
+
+```cpp
+TEST_CASE("comparison_fast_v1") {
+    uint64_t x = 1;
+    ankerl::nanobench::Config().run("x += x", [&] { x += x; });
+}
+```
+
+After 0.2ms we get this output:
+
+| relative |               ns/op |                op/s |   MdAPE | benchmark
+|---------:|--------------------:|--------------------:|--------:|:----------------------------------------------
+|        - |                   - |                   - |       - | :boom: iterations overflow. Maybe your code got optimized away? `x += x`
+
+The compiler could optimize `x += x` away because we never used the output. Let's fix this:
+
+```cpp
+TEST_CASE("comparison_fast_v2") {
+    uint64_t x = 1;
+    ankerl::nanobench::Config().run("x += x", [&] { x += x; }).doNotOptimizeAway(x);
+}
+```
+
+This time the benchmark runs for 2.2ms and gives us a good result:
+
+| relative |               ns/op |                op/s |   MdAPE | framework comparison
+|---------:|--------------------:|--------------------:|--------:|:----------------------------------------------
+|          |                0.31 |    3,195,591,912.16 |    0.0% | `x += x`
+
+It's a very stable result. One run the op/s is 3,196 million/sec, the next time I execute it I get 3,195 million/sec.
+
+## Benchmarking Something Slow
+
+Let's benchmark if sleeping for 10ms really takes 10ms.
+
+```cpp
+TEST_CASE("comparison_slow") {
+    ankerl::nanobench::Config().run("sleep 10ms", [&] {
+        std::this_thread::sleep_for(std::chrono::milliseconds(10));
+    });
+}
+```
+
+After 517ms I get
+
+| relative |               ns/op |                op/s |   MdAPE | framework comparison
+|---------:|--------------------:|--------------------:|--------:|:----------------------------------------------
+|          |       10,141,835.00 |               98.60 |    0.0% | `sleep 10ms`
+
+So we actually take 10.141ms instead of 10ms. Next time I run it, I get 10.141. Also a very stable result.
+
+## Benchmarking Something Unstable
+
+Lets create an extreme artifical test that's hard to benchmark, because runtime fluctuates randomly: Each iteration randomly skip between 0-254 random numbers:
+
+```cpp
+TEST_CASE("comparison_fluctuating_v1") {
+    std::random_device dev;
+    std::mt19937_64 rng(dev());
+    ankerl::nanobench::Config().run("random fluctuations", [&] {
+        // each run, perform a random number of rng calls
+        auto iterations = rng() & UINT64_C(0xff);
+        for (uint64_t i = 0; i < iterations; ++i) {
+            (void)rng();
+        }
+    });
+}
+```
+
+After 2.3ms, I get this result:
+
+| relative |               ns/op |                op/s |   MdAPE | benchmark
+|---------:|--------------------:|--------------------:|--------:|:----------------------------------------------
+|          |            1,004.05 |          995,962.31 |    7.9% | :wavy_dash: `random fluctuations` Unstable with ~38.6 iters. Increase `minEpochIterations` to e.g. 386
+
+So on average each loop takes about 1,004ns, but we get a warning that the results are unstable. The median percentage error is ~8% which is quite high. Executed again, I get 984 ns.
+
+Let's use the suggestion and set the minimum number of iterations to 500, and try again:
+
+```cpp
+TEST_CASE("comparison_fluctuating_v2") {
+    std::random_device dev;
+    std::mt19937_64 rng(dev());
+    ankerl::nanobench::Config().minEpochIterations(500).run("random fluctuations", [&] {
+        // each run, perform a random number of rng calls
+        auto iterations = rng() & UINT64_C(0xff);
+        for (uint64_t i = 0; i < iterations; ++i) {
+            (void)rng();
+        }
+    });
+}
+```
+
+The fluctuations are much better:
+
+| relative |               ns/op |                op/s |   MdAPE | benchmark
+|---------:|--------------------:|--------------------:|--------:|:----------------------------------------------
+|          |              987.19 |        1,012,971.22 |    1.9% | `random fluctuations`
+
+The results are also more stable. This time the benchmark takes 27ms.
+
+## Comparing Results
 
 Easily integratable into any test framework like e.g. [doctest](https://github.com/onqtam/doctest). First
 put the implementation into a separate cpp file [nanobench.cpp](src/test/app/nanobench.cpp):
@@ -364,9 +472,93 @@ Now it runs for 0.025ms and MdAPE has decreased, showing that the results are mo
 
 Unfortunately I couldn't get it working. I only got segmentation faults for my `x += x` benchmark.
 
+## Picobench
+
+### Sourcecode
+
+It took me a while to figure out that I have to configure the slow test, otherwise it would run for a looong time
+since the number of iterations is hardcoded.
+
+```cpp
+#define PICOBENCH_IMPLEMENT_WITH_MAIN
+#include "picobench.hpp"
+
+#include <chrono>
+#include <random>
+#include <thread>
+
+PICOBENCH_SUITE("ComparisonFast");
+static void ComparisonFast(picobench::state& state) {
+    uint64_t x = 1;
+    for (auto _ : state) {
+        x += x;
+    }
+    state.set_result(x);
+}
+PICOBENCH(ComparisonFast);
+
+PICOBENCH_SUITE("ComparisonSlow");
+void ComparisonSlow(picobench::state& state) {
+    for (auto _ : state) {
+        std::this_thread::sleep_for(std::chrono::milliseconds(10));
+    }
+}
+PICOBENCH(ComparisonSlow).iterations({1, 2, 5, 10});
+
+PICOBENCH_SUITE("fluctuating");
+void ComparisonFluctuating(picobench::state& state) {
+    std::random_device dev;
+    std::mt19937_64 rng(dev());
+    for (auto _ : state) {
+        // each run, perform a random number of rng calls
+        auto iterations = rng() & UINT64_C(0xff);
+        for (uint64_t i = 0; i < iterations; ++i) {
+            (void)rng();
+        }
+    }
+}
+PICOBENCH(ComparisonFluctuating);
+```
+
+### Results
+
+```
+ComparisonFast:
+===============================================================================
+   Name (baseline is *)   |   Dim   |  Total ms |  ns/op  |Baseline| Ops/second
+===============================================================================
+         ComparisonFast * |       8 |     0.000 |       7 |      - |129032258.1
+         ComparisonFast * |      64 |     0.000 |       1 |      - |955223880.6
+         ComparisonFast * |     512 |     0.000 |       0 |      - |2265486725.7
+         ComparisonFast * |    4096 |     0.001 |       0 |      - |3112462006.1
+         ComparisonFast * |    8192 |     0.003 |       0 |      - |3139900345.0
+===============================================================================
+ComparisonSlow:
+===============================================================================
+   Name (baseline is *)   |   Dim   |  Total ms |  ns/op  |Baseline| Ops/second
+===============================================================================
+         ComparisonSlow * |       1 |    10.089 |10088827 |      - |       99.1
+         ComparisonSlow * |       2 |    20.282 |10141241 |      - |       98.6
+         ComparisonSlow * |       5 |    50.713 |10142656 |      - |       98.6
+         ComparisonSlow * |      10 |   101.246 |10124572 |      - |       98.8
+===============================================================================
+fluctuating:
+===============================================================================
+   Name (baseline is *)   |   Dim   |  Total ms |  ns/op  |Baseline| Ops/second
+===============================================================================
+  ComparisonFluctuating * |       8 |     0.009 |    1166 |      - |   857632.9
+  ComparisonFluctuating * |      64 |     0.065 |    1016 |      - |   983405.0
+  ComparisonFluctuating * |     512 |     0.500 |     976 |      - |  1024514.3
+  ComparisonFluctuating * |    4096 |     4.037 |     985 |      - |  1014687.5
+  ComparisonFluctuating * |    8192 |     8.190 |     999 |      - |  1000246.2
+===============================================================================
+```
+
+
 # More Links
 * [moodycamel::microbench](https://github.com/cameron314/microbench) moodycamel's microbench, probably closest to this library in spirit
 * [folly Benchmark](https://github.com/facebook/folly/blob/master/folly/Benchmark.h) Part of facebook's folly
 * [google Benchmark](https://github.com/google/benchmark) 
 * [nonius](https://github.com/libnonius/nonius) Unmaintained?
 * [celero](https://github.com/DigitalInBlue/Celero)
+* [picobench](https://github.com/iboB/picobench)
