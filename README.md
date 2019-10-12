@@ -47,6 +47,8 @@ Simple, fast, accurate microbenchmarking functionality for C++11/14/17/20.
 
 # Examples
 
+You can find more examples in [src/test](https://github.com/martinus/nanobench/tree/master/src/test).
+
 ## Simple Example
 
 This code from [full_example.cpp](src/scripts/full_example.cpp):
