@@ -119,6 +119,135 @@ It shows that `ankerl::nanobench::Rng` is by far the fastest RNG, and has the le
 fluctuation. It takes only 2.06ns to generate a random `uint64_t`, so ~485 million calls per
 seconds are possible.
 
+# Comparison
+
+I've implemented three different benchmarks in [google Benchmark](https://github.com/google/benchmark) and nanobench for comparison.
+
+## Google Benchmark
+
+```cpp
+#include "benchmark.h"
+
+#include <chrono>
+#include <random>
+#include <thread>
+
+void ComparisonFast(benchmark::State& state) {
+    uint64_t x = 1;
+    for (auto _ : state) {
+        x += x;
+    }
+    benchmark::DoNotOptimize(x);
+}
+BENCHMARK(ComparisonFast);
+
+void ComparisonSlow(benchmark::State& state) {
+    for (auto _ : state) {
+        std::this_thread::sleep_for(std::chrono::milliseconds(10));
+    }
+}
+BENCHMARK(ComparisonSlow);
+
+void ComparisonFluctuating(benchmark::State& state) {
+    std::random_device dev;
+    std::mt19937_64 rng(dev());
+    for (auto _ : state) {
+        // each run, perform a random number of rng calls
+        auto iterations = rng() & UINT64_C(0xff);
+        for (uint64_t i = 0; i < iterations; ++i) {
+            (void)rng();
+        }
+    }
+}
+BENCHMARK(ComparisonFluctuating);
+
+BENCHMARK_MAIN();
+```
+
+Compiled & linked with `g++ -O2 main.cpp -L/home/martinus/git/benchmark/build/src -lbenchmark -lpthread -o gbench`, executing it gives this result:
+
+```
+2019-10-12 12:03:25
+Running ./gbench
+Run on (12 X 4600 MHz CPU s)
+CPU Caches:
+  L1 Data 32K (x6)
+  L1 Instruction 32K (x6)
+  L2 Unified 256K (x6)
+  L3 Unified 12288K (x1)
+Load Average: 0.21, 0.55, 0.60
+***WARNING*** CPU scaling is enabled, the benchmark real time measurements may be noisy and will incur extra overhead.
+----------------------------------------------------------------
+Benchmark                      Time             CPU   Iterations
+----------------------------------------------------------------
+ComparisonFast             0.313 ns        0.313 ns   1000000000
+ComparisonSlow          10137913 ns         3920 ns         1000
+ComparisonFluctuating        993 ns          992 ns       706946
+```
+
+The tests take 0.365s, 11.274 sec, 0.828sec
+
+## ankerl::nanobench
+
+I use doctest as a unit test framework. 
+
+```cpp
+#include <nanobench.h>
+#include <thirdparty/doctest/doctest.h>
+
+#include <chrono>
+#include <random>
+#include <thread>
+
+TEST_CASE("comparison_fast") {
+    uint64_t x = 1;
+    ankerl::nanobench::Config().title("framework comparison").run("x += x", [&] { x += x; }).doNotOptimizeAway(x);
+}
+
+TEST_CASE("comparison_slow") {
+    ankerl::nanobench::Config().title("framework comparison").run("sleep 10ms", [&] {
+        std::this_thread::sleep_for(std::chrono::milliseconds(10));
+    });
+}
+
+TEST_CASE("comparison_fluctuating") {
+    std::random_device dev;
+    std::mt19937_64 rng(dev());
+    ankerl::nanobench::Config().title("framework comparison").run("random fluctuations", [&] {
+        // each run, perform a random number of rng calls
+        auto iterations = rng() & UINT64_C(0xff);
+        for (uint64_t i = 0; i < iterations; ++i) {
+            (void)rng();
+        }
+    });
+}
+```
+
+Gives this output:
+
+```
+| relative |               ns/op |                op/s |   MdAPE | framework comparison
+|---------:|--------------------:|--------------------:|--------:|:----------------------------------------------
+|          |                0.31 |    3,195,870,694.33 |    0.0% | `x += x`
+|          |       10,142,042.00 |               98.60 |    0.0% | `sleep 10ms`
+|          |            1,001.68 |          998,318.62 |    5.4% | :wavy_dash: Unstable with ~40.8 iters. Increase with e.g. `minEpochIterations(408)`  `random fluctuations`
+```
+
+| relative |               ns/op |                op/s |   MdAPE | framework comparison
+|---------:|--------------------:|--------------------:|--------:|:----------------------------------------------
+|          |                0.31 |    3,195,870,694.33 |    0.0% | `x += x`
+|          |       10,142,042.00 |               98.60 |    0.0% | `sleep 10ms`
+|          |            1,001.68 |          998,318.62 |    5.4% | :wavy_dash: Unstable with ~40.8 iters. Increase with e.g. `minEpochIterations(408)`  `random fluctuations`
+
+The tests take 0.004s, 0.519s, 0.004s. Note that the last one shows a warning that results were unreliable due to fluctuating, it recommends increasing the minimum number of iterations per epoch. I do that and run the test again:
+
+| relative |               ns/op |                op/s |   MdAPE | framework comparison
+|---------:|--------------------:|--------------------:|--------:|:----------------------------------------------
+|          |              995.14 |        1,004,882.58 |    1.8% | `random fluctuations`
+
+Now it runs for 0.025ms and MdAPE has decreased, showing that the results are more stable.
+
+
 # Alternatives
 * [moodycamel::microbench](https://github.com/cameron314/microbench) moodycamel's microbench, probably closest to this library in spirit
 * [folly Benchmark](https://github.com/facebook/folly/blob/master/folly/Benchmark.h) Part of facebook's folly

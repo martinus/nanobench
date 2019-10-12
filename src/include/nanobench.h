@@ -905,7 +905,7 @@ Result IterationLogic::showResult(std::string const& errorMessage) const {
         // NOLINTNEXTLINE(bugprone-incorrect-roundings)
         auto suggestedIters = static_cast<uint64_t>(avgIters * 10 + 0.5);
 
-        os << " :wavy_dash: Unstable with ~" << detail::fmt::Number(1, 1, avgIters) << " iters. Try `minEpochIterations("
+        os << " :wavy_dash: Unstable with ~" << detail::fmt::Number(1, 1, avgIters) << " iters. Increase with e.g. `minEpochIterations("
            << suggestedIters << ")` ";
     }
     os << ' ' << detail::fmt::MarkDownCode(mName) << std::endl;
