@@ -20,9 +20,10 @@
       * [ankerl::nanobench](#ankerlnanobench)
          * [Sourcecode](#sourcecode-2)
          * [Results](#results-2)
+      * [Celero](#celero)
    * [More Links](#more-links)
 
-<!-- Added by: martinus, at: Sa Okt 12 14:54:57 CEST 2019 -->
+<!-- Added by: martinus, at: Sa Okt 12 19:12:01 CEST 2019 -->
 
 <!--te-->
 
@@ -349,6 +350,10 @@ The tests take 0.004s, 0.519s, 0.004s. Note that the last one shows a warning th
 |          |              995.14 |        1,004,882.58 |    1.8% | `random fluctuations`
 
 Now it runs for 0.025ms and MdAPE has decreased, showing that the results are more stable.
+
+## Celero
+
+Unfortunately I couldn't get it working. I only got segmentation faults for my `x += x` benchmark.
 
 # More Links
 * [moodycamel::microbench](https://github.com/cameron314/microbench) moodycamel's microbench, probably closest to this library in spirit
