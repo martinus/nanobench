@@ -93,8 +93,7 @@ only needs to be done once. The usage of nanobench compiles very fast.
 #include <nanobench.h>
 ```
 
-I use [doctest](https://github.com/onqtam/doctest) as a unit test framework, which is really fast
-and has a bunch of features.
+I use [doctest](https://github.com/onqtam/doctest) as a unit test framework, which is like [Catch2](https://github.com/catchorg/Catch2) - but compiles much faster. It pairs well with nanobench.
 
 ## Something Fast
 
