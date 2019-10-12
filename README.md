@@ -223,7 +223,7 @@ TEST_CASE("comparison_fluctuating") {
 }
 ```
 
-Gives this output:
+Gives this markdown output:
 
 ```
 | relative |               ns/op |                op/s |   MdAPE | framework comparison
@@ -246,7 +246,6 @@ The tests take 0.004s, 0.519s, 0.004s. Note that the last one shows a warning th
 |          |              995.14 |        1,004,882.58 |    1.8% | `random fluctuations`
 
 Now it runs for 0.025ms and MdAPE has decreased, showing that the results are more stable.
-
 
 # Alternatives
 * [moodycamel::microbench](https://github.com/cameron314/microbench) moodycamel's microbench, probably closest to this library in spirit
