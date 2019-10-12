@@ -3,6 +3,15 @@
 [![Travis CI Build Status](https://travis-ci.com/martinus/nanobench.svg?branch=master)](https://travis-ci.com/martinus/nanobench)
 [![Appveyor Build Status](https://ci.appveyor.com/api/projects/status/github/martinus/nanobench?branch=master&svg=true)](https://ci.appveyor.com/project/martinus/nanobench)
 
+<!--ts-->
+   * [Examples](#examples)
+      * [Simple Example](#simple-example)
+      * [Advanced Example](#advanced-example)
+   * [Comparison](#comparison)
+      * [Google Benchmark](#google-benchmark)
+      * [ankerl::nanobench](#ankerlnanobench)
+   * [Alternatives](#alternatives)
+<!--te-->
 
 Simple, fast, accurate microbenchmarking functionality for C++11/14/17/20.
 
@@ -21,6 +30,8 @@ makes this easy.
 * Robust: Multiple evaluations (epochs) give robust statistics which protects against outliers. Warns when System
   not prepared for benchmarking (turbo mode, frequency scaling, debug mode, ...)
 * Fast to compile
+
+# Examples
 
 ## Simple Example
 
