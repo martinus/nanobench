@@ -412,67 +412,6 @@ found 2 outliers among 100 samples (2%)
 variance is severely inflated by outliers
 ```
 
-## ankerl::nanobench
-
-### Sourcecode
-I use doctest as a unit test framework. 
-
-```cpp
-#include <nanobench.h>
-#include <thirdparty/doctest/doctest.h>
-
-#include <chrono>
-#include <random>
-#include <thread>
-
-TEST_CASE("comparison_fast") {
-    uint64_t x = 1;
-    ankerl::nanobench::Config().title("framework comparison").run("x += x", [&] { x += x; }).doNotOptimizeAway(x);
-}
-
-TEST_CASE("comparison_slow") {
-    ankerl::nanobench::Config().title("framework comparison").run("sleep 10ms", [&] {
-        std::this_thread::sleep_for(std::chrono::milliseconds(10));
-    });
-}
-
-TEST_CASE("comparison_fluctuating") {
-    std::random_device dev;
-    std::mt19937_64 rng(dev());
-    ankerl::nanobench::Config().title("framework comparison").run("random fluctuations", [&] {
-        // each run, perform a random number of rng calls
-        auto iterations = rng() & UINT64_C(0xff);
-        for (uint64_t i = 0; i < iterations; ++i) {
-            (void)rng();
-        }
-    });
-}
-```
-
-### Results
-
-```
-| relative |               ns/op |                op/s |   MdAPE | framework comparison
-|---------:|--------------------:|--------------------:|--------:|:----------------------------------------------
-|          |                0.31 |    3,195,591,912.16 |    0.0% | `x += x`
-|          |       10,141,464.00 |               98.61 |    0.0% | `sleep 10ms`
-|          |              987.53 |        1,012,631.24 |    5.9% | :wavy_dash: `random fluctuations` Unstable with ~37.8 iters. Increase `minEpochIterations` to e.g. 378
-```
-
-| relative |               ns/op |                op/s |   MdAPE | framework comparison
-|---------:|--------------------:|--------------------:|--------:|:----------------------------------------------
-|          |                0.31 |    3,195,591,912.16 |    0.0% | `x += x`
-|          |       10,141,464.00 |               98.61 |    0.0% | `sleep 10ms`
-|          |              987.53 |        1,012,631.24 |    5.9% | :wavy_dash: `random fluctuations` Unstable with ~37.8 iters. Increase `minEpochIterations` to e.g. 378
-
-The tests take 0.004s, 0.519s, 0.004s. Note that the last one shows a warning that results were unreliable due to fluctuating, it recommends increasing the minimum number of iterations per epoch. I do that and run the test again:
-
-| relative |               ns/op |                op/s |   MdAPE | framework comparison
-|---------:|--------------------:|--------------------:|--------:|:----------------------------------------------
-|          |              995.14 |        1,004,882.58 |    1.8% | `random fluctuations`
-
-Now it runs for 0.025ms and MdAPE has decreased, showing that the results are more stable.
-
 ## Celero
 
 Unfortunately I couldn't get it working. I only got segmentation faults for my `x += x` benchmark.
@@ -560,7 +499,7 @@ fluctuating:
 ```
 
 
-# More Links
+# Links
 * [moodycamel::microbench](https://github.com/cameron314/microbench) moodycamel's microbench, probably closest to this library in spirit
 * [folly Benchmark](https://github.com/facebook/folly/blob/master/folly/Benchmark.h) Part of facebook's folly
 * [google Benchmark](https://github.com/google/benchmark) 
