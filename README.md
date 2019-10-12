@@ -28,17 +28,10 @@
 
 Simple, fast, accurate microbenchmarking functionality for C++11/14/17/20.
 
-Most C++ projects often already have a unit test frameworks in place, like 
-[Boost.Test](https://www.boost.org/doc/libs/1_71_0/libs/test/doc/html/index.html) or
-[gtest](https://github.com/google/googletest), but no good functionality for benchmarking.
-While libraries like [google/benchmark](https://github.com/google/benchmark) exist,
-integrating these in an existing codebase if often not simple. [nanobench](https://github.com/martinus/nanobench/)
-makes this easy.
-
 **ankerl::nanobench** is:
 * Easy to integrate - single header.
 * Easy to use: Automatic configuration
-* Fast: runtime is based based on the clock's accuracy.
+* Fast: runtime is based based on the clock's accuracy
 * Accurate: overhead for measurements is kept as small as possible
 * Robust: Multiple evaluations (epochs) give robust statistics which protects against outliers. Warns when System
   not prepared for benchmarking (turbo mode, frequency scaling, debug mode, ...)
