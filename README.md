@@ -261,7 +261,7 @@ seconds are possible.
 
 # Comparison
 
-I've implemented three different benchmarks in [google Benchmark](https://github.com/google/benchmark), [nonius](https://github.com/libnonius/nonius), and [nanobench](https://github.com/martinus/nanobench) for comparison. All benchmarks are run on an i7-8700 CPU locked at 3.2GHz, using [pyperf system tune](https://pyperf.readthedocs.io/en/latest/system.html).
+I've implemented the three different benchmarks (slow, fast, unstable) in several frameworks for comparison. All benchmarks are run on an i7-8700 CPU locked at 3.2GHz, using [pyperf system tune](https://pyperf.readthedocs.io/en/latest/system.html).
 
 ## Google Benchmark
 
@@ -498,6 +498,103 @@ fluctuating:
 ===============================================================================
 ```
 
+## Catch2
+
+### Sourcecode
+
+```cpp
+#define CATCH_CONFIG_ENABLE_BENCHMARKING
+#define CATCH_CONFIG_MAIN
+#include "catch.hpp"
+
+#include <chrono>
+#include <random>
+#include <thread>
+
+TEST_CASE("comparison_fast") {
+    uint64_t x = 1;
+    BENCHMARK("x += x") {
+        return x += x;
+    };
+}
+
+TEST_CASE("comparison_slow") {
+    BENCHMARK("sleep 10ms") {
+        std::this_thread::sleep_for(std::chrono::milliseconds(10));
+    };
+}
+
+TEST_CASE("comparison_fluctuating_v2") {
+    std::random_device dev;
+    std::mt19937_64 rng(dev());
+    BENCHMARK("random fluctuations") {
+        // each run, perform a random number of rng calls
+        auto iterations = rng() & UINT64_C(0xff);
+        for (uint64_t i = 0; i < iterations; ++i) {
+            (void)rng();
+        }
+    };
+}
+```
+
+### Results
+
+```
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+ca is a Catch v2.9.2 host application.
+Run with -? for options
+
+-------------------------------------------------------------------------------
+comparison_fast
+-------------------------------------------------------------------------------
+catch.cpp:9
+...............................................................................
+
+benchmark name                                  samples       iterations    estimated
+                                                mean          low mean      high mean
+                                                std dev       low std dev   high std dev
+-------------------------------------------------------------------------------
+x += x                                                  100        11884    1.1884 ms 
+                                                       1 ns         1 ns         1 ns 
+                                                       0 ns         0 ns         0 ns 
+                                                                                      
+
+-------------------------------------------------------------------------------
+comparison_slow
+-------------------------------------------------------------------------------
+catch.cpp:16
+...............................................................................
+
+benchmark name                                  samples       iterations    estimated
+                                                mean          low mean      high mean
+                                                std dev       low std dev   high std dev
+-------------------------------------------------------------------------------
+sleep 10ms                                              100            1    1.01294 s 
+                                                 10.1364 ms   10.1317 ms   10.1394 ms 
+                                                  18.767 us    13.381 us    25.245 us 
+                                                                                      
+
+-------------------------------------------------------------------------------
+comparison_fluctuating_v2
+-------------------------------------------------------------------------------
+catch.cpp:22
+...............................................................................
+
+benchmark name                                  samples       iterations    estimated
+                                                mean          low mean      high mean
+                                                std dev       low std dev   high std dev
+-------------------------------------------------------------------------------
+random fluctuations                                     100           23    2.2724 ms 
+                                                   1.006 us       979 ns     1.035 us 
+                                                     143 ns       123 ns       173 ns 
+                                                                                      
+
+===============================================================================
+test cases: 3 | 3 passed
+assertions: - none -
+```
+
+Catch is nice that it does everything automatic as well. It also shows low and high.
 
 # Links
 * [moodycamel::microbench](https://github.com/cameron314/microbench) moodycamel's microbench, probably closest to this library in spirit
