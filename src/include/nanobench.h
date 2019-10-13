@@ -103,7 +103,8 @@ private:
     std::chrono::duration<double> mMaximum{};
 };
 
-// Small Fast Counting RNG, version 4
+// Sfc64, V4 - Small Fast Counting RNG, version 4
+// Based on code from http://pracrand.sourceforge.net
 class Rng final {
 public:
     using result_type = uint64_t;
