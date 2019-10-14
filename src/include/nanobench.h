@@ -31,7 +31,7 @@
 #define ANKERL_NANOBENCH_H_INCLUDED
 
 // see https://semver.org/
-#define ANKERL_NANOBENCH_VERSION_MAJOR 1 // incompatible API changes
+#define ANKERL_NANOBENCH_VERSION_MAJOR 2 // incompatible API changes
 #define ANKERL_NANOBENCH_VERSION_MINOR 0 // backwards-compatible changes
 #define ANKERL_NANOBENCH_VERSION_PATCH 0 // backwards-compatible bug fixes
 
@@ -192,10 +192,11 @@ public:
     Config& batch(T b) noexcept;
     ANKERL_NANOBENCH(NODISCARD) double batch() const noexcept;
 
-    // Set a baseline to compare it to. 100% it is exactly as fast as the baseline, >100% means it is faster than the baseline, <100%
-    // means it is slower than the baseline.
-    Config& relative(Result const& baseline) noexcept;
-    ANKERL_NANOBENCH(NODISCARD) Result const& relative() const noexcept;
+    // Marks the next run as the baseline. 100% it is exactly as fast as the baseline, >100% means it is faster than the baseline,
+    // <100% means it is slower than the baseline.
+    Config& baseline() noexcept;
+    ANKERL_NANOBENCH(NODISCARD) bool isNextRunBaseline() const noexcept;
+    ANKERL_NANOBENCH(NODISCARD) Result const& getBaseline() const noexcept;
 
     // Operation unit. Defaults to "op", could be e.g. "byte" for string processing.
     // Use singular (byte, not bytes).
@@ -230,7 +231,7 @@ public:
 
     // Performs all evaluations.
     template <typename Op>
-    Result run(std::string const& name, Op op) const;
+    Result run(std::string const& name, Op op);
 
 private:
     std::string mBenchmarkTitle = "benchmark";
@@ -241,8 +242,9 @@ private:
     std::chrono::nanoseconds mMaxEpochTime = std::chrono::milliseconds(100);
     std::chrono::nanoseconds mMinEpochTime{};
     uint64_t mMinEpochIterations{1};
-    Result mRelative{};
+    Result mBaseline{};
     uint64_t mWarmup = 0;
+    bool mNextIsBaseline = false;
 };
 
 // Makes sure none of the given arguments are optimized away by the compiler.
@@ -282,6 +284,7 @@ public:
 private:
     enum class State { warmup, upscaling_runtime, measuring, endless };
 
+    ANKERL_NANOBENCH(NODISCARD) bool isRelativeEnabled() const;
     ANKERL_NANOBENCH(NODISCARD) Result showResult(std::string const& errorMessage) const;
     ANKERL_NANOBENCH(NODISCARD) bool isCloseEnoughForMeasurements(std::chrono::nanoseconds elapsed) const noexcept;
     ANKERL_NANOBENCH(NODISCARD) uint64_t calcBestNumIters(std::chrono::nanoseconds elapsed, uint64_t iters) noexcept;
@@ -350,7 +353,7 @@ constexpr uint64_t Rng::rotl(uint64_t x, unsigned k) noexcept {
 
 // Performs all evaluations.
 template <typename Op>
-Result Config::run(std::string const& name, Op op) const {
+Result Config::run(std::string const& name, Op op) {
     // It is important that this method is kept short so the compiler can do better optimizations/ inlining of op()
     detail::IterationLogic iterationLogic(*this, name);
 
@@ -361,6 +364,10 @@ Result Config::run(std::string const& name, Op op) const {
         }
         Clock::time_point after = Clock::now();
         iterationLogic.add(after - before);
+    }
+    if (mNextIsBaseline) {
+        mNextIsBaseline = false;
+        mBaseline = iterationLogic.result();
     }
     return iterationLogic.result();
 }
@@ -738,6 +745,9 @@ uint64_t IterationLogic::numIters() const noexcept {
     return mNumIters;
 }
 
+bool IterationLogic::isRelativeEnabled() const {
+    return mConfig.isNextRunBaseline() || mConfig.getBaseline().empty();
+}
 bool IterationLogic::isCloseEnoughForMeasurements(std::chrono::nanoseconds elapsed) const noexcept {
     return elapsed * 3 >= mTargetRuntimePerEpoch * 2;
 }
@@ -844,15 +854,23 @@ Result IterationLogic::showResult(std::string const& errorMessage) const {
     if (h != singletonLastTableSettingsHash()) {
         singletonLastTableSettingsHash() = h;
 
-        os << std::endl
-           << "| relative |" << std::setw(20) << std::right << ("ns/" + mConfig.unit()) << " |" << std::setw(20) << std::right
-           << (mConfig.unit() + "/s") << " |   MdAPE | " << mConfig.title() << std::endl
-           << "|---------:|--------------------:|--------------------:|--------:|:----------------------------------------------"
-           << std::endl;
+        os << std::endl;
+        if (isRelativeEnabled()) {
+            os << "| relative ";
+        }
+        os << "|" << std::setw(20) << std::right << ("ns/" + mConfig.unit()) << " |" << std::setw(20) << std::right
+           << (mConfig.unit() + "/s") << " |   MdAPE | " << mConfig.title() << std::endl;
+        if (isRelativeEnabled()) {
+            os << "|---------:";
+        }
+        os << "|--------------------:|--------------------:|--------:|:----------------------------------------------" << std::endl;
     }
 
     if (!errorMessage.empty()) {
-        os << "|        - |                   - |                   - |       - | :boom: " << errorMessage << ' '
+        if (isRelativeEnabled()) {
+            os << "|        - ";
+        }
+        os << "|                   - |                   - |       - | :boom: " << errorMessage << ' '
            << detail::fmt::MarkDownCode(mName) << std::endl;
         return Result();
     }
@@ -863,13 +881,16 @@ Result IterationLogic::showResult(std::string const& errorMessage) const {
     // we want output that looks like this:
     // |  1208.4% |               14.15 |       70,649,422.38 |    0.3% | `std::vector<std::string> emplace + release`
 
-    // 1st column: relative
     os << '|';
-    if (mConfig.relative().empty()) {
-        // relative not set or invalid, print blank column
-        os << "          |";
-    } else {
-        os << detail::fmt::Number(8, 1, mConfig.relative().median() / r.median() * 100) << "% |";
+
+    // 1st column: relative
+    if (isRelativeEnabled()) {
+        double d = 100.0;
+        if (!mConfig.getBaseline().empty()) {
+            d = mConfig.getBaseline().median() / r.median() * 100;
+        }
+
+        os << detail::fmt::Number(8, 1, d) << "% |";
     }
 
     // 2nd column: ns/unit
@@ -1053,12 +1074,15 @@ double Config::batch() const noexcept {
 
 // Set a baseline to compare it to. 100% it is exactly as fast as the baseline, >100% means it is faster than the baseline, <100%
 // means it is slower than the baseline.
-Config& Config::relative(Result const& baseline) noexcept {
-    mRelative = baseline;
+Config& Config::baseline() noexcept {
+    mNextIsBaseline = true;
     return *this;
 }
-Result const& Config::relative() const noexcept {
-    return mRelative;
+Result const& Config::getBaseline() const noexcept {
+    return mBaseline;
+}
+bool Config::isNextRunBaseline() const noexcept {
+    return mNextIsBaseline;
 }
 
 // Operation unit. Defaults to "op", could be e.g. "byte" for string processing.

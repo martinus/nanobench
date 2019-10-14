@@ -44,9 +44,7 @@ TEST_CASE("comparison") {
     double x = 1.0;
 
     auto cfg = ankerl::nanobench::Config().title("relative comparisons");
-    auto baseline = cfg.run("x += x", [&] { x += x; }).doNotOptimizeAway(x);
-
-    cfg.relative(baseline);
+    cfg.baseline().run("x += x", [&] { x += x; }).doNotOptimizeAway(x);
 
     x = 1.123;
     cfg.run("std::sin(x)", [&] { x += std::sin(x); }).doNotOptimizeAway(x);
