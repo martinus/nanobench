@@ -10,11 +10,10 @@ TEST_CASE("example_random_uniform01") {
     std::random_device dev;
     std::default_random_engine defaultRng(dev());
     double d = 0;
-    auto baseline = cfg.run("std::default_random_engine & std::uniform_real_distribution",
-                            [&] { d += std::uniform_real_distribution<>{}(defaultRng); })
-                        .doNotOptimizeAway(d);
-
-    cfg.relative(baseline);
+    cfg.baseline()
+        .run("std::default_random_engine & std::uniform_real_distribution",
+             [&] { d += std::uniform_real_distribution<>{}(defaultRng); })
+        .doNotOptimizeAway(d);
 
     ankerl::nanobench::Rng nanobenchRng;
     d = 0;
