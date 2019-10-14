@@ -5,11 +5,11 @@
 
 // Benchmarks how fast we can get 64bit random values from Rng
 template <typename Rng>
-ankerl::nanobench::Result bench(ankerl::nanobench::Config& cfg, std::string name) {
+ankerl::nanobench::Result bench(ankerl::nanobench::Config* cfg, std::string name) {
     std::random_device dev;
     Rng rng(dev());
     uint64_t x = 0;
-    return cfg.run(name, [&] { x += std::uniform_int_distribution<uint64_t>{}(rng); }).doNotOptimizeAway(x);
+    return cfg->run(name, [&] { x += std::uniform_int_distribution<uint64_t>{}(rng); }).doNotOptimizeAway(x);
 }
 
 TEST_CASE("example_random_number_generators") {
@@ -19,13 +19,13 @@ TEST_CASE("example_random_number_generators") {
     cfg.title("Random Number Generators").unit("uint64_t").warmup(100);
 
     // sets the first one as the baseline
-    bench<std::default_random_engine>(cfg.baseline(), "std::default_random_engine");
-    bench<std::mt19937>(cfg, "std::mt19937");
-    bench<std::mt19937_64>(cfg, "std::mt19937_64");
-    bench<std::ranlux24_base>(cfg, "std::ranlux24_base");
-    bench<std::ranlux48_base>(cfg, "std::ranlux48_base");
-    bench<std::ranlux24>(cfg, "std::ranlux24_base");
-    bench<std::ranlux48>(cfg, "std::ranlux48");
-    bench<std::knuth_b>(cfg, "std::knuth_b");
-    bench<ankerl::nanobench::Rng>(cfg, "ankerl::nanobench::Rng");
+    bench<std::default_random_engine>(&cfg.baseline(), "std::default_random_engine");
+    bench<std::mt19937>(&cfg, "std::mt19937");
+    bench<std::mt19937_64>(&cfg, "std::mt19937_64");
+    bench<std::ranlux24_base>(&cfg, "std::ranlux24_base");
+    bench<std::ranlux48_base>(&cfg, "std::ranlux48_base");
+    bench<std::ranlux24>(&cfg, "std::ranlux24_base");
+    bench<std::ranlux48>(&cfg, "std::ranlux48");
+    bench<std::knuth_b>(&cfg, "std::knuth_b");
+    bench<ankerl::nanobench::Rng>(&cfg, "ankerl::nanobench::Rng");
 }

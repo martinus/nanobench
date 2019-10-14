@@ -181,6 +181,10 @@ private:
 };
 
 // Configuration of a microbenchmark.
+#if defined(__clang__)
+#    pragma clang diagnostic push
+#    pragma clang diagnostic ignored "-Wpadded"
+#endif
 class Config {
 public:
     Config();
@@ -253,6 +257,9 @@ private:
     uint64_t mWarmup = 0;
     bool mNextIsBaseline = false;
 };
+#if defined(__clang__)
+#    pragma clang diagnostic pop
+#endif
 
 // Makes sure none of the given arguments are optimized away by the compiler.
 template <typename... Args>
@@ -279,11 +286,6 @@ class IterationLogic {
 public:
     IterationLogic(Config const& config, std::string name) noexcept;
 
-    IterationLogic(IterationLogic const&) = delete;
-    IterationLogic& operator=(IterationLogic const&) = delete;
-    IterationLogic(IterationLogic&&) = delete;
-    IterationLogic& operator=(IterationLogic&&) = delete;
-
     ANKERL_NANOBENCH(NODISCARD) uint64_t numIters() const noexcept;
     void add(std::chrono::nanoseconds elapsed) noexcept;
     ANKERL_NANOBENCH(NODISCARD) Result const& result() const;
@@ -304,7 +306,6 @@ private:
     std::string mName;
     Result mResult{};
     std::vector<Measurement> mMeasurements{};
-    std::chrono::duration<double> mSecPerUnit{};
     Rng mRng{};
 
     std::chrono::nanoseconds mTotalElapsed{};
@@ -1019,7 +1020,7 @@ Result::Result(std::string u, std::vector<Measurement> measurements) noexcept
     }
     std::sort(absolutePercentageErrors.begin(), absolutePercentageErrors.end());
     auto midpoint = absolutePercentageErrors.size() / 2;
-    if (absolutePercentageErrors.size() & 1U) {
+    if (1U == (absolutePercentageErrors.size() & 1U)) {
         mMedianAbsolutePercentError = absolutePercentageErrors[midpoint];
     } else {
         mMedianAbsolutePercentError = (absolutePercentageErrors[midpoint - 1U] + absolutePercentageErrors[midpoint]) / 2U;
@@ -1034,7 +1035,7 @@ std::string const& Result::unit() const noexcept {
 
 std::chrono::duration<double> Result::median() const noexcept {
     auto mid = mSortedMeasurements.size() / 2U;
-    if (mSortedMeasurements.size() & 1U) {
+    if (1U == (mSortedMeasurements.size() & 1U)) {
         return mSortedMeasurements[mid].secPerUnit();
     }
     return (mSortedMeasurements[mid - 1U].secPerUnit() + mSortedMeasurements[mid].secPerUnit()) / 2U;

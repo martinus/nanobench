@@ -18,8 +18,11 @@ Checks: "*,\
   -cppcoreguidelines-pro-type-vararg,\
   -cppcoreguidelines-pro-bounds-array-to-pointer-decay,\
   -fuchsia-overloaded-operator,\
-  -fuchsia-default-arguments,\
+  -fuchsia-default-arguments,\  
   -fuchsia-multiple-inheritance,\
+  -fuchsia-default-arguments-calls,\
+  -fuchsia-trailing-return,\
+  -modernize-use-trailing-return-type,\
   -misc-definitions-in-headers,\
   -cert-err58-cpp,\
   -clang-diagnostic-padded"
