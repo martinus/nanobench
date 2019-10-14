@@ -57,6 +57,13 @@
 #include <string>
 #include <vector>
 
+#ifdef ANKERL_NANOBENCH_LOG_ENABLED
+#    include <iostream>
+#    define ANKERL_NANOBENCH_LOG(x) std::cout << __FUNCTION__ << "@" << __LINE__ << ": " << x << std::endl
+#else
+#    define ANKERL_NANOBENCH_LOG(x)
+#endif
+
 // declarations ///////////////////////////////////////////////////////////////////////////////////
 
 namespace ankerl {
@@ -441,12 +448,6 @@ void doNotOptimizeAway(T& value) {
 #        include <unistd.h> //sysconf
 #    endif
 
-#    ifdef ANKERL_NANOBENCH_LOG_ENABLED
-#        define ANKERL_NANOBENCH_LOG(x) std::cout << __FUNCTION__ << "@" << __LINE__ << ": " << x << std::endl
-#    else
-#        define ANKERL_NANOBENCH_LOG(x)
-#    endif
-
 // declarations ///////////////////////////////////////////////////////////////////////////////////
 
 namespace ankerl {
@@ -746,7 +747,7 @@ uint64_t IterationLogic::numIters() const noexcept {
 }
 
 bool IterationLogic::isRelativeEnabled() const {
-    return mConfig.isNextRunBaseline() || mConfig.getBaseline().empty();
+    return mConfig.isNextRunBaseline() || !mConfig.getBaseline().empty();
 }
 bool IterationLogic::isCloseEnoughForMeasurements(std::chrono::nanoseconds elapsed) const noexcept {
     return elapsed * 3 >= mTargetRuntimePerEpoch * 2;
@@ -1050,7 +1051,6 @@ double Result::medianAbsolutePercentError() const noexcept {
 bool Result::empty() const noexcept {
     return mSortedMeasurements.empty();
 }
-
 
 std::chrono::duration<double> Result::minimum() const noexcept {
     return mSortedMeasurements.front().secPerUnit();
