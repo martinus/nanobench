@@ -55,6 +55,7 @@
 
 #include <chrono>
 #include <string>
+#include <vector>
 
 // declarations ///////////////////////////////////////////////////////////////////////////////////
 
@@ -63,6 +64,7 @@ namespace nanobench {
 
 using Clock = std::chrono::high_resolution_clock;
 class Config;
+class Measurement;
 class Result;
 class Rng;
 
@@ -79,17 +81,49 @@ class IterationLogic;
 namespace ankerl {
 namespace nanobench {
 
+class Measurement {
+public:
+    Measurement(Clock::duration elapsed, uint64_t numIters, double batch) noexcept
+        : mTotalElapsed(elapsed)
+        , mNumIters(numIters)
+        , mSecPerUnit(std::chrono::duration_cast<std::chrono::duration<double>>(elapsed) / (batch * static_cast<double>(numIters))) {}
+
+    bool operator<(Measurement const& other) const noexcept {
+        return mSecPerUnit < other.mSecPerUnit;
+    }
+
+    Clock::duration const& elapsed() const noexcept {
+        return mTotalElapsed;
+    }
+
+    uint64_t numIters() const noexcept {
+        return mNumIters;
+    }
+
+    std::chrono::duration<double> secPerUnit() const {
+        return mSecPerUnit;
+    }
+
+private:
+    Clock::duration mTotalElapsed;
+    uint64_t mNumIters;
+    std::chrono::duration<double> mSecPerUnit;
+};
+
 // Result returned after a benchmark has finished. Can be used as a baseline for relative().
 class Result {
 public:
-    Result(std::string u, std::chrono::duration<double> const* secPerUnit, size_t size) noexcept;
+    Result(std::string u, std::vector<Measurement> measurements) noexcept;
     Result() noexcept;
 
     ANKERL_NANOBENCH(NODISCARD) std::string const& unit() const noexcept;
+    ANKERL_NANOBENCH(NODISCARD) std::vector<Measurement> const& sortedMeasurements() const noexcept;
     ANKERL_NANOBENCH(NODISCARD) std::chrono::duration<double> median() const noexcept;
     ANKERL_NANOBENCH(NODISCARD) double medianAbsolutePercentError() const noexcept;
     ANKERL_NANOBENCH(NODISCARD) std::chrono::duration<double> minimum() const noexcept;
     ANKERL_NANOBENCH(NODISCARD) std::chrono::duration<double> maximum() const noexcept;
+
+    ANKERL_NANOBENCH(NODISCARD) bool empty() const noexcept;
 
     // Convenience: makes sure none of the given arguments are optimized away by the compiler.
     template <typename... Args>
@@ -97,10 +131,8 @@ public:
 
 private:
     std::string mUnit{};
-    std::chrono::duration<double> mMedian{};
+    std::vector<Measurement> mSortedMeasurements{};
     double mMedianAbsolutePercentError{};
-    std::chrono::duration<double> mMinimum{};
-    std::chrono::duration<double> mMaximum{};
 };
 
 // Sfc64, V4 - Small Fast Counting RNG, version 4
@@ -237,7 +269,6 @@ void doNotOptimizeAway(T const& val);
 class IterationLogic {
 public:
     IterationLogic(Config const& config, std::string name) noexcept;
-    ~IterationLogic() noexcept;
 
     IterationLogic(IterationLogic const&) = delete;
     IterationLogic& operator=(IterationLogic const&) = delete;
@@ -256,18 +287,14 @@ private:
     ANKERL_NANOBENCH(NODISCARD) uint64_t calcBestNumIters(std::chrono::nanoseconds elapsed, uint64_t iters) noexcept;
     void upscale(std::chrono::nanoseconds elapsed);
 
-    void addMeasurement(std::chrono::nanoseconds elapsed, uint64_t numIters) noexcept;
-
     uint64_t mNumIters = 1;
 
     Config const& mConfig;
     std::chrono::nanoseconds mTargetRuntimePerEpoch{};
-
-    // we don't use a vector here so we can get away with not including vector in the public interface
-    std::chrono::duration<double>* mSecPerUnit = nullptr;
-    size_t mSecPerUnitIndex = 0;
     std::string mName;
     Result mResult{};
+    std::vector<Measurement> mMeasurements{};
+    std::chrono::duration<double> mSecPerUnit{};
     Rng mRng{};
 
     std::chrono::nanoseconds mTotalElapsed{};
@@ -460,15 +487,6 @@ Clock::duration calcClockResolution(size_t numEvaluations) noexcept;
 
 // Calculates clock resolution once, and remembers the result
 inline Clock::duration clockResolution() noexcept;
-
-// calculates median, and properly handles even number of elements too.
-template <typename T>
-T calcMedian(T const* sortedResults, size_t size) noexcept;
-
-// calculates MdAPE which is the median of percentage error
-// see https://www.spiderfinancial.com/support/documentation/numxl/reference-manual/forecasting-performance/mdape
-double calcMedianAbsolutePercentageError(std::chrono::duration<double> const* results, size_t size,
-                                         std::chrono::duration<double> median) noexcept;
 
 // formatting utilities
 namespace fmt {
@@ -685,33 +703,6 @@ Clock::duration clockResolution() noexcept {
     return sResolution;
 }
 
-// calculates median, and properly handles even number of elements too.
-template <typename T>
-T calcMedian(T const* sortedResults, size_t size) noexcept {
-    auto mid = size / 2U;
-    if (size & 1U) {
-        return sortedResults[mid];
-    }
-    return (sortedResults[mid - 1U] + sortedResults[mid]) / 2U;
-}
-
-// calculates MdAPE which is the median of percentage error
-// see https://www.spiderfinancial.com/support/documentation/numxl/reference-manual/forecasting-performance/mdape
-double calcMedianAbsolutePercentageError(std::chrono::duration<double> const* results, size_t size,
-                                         std::chrono::duration<double> median) noexcept {
-    std::vector<double> absolutePercentageErrors;
-    for (size_t i = 0; i < size; ++i) {
-        auto const& r = results[i];
-        auto percent = (r - median) / r;
-        if (percent < 0) {
-            percent = -percent;
-        }
-        absolutePercentageErrors.push_back(percent);
-    }
-    std::sort(absolutePercentageErrors.begin(), absolutePercentageErrors.end());
-    return calcMedian(absolutePercentageErrors.data(), absolutePercentageErrors.size());
-}
-
 IterationLogic::IterationLogic(Config const& config, std::string name) noexcept
     : mConfig(config)
     , mName(std::move(name)) {
@@ -727,8 +718,7 @@ IterationLogic::IterationLogic(Config const& config, std::string name) noexcept
     }
 
     // prepare array for measurement results
-    mSecPerUnit = new std::chrono::duration<double>[mConfig.epochs()];
-    mSecPerUnitIndex = 0;
+    mMeasurements.reserve(mConfig.epochs());
 
     if (isEndlessRunning(mName)) {
         std::cout << "NANOBENCH_ENDLESS set: running '" << name << "' endlessly" << std::endl;
@@ -741,10 +731,6 @@ IterationLogic::IterationLogic(Config const& config, std::string name) noexcept
         mNumIters = mConfig.minEpochIterations();
         mState = State::upscaling_runtime;
     }
-}
-
-IterationLogic::~IterationLogic() noexcept {
-    delete[] mSecPerUnit;
 }
 
 uint64_t IterationLogic::numIters() const noexcept {
@@ -771,12 +757,6 @@ uint64_t IterationLogic::calcBestNumIters(std::chrono::nanoseconds elapsed, uint
     // +0.5 for correct rounding when casting
     // NOLINTNEXTLINE(bugprone-incorrect-roundings)
     return static_cast<uint64_t>(doubleNewIters + 0.5);
-}
-
-void IterationLogic::addMeasurement(std::chrono::nanoseconds elapsed, uint64_t numIters) noexcept {
-    auto doubleElapsed = std::chrono::duration_cast<std::chrono::duration<double>>(elapsed);
-    mSecPerUnit[mSecPerUnitIndex] = doubleElapsed / (mConfig.batch() * static_cast<double>(numIters));
-    ++mSecPerUnitIndex;
 }
 
 void IterationLogic::upscale(std::chrono::nanoseconds elapsed) {
@@ -819,7 +799,7 @@ void IterationLogic::add(std::chrono::nanoseconds elapsed) noexcept {
             mState = State::measuring;
             mTotalElapsed += elapsed;
             mTotalNumIters += mNumIters;
-            addMeasurement(elapsed, mNumIters);
+            mMeasurements.emplace_back(elapsed, mNumIters, mConfig.batch());
             mNumIters = calcBestNumIters(mTotalElapsed, mTotalNumIters);
         } else {
             upscale(elapsed);
@@ -831,7 +811,7 @@ void IterationLogic::add(std::chrono::nanoseconds elapsed) noexcept {
         // that fluctuation, or else we would bias the result
         mTotalElapsed += elapsed;
         mTotalNumIters += mNumIters;
-        addMeasurement(elapsed, mNumIters);
+        mMeasurements.emplace_back(elapsed, mNumIters, mConfig.batch());
         mNumIters = calcBestNumIters(mTotalElapsed, mTotalNumIters);
         break;
 
@@ -840,7 +820,7 @@ void IterationLogic::add(std::chrono::nanoseconds elapsed) noexcept {
         break;
     }
 
-    if (mSecPerUnitIndex == mConfig.epochs()) {
+    if (static_cast<uint64_t>(mMeasurements.size()) == mConfig.epochs()) {
         // we got all the results that we need, finish it
         mResult = showResult("");
         mNumIters = 0;
@@ -877,14 +857,15 @@ Result IterationLogic::showResult(std::string const& errorMessage) const {
         return Result();
     }
 
-    Result r(mConfig.unit(), mSecPerUnit, mSecPerUnitIndex);
+    ANKERL_NANOBENCH_LOG("mMeasurements.size()=" << mMeasurements.size());
+    Result r(mConfig.unit(), mMeasurements);
 
     // we want output that looks like this:
     // |  1208.4% |               14.15 |       70,649,422.38 |    0.3% | `std::vector<std::string> emplace + release`
 
     // 1st column: relative
     os << '|';
-    if (mConfig.relative().median() <= std::chrono::duration<double>::zero()) {
+    if (mConfig.relative().empty()) {
         // relative not set or invalid, print blank column
         os << "          |";
     } else {
@@ -997,15 +978,30 @@ std::ostream& operator<<(std::ostream& os, MarkDownCode const& mdCode) {
 } // namespace detail
 
 // Result returned after a benchmark has finished. Can be used as a baseline for relative().
-Result::Result(std::string u, std::chrono::duration<double> const* secPerUnitData, size_t size) noexcept
-    : mUnit(std::move(u)) {
+Result::Result(std::string u, std::vector<Measurement> measurements) noexcept
+    : mUnit(std::move(u))
+    , mSortedMeasurements(std::move(measurements)) {
 
-    std::vector<std::chrono::duration<double>> secPerUnit(secPerUnitData, secPerUnitData + size);
-    std::sort(secPerUnit.begin(), secPerUnit.end());
-    mMinimum = secPerUnit.front();
-    mMaximum = secPerUnit.back();
-    mMedian = detail::calcMedian(secPerUnit.data(), secPerUnit.size());
-    mMedianAbsolutePercentError = detail::calcMedianAbsolutePercentageError(secPerUnit.data(), secPerUnit.size(), mMedian);
+    std::sort(mSortedMeasurements.begin(), mSortedMeasurements.end());
+
+    // calculates MdAPE which is the median of percentage error
+    // see https://www.spiderfinancial.com/support/documentation/numxl/reference-manual/forecasting-performance/mdape
+    auto const med = median();
+    std::vector<double> absolutePercentageErrors;
+    for (auto const& m : mSortedMeasurements) {
+        auto percent = (m.secPerUnit() - med) / m.secPerUnit();
+        if (percent < 0) {
+            percent = -percent;
+        }
+        absolutePercentageErrors.push_back(percent);
+    }
+    std::sort(absolutePercentageErrors.begin(), absolutePercentageErrors.end());
+    auto midpoint = absolutePercentageErrors.size() / 2;
+    if (absolutePercentageErrors.size() & 1U) {
+        mMedianAbsolutePercentError = absolutePercentageErrors[midpoint];
+    } else {
+        mMedianAbsolutePercentError = (absolutePercentageErrors[midpoint - 1U] + absolutePercentageErrors[midpoint]) / 2U;
+    }
 }
 
 Result::Result() noexcept = default;
@@ -1015,19 +1011,32 @@ std::string const& Result::unit() const noexcept {
 }
 
 std::chrono::duration<double> Result::median() const noexcept {
-    return mMedian;
+    auto mid = mSortedMeasurements.size() / 2U;
+    if (mSortedMeasurements.size() & 1U) {
+        return mSortedMeasurements[mid].secPerUnit();
+    }
+    return (mSortedMeasurements[mid - 1U].secPerUnit() + mSortedMeasurements[mid].secPerUnit()) / 2U;
+}
+
+std::vector<Measurement> const& Result::sortedMeasurements() const noexcept {
+    return mSortedMeasurements;
 }
 
 double Result::medianAbsolutePercentError() const noexcept {
     return mMedianAbsolutePercentError;
 }
 
+bool Result::empty() const noexcept {
+    return mSortedMeasurements.empty();
+}
+
+
 std::chrono::duration<double> Result::minimum() const noexcept {
-    return mMinimum;
+    return mSortedMeasurements.front().secPerUnit();
 }
 
 std::chrono::duration<double> Result::maximum() const noexcept {
-    return mMaximum;
+    return mSortedMeasurements.back().secPerUnit();
 }
 
 // Configuration of a microbenchmark.
