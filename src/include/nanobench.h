@@ -163,6 +163,7 @@ public:
     // Marks the next run as the baseline. 100% it is exactly as fast as the baseline, >100% means it is faster than the baseline,
     // <100% means it is slower than the baseline.
     Config& baseline() noexcept;
+    ANKERL_NANOBENCH(NODISCARD) bool isNextRunBaseline() const noexcept;
     ANKERL_NANOBENCH(NODISCARD) Result const& getBaseline() const noexcept;
 
     // Operation unit. Defaults to "op", could be e.g. "byte" for string processing.
@@ -252,6 +253,7 @@ public:
 private:
     enum class State { warmup, upscaling_runtime, measuring, endless };
 
+    ANKERL_NANOBENCH(NODISCARD) bool isRelativeEnabled() const;
     ANKERL_NANOBENCH(NODISCARD) Result showResult(std::string const& errorMessage) const;
     ANKERL_NANOBENCH(NODISCARD) bool isCloseEnoughForMeasurements(std::chrono::nanoseconds elapsed) const noexcept;
     ANKERL_NANOBENCH(NODISCARD) uint64_t calcBestNumIters(std::chrono::nanoseconds elapsed, uint64_t iters) noexcept;
@@ -757,6 +759,9 @@ uint64_t IterationLogic::numIters() const noexcept {
     return mNumIters;
 }
 
+bool IterationLogic::isRelativeEnabled() const {
+    return mConfig.isNextRunBaseline() || mConfig.getBaseline().median() != std::chrono::duration<double>::zero();
+}
 bool IterationLogic::isCloseEnoughForMeasurements(std::chrono::nanoseconds elapsed) const noexcept {
     return elapsed * 3 >= mTargetRuntimePerEpoch * 2;
 }
@@ -869,15 +874,23 @@ Result IterationLogic::showResult(std::string const& errorMessage) const {
     if (h != singletonLastTableSettingsHash()) {
         singletonLastTableSettingsHash() = h;
 
-        os << std::endl
-           << "| relative |" << std::setw(20) << std::right << ("ns/" + mConfig.unit()) << " |" << std::setw(20) << std::right
-           << (mConfig.unit() + "/s") << " |   MdAPE | " << mConfig.title() << std::endl
-           << "|---------:|--------------------:|--------------------:|--------:|:----------------------------------------------"
-           << std::endl;
+        os << std::endl;
+        if (isRelativeEnabled()) {
+            os << "| relative ";
+        }
+        os << "|" << std::setw(20) << std::right << ("ns/" + mConfig.unit()) << " |" << std::setw(20) << std::right
+           << (mConfig.unit() + "/s") << " |   MdAPE | " << mConfig.title() << std::endl;
+        if (isRelativeEnabled()) {
+            os << "|---------:";
+        }
+        os << "|--------------------:|--------------------:|--------:|:----------------------------------------------" << std::endl;
     }
 
     if (!errorMessage.empty()) {
-        os << "|        - |                   - |                   - |       - | :boom: " << errorMessage << ' '
+        if (isRelativeEnabled()) {
+            os << "|        - ";
+        }
+        os << "|                   - |                   - |       - | :boom: " << errorMessage << ' '
            << detail::fmt::MarkDownCode(mName) << std::endl;
         return Result();
     }
@@ -887,13 +900,16 @@ Result IterationLogic::showResult(std::string const& errorMessage) const {
     // we want output that looks like this:
     // |  1208.4% |               14.15 |       70,649,422.38 |    0.3% | `std::vector<std::string> emplace + release`
 
-    // 1st column: relative
     os << '|';
-    if (mConfig.getBaseline().median() <= std::chrono::duration<double>::zero()) {
-        // relative not set or invalid, print blank column
-        os << "          |";
-    } else {
-        os << detail::fmt::Number(8, 1, mConfig.getBaseline().median() / r.median() * 100) << "% |";
+
+    // 1st column: relative
+    if (isRelativeEnabled()) {
+        double d = 100.0;
+        if (!mConfig.isNextRunBaseline()) {
+            d = mConfig.getBaseline().median() / r.median() * 100;
+        }
+
+        os << detail::fmt::Number(8, 1, d) << "% |";
     }
 
     // 2nd column: ns/unit
@@ -1055,6 +1071,9 @@ Config& Config::baseline() noexcept {
 }
 Result const& Config::getBaseline() const noexcept {
     return mBaseline;
+}
+bool Config::isNextRunBaseline() const noexcept {
+    return mNextIsBaseline;
 }
 
 // Operation unit. Defaults to "op", could be e.g. "byte" for string processing.
