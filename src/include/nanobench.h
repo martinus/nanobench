@@ -90,26 +90,12 @@ namespace nanobench {
 
 class Measurement {
 public:
-    Measurement(Clock::duration elapsed, uint64_t numIters, double batch) noexcept
-        : mTotalElapsed(elapsed)
-        , mNumIters(numIters)
-        , mSecPerUnit(std::chrono::duration_cast<std::chrono::duration<double>>(elapsed) / (batch * static_cast<double>(numIters))) {}
+    Measurement(Clock::duration elapsed, uint64_t numIters, double batch) noexcept;
 
-    bool operator<(Measurement const& other) const noexcept {
-        return mSecPerUnit < other.mSecPerUnit;
-    }
-
-    Clock::duration const& elapsed() const noexcept {
-        return mTotalElapsed;
-    }
-
-    uint64_t numIters() const noexcept {
-        return mNumIters;
-    }
-
-    std::chrono::duration<double> secPerUnit() const {
-        return mSecPerUnit;
-    }
+    ANKERL_NANOBENCH(NODISCARD) bool operator<(Measurement const& other) const noexcept;
+    ANKERL_NANOBENCH(NODISCARD) Clock::duration const& elapsed() const noexcept;
+    ANKERL_NANOBENCH(NODISCARD) uint64_t numIters() const noexcept;
+    ANKERL_NANOBENCH(NODISCARD) std::chrono::duration<double> secPerUnit() const;
 
 private:
     Clock::duration mTotalElapsed;
@@ -999,6 +985,27 @@ std::ostream& operator<<(std::ostream& os, MarkDownCode const& mdCode) {
 
 } // namespace fmt
 } // namespace detail
+
+Measurement::Measurement(Clock::duration elapsed, uint64_t numIters, double batch) noexcept
+    : mTotalElapsed(elapsed)
+    , mNumIters(numIters)
+    , mSecPerUnit(std::chrono::duration_cast<std::chrono::duration<double>>(elapsed) / (batch * static_cast<double>(numIters))) {}
+
+bool Measurement::operator<(Measurement const& other) const noexcept {
+    return mSecPerUnit < other.mSecPerUnit;
+}
+
+Clock::duration const& Measurement::elapsed() const noexcept {
+    return mTotalElapsed;
+}
+
+uint64_t Measurement::numIters() const noexcept {
+    return mNumIters;
+}
+
+std::chrono::duration<double> Measurement::secPerUnit() const {
+    return mSecPerUnit;
+}
 
 // Result returned after a benchmark has finished. Can be used as a baseline for relative().
 Result::Result(std::string u, std::vector<Measurement> measurements) noexcept
