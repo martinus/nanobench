@@ -106,10 +106,10 @@ private:
 // Result returned after a benchmark has finished. Can be used as a baseline for relative().
 class Result {
 public:
-    Result(std::string u, std::vector<Measurement> measurements) noexcept;
+    Result(std::string name, std::vector<Measurement> measurements) noexcept;
     Result() noexcept;
 
-    ANKERL_NANOBENCH(NODISCARD) std::string const& unit() const noexcept;
+    ANKERL_NANOBENCH(NODISCARD) std::string const& name() const noexcept;
     ANKERL_NANOBENCH(NODISCARD) std::vector<Measurement> const& sortedMeasurements() const noexcept;
     ANKERL_NANOBENCH(NODISCARD) std::chrono::duration<double> median() const noexcept;
     ANKERL_NANOBENCH(NODISCARD) double medianAbsolutePercentError() const noexcept;
@@ -119,7 +119,7 @@ public:
     ANKERL_NANOBENCH(NODISCARD) bool empty() const noexcept;
 
 private:
-    std::string mUnit{};
+    std::string mName{};
     std::vector<Measurement> mSortedMeasurements{};
     double mMedianAbsolutePercentError{};
 };
@@ -230,6 +230,9 @@ public:
     // Convenience: makes sure none of the given arguments are optimized away by the compiler.
     template <typename... Args>
     Config& doNotOptimizeAway(Args&&... args);
+
+    // Writes all the results into a Json file
+    Config& writeJson(std::ostream& os);
 
 private:
     std::string mBenchmarkTitle = "benchmark";
@@ -562,6 +565,18 @@ private:
 
 std::ostream& operator<<(std::ostream& os, MarkDownCode const& mdCode);
 
+// Escapes the string for Json
+class Json {
+public:
+    explicit Json(std::string const& str);
+
+private:
+    friend std::ostream& operator<<(std::ostream& os, Json const& mdCode);
+    std::ostream& write(std::ostream& os) const;
+
+    std::string mStr{};
+};
+
 } // namespace fmt
 } // namespace detail
 } // namespace nanobench
@@ -858,7 +873,7 @@ Result IterationLogic::showResult(std::string const& errorMessage) const {
     }
 
     ANKERL_NANOBENCH_LOG("mMeasurements.size()=" << mMeasurements.size());
-    Result r(mConfig.unit(), mMeasurements);
+    Result r(mName, mMeasurements);
 
     // we want output that looks like this:
     // |  1208.4% |               14.15 |       70,649,422.38 |    0.3% | `std::vector<std::string> emplace + release`
@@ -977,6 +992,44 @@ std::ostream& operator<<(std::ostream& os, MarkDownCode const& mdCode) {
     return mdCode.write(os);
 }
 
+Json::Json(std::string const& str) {
+    mStr.reserve(str.size() + 2);
+    mStr.push_back('"');
+    for (char c : str) {
+        switch (c) {
+        case '\n':
+            mStr += "\\n";
+            break;
+        case '\f':
+            mStr += "\\f";
+            break;
+        case '\r':
+            mStr += "\\r";
+            break;
+        case '\t':
+            mStr += "\\t";
+            break;
+        case '"':
+            mStr += "\\\"";
+            break;
+        case '\\':
+            mStr += "\\\\";
+            break;
+        default:
+            mStr.push_back(c);
+        }
+    }
+    mStr.push_back('"');
+}
+
+std::ostream& Json::write(std::ostream& os) const {
+    return os << mStr;
+}
+
+std::ostream& operator<<(std::ostream& os, Json const& json) {
+    return json.write(os);
+}
+
 } // namespace fmt
 } // namespace detail
 
@@ -1002,8 +1055,8 @@ std::chrono::duration<double> Measurement::secPerUnit() const {
 }
 
 // Result returned after a benchmark has finished. Can be used as a baseline for relative().
-Result::Result(std::string u, std::vector<Measurement> measurements) noexcept
-    : mUnit(std::move(u))
+Result::Result(std::string name, std::vector<Measurement> measurements) noexcept
+    : mName(std::move(name))
     , mSortedMeasurements(std::move(measurements)) {
 
     std::sort(mSortedMeasurements.begin(), mSortedMeasurements.end());
@@ -1030,8 +1083,8 @@ Result::Result(std::string u, std::vector<Measurement> measurements) noexcept
 
 Result::Result() noexcept = default;
 
-std::string const& Result::unit() const noexcept {
-    return mUnit;
+std::string const& Result::name() const noexcept {
+    return mName;
 }
 
 std::chrono::duration<double> Result::median() const noexcept {
@@ -1156,6 +1209,32 @@ uint64_t Config::warmup() const noexcept {
 
 std::vector<Result> const& Config::results() const noexcept {
     return mResults;
+}
+
+Config& Config::writeJson(std::ostream& os) {
+    using detail::fmt::Json;
+    os << "{\n";
+    os << " \"title\": " << Json(mBenchmarkTitle) << ",\n";
+    os << " \"unit\": " << Json(mUnit) << ",\n";
+    os << " \"batch\": " << mBatch << ",\n";
+    os << " \"benchmarks\": [\n";
+    for (size_t r = 0; r < mResults.size(); ++r) {
+        auto const& result = mResults[r];
+        os << "  {\n";
+        os << "   \"name\": " << Json(result.name()) << ",\n";
+        os << "   \"results\": [\n";
+        for (size_t m = 0; m < result.sortedMeasurements().size(); ++m) {
+            auto const& measurement = result.sortedMeasurements()[m];
+            auto postfix = (m == result.sortedMeasurements().size() - 1 ? "" : ",");
+            os << "    { \"sec_per_unit\": " << measurement.secPerUnit().count() << ", \"iters\": " << measurement.numIters()
+               << ", \"elapsed_ns\": " << measurement.elapsed().count() << " }" << postfix << "\n";
+        }
+        os << "   ]\n";
+        os << "  }" << (r == mResults.size() - 1 ? "" : ",") << "\n";
+    }
+    os << " ]\n";
+    os << "}\n";
+    return *this;
 }
 
 Rng::Rng()

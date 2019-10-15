@@ -8,16 +8,16 @@
     <div id="myDiv" style="width:1024px; height:768px"></div>
     <script>
         var data = [
-            {{#benchmark}}{
+            {{#benchmarks}}{
                 name: '{{name}}',
-                y: [{{#result}}{{number}},{{/result}}],
+                y: [{{#results}}{{sec_per_unit}},{{/results}}],
             },
-            {{/benchmark}}
+            {{/benchmarks}}
         ];
         var title = '{{title}}';
 
         data = data.map(a => Object.assign(a, { boxpoints: 'all', pointpos: 0, type: 'box' }));
-        var layout = { title: { text: title }, showlegend: false, yaxis: { rangemode: 'tozero', autorange: true } };
+        var layout = { title: { text: title }, showlegend: false, yaxis: { title: 'time per {{unit}}', rangemode: 'tozero', autorange: true } };
         Plotly.newPlot('myDiv', data, layout, {responsive: true});
     </script>
 </body>

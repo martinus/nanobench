@@ -1,7 +1,8 @@
 #include <nanobench.h>
-#include <thirdparty/doctest/doctest.h>
 
+#include <fstream>
 #include <random>
+#include <thirdparty/doctest/doctest.h>
 
 // Benchmarks how fast we can get 64bit random values from Rng
 template <typename Rng>
@@ -30,6 +31,6 @@ TEST_CASE("example_random_number_generators") {
     bench<ankerl::nanobench::Rng>(&cfg, "ankerl::nanobench::Rng");
 
     // Let's create a JSON file with all the results
-    // std::ofstream fout("example_random_number_generators.json");
-    // cfg.printJson(fout);
+    std::ofstream fout("example_random_number_generators.json");
+    cfg.writeJson(fout);
 }
