@@ -1,6 +1,7 @@
 #include <nanobench.h>
 #include <thirdparty/doctest/doctest.h>
 
+#include <fstream>
 #include <random>
 
 TEST_CASE("example_random_uniform01") {
@@ -22,4 +23,7 @@ TEST_CASE("example_random_uniform01") {
 
     d = 0;
     cfg.run("nanobenchRng.uniform01()", [&] { d += nanobenchRng.uniform01(); }).doNotOptimizeAway(d);
+
+    std::ofstream fout("example_random_uniform01.json");
+    cfg.writeJson(fout);
 }
