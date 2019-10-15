@@ -6,13 +6,13 @@
 TEST_CASE("example_random_uniform01") {
     ankerl::nanobench::Config cfg;
     cfg.title("random double in [0, 1(");
+    cfg.relative(true);
 
     std::random_device dev;
     std::default_random_engine defaultRng(dev());
     double d = 0;
-    cfg.baseline()
-        .run("std::default_random_engine & std::uniform_real_distribution",
-             [&] { d += std::uniform_real_distribution<>{}(defaultRng); })
+    cfg.run("std::default_random_engine & std::uniform_real_distribution",
+            [&] { d += std::uniform_real_distribution<>{}(defaultRng); })
         .doNotOptimizeAway(d);
 
     ankerl::nanobench::Rng nanobenchRng;
