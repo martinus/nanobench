@@ -8,20 +8,13 @@
     <div id="myDiv" style="width:1024px; height:768px"></div>
     <script>
         var data = [
-            {
-                name: 'Base58CheckEncode',
-                y: [2.20457e-06, 2.20025e-06, 2.20033e-06, 2.20338e-06, 2.20296e-06],
+            {{#benchmark}}{
+                name: '{{name}}',
+                y: [{{#result}}{{number}},{{/result}}],
             },
-            {
-                name: 'Base58Decode',
-                y: [8.11152e-07, 8.13169e-07, 8.13277e-07, 8.1141e-07, 8.14189e-07],
-            },
-            {
-                name: 'Base58Encode',
-                y: [1.29253e-06, 1.2922e-06, 1.29525e-06, 1.29062e-06, 1.29417e-06],
-            },
+            {{/benchmark}}
         ];
-        var title = 'Random Number Generators';
+        var title = '{{title}}';
 
         data = data.map(a => Object.assign(a, { boxpoints: 'all', pointpos: 0, type: 'box' }));
         var layout = { title: { text: title }, showlegend: false, yaxis: { rangemode: 'tozero', autorange: true } };
