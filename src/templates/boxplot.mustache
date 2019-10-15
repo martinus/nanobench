@@ -10,7 +10,7 @@
         var data = [
             {{#benchmarks}}{
                 name: '{{name}}',
-                y: [{{#results}}{{sec_per_unit}},{{/results}}],
+                y: [{{#results}} {{sec_per_unit}},{{/results}} ],
             },
             {{/benchmarks}}
         ];

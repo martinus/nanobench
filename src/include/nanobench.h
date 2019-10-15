@@ -1213,6 +1213,8 @@ std::vector<Result> const& Config::results() const noexcept {
 
 Config& Config::writeJson(std::ostream& os) {
     using detail::fmt::Json;
+
+    os.precision(std::numeric_limits<double>::max_digits10);
     os << "{\n";
     os << " \"title\": " << Json(mBenchmarkTitle) << ",\n";
     os << " \"unit\": " << Json(mUnit) << ",\n";
