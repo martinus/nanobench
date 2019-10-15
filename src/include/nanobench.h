@@ -571,7 +571,7 @@ public:
     explicit Json(std::string const& str);
 
 private:
-    friend std::ostream& operator<<(std::ostream& os, Json const& mdCode);
+    friend std::ostream& operator<<(std::ostream& os, Json const& json);
     std::ostream& write(std::ostream& os) const;
 
     std::string mStr{};
@@ -1129,8 +1129,8 @@ double Config::batch() const noexcept {
 
 // Set a baseline to compare it to. 100% it is exactly as fast as the baseline, >100% means it is faster than the baseline, <100%
 // means it is slower than the baseline.
-Config& Config::relative(bool b) noexcept {
-    mIsRelative = b;
+Config& Config::relative(bool isRelativeEnabled) noexcept {
+    mIsRelative = isRelativeEnabled;
     return *this;
 }
 bool Config::relative() const noexcept {
