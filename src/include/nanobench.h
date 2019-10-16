@@ -53,9 +53,10 @@
 #    define ANKERL_NANOBENCH_PRIVATE_NODISCARD()
 #endif
 
-#include <chrono>
-#include <string>
-#include <vector>
+#include <chrono> // high_resolution_clock
+#include <iosfwd> // for std::ostream* custom output target in Config
+#include <string> // all names
+#include <vector> // holds all results
 
 #ifdef ANKERL_NANOBENCH_LOG_ENABLED
 #    include <iostream>
@@ -223,6 +224,9 @@ public:
 
     ANKERL_NANOBENCH(NODISCARD) std::vector<Result> const& results() const noexcept;
 
+    Config& output(std::ostream* outstream) noexcept;
+    ANKERL_NANOBENCH(NODISCARD) std::ostream* output() const noexcept;
+
     // Performs all evaluations.
     template <typename Op>
     Config& run(std::string const& name, Op op);
@@ -245,6 +249,7 @@ private:
     uint64_t mMinEpochIterations{1};
     uint64_t mWarmup = 0;
     std::vector<Result> mResults{};
+    std::ostream* mOut = nullptr;
     bool mIsRelative = false;
 };
 #if defined(__clang__)
@@ -728,7 +733,7 @@ IterationLogic::IterationLogic(Config const& config, std::string name) noexcept
     mMeasurements.reserve(mConfig.epochs());
 
     if (isEndlessRunning(mName)) {
-        std::cout << "NANOBENCH_ENDLESS set: running '" << name << "' endlessly" << std::endl;
+        std::cerr << "NANOBENCH_ENDLESS set: running '" << name << "' endlessly" << std::endl;
         mNumIters = (std::numeric_limits<uint64_t>::max)();
         mState = State::endless;
     } else if (0 != mConfig.warmup()) {
@@ -844,76 +849,81 @@ Result& IterationLogic::result() {
 }
 
 Result IterationLogic::showResult(std::string const& errorMessage) const {
-    auto& os = std::cout;
-
-    detail::fmt::StreamStateRestorer restorer(os);
-    auto h = calcTableSettingsHash(mConfig);
-    if (h != singletonLastTableSettingsHash()) {
-        singletonLastTableSettingsHash() = h;
-
-        os << std::endl;
-        if (mConfig.relative()) {
-            os << "| relative ";
-        }
-        os << "|" << std::setw(20) << std::right << ("ns/" + mConfig.unit()) << " |" << std::setw(20) << std::right
-           << (mConfig.unit() + "/s") << " |   MdAPE | " << mConfig.title() << std::endl;
-        if (mConfig.relative()) {
-            os << "|---------:";
-        }
-        os << "|--------------------:|--------------------:|--------:|:----------------------------------------------" << std::endl;
-    }
-
-    if (!errorMessage.empty()) {
-        if (mConfig.relative()) {
-            os << "|        - ";
-        }
-        os << "|                   - |                   - |       - | :boom: " << errorMessage << ' '
-           << detail::fmt::MarkDownCode(mName) << std::endl;
-        return Result();
-    }
-
     ANKERL_NANOBENCH_LOG("mMeasurements.size()=" << mMeasurements.size());
-    Result r(mName, mMeasurements);
+    Result r;
+    if (errorMessage.empty()) {
+        r = Result(mName, mMeasurements);
+    }
 
-    // we want output that looks like this:
-    // |  1208.4% |               14.15 |       70,649,422.38 |    0.3% | `std::vector<std::string> emplace + release`
+    if (mConfig.output() != nullptr) {
+        auto& os = *mConfig.output();
+        detail::fmt::StreamStateRestorer restorer(os);
+        auto h = calcTableSettingsHash(mConfig);
+        if (h != singletonLastTableSettingsHash()) {
+            singletonLastTableSettingsHash() = h;
 
-    os << '|';
-
-    // 1st column: relative
-    if (mConfig.relative()) {
-        double d = 100.0;
-        if (!mConfig.results().empty()) {
-            d = mConfig.results().front().median() / r.median() * 100;
+            os << std::endl;
+            if (mConfig.relative()) {
+                os << "| relative ";
+            }
+            os << "|" << std::setw(20) << std::right << ("ns/" + mConfig.unit()) << " |" << std::setw(20) << std::right
+               << (mConfig.unit() + "/s") << " |   MdAPE | " << mConfig.title() << std::endl;
+            if (mConfig.relative()) {
+                os << "|---------:";
+            }
+            os << "|--------------------:|--------------------:|--------:|:----------------------------------------------"
+               << std::endl;
         }
 
-        os << detail::fmt::Number(8, 1, d) << "% |";
+        if (!errorMessage.empty()) {
+            if (mConfig.relative()) {
+                os << "|        - ";
+            }
+            os << "|                   - |                   - |       - | :boom: " << errorMessage << ' '
+               << detail::fmt::MarkDownCode(mName) << std::endl;
+        } else {
+
+            // we want output that looks like this:
+            // |  1208.4% |               14.15 |       70,649,422.38 |    0.3% | `std::vector<std::string> emplace + release`
+
+            os << '|';
+
+            // 1st column: relative
+            if (mConfig.relative()) {
+                double d = 100.0;
+                if (!mConfig.results().empty()) {
+                    d = mConfig.results().front().median() / r.median() * 100;
+                }
+
+                os << detail::fmt::Number(8, 1, d) << "% |";
+            }
+
+            // 2nd column: ns/unit
+            os << detail::fmt::Number(20, 2, 1e9 * r.median().count()) << " |";
+
+            // 3rd column: unit/s
+            os << detail::fmt::Number(20, 2, 1 / r.median().count()) << " |";
+
+            // 4th column: MdAPE
+            os << detail::fmt::Number(7, 1, r.medianAbsolutePercentError() * 100) << "% |";
+
+            // 5th column: possible symbols, possibly errormessage, benchmark name
+            auto showUnstable = r.medianAbsolutePercentError() >= 0.05;
+            if (showUnstable) {
+                os << " :wavy_dash:";
+            }
+            os << ' ' << detail::fmt::MarkDownCode(mName);
+            if (showUnstable) {
+                auto avgIters = static_cast<double>(mTotalNumIters) / static_cast<double>(mConfig.epochs());
+                // NOLINTNEXTLINE(bugprone-incorrect-roundings)
+                auto suggestedIters = static_cast<uint64_t>(avgIters * 10 + 0.5);
+
+                os << " Unstable with ~" << detail::fmt::Number(1, 1, avgIters) << " iters. Increase `minEpochIterations` to e.g. "
+                   << suggestedIters;
+            }
+            os << std::endl;
+        }
     }
-
-    // 2nd column: ns/unit
-    os << detail::fmt::Number(20, 2, 1e9 * r.median().count()) << " |";
-
-    // 3rd column: unit/s
-    os << detail::fmt::Number(20, 2, 1 / r.median().count()) << " |";
-
-    // 4th column: MdAPE
-    os << detail::fmt::Number(7, 1, r.medianAbsolutePercentError() * 100) << "% |";
-
-    // 5th column: possible symbols, possibly errormessage, benchmark name
-    auto showUnstable = r.medianAbsolutePercentError() >= 0.05;
-    if (showUnstable) {
-        os << " :wavy_dash:";
-    }
-    os << ' ' << detail::fmt::MarkDownCode(mName);
-    if (showUnstable) {
-        auto avgIters = static_cast<double>(mTotalNumIters) / static_cast<double>(mConfig.epochs());
-        // NOLINTNEXTLINE(bugprone-incorrect-roundings)
-        auto suggestedIters = static_cast<uint64_t>(avgIters * 10 + 0.5);
-
-        os << " Unstable with ~" << detail::fmt::Number(1, 1, avgIters) << " iters. Increase `minEpochIterations` to e.g. "
-           << suggestedIters;
-    }
-    os << std::endl;
 
     return r;
 }
@@ -1116,7 +1126,9 @@ std::chrono::duration<double> Result::maximum() const noexcept {
 }
 
 // Configuration of a microbenchmark.
-Config::Config() = default;
+Config::Config()
+    : mOut(&std::cout) {}
+
 Config::Config(Config&&) noexcept = default;
 Config& Config::operator=(Config&&) noexcept = default;
 Config::Config(Config const&) = default;
@@ -1205,6 +1217,15 @@ Config& Config::warmup(uint64_t numWarmupIters) noexcept {
 }
 uint64_t Config::warmup() const noexcept {
     return mWarmup;
+}
+
+Config& Config::output(std::ostream* outstream) noexcept {
+    mOut = outstream;
+    return *this;
+}
+
+ANKERL_NANOBENCH(NODISCARD) std::ostream* Config::output() const noexcept {
+    return mOut;
 }
 
 std::vector<Result> const& Config::results() const noexcept {
