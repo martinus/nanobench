@@ -39,6 +39,12 @@
 // public facing api - as minimal as possible
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 
+#include <chrono>           // high_resolution_clock
+#include <initializer_list> // for doNotOptimizeAway
+#include <iosfwd>           // for std::ostream* custom output target in Config
+#include <string>           // all names
+#include <vector>           // holds all results
+
 #define ANKERL_NANOBENCH(x) ANKERL_NANOBENCH_PRIVATE_##x()
 
 #define ANKERL_NANOBENCH_PRIVATE_CXX() __cplusplus
@@ -52,11 +58,6 @@
 #else
 #    define ANKERL_NANOBENCH_PRIVATE_NODISCARD()
 #endif
-
-#include <chrono> // high_resolution_clock
-#include <iosfwd> // for std::ostream* custom output target in Config
-#include <string> // all names
-#include <vector> // holds all results
 
 #ifdef ANKERL_NANOBENCH_LOG_ENABLED
 #    include <iostream>
@@ -89,10 +90,12 @@ class IterationLogic;
 namespace ankerl {
 namespace nanobench {
 
+// Holds measurement results of one epoch of a benchmark.
 class Measurement {
 public:
     Measurement(Clock::duration elapsed, uint64_t numIters, double batch) noexcept;
 
+    // sortable fastest to slowest
     ANKERL_NANOBENCH(NODISCARD) bool operator<(Measurement const& other) const noexcept;
     ANKERL_NANOBENCH(NODISCARD) Clock::duration const& elapsed() const noexcept;
     ANKERL_NANOBENCH(NODISCARD) uint64_t numIters() const noexcept;
@@ -151,6 +154,7 @@ public:
 
     // that one's inline so it is fast
     inline uint64_t operator()() noexcept;
+
     // random double in range [0, 1(
     inline double uniform01() noexcept;
 
@@ -222,6 +226,7 @@ public:
     Config& warmup(uint64_t numWarmupIters) noexcept;
     ANKERL_NANOBENCH(NODISCARD) uint64_t warmup() const noexcept;
 
+    // Gets all benchmark results
     ANKERL_NANOBENCH(NODISCARD) std::vector<Result> const& results() const noexcept;
 
     // Where to print results. Use `nullptr` to disable output
@@ -295,14 +300,12 @@ private:
     void upscale(std::chrono::nanoseconds elapsed);
 
     uint64_t mNumIters = 1;
-
     Config const& mConfig;
     std::chrono::nanoseconds mTargetRuntimePerEpoch{};
     std::string mName;
     Result mResult{};
     std::vector<Measurement> mMeasurements{};
     Rng mRng{};
-
     std::chrono::nanoseconds mTotalElapsed{};
     uint64_t mTotalNumIters = 0;
 
