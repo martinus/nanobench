@@ -6,8 +6,7 @@
 
 TEST_CASE("example_random_uniform01") {
     ankerl::nanobench::Config cfg;
-    cfg.title("random double in [0, 1(");
-    cfg.relative(true);
+    cfg.title("random double in [0, 1(").relative(true);
 
     std::random_device dev;
     std::default_random_engine defaultRng(dev());

@@ -1224,6 +1224,16 @@ Config& Config::writeJson(std::ostream& os) {
         auto const& result = mResults[r];
         os << "  {\n";
         os << "   \"name\": " << Json(result.name()) << ",\n";
+        os << "   \"median_sec_per_unit\": " << result.median().count() << ",\n";
+        os << "   \"md_ape_100\": " << (100.0 * result.medianAbsolutePercentError()) << ",\n";
+        os << "   \"min\": " << result.minimum().count() << ",\n";
+        os << "   \"max\": " << result.maximum().count() << ",\n";
+        // only print relative if it's enabled
+        if (mIsRelative) {
+            auto relative = 100.0 * mResults.front().median() / result.median();
+            os << "   \"relative_100\": " << relative << ",\n";
+        }
+        os << "   \"num_measurements\": " << result.sortedMeasurements().size() << ",\n";
         os << "   \"results\": [\n";
         for (size_t m = 0; m < result.sortedMeasurements().size(); ++m) {
             auto const& measurement = result.sortedMeasurements()[m];
