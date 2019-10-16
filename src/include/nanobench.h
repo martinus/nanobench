@@ -224,6 +224,7 @@ public:
 
     ANKERL_NANOBENCH(NODISCARD) std::vector<Result> const& results() const noexcept;
 
+    // Where to print results. Use `nullptr` to disable output
     Config& output(std::ostream* outstream) noexcept;
     ANKERL_NANOBENCH(NODISCARD) std::ostream* output() const noexcept;
 
