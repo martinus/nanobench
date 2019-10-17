@@ -1,0 +1,21 @@
+{
+ "title": "{{title}}",
+ "unit": "{{unit}}",
+ "batch": {{batch}},
+ "benchmarks": [
+  {{#benchmarks}}{
+   "name": "{{name}}",
+   "median_sec_per_unit": {{median_sec_per_unit}},
+   "md_ape": {{md_ape}},
+   "min": {{min}},
+   "max": {{max}},
+   "relative": {{relative}},
+   "num_measurements": {{num_measurements}},
+   "results": [
+{{#results}}     { "sec_per_unit": {{sec_per_unit}}, "iters": {{iters}}, "elapsed_ns": {{elapsed_ns}} },
+{{/results}}
+   ]
+  },
+{{/benchmarks}}
+ ]
+}

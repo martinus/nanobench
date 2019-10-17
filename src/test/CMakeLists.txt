@@ -11,4 +11,5 @@ target_sources_local(nb PRIVATE
     example_random_uniform01.cpp
     framework_comparison.cpp
     unit_api.cpp
+    mustache_parser.cpp
 )
