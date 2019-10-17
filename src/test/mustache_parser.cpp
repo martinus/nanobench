@@ -25,7 +25,7 @@ char const* htmlBoxplotTemplate = R"DELIM(<html>
         var data = [
             {{#benchmarks}}{
                 name: '{{name}}',
-                y: [{{#results}} {{sec_per_unit}},{{/results}} ],
+                y: [{{#results}}{{sec_per_unit}}{{^-last}}, {{/last}}{{/results}}],
             },
             {{/benchmarks}}
         ];
@@ -52,7 +52,7 @@ char const* jsonTemplate = R"DELIM({
    "relative": {{relative}},
    "num_measurements": {{num_measurements}},
    "results": [
-{{#results}}    { "sec_per_unit": {{sec_per_unit}}, "iters": {{iters}}, "elapsed_ns": {{elapsed_ns}} },
+{{#results}}    { "sec_per_unit": {{sec_per_unit}}, "iters": {{iters}}, "elapsed_ns": {{elapsed_ns}} }{{^-last}}, {{/-last}}
 {{/results}}   ]
   },
 {{/benchmarks}} ]
@@ -117,32 +117,83 @@ std::vector<Node> parseMustacheTemplate(char const*& tpl) {
     }
 }
 
-void generateMeasurement(std::vector<Node> const& nodes, ankerl::nanobench::Measurement const& measurement, std::ostream& out) {
+bool handleFirstLast(Node const& n, size_t idx, size_t size, std::ostream& out) {
+    switch (n.type) {
+    case Node::Type::content:
+        return false;
+
+    case Node::Type::tag:
+        return false;
+
+    case Node::Type::section:
+        if (n == "-first") {
+            if (idx == 0) {
+                for (auto const& child : n.children) {
+                    out.write(child.begin, std::distance(child.begin, child.end));
+                }
+            }
+            return true;
+        }
+        if (n == "-last") {
+            if (idx == size - 1) {
+                for (auto const& child : n.children) {
+                    out.write(child.begin, std::distance(child.begin, child.end));
+                }
+            }
+            return true;
+        }
+        break;
+
+    case Node::Type::inverted_section:
+        if (n == "-first") {
+            if (idx != 0) {
+                for (auto const& child : n.children) {
+                    out.write(child.begin, std::distance(child.begin, child.end));
+                }
+            }
+            return true;
+        }
+        if (n == "-last") {
+            if (idx != size - 1) {
+                for (auto const& child : n.children) {
+                    out.write(child.begin, std::distance(child.begin, child.end));
+                }
+            }
+            return true;
+        }
+    }
+
+    return false;
+}
+
+void generateMeasurement(std::vector<Node> const& nodes, std::vector<ankerl::nanobench::Measurement> const& measurements,
+                         size_t measurementIdx, std::ostream& out) {
     for (auto const& n : nodes) {
-        switch (n.type) {
-        case Node::Type::content:
-            out.write(n.begin, std::distance(n.begin, n.end));
-            break;
+        if (!handleFirstLast(n, measurementIdx, measurements.size(), out)) {
+            auto const& measurement = measurements[measurementIdx];
+            switch (n.type) {
+            case Node::Type::content:
+                out.write(n.begin, std::distance(n.begin, n.end));
+                break;
 
-        case Node::Type::section:
-            throw new std::runtime_error("got a section inside measurment");
+            case Node::Type::inverted_section:
+                throw new std::runtime_error("got a inverted section inside measurment");
 
-        case Node::Type::inverted_section:
-            if (n == "last" && isLast) {
-                // TODO
-                out << n.children.front();
+            case Node::Type::section:
+                throw new std::runtime_error("got a section inside measurment");
+
+            case Node::Type::tag:
+                if (n == "sec_per_unit") {
+                    out << measurement.secPerUnit().count();
+                } else if (n == "iters") {
+                    out << measurement.numIters();
+                } else if (n == "elapsed_ns") {
+                    out << measurement.elapsed().count();
+                } else {
+                    throw std::runtime_error("unknown tag '" + std::string(n.begin, n.end) + "'");
+                }
+                break;
             }
-        case Node::Type::tag:
-            if (n == "sec_per_unit") {
-                out << measurement.secPerUnit().count();
-            } else if (n == "iters") {
-                out << measurement.numIters();
-            } else if (n == "elapsed_ns") {
-                out << measurement.elapsed().count();
-            } else {
-                throw std::runtime_error("unknown tag '" + std::string(n.begin, n.end) + "'");
-            }
-            break;
         }
     }
 }
@@ -151,38 +202,43 @@ void generateBenchmark(std::vector<Node> const& nodes, std::vector<ankerl::nanob
                        std::ostream& out) {
     auto const& result = results[resultIdx];
     for (auto const& n : nodes) {
-        switch (n.type) {
-        case Node::Type::content:
-            out.write(n.begin, std::distance(n.begin, n.end));
-            break;
+        if (!handleFirstLast(n, resultIdx, results.size(), out)) {
+            switch (n.type) {
+            case Node::Type::content:
+                out.write(n.begin, std::distance(n.begin, n.end));
+                break;
 
-        case Node::Type::list:
-            if (n == "#results") {
-                for (auto const& measurement : result.sortedMeasurements()) {
-                    generateMeasurement(n.children, measurement, out);
+            case Node::Type::section:
+                if (n == "results") {
+                    for (size_t m = 0; m < result.sortedMeasurements().size(); ++m) {
+                        generateMeasurement(n.children, result.sortedMeasurements(), m, out);
+                    }
+                } else {
+                    throw std::runtime_error("unknown list '" + std::string(n.begin, n.end) + "'");
                 }
-            } else {
-                throw std::runtime_error("unknown list '" + std::string(n.begin, n.end) + "'");
-            }
-            break;
+                break;
 
-        case Node::Type::tag:
-            if (n == "name") {
-                out << result.name();
-            } else if (n == "median_sec_per_unit") {
-                out << result.median().count();
-            } else if (n == "md_ape") {
-                out << result.medianAbsolutePercentError();
-            } else if (n == "min") {
-                out << result.minimum().count();
-            } else if (n == "max") {
-                out << result.maximum().count();
-            } else if (n == "relative") {
-                out << results.front().median() / result.median();
-            } else if (n == "num_measurements") {
-                out << result.sortedMeasurements().size();
-            } else {
-                throw std::runtime_error("unknown tag '" + std::string(n.begin, n.end) + "'");
+            case Node::Type::inverted_section:
+                throw std::runtime_error("unknown list '" + std::string(n.begin, n.end) + "'");
+
+            case Node::Type::tag:
+                if (n == "name") {
+                    out << result.name();
+                } else if (n == "median_sec_per_unit") {
+                    out << result.median().count();
+                } else if (n == "md_ape") {
+                    out << result.medianAbsolutePercentError();
+                } else if (n == "min") {
+                    out << result.minimum().count();
+                } else if (n == "max") {
+                    out << result.maximum().count();
+                } else if (n == "relative") {
+                    out << results.front().median() / result.median();
+                } else if (n == "num_measurements") {
+                    out << result.sortedMeasurements().size();
+                } else {
+                    throw std::runtime_error("unknown tag '" + std::string(n.begin, n.end) + "'");
+                }
             }
         }
     }
@@ -196,8 +252,11 @@ void generate(char const* mustacheTemplate, ankerl::nanobench::Config const& cfg
             out.write(n.begin, std::distance(n.begin, n.end));
             break;
 
-        case Node::Type::list:
-            if (n == "#benchmarks") {
+        case Node::Type::inverted_section:
+            throw std::runtime_error("unknown list '" + std::string(n.begin, n.end) + "'");
+
+        case Node::Type::section:
+            if (n == "benchmarks") {
                 for (size_t i = 0; i < cfg.results().size(); ++i) {
                     generateBenchmark(n.children, cfg.results(), i, out);
                 }
@@ -215,8 +274,8 @@ void generate(char const* mustacheTemplate, ankerl::nanobench::Config const& cfg
                 out << cfg.batch();
             } else {
                 throw std::runtime_error("unknown tag '" + std::string(n.begin, n.end) + "'");
-                break;
             }
+            break;
         }
     }
 }
@@ -235,5 +294,5 @@ TEST_CASE("mustache") {
         x.compare_exchange_strong(y, 0);
     });
 
-    generate(jsonTemplate, cfg, std::cout);
+    generate(htmlBoxplotTemplate, cfg, std::cout);
 }
