@@ -25,7 +25,8 @@ Checks: "*,\
   -modernize-use-trailing-return-type,\
   -misc-definitions-in-headers,\
   -cert-err58-cpp,\
-  -clang-diagnostic-padded"
+  -clang-diagnostic-padded,\
+  -modernize-concat-nested-namespaces
 WarningsAsErrors: "*"
 HeaderFilterRegex: 'nanobench\.h'
 ...
