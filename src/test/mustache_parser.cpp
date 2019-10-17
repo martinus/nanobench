@@ -4,16 +4,33 @@
 #include <algorithm>
 #include <atomic>
 #include <cstring>
+#include <fstream>
 #include <iostream>
 #include <vector>
 
-namespace {
+namespace mustache {
+namespace templates {
 
-char const* csvTemplate = R"DELIM("relative %"; "s/{{unit}}"; "MdAPE %"; "{{title}}"
+char const* csv() noexcept;
+char const* htmlBoxplot() noexcept;
+char const* json() noexcept;
+
+} // namespace templates
+} // namespace mustache
+
+// Accepts mustache templates and fills it with nanobench data.
+namespace mustache {
+
+namespace templates {
+
+char const* csv() noexcept {
+    return R"DELIM("relative %"; "s/{{unit}}"; "MdAPE %"; "{{title}}"
 {{#benchmarks}}{{relative}}; {{median_sec_per_unit}}; {{md_ape}}; "{{name}}"
 {{/benchmarks}})DELIM";
+}
 
-char const* htmlBoxplotTemplate = R"DELIM(<html>
+char const* htmlBoxplot() noexcept {
+    return R"DELIM(<html>
 
 <head>
     <script src="https://cdn.plot.ly/plotly-latest.min.js"></script>
@@ -25,7 +42,7 @@ char const* htmlBoxplotTemplate = R"DELIM(<html>
         var data = [
             {{#benchmarks}}{
                 name: '{{name}}',
-                y: [{{#results}}{{sec_per_unit}}{{^-last}}, {{/last}}{{/results}}],
+                y: [{{#results}}{{elapsed_ns}}e-9/{{iters}}{{^-last}}, {{/last}}{{/results}}],
             },
             {{/benchmarks}}
         ];
@@ -37,8 +54,10 @@ char const* htmlBoxplotTemplate = R"DELIM(<html>
 </body>
 
 </html>)DELIM";
+}
 
-char const* jsonTemplate = R"DELIM({
+char const* json() noexcept {
+    return R"DELIM({
  "title": "{{title}}",
  "unit": "{{unit}}",
  "batch": {{batch}},
@@ -58,9 +77,9 @@ char const* jsonTemplate = R"DELIM({
 {{/benchmarks}} ]
 }
 )DELIM";
+}
 
-// Accepts mustache templates and fills it with nanobench data.
-class Mustache {};
+} // namespace templates
 
 struct Node {
     enum class Type { tag, content, section, inverted_section };
@@ -71,16 +90,17 @@ struct Node {
     Type type;
 
     template <size_t N>
+    // NOLINTNEXTLINE(hicpp-avoid-c-arrays,modernize-avoid-c-arrays,cppcoreguidelines-avoid-c-arrays)
     bool operator==(char const (&str)[N]) const noexcept {
-        return std::distance(begin, end) == N - 1 && 0 == strncmp(str, begin, N - 1);
+        return static_cast<size_t>(std::distance(begin, end) + 1) == N && 0 == strncmp(str, begin, N - 1);
     }
 };
 
-std::vector<Node> parseMustacheTemplate(char const*& tpl) {
+static std::vector<Node> parseMustacheTemplate(char const** tpl) {
     std::vector<Node> nodes;
 
     while (true) {
-        auto begin = std::strstr(tpl, "{{");
+        auto begin = std::strstr(*tpl, "{{");
         auto end = begin;
         if (begin != nullptr) {
             begin += 2;
@@ -89,98 +109,73 @@ std::vector<Node> parseMustacheTemplate(char const*& tpl) {
 
         if (begin == nullptr || end == nullptr) {
             // nothing found, finish node
-            nodes.emplace_back(Node{tpl, tpl + std::strlen(tpl), std::vector<Node>{}, Node::Type::content});
+            nodes.emplace_back(Node{*tpl, *tpl + std::strlen(*tpl), std::vector<Node>{}, Node::Type::content});
             return nodes;
-        } else {
-            nodes.emplace_back(Node{tpl, begin - 2, std::vector<Node>{}, Node::Type::content});
+        }
 
-            // we found a tag
-            tpl = end + 2;
-            switch (*begin) {
-            case '/':
-                // finished! bail out
-                return nodes;
+        nodes.emplace_back(Node{*tpl, begin - 2, std::vector<Node>{}, Node::Type::content});
 
-            case '#':
-                nodes.emplace_back(Node{begin + 1, end, parseMustacheTemplate(tpl), Node::Type::section});
-                break;
+        // we found a tag
+        *tpl = end + 2;
+        switch (*begin) {
+        case '/':
+            // finished! bail out
+            return nodes;
 
-            case '^':
-                nodes.emplace_back(Node{begin + 1, end, parseMustacheTemplate(tpl), Node::Type::inverted_section});
-                break;
+        case '#':
+            nodes.emplace_back(Node{begin + 1, end, parseMustacheTemplate(tpl), Node::Type::section});
+            break;
 
-            default:
-                nodes.emplace_back(Node{begin, end, std::vector<Node>{}, Node::Type::tag});
-                break;
-            }
+        case '^':
+            nodes.emplace_back(Node{begin + 1, end, parseMustacheTemplate(tpl), Node::Type::inverted_section});
+            break;
+
+        default:
+            nodes.emplace_back(Node{begin, end, std::vector<Node>{}, Node::Type::tag});
+            break;
         }
     }
 }
 
-bool handleFirstLast(Node const& n, size_t idx, size_t size, std::ostream& out) {
-    switch (n.type) {
-    case Node::Type::content:
+static bool generateFirstLast(Node const& n, size_t idx, size_t size, std::ostream& out) {
+    bool matchFirst = n == "-first";
+    bool matchLast = n == "-last";
+    if (!matchFirst && !matchLast) {
         return false;
-
-    case Node::Type::tag:
-        return false;
-
-    case Node::Type::section:
-        if (n == "-first") {
-            if (idx == 0) {
-                for (auto const& child : n.children) {
-                    out.write(child.begin, std::distance(child.begin, child.end));
-                }
-            }
-            return true;
-        }
-        if (n == "-last") {
-            if (idx == size - 1) {
-                for (auto const& child : n.children) {
-                    out.write(child.begin, std::distance(child.begin, child.end));
-                }
-            }
-            return true;
-        }
-        break;
-
-    case Node::Type::inverted_section:
-        if (n == "-first") {
-            if (idx != 0) {
-                for (auto const& child : n.children) {
-                    out.write(child.begin, std::distance(child.begin, child.end));
-                }
-            }
-            return true;
-        }
-        if (n == "-last") {
-            if (idx != size - 1) {
-                for (auto const& child : n.children) {
-                    out.write(child.begin, std::distance(child.begin, child.end));
-                }
-            }
-            return true;
-        }
     }
 
-    return false;
+    bool doWrite = false;
+    if (n.type == Node::Type::section) {
+        doWrite = (matchFirst && idx == 0) || (matchLast && idx == size - 1);
+    } else if (n.type == Node::Type::inverted_section) {
+        doWrite = (matchFirst && idx != 0) || (matchLast && idx != size - 1);
+    }
+
+    if (doWrite) {
+        for (auto const& child : n.children) {
+            if (child.type == Node::Type::content) {
+                out.write(child.begin, std::distance(child.begin, child.end));
+            }
+        }
+    }
+    return true;
 }
 
-void generateMeasurement(std::vector<Node> const& nodes, std::vector<ankerl::nanobench::Measurement> const& measurements,
-                         size_t measurementIdx, std::ostream& out) {
+static void generateMeasurement(std::vector<Node> const& nodes, std::vector<ankerl::nanobench::Measurement> const& measurements,
+                                size_t measurementIdx, std::ostream& out) {
+    auto const& measurement = measurements[measurementIdx];
     for (auto const& n : nodes) {
-        if (!handleFirstLast(n, measurementIdx, measurements.size(), out)) {
-            auto const& measurement = measurements[measurementIdx];
+        if (!generateFirstLast(n, measurementIdx, measurements.size(), out)) {
             switch (n.type) {
             case Node::Type::content:
                 out.write(n.begin, std::distance(n.begin, n.end));
                 break;
 
             case Node::Type::inverted_section:
-                throw new std::runtime_error("got a inverted section inside measurment");
+                throw std::runtime_error("got a inverted section inside measurment");
 
             case Node::Type::section:
-                throw new std::runtime_error("got a section inside measurment");
+                throw std::runtime_error("got a section inside measurment");
 
             case Node::Type::tag:
                 if (n == "sec_per_unit") {
@@ -198,11 +193,11 @@ void generateMeasurement(std::vector<Node> const& nodes, std::vector<ankerl::nan
     }
 }
 
-void generateBenchmark(std::vector<Node> const& nodes, std::vector<ankerl::nanobench::Result> const& results, size_t resultIdx,
-                       std::ostream& out) {
+static void generateBenchmark(std::vector<Node> const& nodes, std::vector<ankerl::nanobench::Result> const& results, size_t resultIdx,
+                              std::ostream& out) {
     auto const& result = results[resultIdx];
     for (auto const& n : nodes) {
-        if (!handleFirstLast(n, resultIdx, results.size(), out)) {
+        if (!generateFirstLast(n, resultIdx, results.size(), out)) {
             switch (n.type) {
             case Node::Type::content:
                 out.write(n.begin, std::distance(n.begin, n.end));
@@ -244,8 +239,10 @@ void generateBenchmark(std::vector<Node> const& nodes, std::vector<ankerl::nanob
     }
 }
 
-void generate(char const* mustacheTemplate, ankerl::nanobench::Config const& cfg, std::ostream& out) {
-    auto nodes = parseMustacheTemplate(mustacheTemplate);
+static void generate(char const* mustacheTemplate, ankerl::nanobench::Config const& cfg, std::ostream& out) {
+    // TODO(martinus) safe stream status
+    out.precision(std::numeric_limits<double>::digits10);
+    auto nodes = parseMustacheTemplate(&mustacheTemplate);
     for (auto const& n : nodes) {
         switch (n.type) {
         case Node::Type::content:
@@ -280,13 +277,9 @@ void generate(char const* mustacheTemplate, ankerl::nanobench::Config const& cfg
     }
 }
 
-} // namespace
+} // namespace mustache
 
 TEST_CASE("mustache") {
-    (void)htmlBoxplotTemplate;
-    (void)csvTemplate;
-    (void)jsonTemplate;
-
     int y = 0;
     std::atomic<int> x(0);
     ankerl::nanobench::Config cfg;
@@ -294,5 +287,6 @@ TEST_CASE("mustache") {
         x.compare_exchange_strong(y, 0);
     });
 
-    generate(htmlBoxplotTemplate, cfg, std::cout);
+    std::ofstream fout("out.html");
+    mustache::generate(mustache::templates::htmlBoxplot(), cfg, fout);
 }
