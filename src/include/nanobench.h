@@ -64,7 +64,7 @@
         _Pragma("clang diagnostic push") _Pragma("clang diagnostic ignored \"-Wpadded\"")
 #    define ANKERL_NANOBENCH_PRIVATE_IGNORE_PADDED_POP() _Pragma("clang diagnostic pop")
 #else
-#    define ANKERL_NANOBENCH_PRIVATE_IGNORE_PADDED_PUSH(x)
+#    define ANKERL_NANOBENCH_PRIVATE_IGNORE_PADDED_PUSH()
 #    define ANKERL_NANOBENCH_PRIVATE_IGNORE_PADDED_POP()
 #endif
 
