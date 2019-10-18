@@ -1,6 +1,7 @@
 #include <nanobench.h>
 
 #include <fstream>
+#include <iostream>
 #include <random>
 #include <thirdparty/doctest/doctest.h>
 
@@ -32,5 +33,16 @@ TEST_CASE("example_random_number_generators") {
 
     // Let's create a JSON file with all the results
     std::ofstream fout("example_random_number_generators.json");
-    cfg.writeJson(fout);
+    cfg.render(ankerl::nanobench::templates::json(), fout);
+
+    // A nice HTML graph too!
+    fout = std::ofstream("example_random_number_generators.html");
+    cfg.render(ankerl::nanobench::templates::htmlBoxplot(), fout);
+
+    // finally, a CSV file for data reuse.
+    fout = std::ofstream("example_random_number_generators.csv");
+    cfg.render(ankerl::nanobench::templates::csv(), fout);
+
+    // just generate a very simple overview of the results
+    cfg.render("\n{{#benchmarks}}{{median_sec_per_unit}} for {{name}}\n{{/benchmarks}}", std::cout);
 }

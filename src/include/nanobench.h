@@ -59,6 +59,15 @@
 #    define ANKERL_NANOBENCH_PRIVATE_NODISCARD()
 #endif
 
+#if defined(__clang__)
+#    define ANKERL_NANOBENCH_PRIVATE_IGNORE_PADDED_PUSH() \
+        _Pragma("clang diagnostic push") _Pragma("clang diagnostic ignored \"-Wpadded\"")
+#    define ANKERL_NANOBENCH_PRIVATE_IGNORE_PADDED_POP() _Pragma("clang diagnostic pop")
+#else
+#    define ANKERL_NANOBENCH_PRIVATE_IGNORE_PADDED_PUSH(x)
+#    define ANKERL_NANOBENCH_PRIVATE_IGNORE_PADDED_POP()
+#endif
+
 #ifdef ANKERL_NANOBENCH_LOG_ENABLED
 #    include <iostream>
 #    define ANKERL_NANOBENCH_LOG(x) std::cout << __FUNCTION__ << "@" << __LINE__ << ": " << x << std::endl
@@ -76,6 +85,20 @@ class Config;
 class Measurement;
 class Result;
 class Rng;
+
+// Contains mustache-like templates
+namespace templates {
+
+// CSV file from the benchmark results.
+char const* csv() noexcept;
+
+// HTML graphic using plotly.js
+char const* htmlBoxplot() noexcept;
+
+// JSON that contains all result data
+char const* json() noexcept;
+
+} // namespace templates
 
 namespace detail {
 
@@ -168,10 +191,7 @@ private:
 };
 
 // Configuration of a microbenchmark.
-#if defined(__clang__)
-#    pragma clang diagnostic push
-#    pragma clang diagnostic ignored "-Wpadded"
-#endif
+ANKERL_NANOBENCH(IGNORE_PADDED_PUSH)
 class Config {
 public:
     Config();
@@ -241,8 +261,8 @@ public:
     template <typename... Args>
     Config& doNotOptimizeAway(Args&&... args);
 
-    // Writes all the results into a Json file
-    Config& writeJson(std::ostream& os);
+    // Parses the mustache-like template and renders the output into os.
+    Config& render(char const* templateContent, std::ostream& os);
 
 private:
     std::string mBenchmarkTitle = "benchmark";
@@ -258,9 +278,7 @@ private:
     std::ostream* mOut = nullptr;
     bool mIsRelative = false;
 };
-#if defined(__clang__)
-#    pragma clang diagnostic pop
-#endif
+ANKERL_NANOBENCH(IGNORE_PADDED_POP)
 
 // Makes sure none of the given arguments are optimized away by the compiler.
 template <typename... Args>
@@ -279,10 +297,7 @@ template <typename T>
 void doNotOptimizeAway(T const& val);
 
 // internally used, but visible because run() is templated
-#if defined(__clang__)
-#    pragma clang diagnostic push
-#    pragma clang diagnostic ignored "-Wpadded"
-#endif
+ANKERL_NANOBENCH(IGNORE_PADDED_PUSH)
 class IterationLogic {
 public:
     IterationLogic(Config const& config, std::string name) noexcept;
@@ -311,9 +326,7 @@ private:
 
     State mState = State::upscaling_runtime;
 };
-#if defined(__clang__)
-#    pragma clang diagnostic pop
-#endif
+ANKERL_NANOBENCH(IGNORE_PADDED_POP)
 
 } // namespace detail
 } // namespace nanobench
@@ -436,6 +449,7 @@ void doNotOptimizeAway(T& value) {
 
 #    include <algorithm> // sort
 #    include <cstdlib>   // getenv
+#    include <cstring>   //strstr, strncmp
 #    include <fstream>   // ifstream to parse proc files
 #    include <iomanip>   // setw, setprecision
 #    include <iostream>  // cout
@@ -471,6 +485,64 @@ class MarkDownCode;
 
 namespace ankerl {
 namespace nanobench {
+namespace templates {
+char const* csv() noexcept {
+    return R"DELIM({{title}}; "relative %"; "s/{{unit}}"; "min/{{unit}}"; "max/{{unit}}"; "MdAPE %"; "measurements"
+{{#benchmarks}}"{{name}}"; {{relative}}; {{median_sec_per_unit}}; {{min}}; {{max}}; {{md_ape}}; {{num_measurements}}
+{{/benchmarks}})DELIM";
+}
+
+char const* htmlBoxplot() noexcept {
+    return R"DELIM(<html>
+
+<head>
+    <script src="https://cdn.plot.ly/plotly-latest.min.js"></script>
+</head>
+
+<body>
+    <div id="myDiv" style="width:1024px; height:768px"></div>
+    <script>
+        var data = [
+            {{#benchmarks}}{
+                name: '{{name}}',
+                y: [{{#results}}{{elapsed_ns}}e-9/{{iters}}{{^-last}}, {{/last}}{{/results}}],
+            },
+            {{/benchmarks}}
+        ];
+        var title = '{{title}}';
+
+        data = data.map(a => Object.assign(a, { boxpoints: 'all', pointpos: 0, type: 'box' }));
+        var layout = { title: { text: title }, showlegend: false, yaxis: { title: 'time per {{unit}}', rangemode: 'tozero', autorange: true } }; Plotly.newPlot('myDiv', data, layout, {responsive: true});
+    </script>
+</body>
+
+</html>)DELIM";
+}
+
+char const* json() noexcept {
+    return R"DELIM({
+ "title": "{{title}}",
+ "unit": "{{unit}}",
+ "batch": {{batch}},
+ "benchmarks": [
+{{#benchmarks}}  {
+   "name": "{{name}}",
+   "median_sec_per_unit": {{median_sec_per_unit}},
+   "md_ape": {{md_ape}},
+   "min": {{min}},
+   "max": {{max}},
+   "relative": {{relative}},
+   "num_measurements": {{num_measurements}},
+   "results": [
+{{#results}}    { "sec_per_unit": {{sec_per_unit}}, "iters": {{iters}}, "elapsed_ns": {{elapsed_ns}} }{{^-last}}, {{/-last}}
+{{/results}}   ]
+  }{{^-last}},{{/-last}}
+{{/benchmarks}} ]
+}
+)DELIM";
+}
+
+} // namespace templates
 
 // helper stuff that only intended to be used internally
 namespace detail {
@@ -496,10 +568,7 @@ inline Clock::duration clockResolution() noexcept;
 namespace fmt {
 
 // adds thousands separator to numbers
-#    if defined(__clang__)
-#        pragma clang diagnostic push
-#        pragma clang diagnostic ignored "-Wpadded"
-#    endif
+ANKERL_NANOBENCH(IGNORE_PADDED_PUSH)
 class NumSep : public std::numpunct<char> {
 public:
     explicit NumSep(char sep);
@@ -509,15 +578,10 @@ public:
 private:
     char mSep;
 };
-#    if defined(__clang__)
-#        pragma clang diagnostic pop
-#    endif
+ANKERL_NANOBENCH(IGNORE_PADDED_POP)
 
 // RAII to save & restore a stream's state
-#    if defined(__clang__)
-#        pragma clang diagnostic push
-#        pragma clang diagnostic ignored "-Wpadded"
-#    endif
+ANKERL_NANOBENCH(IGNORE_PADDED_PUSH)
 class StreamStateRestorer {
 public:
     explicit StreamStateRestorer(std::ostream& s);
@@ -540,9 +604,7 @@ private:
     std::ostream::char_type const mFill;
     std::ostream::fmtflags const mFmtFlags;
 };
-#    if defined(__clang__)
-#        pragma clang diagnostic pop
-#    endif
+ANKERL_NANOBENCH(IGNORE_PADDED_POP)
 
 // Number formatter
 class Number {
@@ -573,18 +635,6 @@ private:
 };
 
 std::ostream& operator<<(std::ostream& os, MarkDownCode const& mdCode);
-
-// Escapes the string for Json
-class Json {
-public:
-    explicit Json(std::string const& str);
-
-private:
-    friend std::ostream& operator<<(std::ostream& os, Json const& json);
-    std::ostream& write(std::ostream& os) const;
-
-    std::string mStr{};
-};
 
 } // namespace fmt
 } // namespace detail
@@ -1006,44 +1056,207 @@ std::ostream& operator<<(std::ostream& os, MarkDownCode const& mdCode) {
     return mdCode.write(os);
 }
 
-Json::Json(std::string const& str) {
-    mStr.reserve(str.size() + 2);
-    mStr.push_back('"');
-    for (char c : str) {
-        switch (c) {
-        case '\n':
-            mStr += "\\n";
+namespace mustache {
+
+ANKERL_NANOBENCH(IGNORE_PADDED_PUSH)
+struct Node {
+    enum class Type { tag, content, section, inverted_section };
+
+    char const* begin;
+    char const* end;
+    std::vector<Node> children;
+    Type type;
+
+    template <size_t N>
+    // NOLINTNEXTLINE(hicpp-avoid-c-arrays,modernize-avoid-c-arrays,cppcoreguidelines-avoid-c-arrays)
+    bool operator==(char const (&str)[N]) const noexcept {
+        return static_cast<size_t>(std::distance(begin, end) + 1) == N && 0 == strncmp(str, begin, N - 1);
+    }
+};
+ANKERL_NANOBENCH(IGNORE_PADDED_POP)
+
+static std::vector<Node> parseMustacheTemplate(char const** tpl) {
+    std::vector<Node> nodes;
+
+    while (true) {
+        auto begin = std::strstr(*tpl, "{{");
+        auto end = begin;
+        if (begin != nullptr) {
+            begin += 2;
+            end = std::strstr(begin, "}}");
+        }
+
+        if (begin == nullptr || end == nullptr) {
+            // nothing found, finish node
+            nodes.emplace_back(Node{*tpl, *tpl + std::strlen(*tpl), std::vector<Node>{}, Node::Type::content});
+            return nodes;
+        }
+
+        nodes.emplace_back(Node{*tpl, begin - 2, std::vector<Node>{}, Node::Type::content});
+
+        // we found a tag
+        *tpl = end + 2;
+        switch (*begin) {
+        case '/':
+            // finished! bail out
+            return nodes;
+
+        case '#':
+            nodes.emplace_back(Node{begin + 1, end, parseMustacheTemplate(tpl), Node::Type::section});
             break;
-        case '\f':
-            mStr += "\\f";
+
+        case '^':
+            nodes.emplace_back(Node{begin + 1, end, parseMustacheTemplate(tpl), Node::Type::inverted_section});
             break;
-        case '\r':
-            mStr += "\\r";
-            break;
-        case '\t':
-            mStr += "\\t";
-            break;
-        case '"':
-            mStr += "\\\"";
-            break;
-        case '\\':
-            mStr += "\\\\";
-            break;
+
         default:
-            mStr.push_back(c);
+            nodes.emplace_back(Node{begin, end, std::vector<Node>{}, Node::Type::tag});
+            break;
         }
     }
-    mStr.push_back('"');
 }
 
-std::ostream& Json::write(std::ostream& os) const {
-    return os << mStr;
+static bool generateFirstLast(Node const& n, size_t idx, size_t size, std::ostream& out) {
+    bool matchFirst = n == "-first";
+    bool matchLast = n == "-last";
+    if (!matchFirst && !matchLast) {
+        return false;
+    }
+
+    bool doWrite = false;
+    if (n.type == Node::Type::section) {
+        doWrite = (matchFirst && idx == 0) || (matchLast && idx == size - 1);
+    } else if (n.type == Node::Type::inverted_section) {
+        doWrite = (matchFirst && idx != 0) || (matchLast && idx != size - 1);
+    }
+
+    if (doWrite) {
+        for (auto const& child : n.children) {
+            if (child.type == Node::Type::content) {
+                out.write(child.begin, std::distance(child.begin, child.end));
+            }
+        }
+    }
+    return true;
 }
 
-std::ostream& operator<<(std::ostream& os, Json const& json) {
-    return json.write(os);
+static void generateMeasurement(std::vector<Node> const& nodes, std::vector<ankerl::nanobench::Measurement> const& measurements,
+                                size_t measurementIdx, std::ostream& out) {
+    auto const& measurement = measurements[measurementIdx];
+    for (auto const& n : nodes) {
+        if (!generateFirstLast(n, measurementIdx, measurements.size(), out)) {
+            switch (n.type) {
+            case Node::Type::content:
+                out.write(n.begin, std::distance(n.begin, n.end));
+                break;
+
+            case Node::Type::inverted_section:
+                throw std::runtime_error("got a inverted section inside measurment");
+
+            case Node::Type::section:
+                throw std::runtime_error("got a section inside measurment");
+
+            case Node::Type::tag:
+                if (n == "sec_per_unit") {
+                    out << measurement.secPerUnit().count();
+                } else if (n == "iters") {
+                    out << measurement.numIters();
+                } else if (n == "elapsed_ns") {
+                    out << measurement.elapsed().count();
+                } else {
+                    throw std::runtime_error("unknown tag '" + std::string(n.begin, n.end) + "'");
+                }
+                break;
+            }
+        }
+    }
 }
 
+static void generateBenchmark(std::vector<Node> const& nodes, std::vector<ankerl::nanobench::Result> const& results, size_t resultIdx,
+                              std::ostream& out) {
+    auto const& result = results[resultIdx];
+    for (auto const& n : nodes) {
+        if (!generateFirstLast(n, resultIdx, results.size(), out)) {
+            switch (n.type) {
+            case Node::Type::content:
+                out.write(n.begin, std::distance(n.begin, n.end));
+                break;
+
+            case Node::Type::section:
+                if (n == "results") {
+                    for (size_t m = 0; m < result.sortedMeasurements().size(); ++m) {
+                        generateMeasurement(n.children, result.sortedMeasurements(), m, out);
+                    }
+                } else {
+                    throw std::runtime_error("unknown list '" + std::string(n.begin, n.end) + "'");
+                }
+                break;
+
+            case Node::Type::inverted_section:
+                throw std::runtime_error("unknown list '" + std::string(n.begin, n.end) + "'");
+
+            case Node::Type::tag:
+                if (n == "name") {
+                    out << result.name();
+                } else if (n == "median_sec_per_unit") {
+                    out << result.median().count();
+                } else if (n == "md_ape") {
+                    out << result.medianAbsolutePercentError();
+                } else if (n == "min") {
+                    out << result.minimum().count();
+                } else if (n == "max") {
+                    out << result.maximum().count();
+                } else if (n == "relative") {
+                    out << results.front().median() / result.median();
+                } else if (n == "num_measurements") {
+                    out << result.sortedMeasurements().size();
+                } else {
+                    throw std::runtime_error("unknown tag '" + std::string(n.begin, n.end) + "'");
+                }
+            }
+        }
+    }
+}
+
+static void generate(char const* mustacheTemplate, ankerl::nanobench::Config const& cfg, std::ostream& out) {
+    // TODO(martinus) safe stream status
+    out.precision(std::numeric_limits<double>::digits10);
+    auto nodes = parseMustacheTemplate(&mustacheTemplate);
+    for (auto const& n : nodes) {
+        switch (n.type) {
+        case Node::Type::content:
+            out.write(n.begin, std::distance(n.begin, n.end));
+            break;
+
+        case Node::Type::inverted_section:
+            throw std::runtime_error("unknown list '" + std::string(n.begin, n.end) + "'");
+
+        case Node::Type::section:
+            if (n == "benchmarks") {
+                for (size_t i = 0; i < cfg.results().size(); ++i) {
+                    generateBenchmark(n.children, cfg.results(), i, out);
+                }
+            } else {
+                throw std::runtime_error("unknown tag '" + std::string(n.begin, n.end) + "'");
+            }
+            break;
+
+        case Node::Type::tag:
+            if (n == "unit") {
+                out << cfg.unit();
+            } else if (n == "title") {
+                out << cfg.title();
+            } else if (n == "batch") {
+                out << cfg.batch();
+            } else {
+                throw std::runtime_error("unknown tag '" + std::string(n.begin, n.end) + "'");
+            }
+            break;
+        }
+    }
+}
+
+} // namespace mustache
 } // namespace fmt
 } // namespace detail
 
@@ -1236,41 +1449,8 @@ std::vector<Result> const& Config::results() const noexcept {
     return mResults;
 }
 
-Config& Config::writeJson(std::ostream& os) {
-    using detail::fmt::Json;
-
-    os.precision(std::numeric_limits<double>::max_digits10);
-    os << "{\n";
-    os << " \"title\": " << Json(mBenchmarkTitle) << ",\n";
-    os << " \"unit\": " << Json(mUnit) << ",\n";
-    os << " \"batch\": " << mBatch << ",\n";
-    os << " \"benchmarks\": [\n";
-    for (size_t r = 0; r < mResults.size(); ++r) {
-        auto const& result = mResults[r];
-        os << "  {\n";
-        os << "   \"name\": " << Json(result.name()) << ",\n";
-        os << "   \"median_sec_per_unit\": " << result.median().count() << ",\n";
-        os << "   \"md_ape\": " << result.medianAbsolutePercentError() << ",\n";
-        os << "   \"min\": " << result.minimum().count() << ",\n";
-        os << "   \"max\": " << result.maximum().count() << ",\n";
-        // only print relative if it's enabled
-        if (mIsRelative) {
-            auto relative = mResults.front().median() / result.median();
-            os << "   \"relative\": " << relative << ",\n";
-        }
-        os << "   \"num_measurements\": " << result.sortedMeasurements().size() << ",\n";
-        os << "   \"results\": [\n";
-        for (size_t m = 0; m < result.sortedMeasurements().size(); ++m) {
-            auto const& measurement = result.sortedMeasurements()[m];
-            auto postfix = (m == result.sortedMeasurements().size() - 1 ? "" : ",");
-            os << "    { \"sec_per_unit\": " << measurement.secPerUnit().count() << ", \"iters\": " << measurement.numIters()
-               << ", \"elapsed_ns\": " << measurement.elapsed().count() << " }" << postfix << "\n";
-        }
-        os << "   ]\n";
-        os << "  }" << (r == mResults.size() - 1 ? "" : ",") << "\n";
-    }
-    os << " ]\n";
-    os << "}\n";
+Config& Config::render(char const* templateContent, std::ostream& os) {
+    detail::fmt::mustache::generate(templateContent, *this, os);
     return *this;
 }
 
