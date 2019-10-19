@@ -39,7 +39,9 @@ MESSAGE(STATUS "${CMAKE_CXX_COMPILER_ID} ${CMAKE_CXX_COMPILER_VERSION}, C++${CMA
 
 function(add_compile_flags_target target)
     if(CMAKE_CXX_COMPILER_ID MATCHES "GNU|Clang")
-        target_compile_options(${target} PRIVATE -fdiagnostics-color)
+        if(NOT CMAKE_CXX_COMPILER_VERSION VERSION_LESS 5.0)
+            target_compile_options(${target} PRIVATE -fdiagnostics-color)
+        endif()
         target_compile_options(${target} PRIVATE -Werror)
         target_compile_options(${target} PRIVATE -pedantic)
         target_compile_options(${target} PRIVATE -pedantic-errors)
@@ -152,7 +154,7 @@ function(add_compile_flags_target target)
     endif()
 
     if (CMAKE_CXX_COMPILER_ID MATCHES "Clang|AppleClang|GNU" )
-        target_compile_options(${target} PRIVATE -fdiagnostics-color -ggdb -g)
+        target_compile_options(${target} PRIVATE -ggdb -g)
 
         # enable lots of warning checking
         #target_compile_options(robinhood-test PRIVATE -Werror -Wall -Wextra -Weffc++ -Wconversion -Wunreachable-code -Wuninitialized -Wshadow -Wfloat-equal -Wmissing-braces)

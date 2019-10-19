@@ -116,7 +116,7 @@ namespace nanobench {
 // Holds measurement results of one epoch of a benchmark.
 class Measurement {
 public:
-    Measurement(Clock::duration elapsed, uint64_t numIters, double batch) noexcept;
+    Measurement(Clock::duration totalElapsed, uint64_t iters, double batch) noexcept;
 
     // sortable fastest to slowest
     ANKERL_NANOBENCH(NODISCARD) bool operator<(Measurement const& other) const noexcept;
@@ -133,7 +133,7 @@ private:
 // Result returned after a benchmark has finished. Can be used as a baseline for relative().
 class Result {
 public:
-    Result(std::string name, std::vector<Measurement> measurements) noexcept;
+    Result(std::string benchmarkName, std::vector<Measurement> measurements) noexcept;
     Result() noexcept;
 
     ANKERL_NANOBENCH(NODISCARD) std::string const& name() const noexcept;
@@ -196,9 +196,8 @@ class Config {
 public:
     Config();
 
-    Config(Config&& other) noexcept;
-    Config& operator=(Config&& other) noexcept;
-
+    Config(Config&& other);
+    Config& operator=(Config&& other);
     Config(Config const& other);
     Config& operator=(Config const& other);
 
@@ -453,6 +452,7 @@ void doNotOptimizeAway(T& value) {
 #    include <fstream>   // ifstream to parse proc files
 #    include <iomanip>   // setw, setprecision
 #    include <iostream>  // cout
+#    include <stdexcept> // throw for rendering templates
 #    include <vector>    // manage results
 #    if defined(__linux__)
 #        include <unistd.h> //sysconf
@@ -1260,10 +1260,10 @@ static void generate(char const* mustacheTemplate, ankerl::nanobench::Config con
 } // namespace fmt
 } // namespace detail
 
-Measurement::Measurement(Clock::duration elapsed, uint64_t numIters, double batch) noexcept
-    : mTotalElapsed(elapsed)
-    , mNumIters(numIters)
-    , mSecPerUnit(std::chrono::duration_cast<std::chrono::duration<double>>(elapsed) / (batch * static_cast<double>(numIters))) {}
+Measurement::Measurement(Clock::duration totalElapsed, uint64_t iters, double batch) noexcept
+    : mTotalElapsed(totalElapsed)
+    , mNumIters(iters)
+    , mSecPerUnit(std::chrono::duration_cast<std::chrono::duration<double>>(totalElapsed) / (batch * static_cast<double>(iters))) {}
 
 bool Measurement::operator<(Measurement const& other) const noexcept {
     return mSecPerUnit < other.mSecPerUnit;
@@ -1282,8 +1282,8 @@ std::chrono::duration<double> Measurement::secPerUnit() const {
 }
 
 // Result returned after a benchmark has finished. Can be used as a baseline for relative().
-Result::Result(std::string name, std::vector<Measurement> measurements) noexcept
-    : mName(std::move(name))
+Result::Result(std::string benchmarkName, std::vector<Measurement> measurements) noexcept
+    : mName(std::move(benchmarkName))
     , mSortedMeasurements(std::move(measurements)) {
 
     std::sort(mSortedMeasurements.begin(), mSortedMeasurements.end());
@@ -1346,8 +1346,8 @@ std::chrono::duration<double> Result::maximum() const noexcept {
 Config::Config()
     : mOut(&std::cout) {}
 
-Config::Config(Config&&) noexcept = default;
-Config& Config::operator=(Config&&) noexcept = default;
+Config::Config(Config&&) = default;
+Config& Config::operator=(Config&&) = default;
 Config::Config(Config const&) = default;
 Config& Config::operator=(Config const&) = default;
 Config::~Config() noexcept = default;

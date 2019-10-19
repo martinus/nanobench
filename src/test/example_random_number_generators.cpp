@@ -34,14 +34,17 @@ TEST_CASE("example_random_number_generators") {
     // Let's create a JSON file with all the results
     std::ofstream fout("example_random_number_generators.json");
     cfg.render(ankerl::nanobench::templates::json(), fout);
+    fout.close();
 
     // A nice HTML graph too!
-    fout = std::ofstream("example_random_number_generators.html");
+    fout.open("example_random_number_generators.html");
     cfg.render(ankerl::nanobench::templates::htmlBoxplot(), fout);
+    fout.close();
 
     // finally, a CSV file for data reuse.
-    fout = std::ofstream("example_random_number_generators.csv");
+    fout.open("example_random_number_generators.csv");
     cfg.render(ankerl::nanobench::templates::csv(), fout);
+    fout.close();
 
     // just generate a very simple overview of the results
     cfg.render("\n{{#benchmarks}}{{median_sec_per_unit}} for {{name}}\n{{/benchmarks}}", std::cout);
