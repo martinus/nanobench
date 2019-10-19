@@ -20,13 +20,16 @@ int main() {
     ankerl::nanobench::Config().run("x += x", [&] { x += x; }).doNotOptimizeAway(x);
 }
 ```
-Prints
-
+Runs for 4ms to print
 ```markdown
 |               ns/op |                op/s |   MdAPE | benchmark
 |--------------------:|--------------------:|--------:|:----------------------------------------------
 |                0.31 |    3,195,677,932.63 |    0.0% | `x += x`
 ```
+Which github renders as
+|               ns/op |                op/s |   MdAPE | benchmark
+|--------------------:|--------------------:|--------:|:----------------------------------------------
+|                0.31 |    3,195,677,932.63 |    0.0% | `x += x`
 
 # Design Goals
 
