@@ -220,40 +220,54 @@ public:
     Config& unit(std::string unit);
     ANKERL_NANOBENCH(NODISCARD) std::string const& unit() const noexcept;
 
+    // Title of the benchmark, will be shown in the table header.
     Config& title(std::string benchmarkTitle);
     ANKERL_NANOBENCH(NODISCARD) std::string const& title() const noexcept;
 
-    // Number of epochs to evaluate. The reported result will be the median of evaluation of each epoch.
+    // Set the output stream where the resulting markdown table will be printed to. The default is `&std::cout`. You can disable all
+    // output by setting `nullptr`.
+    Config& output(std::ostream* outstream) noexcept;
+    ANKERL_NANOBENCH(NODISCARD) std::ostream* output() const noexcept;
+
+    // Number of epochs to evaluate. The reported result will be the median of evaluation of each epoch. Defaults to 51. The higher you
+    // choose this, the more deterministic will the result be and outliers will be more easily removed. The default is already quite
+    // high to be able to filter most outliers.
+    //
+    // For slow benchmarks you might want to reduce this number.
     Config& epochs(size_t numEpochs) noexcept;
     ANKERL_NANOBENCH(NODISCARD) size_t epochs() const noexcept;
 
-    // Desired evaluation time is a multiple of clock resolution.
+    // Modern processors have a very accurate clock, being able to measure as low as 20 nanoseconds. This allows nanobech to be so
+    // fast: we only run the benchmark sufficiently often so that the clock's accuracy is good enough. The default is to run one epoch
+    // for 2000 times the clock resolution. So for 20ns resolution and 51 epochs, this gives a total runtime of `20ns * 2000 * 51 ~
+    // 2ms` for a benchmark to get accurate results.
     Config& clockResolutionMultiple(size_t multiple) noexcept;
     ANKERL_NANOBENCH(NODISCARD) size_t clockResolutionMultiple() const noexcept;
 
-    // Sets the maximum time each epoch should take. Default is 100ms.
+    // As a safety precausion if the clock is not very accurate, we can set an upper limit for the maximum evaluation time per epoch.
+    // Default is 100ms.
     Config& maxEpochTime(std::chrono::nanoseconds t) noexcept;
     ANKERL_NANOBENCH(NODISCARD) std::chrono::nanoseconds maxEpochTime() const noexcept;
 
-    // Sets the minimum time each epoch should take. Default is zero, so clockResolutionMultiple() can do it's guessing.
+    // Sets the minimum time each epoch should take. Default is zero, so clockResolutionMultiple() can do it's best guess. You can
+    // increase this if you have the time and results are not accurate enough.
     Config& minEpochTime(std::chrono::nanoseconds t) noexcept;
     ANKERL_NANOBENCH(NODISCARD) std::chrono::nanoseconds minEpochTime() const noexcept;
 
-    // For high MdAPE, you might want to increase the minimum number of iterations per epoch.
+    // Sets the minimum number of iterations each epoch should take. Default is 1. For high median average percentage error (MdAPE),
+    // which happens when your benchmark is unstable, you might want to increase the minimum number to get more accurate reslts.
     Config& minEpochIterations(uint64_t numIters) noexcept;
     ANKERL_NANOBENCH(NODISCARD) uint64_t minEpochIterations() const noexcept;
 
+    // Set a number of iterations that are initially performed without any measurements, to warmup caches / database / whatever.
+    // Normally this is not needed, since we show the median result so initial outliers will be filtered away automatically.
     Config& warmup(uint64_t numWarmupIters) noexcept;
     ANKERL_NANOBENCH(NODISCARD) uint64_t warmup() const noexcept;
 
     // Gets all benchmark results
     ANKERL_NANOBENCH(NODISCARD) std::vector<Result> const& results() const noexcept;
 
-    // Where to print results. Use `nullptr` to disable output
-    Config& output(std::ostream* outstream) noexcept;
-    ANKERL_NANOBENCH(NODISCARD) std::ostream* output() const noexcept;
-
-    // Performs all evaluations.
+    // Repeatedly calls op() based on the configuration, and performs measurements.
     template <typename Op>
     Config& run(std::string const& name, Op op);
 
