@@ -23,3 +23,7 @@
 * [Tutorial](docs/tutorial.md#top) - getting started
 * [Reference](docs/reference.md#top) - all the details
 * [Comparison](docs/comparison.md#top) - comparison with other microbenchmark frameworks
+
+# More
+
+* [Code of Conduct](CODE_OF_CONDUCT.md) - Contributor Covenant Code of Conduct
