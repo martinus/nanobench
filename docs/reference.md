@@ -58,7 +58,7 @@ The `Config` class comes with a powerful [mustache](https://mustache.github.io/)
 
 ```cpp
 std::ofstream fout("example_random_number_generators.json");
-cfg.render(ankerl::nanobench::templates::json(), fout);
+cfg.render(ankerl::nanobench::templates::htmlBoxplot(), fout);
 ```
 
 ![html boxplot example](htmlBoxplot_example.png)
