@@ -27,3 +27,5 @@
 # More
 
 * [Code of Conduct](CODE_OF_CONDUCT.md) - Contributor Covenant Code of Conduct
+* I need a better logo. Currently I use a small bench. Nanobench. Ha ha.
+
