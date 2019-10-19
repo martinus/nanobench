@@ -13,16 +13,13 @@
 
 # Installation
 
-1. Download `nanobench.h` from the [releases](https://github.com/martinus/nanobench/releases)
-1. Make that header available in your project.
+1. Download `nanobench.h` from the [releases](https://github.com/martinus/nanobench/releases) and make it available in your project.
 1. Create a .cpp file, e.g. `nanobench.cpp`, where the bulk of nanobench is compiled:
    ```cpp
    #define ANKERL_NANOBENCH_IMPLEMENT
    #include <nanobench.h>
    ```
-   `nanobench.h` 
 1. Wherever you want to use nanobench's functionality, simply `#include <nanobench.h>`. Everything is within namespace `ankerl::nanobench`.
-
 
 # Examples
 
