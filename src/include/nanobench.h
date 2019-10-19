@@ -204,18 +204,19 @@ public:
     ~Config() noexcept;
 
     // Set the batch size, e.g. number of processed bytes, or some other metric for the size of the processed data in each iteration.
-    // Any argument is cast to double.
+    // Best used in combination with `unit`. Any argument is cast to double.
     template <typename T>
     Config& batch(T b) noexcept;
     ANKERL_NANOBENCH(NODISCARD) double batch() const noexcept;
 
-    // Marks the next run as the baseline. 100% it is exactly as fast as the baseline, >100% means it is faster than the baseline,
-    // <100% means it is slower than the baseline.
+    // Marks the next run as the baseline. The following runs will be compared to this run. 100% will mean it is exactly as fast as the
+    // baseline, >100% means it is faster than the baseline. It is calculated by `100% * runtime_baseline / runtime`. So e.g. 200%
+    // means the current run is twice as fast as the baseline.
     Config& relative(bool isRelativeEnabled) noexcept;
     ANKERL_NANOBENCH(NODISCARD) bool relative() const noexcept;
 
-    // Operation unit. Defaults to "op", could be e.g. "byte" for string processing.
-    // Use singular (byte, not bytes).
+    // Operation unit. Defaults to "op", could be e.g. "byte" for string processing. This is used for the table header, e.g. to show
+    // `ns/byte`. Use singular (byte, not bytes).
     Config& unit(std::string unit);
     ANKERL_NANOBENCH(NODISCARD) std::string const& unit() const noexcept;
 
