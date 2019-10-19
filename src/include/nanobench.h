@@ -802,7 +802,7 @@ IterationLogic::IterationLogic(Config const& config, std::string name) noexcept
     mMeasurements.reserve(mConfig.epochs());
 
     if (isEndlessRunning(mName)) {
-        std::cerr << "NANOBENCH_ENDLESS set: running '" << name << "' endlessly" << std::endl;
+        std::cerr << "NANOBENCH_ENDLESS set: running '" << mName << "' endlessly" << std::endl;
         mNumIters = (std::numeric_limits<uint64_t>::max)();
         mState = State::endless;
     } else if (0 != mConfig.warmup()) {
