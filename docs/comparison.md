@@ -16,7 +16,10 @@
       * [Catch2](#catch2)
          * [Sourcecode](#sourcecode-3)
          * [Results](#results-3)
-   * [Links](#links)
+      * [folly Benchmark](#folly-benchmark)
+      * [moodycamel::microbench](#moodycamelmicrobench)
+         * [Sourcecode](#sourcecode-4)
+         * [Results](#results-4)
 <!--te-->
 
 I've implemented the three different benchmarks (slow, fast, unstable) in several frameworks for comparison. All benchmarks are run on an i7-8700 CPU locked at 3.2GHz, using [pyperf system tune](https://pyperf.readthedocs.io/en/latest/system.html).
@@ -367,7 +370,7 @@ Facebook's folly comes with benchmarking facility. It seems rather basic, but wi
 
 A very simple benchmarking tool, and an API that's very similar to `ankerl::nanobench`. No autotuning, no doNotOptimize, no output formatting. Get it here: [moodycamel::microbench](https://github.com/cameron314/microbench)
 
-## Sourcecode
+### Sourcecode
 
 ```cpp
 #include "microbench.h"
@@ -403,7 +406,7 @@ int main(int, char**) {
 }
 ```
 
-## Results
+### Results
 
 ```
 3.13623e-07 sec x += x (x==0)
