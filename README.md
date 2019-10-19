@@ -23,14 +23,3 @@
 * [Tutorial](docs/tutorial.md#top) - getting started
 * [Reference](docs/reference.md#top) - all the details
 * [Comparison](docs/comparison.md#top) - comparison with other microbenchmark frameworks
-
-# Features
-
-* Single header library: you only need `nanobench.h`. Nothing else.
-* Fast compile time
-* Easily integratable in any unit test framework: Pure C++. no Macros, no runners, no global registrations
-* Zero configuration: Automatically detects number of iterations for accurate measurements.
-* Fast execution: runtime is based on the clock's accuracy
-* Warns when system is not configured for benchmarking (currently only in Linux)
-* Warns at unstable results - with suggestions
-* Output in Markdown table format

@@ -28,7 +28,7 @@ You can find more examples in [src/test](https://github.com/martinus/nanobench/t
 
 ## Simple Example
 
-This code from [full_example.cpp](src/scripts/full_example.cpp):
+This code from [full_example.cpp](https://github.com/martinus/nanobench/tree/master/src/scripts/full_example.cpp):
 
 ```cpp
 #define ANKERL_NANOBENCH_IMPLEMENT
@@ -54,7 +54,7 @@ Which means that one `x.compare_exchange_strong(y, 0);` call takes 5.83ns on my 
 operations per second. Runtime fluctuates by around 0.1%, so the results are very stable.
 
 In the remaining examples, I compile nanobench's implementation once in a separate cpp file 
-[nanobench.cpp](src/test/app/nanobench.cpp). This compiles most of nanobench, and is relatively slow - but
+[nanobench.cpp](https://github.com/martinus/nanobench/tree/master/src/test/app/nanobench.cpp). This compiles most of nanobench, and is relatively slow - but
 only needs to be done once. The usage of nanobench compiles very fast.
 
 
@@ -172,7 +172,7 @@ The results are also more stable. This time the benchmark takes 27ms.
 ## Comparing Results
 
 I have implemented a comparison of multiple random
-number generators in a test [example_random_number_generators.cpp](src/test/example_random_number_generators.cpp).
+number generators in a test [example_random_number_generators.cpp](https://github.com/martinus/nanobench/tree/master/src/test/example_random_number_generators.cpp).
 Here several RNGs are compared to a baseline calculated from `std::default_random_engine`:
 
 ```cpp
