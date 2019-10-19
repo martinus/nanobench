@@ -119,7 +119,7 @@ This is an implementation of Small Fast Counting RNG, version 4. The original im
 |    70.0% |               60.78 |       16,451,791.51 |    1.3% | `std::knuth_b`
 | 2,064.4% |                2.06 |      484,970,577.32 |    0.1% | `ankerl::nanobench::Rng`
 
-It has a special member to produce `double` values in the range [0, 1(. That's >3 times faster than using `std::default_random_engine` with `std::uniform_real_distribution`.
+It has a special member to produce `double` values in the range `[0, 1(`. That's  over 3 times faster than using `std::default_random_engine` with `std::uniform_real_distribution`.
 
 | relative |               ns/op |                op/s |   MdAPE | random double in [0, 1(
 |---------:|--------------------:|--------------------:|--------:|:----------------------------------------------
