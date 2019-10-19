@@ -47,3 +47,22 @@ ankerl::nanobench::Config().run("x += x", [&] {
 ```
 
 > **_NOTE:_** Each call to your lambda must have a side effect that the compiler can't possibly optimize it away. E.g. add a result to an externally defined number (like `x` in the above example), and finally call `doNotOptimizeAway` on the variables the compiler must not remove. You can also use `ankerl::nanobench::doNotOptimize(...)` directly in the lambda, but be aware that this has a small overhead.
+
+## Processing Results
+
+The `Config` class comes with a powerful [mustache](https://mustache.github.io/)-like template mechanism to process the benchmark results into all kinds of formats. After all benchmarks have been run, you can e.g. create a nice boxplot of all results with:
+
+```cpp
+std::ofstream fout("example_random_number_generators.json");
+cfg.render(ankerl::nanobench::templates::json(), fout);
+```
+
+![html boxplot example](docs/htmlBoxplot_example.png)
+
+Namespace `ankerl::nanobench::templates` comes with several predefined templates:
+
+| **template** | **Result** |
+|---|---|
+| `csv` | Produces comma-separated value (CSV) content |
+| `json` | All available data will be generated into one JSON file. Use this as an example for your own templates. |
+| `htmlBoxplot` | Generates a HTML page that uses [plotly.js](https://plot.ly/javascript/) with a boxplot graph of all the results. This gives a very nice visual representation of all the data |
