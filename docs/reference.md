@@ -61,7 +61,7 @@ std::ofstream fout("example_random_number_generators.json");
 cfg.render(ankerl::nanobench::templates::json(), fout);
 ```
 
-![html boxplot example](docs/htmlBoxplot_example.png)
+![html boxplot example](htmlBoxplot_example.png)
 
 Namespace `ankerl::nanobench::templates` comes with several predefined templates:
 
