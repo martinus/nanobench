@@ -29,8 +29,8 @@ function build() {
 }
 
 # put fi down to skip
-if false; then
-fi
+#if false; then
+#fi
 
 ## DON'T MODIFY PAST HERE! Just copy&past above this line to test it before other stuff.
 
