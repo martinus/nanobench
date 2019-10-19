@@ -8,9 +8,10 @@
       * [Controlling Measurement](#controlling-measurement)
       * [Running Benchmarks](#running-benchmarks)
       * [Processing Results](#processing-results)
+   * [ankerl::nanobench::Rng](#ankerlnanobenchrng)
 <!--te-->
 
-# ankerl::nanobench::Config
+# `ankerl::nanobench::Config`
 
 All configuration and running the benchmarks is done with `ankerl::nanobench::Config`.
 
@@ -70,3 +71,28 @@ Namespace `ankerl::nanobench::templates` comes with several predefined templates
 | `csv` | Produces comma-separated value (CSV) content |
 | `json` | All available data will be generated into one JSON file. Use this as an example for your own templates. |
 | `htmlBoxplot` | Generates a HTML page that uses [plotly.js](https://plot.ly/javascript/) with a boxplot graph of all the results. This gives a very nice visual representation of all the data |
+
+# `ankerl::nanobench::Rng`
+
+This is an implementation of Small Fast Counting RNG, version 4. The original implementation can be found in [PractRand](http://pracrand.sourceforge.net). It also passes all tests of the practrand test suite. When you need random numbers in your benchmark, this is your best choice. In my benchmarks, it is 20 times faster than `std::default_random_engine for producing random `uint64_t` values:
+
+| relative |         ns/uint64_t |          uint64_t/s |   MdAPE | Random Number Generators
+|---------:|--------------------:|--------------------:|--------:|:----------------------------------------------
+|   100.0% |               42.57 |       23,491,710.37 |    1.5% | `std::default_random_engine`
+|   194.2% |               21.92 |       45,610,149.01 |    2.8% | `std::mt19937`
+|   550.0% |                7.74 |      129,213,196.68 |    1.5% | `std::mt19937_64`
+|    93.1% |               45.72 |       21,869,904.99 |    0.5% | `std::ranlux24_base`
+|   125.5% |               33.93 |       29,473,684.21 |    0.5% | `std::ranlux48_base`
+|    21.5% |              198.08 |        5,048,415.13 |    1.0% | `std::ranlux24_base`
+|    11.0% |              386.67 |        2,586,182.40 |    3.1% | `std::ranlux48`
+|    70.0% |               60.78 |       16,451,791.51 |    1.3% | `std::knuth_b`
+| 2,064.4% |                2.06 |      484,970,577.32 |    0.1% | `ankerl::nanobench::Rng`
+
+It has a special member to produce `double` values in the range [0, 1(. That's >3 times faster than using `std::default_random_engine` with `std::uniform_real_distribution`.
+
+| relative |               ns/op |                op/s |   MdAPE | random double in [0, 1(
+|---------:|--------------------:|--------------------:|--------:|:----------------------------------------------
+|   100.0% |                9.37 |      106,773,457.81 |    0.1% | `std::default_random_engine & std::uniform_real_distribution`
+|   189.0% |                4.95 |      201,827,794.16 |    0.5% | `ankerl::nanobench::Rng & std::uniform_real_distribution`
+|   332.8% |                2.81 |      355,368,039.14 |    0.0% | `ankerl::nanobench::Rng::uniform01()`
+

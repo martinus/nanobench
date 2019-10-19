@@ -13,10 +13,10 @@
 
 # Design Goals
 
-* *Ease of use*: Simple but powerful API, fast compile times, easy to integrate anywhere.
-* *Fast*: Get accurate results as fast as possible
-* *Accurate*: Get deterministic, repeatable, and accurate results that you can make sound decisions on.
-* *Robust*: Be robust against outliers, warn if results are not reliable.
+* **Ease of use**: Simple but powerful API, fast compile times, easy to integrate anywhere.
+* **Fast**: Get accurate results as fast as possible
+* **Accurate**: Get deterministic, repeatable, and accurate results that you can make sound decisions on.
+* **Robust**: Be robust against outliers, warn if results are not reliable.
 
 # How to Use it
 

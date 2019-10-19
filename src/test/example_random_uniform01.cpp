@@ -21,7 +21,7 @@ TEST_CASE("example_random_uniform01") {
         .doNotOptimizeAway(d);
 
     d = 0;
-    cfg.run("nanobenchRng.uniform01()", [&] { d += nanobenchRng.uniform01(); }).doNotOptimizeAway(d);
+    cfg.run("ankerl::nanobench::Rng::uniform01()", [&] { d += nanobenchRng.uniform01(); }).doNotOptimizeAway(d);
 
     std::ofstream fout("example_random_uniform01.json");
     cfg.render(ankerl::nanobench::templates::json(), fout);
