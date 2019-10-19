@@ -11,7 +11,7 @@
    * [ankerl::nanobench::Rng](#ankerlnanobenchrng)
 <!--te-->
 
-# `ankerl::nanobench::Config`
+# ankerl::nanobench::Config
 
 All configuration and running the benchmarks is done with `ankerl::nanobench::Config`.
 
@@ -72,7 +72,7 @@ Namespace `ankerl::nanobench::templates` comes with several predefined templates
 | `json` | All available data will be generated into one JSON file. Use this as an example for your own templates. |
 | `htmlBoxplot` | Generates a HTML page that uses [plotly.js](https://plot.ly/javascript/) with a boxplot graph of all the results. This gives a very nice visual representation of all the data |
 
-# `ankerl::nanobench::Rng`
+# ankerl::nanobench::Rng
 
 This is an implementation of Small Fast Counting RNG, version 4. The original implementation can be found in [PractRand](http://pracrand.sourceforge.net). It also passes all tests of the practrand test suite. When you need random numbers in your benchmark, this is your best choice. In my benchmarks, it is 20 times faster than `std::default_random_engine for producing random `uint64_t` values:
 

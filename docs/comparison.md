@@ -23,6 +23,8 @@ I've implemented the three different benchmarks (slow, fast, unstable) in severa
 
 ## Google Benchmark
 
+Very feature rich, battle proven, but a bit aged. Requires google test. Get it here: [google Benchmark](https://github.com/google/benchmark)
+
 ### Sourcecode
 
 ```cpp
@@ -90,6 +92,8 @@ ComparisonFluctuating        993 ns          992 ns       706946
 Running the tests individually takes 0.365s, 11.274 sec, 0.828sec.
 
 ## nonius
+
+It gives lots of statistics, but seems a bit complicated to me. Not as straight forward as I'd like it. It shows lots of statistics, which makes the output a bit hard to read. I am not sure if it is still actively maintained. The homepage has been down for a while. Get it here: [nonius](https://github.com/libnonius/nonius)
 
 ### Sourcecode
 
@@ -172,14 +176,14 @@ variance is severely inflated by outliers
 
 ## Celero
 
-Unfortunately I couldn't get it working. I only got segmentation faults for my `x += x` benchmark.
+Unfortunately I couldn't get it working. I only got segmentation faults for my `x += x` benchmarks. Get it here: [celero](https://github.com/DigitalInBlue/Celero)
 
 ## Picobench
 
-### Sourcecode
+It took me a while to figure out that I have to configure the slow test, otherwise it would run for a looong time. The number of iterations is hardcoded, this library seems very basic. Get it here: [picobench](https://github.com/iboB/picobench)
 
-It took me a while to figure out that I have to configure the slow test, otherwise it would run for a looong time
-since the number of iterations is hardcoded.
+
+### Sourcecode
 
 ```cpp
 #define PICOBENCH_IMPLEMENT_WITH_MAIN
@@ -257,6 +261,8 @@ fluctuating:
 ```
 
 ## Catch2
+
+Catch2 is mostly a unit testing framework, and has recently integrated benchmarking faciliy. It is very easy to use, but does not seem too configurable. I find the way it writes the output very confusing. Get it here: [Catch2](https://github.com/catchorg/Catch2)
 
 ### Sourcecode
 
@@ -352,14 +358,56 @@ test cases: 3 | 3 passed
 assertions: - none -
 ```
 
-Catch is nice that it does everything automatic as well. It also shows low and high.
+## folly Benchmark
+
+Facebook's folly comes with benchmarking facility. It seems rather basic, but with good `DoNotOptimizeAway` functionality. Honestly, I was too lazy to get this working. Too much installation hazzle. Get it here: [folly](https://github.com/facebook/folly)
 
 
+## moodycamel::microbench
 
-# Links
-* [moodycamel::microbench](https://github.com/cameron314/microbench) moodycamel's microbench, probably closest to this library in spirit
-* [folly Benchmark](https://github.com/facebook/folly/blob/master/folly/Benchmark.h) Part of facebook's folly
-* [google Benchmark](https://github.com/google/benchmark) 
-* [nonius](https://github.com/libnonius/nonius) Unmaintained?
-* [celero](https://github.com/DigitalInBlue/Celero)
-* [picobench](https://github.com/iboB/picobench)
+A very simple benchmarking tool, and an API that's very similar to `ankerl::nanobench`. No autotuning, no doNotOptimize, no output formatting. Get it here: [moodycamel::microbench](https://github.com/cameron314/microbench)
+
+## Sourcecode
+
+```cpp
+#include "microbench.h"
+
+#include <chrono>
+#include <iostream>
+#include <random>
+#include <thread>
+
+// g++ -O2 -c systemtime.cpp
+// g++ -O2 -c microbench.cpp
+// g++ microbench.o systemtime.o -o mb
+int main(int, char**) {
+    // something fast
+    uint64_t x = 1;
+    std::cout << moodycamel::microbench([&]() { x += x; }, 10000000, 51) << " sec x += x (x==" << x << ")" << std::endl;
+
+    std::cout << moodycamel::microbench([&] { std::this_thread::sleep_for(std::chrono::milliseconds(10)); }) << " sec sleep 10ms"
+              << std::endl;
+
+    std::random_device dev;
+    std::mt19937_64 rng(dev());
+    std::cout << moodycamel::microbench(
+                     [&] {
+                         // each run, perform a random number of rng calls
+                         auto iterations = rng() & UINT64_C(0xff);
+                         for (uint64_t i = 0; i < iterations; ++i) {
+                             (void)rng();
+                         }
+                     },
+                     1000, 51)
+              << " sec random fluctuations" << std::endl;
+}
+```
+
+## Results
+
+```
+3.13623e-07 sec x += x (x==0)
+10.0188 sec sleep 10ms
+0.000936755 sec random fluctuations
+```
+
