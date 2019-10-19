@@ -15,9 +15,9 @@
 
 # How to Use it
 
-* [Tutorial](docs/tutorial.md#top) - getting started
-* [Reference section](docs/reference.md#top) - all the details
-* [Comparison](docs/comparison.md#top) - comparison with other microbenchmark frameworks
+* [Tutorial](docs/tutorial.md#tutorial) - getting started
+* [Reference](docs/reference.md#reference) - all the details
+* [Comparison](docs/comparison.md#comparison) - comparison with other microbenchmark frameworks
 
 # Features
 

@@ -19,7 +19,7 @@
    #define ANKERL_NANOBENCH_IMPLEMENT
    #include <nanobench.h>
    ```
-1. Wherever you want to use nanobench's functionality, simply `#include <nanobench.h>`. Everything is within namespace `ankerl::nanobench`.
+1. Wherever you want to use nanobench's functionality, simply `#include <nanobench.h>`. All functionality is within namespace `ankerl::nanobench`.
 
 # Examples
 
