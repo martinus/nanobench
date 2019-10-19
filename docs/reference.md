@@ -126,3 +126,10 @@ It has a special member to produce `double` values in the range [0, 1(. That's >
 |   189.0% |                4.95 |      201,827,794.16 |    0.5% | `ankerl::nanobench::Rng & std::uniform_real_distribution`
 |   332.8% |                2.81 |      355,368,039.14 |    0.0% | `ankerl::nanobench::Rng::uniform01()`
 
+# Endless Running
+
+Sometimes it helps to run a benchmark for a very long time, so that it's possible to attach with a profiler like `perf` and get meaningful statistics. This can be done with the environment variable `NANOBENCH_ENDLESS`. E.g. to run the benchmark with the name `x += x` infinitely, call the app this way:
+
+```sh
+NANOBENCH_ENDLESS="x += x" ./nb
+```
