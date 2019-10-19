@@ -16,9 +16,6 @@
          * [Sourcecode](#sourcecode-3)
          * [Results](#results-3)
    * [Links](#links)
-
-<!-- Added by: martinus, at: Sa Okt 19 12:28:06 CEST 2019 -->
-
 <!--te-->
 
 I've implemented the three different benchmarks (slow, fast, unstable) in several frameworks for comparison. All benchmarks are run on an i7-8700 CPU locked at 3.2GHz, using [pyperf system tune](https://pyperf.readthedocs.io/en/latest/system.html).
