@@ -3,7 +3,11 @@
 
 <!--ts-->
    * [Reference](#reference)
-   * [Configuring Benchmarks](#configuring-benchmarks)
+   * [ankerl::nanobench::Config](#ankerlnanobenchconfig)
+      * [Controlling Output](#controlling-output)
+      * [Controlling Measurement](#controlling-measurement)
+      * [Running Benchmarks](#running-benchmarks)
+      * [Processing Results](#processing-results)
 <!--te-->
 
 # ankerl::nanobench::Config
