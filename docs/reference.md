@@ -9,6 +9,7 @@
       * [Running Benchmarks](#running-benchmarks)
       * [Processing Results](#processing-results)
    * [ankerl::nanobench::Rng](#ankerlnanobenchrng)
+   * [Endless Running](#endless-running)
 <!--te-->
 
 # ankerl::nanobench::Config
