@@ -11,6 +11,23 @@
 
 `ankerl::nanobench` is a platform independent microbenchmarking library for C++11/14/17/20.
 
+```cpp
+#define ANKERL_NANOBENCH_IMPLEMENT
+#include <nanobench.h>
+
+int main() {
+    uint64_t x = 1;
+    ankerl::nanobench::Config().run("x += x", [&] { x += x; }).doNotOptimizeAway(x);
+}
+```
+Prints
+
+```markdown
+|               ns/op |                op/s |   MdAPE | benchmark
+|--------------------:|--------------------:|--------:|:----------------------------------------------
+|                0.31 |    3,195,677,932.63 |    0.0% | `x += x`
+```
+
 # Design Goals
 
 * **Ease of use**: Simple but powerful API, fast compile times, easy to integrate anywhere.
