@@ -1,3 +1,4 @@
+<a id="top"></a>
 # Comparison
 
 <!--ts-->
