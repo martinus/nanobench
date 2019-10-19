@@ -11,6 +11,8 @@
 
 `ankerl::nanobench` is a platform independent microbenchmarking library for C++11/14/17/20.
 
+# Motivating Example
+
 ```cpp
 #define ANKERL_NANOBENCH_IMPLEMENT
 #include <nanobench.h>
