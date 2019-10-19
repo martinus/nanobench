@@ -72,6 +72,36 @@ Namespace `ankerl::nanobench::templates` comes with several predefined templates
 | `json` | All available data will be generated into one JSON file. Use this as an example for your own templates. |
 | `htmlBoxplot` | Generates a HTML page that uses [plotly.js](https://plot.ly/javascript/) with a boxplot graph of all the results. This gives a very nice visual representation of all the data |
 
+The JSON template demonstrates *all* possible variables that can be used in the mustache-like templating language:
+
+```json
+ "title": "{{title}}",
+ "unit": "{{unit}}",
+ "batch": {{batch}},
+ "benchmarks": [
+{{#benchmarks}}  {
+   "name": "{{name}}",
+   "median_sec_per_unit": {{median_sec_per_unit}},
+   "md_ape": {{md_ape}},
+   "min": {{min}},
+   "max": {{max}},
+   "relative": {{relative}},
+   "num_measurements": {{num_measurements}},
+   "results": [
+{{#results}}    { "sec_per_unit": {{sec_per_unit}}, "iters": {{iters}}, "elapsed_ns": {{elapsed_ns}} }{{^-last}}, {{/-last}}
+{{/results}}   ]
+  }{{^-last}},{{/-last}}
+{{/benchmarks}} ]
+}
+```
+
+In short:
+
+* `{{whatever}}` will be replaced by the content of the identifier.
+* `{{#benchmarks}}` opens a section, that will be rendered once for each benchmark. The section is closed by `{{/benchmarks}}`.
+* `{{#results}}` opens a section for each result (epoch) within a benchmark.
+* Within each section, you can use `{{#-last}}whatever{{/-last}}` to print `whatever` only for the last entry, `{{#-first}}` for only the first, `{{^-last}}` for anything *but* the last, `{{^-first}}` for anything *but* the first. In the JSON example, this is used to add a comma `, ` after each result except the last one.
+
 # ankerl::nanobench::Rng
 
 This is an implementation of Small Fast Counting RNG, version 4. The original implementation can be found in [PractRand](http://pracrand.sourceforge.net). It also passes all tests of the practrand test suite. When you need random numbers in your benchmark, this is your best choice. In my benchmarks, it is 20 times faster than `std::default_random_engine for producing random `uint64_t` values:
