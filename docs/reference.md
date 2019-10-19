@@ -105,7 +105,7 @@ In short:
 
 # ankerl::nanobench::Rng
 
-This is an implementation of Small Fast Counting RNG, version 4. The original implementation can be found in [PractRand](http://pracrand.sourceforge.net). It also passes all tests of the practrand test suite. When you need random numbers in your benchmark, this is your best choice. In my benchmarks, it is 20 times faster than `std::default_random_engine for producing random `uint64_t` values:
+This is an implementation of Small Fast Counting RNG, version 4. The original implementation can be found in [PractRand](http://pracrand.sourceforge.net). It also passes all tests of the practrand test suite. When you need random numbers in your benchmark, this is your best choice. In my benchmarks, it is 20 times faster than `std::default_random_engine` for producing random `uint64_t` values:
 
 | relative |         ns/uint64_t |          uint64_t/s |   MdAPE | Random Number Generators
 |---------:|--------------------:|--------------------:|--------:|:----------------------------------------------
