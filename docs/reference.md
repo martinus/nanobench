@@ -75,7 +75,7 @@ Namespace `ankerl::nanobench::templates` comes with several predefined templates
 
 The JSON template demonstrates *all* possible variables that can be used in the mustache-like templating language:
 
-```json
+```
  "title": "{{title}}",
  "unit": "{{unit}}",
  "batch": {{batch}},
