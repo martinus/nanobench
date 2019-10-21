@@ -15,11 +15,13 @@
 
 int main() {
     uint64_t x = 1;
-    ankerl::nanobench::Config().run("x += x", [&] { x += x; }).doNotOptimizeAway(x);
+    ankerl::nanobench::Config().run("x += x", [&] {
+        x += x;
+    }).doNotOptimizeAway(x);
 }
 ```
 
-Runs for 4ms to print
+Runs for 4ms, then prints
 
 ```markdown
 |               ns/op |                op/s |   MdAPE | benchmark
