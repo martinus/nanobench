@@ -44,7 +44,10 @@ TEST_CASE("comparison") {
     double x = 1.0;
 
     auto cfg = ankerl::nanobench::Config().title("relative comparisons").relative(true);
-    cfg.run("x += x", [&] { x += x; }).doNotOptimizeAway(x);
+    cfg.run("x += x double", [&] { x += x; }).doNotOptimizeAway(x);
+
+    uint64_t n = 1;
+    cfg.run("n *= 3", [&] { n *= 2; }).doNotOptimizeAway(n);
 
     x = 1.123;
     cfg.run("std::sin(x)", [&] { x += std::sin(x); }).doNotOptimizeAway(x);

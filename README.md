@@ -12,28 +12,29 @@
 ```cpp
 #define ANKERL_NANOBENCH_IMPLEMENT
 #include <nanobench.h>
+#include <cmath>
 
 int main() {
-    uint64_t x = 1;
-    ankerl::nanobench::Config().run("x += x", [&] {
-        x += x;
-    }).doNotOptimizeAway(x);
+    double d = 1.0;
+    ankerl::nanobench::Config().run("d += std::sin(d)", [&] {
+        d += std::sin(d);
+    }).doNotOptimizeAway(d);
 }
 ```
 
-Runs for 4ms, then prints
+Runs for 3ms to print
 
 ```markdown
-|               ns/op |                op/s |   MdAPE | benchmark
-|--------------------:|--------------------:|--------:|:----------------------------------------------
-|                0.31 |    3,195,677,932.63 |    0.0% | `x += x`
+|               ns/op |                op/s |   MdAPE |         ins/op |         cyc/op |    IPC |    branches/op | missed% | benchmark
+|--------------------:|--------------------:|--------:|---------------:|---------------:|-------:|---------------:|--------:|:----------------------------------------------
+|               21.17 |       47,241,589.57 |    0.0% |          85.00 |          67.58 |  1.258 |          15.00 |    0.0% | `d += std::sin(d)`
 ```
 
 Which github renders as
 
-|               ns/op |                op/s |   MdAPE | benchmark
-|--------------------:|--------------------:|--------:|:----------------------------------------------
-|                0.31 |    3,195,677,932.63 |    0.0% | `x += x`
+|               ns/op |                op/s |   MdAPE |         ins/op |         cyc/op |    IPC |    branches/op | missed% | benchmark
+|--------------------:|--------------------:|--------:|---------------:|---------------:|-------:|---------------:|--------:|:----------------------------------------------
+|               21.17 |       47,241,589.57 |    0.0% |          85.00 |          67.58 |  1.258 |          15.00 |    0.0% | `d += std::sin(d)`
 
 # Design Goals
 

@@ -1,7 +1,10 @@
 #define ANKERL_NANOBENCH_IMPLEMENT
 #include <nanobench.h>
+#include <cmath>
 
 int main() {
-    uint64_t x = 1;
-    ankerl::nanobench::Config().run("x += x", [&] { x += x; }).doNotOptimizeAway(x);
+    double d = 1.0;
+    ankerl::nanobench::Config().run("d += std::sin(d)", [&] {
+        d += std::sin(d);
+    }).doNotOptimizeAway(d);
 }
