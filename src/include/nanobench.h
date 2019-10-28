@@ -31,7 +31,7 @@
 #define ANKERL_NANOBENCH_H_INCLUDED
 
 // see https://semver.org/
-#define ANKERL_NANOBENCH_VERSION_MAJOR 2 // incompatible API changes
+#define ANKERL_NANOBENCH_VERSION_MAJOR 3 // incompatible API changes
 #define ANKERL_NANOBENCH_VERSION_MINOR 0 // backwards-compatible changes
 #define ANKERL_NANOBENCH_VERSION_PATCH 0 // backwards-compatible bug fixes
 
@@ -40,6 +40,7 @@
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 
 #include <chrono>           // high_resolution_clock
+#include <cstring>          // memcpy
 #include <initializer_list> // for doNotOptimizeAway
 #include <iosfwd>           // for std::ostream* custom output target in Config
 #include <string>           // all names
@@ -75,6 +76,12 @@
 #    define ANKERL_NANOBENCH_LOG(x)
 #endif
 
+#if defined(__linux__)
+#    define ANKERL_NANOBENCH_PRIVATE_PERF_COUNTERS() 1
+#else
+#    define ANKERL_NANOBENCH_PRIVATE_PERF_COUNTERS() 0
+#endif
+
 // declarations ///////////////////////////////////////////////////////////////////////////////////
 
 namespace ankerl {
@@ -102,7 +109,15 @@ char const* json() noexcept;
 
 namespace detail {
 
+template <typename T>
+struct PerfCountSet;
+
 class IterationLogic;
+class PerformanceCounters;
+
+#if ANKERL_NANOBENCH(PERF_COUNTERS)
+class LinuxPerformanceCounters;
+#endif
 
 } // namespace detail
 } // namespace nanobench
@@ -112,28 +127,50 @@ class IterationLogic;
 
 namespace ankerl {
 namespace nanobench {
+namespace detail {
+
+template <typename T>
+struct PerfCountSet {
+    T pageFaults{};
+    T cpuCycles{};
+    T contextSwitches{};
+    T instructions{};
+    T branchInstructions{};
+    T branchMisses{};
+};
+
+} // namespace detail
 
 // Holds measurement results of one epoch of a benchmark.
 class Measurement {
 public:
-    Measurement(Clock::duration totalElapsed, uint64_t iters, double batch) noexcept;
+    Measurement(Clock::duration totalElapsed, uint64_t iters, double batch, detail::PerformanceCounters const& pc) noexcept;
 
     // sortable fastest to slowest
     ANKERL_NANOBENCH(NODISCARD) bool operator<(Measurement const& other) const noexcept;
     ANKERL_NANOBENCH(NODISCARD) Clock::duration const& elapsed() const noexcept;
     ANKERL_NANOBENCH(NODISCARD) uint64_t numIters() const noexcept;
-    ANKERL_NANOBENCH(NODISCARD) std::chrono::duration<double> secPerUnit() const;
+    ANKERL_NANOBENCH(NODISCARD) std::chrono::duration<double> secPerUnit() const noexcept;
+
+    ANKERL_NANOBENCH(NODISCARD) uint64_t pageFaults() const noexcept;
+    ANKERL_NANOBENCH(NODISCARD) uint64_t cpuCycles() const noexcept;
+    ANKERL_NANOBENCH(NODISCARD) uint64_t contextSwitches() const noexcept;
+    ANKERL_NANOBENCH(NODISCARD) uint64_t instructions() const noexcept;
+    ANKERL_NANOBENCH(NODISCARD) uint64_t branchInstructions() const noexcept;
+    ANKERL_NANOBENCH(NODISCARD) uint64_t branchMisses() const noexcept;
 
 private:
     Clock::duration mTotalElapsed;
     uint64_t mNumIters;
     std::chrono::duration<double> mSecPerUnit;
+    detail::PerfCountSet<uint64_t> mVal;
 };
 
 // Result returned after a benchmark has finished. Can be used as a baseline for relative().
+ANKERL_NANOBENCH(IGNORE_PADDED_PUSH)
 class Result {
 public:
-    Result(std::string benchmarkName, std::vector<Measurement> measurements) noexcept;
+    Result(std::string benchmarkName, std::vector<Measurement> measurements, double batch) noexcept;
     Result() noexcept;
 
     ANKERL_NANOBENCH(NODISCARD) std::string const& name() const noexcept;
@@ -143,13 +180,33 @@ public:
     ANKERL_NANOBENCH(NODISCARD) std::chrono::duration<double> minimum() const noexcept;
     ANKERL_NANOBENCH(NODISCARD) std::chrono::duration<double> maximum() const noexcept;
 
+    ANKERL_NANOBENCH(NODISCARD) double medianCpuCyclesPerUnit() const noexcept;
+    ANKERL_NANOBENCH(NODISCARD) bool hasMedianCpuCyclesPerUnit() const noexcept;
+
+    ANKERL_NANOBENCH(NODISCARD) double medianInstructionsPerUnit() const noexcept;
+    ANKERL_NANOBENCH(NODISCARD) bool hasMedianInstructionsPerUnit() const noexcept;
+
+    ANKERL_NANOBENCH(NODISCARD) double medianBranchesPerUnit() const noexcept;
+    ANKERL_NANOBENCH(NODISCARD) bool hasMedianBranchesPerUnit() const noexcept;
+
+    ANKERL_NANOBENCH(NODISCARD) double medianBranchMissesPerUnit() const noexcept;
+    ANKERL_NANOBENCH(NODISCARD) bool hasMedianBranchMissesPerUnit() const noexcept;
+
     ANKERL_NANOBENCH(NODISCARD) bool empty() const noexcept;
 
 private:
     std::string mName{};
     std::vector<Measurement> mSortedMeasurements{};
     double mMedianAbsolutePercentError{};
+
+    double mMedianCpuCyclesPerUnit{};
+    double mMedianInstructionsPerUnit{};
+    double mMedianBranchesPerUnit{};
+    double mMedianBranchMissesPerUnit{};
+
+    detail::PerfCountSet<bool> mHas{};
 };
+ANKERL_NANOBENCH(IGNORE_PADDED_POP)
 
 // Sfc64, V4 - Small Fast Counting RNG, version 4
 // Based on code from http://pracrand.sourceforge.net
@@ -214,6 +271,9 @@ public:
     // means the current run is twice as fast as the baseline.
     Config& relative(bool isRelativeEnabled) noexcept;
     ANKERL_NANOBENCH(NODISCARD) bool relative() const noexcept;
+
+    Config& performanceCounters(bool showPerformanceCounters) noexcept;
+    ANKERL_NANOBENCH(NODISCARD) bool performanceCounters() const noexcept;
 
     // Operation unit. Defaults to "op", could be e.g. "byte" for string processing. This is used for the table header, e.g. to show
     // `ns/byte`. Use singular (byte, not bytes).
@@ -291,6 +351,7 @@ private:
     std::vector<Result> mResults{};
     std::ostream* mOut = nullptr;
     bool mIsRelative = false;
+    bool mShowPerformanceCounters = true;
 };
 ANKERL_NANOBENCH(IGNORE_PADDED_POP)
 
@@ -317,7 +378,7 @@ public:
     IterationLogic(Config const& config, std::string name) noexcept;
 
     ANKERL_NANOBENCH(NODISCARD) uint64_t numIters() const noexcept;
-    void add(std::chrono::nanoseconds elapsed) noexcept;
+    void add(std::chrono::nanoseconds elapsed, PerformanceCounters const& pc) noexcept;
     ANKERL_NANOBENCH(NODISCARD) Result& result();
 
 private:
@@ -341,6 +402,34 @@ private:
     State mState = State::upscaling_runtime;
 };
 ANKERL_NANOBENCH(IGNORE_PADDED_POP)
+
+ANKERL_NANOBENCH(IGNORE_PADDED_PUSH)
+class PerformanceCounters {
+public:
+    PerformanceCounters(PerformanceCounters const&) = delete;
+    PerformanceCounters& operator=(PerformanceCounters const&) = delete;
+
+    PerformanceCounters();
+    ~PerformanceCounters();
+
+    void beginMeasure();
+    void endMeasure();
+    void updateResults(uint64_t numIters);
+
+    ANKERL_NANOBENCH(NODISCARD) PerfCountSet<uint64_t> const& val() const noexcept;
+    ANKERL_NANOBENCH(NODISCARD) PerfCountSet<bool> const& has() const noexcept;
+
+private:
+#if ANKERL_NANOBENCH(PERF_COUNTERS)
+    LinuxPerformanceCounters* mPc = nullptr;
+#endif
+    PerfCountSet<uint64_t> mVal;
+    PerfCountSet<bool> mHas;
+};
+ANKERL_NANOBENCH(IGNORE_PADDED_POP)
+
+// Gets the singleton
+PerformanceCounters& performanceCounters();
 
 } // namespace detail
 } // namespace nanobench
@@ -370,14 +459,12 @@ uint64_t Rng::operator()() noexcept {
 
 // see http://prng.di.unimi.it/
 double Rng::uniform01() noexcept {
-    union {
-        uint64_t i;
-        double d;
-    } x{};
-    // NOLINTNEXTLINE(cppcoreguidelines-pro-type-union-access)
-    x.i = (UINT64_C(0x3ff) << 52U) | (operator()() >> 12U);
-    // NOLINTNEXTLINE(cppcoreguidelines-pro-type-union-access)
-    return x.d - 1.0;
+    auto i = (UINT64_C(0x3ff) << 52U) | (operator()() >> 12U);
+    // can't use union in c++ here for type puning, it's undefined behavior.
+    // std::memcpy is optimized away anyways.
+    double d;
+    std::memcpy(&d, &i, sizeof(double));
+    return d - 1.0;
 }
 
 constexpr uint64_t Rng::rotl(uint64_t x, unsigned k) noexcept {
@@ -389,14 +476,18 @@ template <typename Op>
 Config& Config::run(std::string const& name, Op op) {
     // It is important that this method is kept short so the compiler can do better optimizations/ inlining of op()
     detail::IterationLogic iterationLogic(*this, name);
+    auto& pc = detail::performanceCounters();
 
     while (auto n = iterationLogic.numIters()) {
+        pc.beginMeasure();
         Clock::time_point before = Clock::now();
         while (n-- > 0) {
             op();
         }
         Clock::time_point after = Clock::now();
-        iterationLogic.add(after - before);
+        pc.endMeasure();
+        pc.updateResults(iterationLogic.numIters());
+        iterationLogic.add(after - before, pc);
     }
     mResults.emplace_back(std::move(iterationLogic.result()));
     return *this;
@@ -462,15 +553,25 @@ void doNotOptimizeAway(T& value) {
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 
 #    include <algorithm> // sort
+#    include <atomic>    // compare_exchange_strong in loop overhead
 #    include <cstdlib>   // getenv
-#    include <cstring>   //strstr, strncmp
+#    include <cstring>   // strstr, strncmp
 #    include <fstream>   // ifstream to parse proc files
 #    include <iomanip>   // setw, setprecision
 #    include <iostream>  // cout
+#    include <random>    // random_device
 #    include <stdexcept> // throw for rendering templates
 #    include <vector>    // manage results
 #    if defined(__linux__)
 #        include <unistd.h> //sysconf
+#    endif
+#    if ANKERL_NANOBENCH(PERF_COUNTERS)
+#        include <map> // map
+
+#        include <linux/perf_event.h>
+#        include <sys/ioctl.h>
+#        include <sys/syscall.h>
+#        include <unistd.h>
 #    endif
 
 // declarations ///////////////////////////////////////////////////////////////////////////////////
@@ -502,11 +603,11 @@ namespace ankerl {
 namespace nanobench {
 namespace templates {
 char const* csv() noexcept {
-    return R"DELIM({{title}}; "relative %"; "s/{{unit}}"; "min/{{unit}}"; "max/{{unit}}"; "MdAPE %"; "measurements"
-{{#benchmarks}}"{{name}}"; {{relative}}; {{median_sec_per_unit}}; {{min}}; {{max}}; {{md_ape}}; {{num_measurements}}
+    return R"DELIM({{title}}; "relative %"; "s/{{unit}}"; "min/{{unit}}"; "max/{{unit}}"; "MdAPE %"; "measurements"; "instructions/{{unit}}"; "branches/{{unit}}"; "branch misses/{{unit}}"
+{{#benchmarks}}"{{name}}"; {{relative}}; {{median_sec_per_unit}}; {{min}}; {{max}}; {{md_ape}}; {{num_measurements}}; {{median_ins_per_unit}}; {{median_branches_per_unit}}; {{median_branchmisses_per_unit}}
 {{/benchmarks}})DELIM";
 }
-
+//
 char const* htmlBoxplot() noexcept {
     return R"DELIM(<html>
 
@@ -549,7 +650,7 @@ char const* json() noexcept {
    "relative": {{relative}},
    "num_measurements": {{num_measurements}},
    "results": [
-{{#results}}    { "sec_per_unit": {{sec_per_unit}}, "iters": {{iters}}, "elapsed_ns": {{elapsed_ns}} }{{^-last}}, {{/-last}}
+{{#results}}    { "sec_per_unit": {{sec_per_unit}}, "iters": {{iters}}, "elapsed_ns": {{elapsed_ns}}, "pagefaults": {{pagefaults}}, "cpucycles": {{cpucycles}}, "contextswitches": {{contextswitches}}, "instructions": {{instructions}}, "branchinstructions": {{branchinstructions}}, "branchmisses": {{branchmisses}}}{{^-last}}, {{/-last}}
 {{/results}}   ]
   }{{^-last}},{{/-last}}
 {{/benchmarks}} ]
@@ -661,6 +762,18 @@ std::ostream& operator<<(std::ostream& os, MarkDownCode const& mdCode);
 namespace ankerl {
 namespace nanobench {
 namespace detail {
+
+PerformanceCounters& performanceCounters() {
+#    if defined(__clang__)
+#        pragma clang diagnostic push
+#        pragma clang diagnostic ignored "-Wexit-time-destructors"
+#    endif
+    static PerformanceCounters pc;
+#    if defined(__clang__)
+#        pragma clang diagnostic pop
+#    endif
+    return pc;
+}
 
 // Windows version of do not optimize away
 // see https://github.com/google/benchmark/blob/master/include/benchmark/benchmark.h#L307
@@ -855,7 +968,7 @@ void IterationLogic::upscale(std::chrono::nanoseconds elapsed) {
     }
 }
 
-void IterationLogic::add(std::chrono::nanoseconds elapsed) noexcept {
+void IterationLogic::add(std::chrono::nanoseconds elapsed, PerformanceCounters const& pc) noexcept {
 #    ifdef ANKERL_NANOBENCH_LOG_ENABLED
     auto oldIters = mNumIters;
 #    endif
@@ -880,7 +993,7 @@ void IterationLogic::add(std::chrono::nanoseconds elapsed) noexcept {
             mState = State::measuring;
             mTotalElapsed += elapsed;
             mTotalNumIters += mNumIters;
-            mMeasurements.emplace_back(elapsed, mNumIters, mConfig.batch());
+            mMeasurements.emplace_back(elapsed, mNumIters, mConfig.batch(), pc);
             mNumIters = calcBestNumIters(mTotalElapsed, mTotalNumIters);
         } else {
             upscale(elapsed);
@@ -892,7 +1005,7 @@ void IterationLogic::add(std::chrono::nanoseconds elapsed) noexcept {
         // that fluctuation, or else we would bias the result
         mTotalElapsed += elapsed;
         mTotalNumIters += mNumIters;
-        mMeasurements.emplace_back(elapsed, mNumIters, mConfig.batch());
+        mMeasurements.emplace_back(elapsed, mNumIters, mConfig.batch(), pc);
         mNumIters = calcBestNumIters(mTotalElapsed, mTotalNumIters);
         break;
 
@@ -921,10 +1034,13 @@ Result IterationLogic::showResult(std::string const& errorMessage) const {
     ANKERL_NANOBENCH_LOG("mMeasurements.size()=" << mMeasurements.size());
     Result r;
     if (errorMessage.empty()) {
-        r = Result(mName, mMeasurements);
+        r = Result(mName, mMeasurements, mConfig.batch());
     }
 
     if (mConfig.output() != nullptr) {
+
+        auto showPc = mConfig.performanceCounters();
+
         auto& os = *mConfig.output();
         detail::fmt::StreamStateRestorer restorer(os);
         auto h = calcTableSettingsHash(mConfig);
@@ -936,20 +1052,77 @@ Result IterationLogic::showResult(std::string const& errorMessage) const {
                 os << "| relative ";
             }
             os << "|" << std::setw(20) << std::right << ("ns/" + mConfig.unit()) << " |" << std::setw(20) << std::right
-               << (mConfig.unit() + "/s") << " |   MdAPE | " << mConfig.title() << std::endl;
+               << (mConfig.unit() + "/s") << " |   MdAPE";
+
+            if (showPc) {
+                if (r.hasMedianInstructionsPerUnit()) {
+                    os << " |" << std::setw(15) << std::right << ("ins/" + mConfig.unit());
+                }
+                if (r.hasMedianCpuCyclesPerUnit()) {
+                    os << " |" << std::setw(15) << std::right << ("cyc/" + mConfig.unit());
+                }
+                if (r.hasMedianInstructionsPerUnit() && r.hasMedianCpuCyclesPerUnit()) {
+                    os << " |" << std::setw(7) << std::right << "IPC";
+                }
+                if (r.hasMedianBranchesPerUnit()) {
+                    os << " |" << std::setw(15) << std::right << ("branches/" + mConfig.unit());
+                }
+                if (r.hasMedianBranchesPerUnit() && r.hasMedianBranchMissesPerUnit()) {
+                    os << " |" << std::setw(8) << std::right << "missed%";
+                }
+            }
+            os << " | " << mConfig.title() << std::endl;
+
             if (mConfig.relative()) {
                 os << "|---------:";
             }
-            os << "|--------------------:|--------------------:|--------:|:----------------------------------------------"
-               << std::endl;
+            os << "|--------------------:|--------------------:|--------:";
+
+            if (showPc) {
+                if (r.hasMedianInstructionsPerUnit()) {
+                    os << "|---------------:";
+                }
+                if (r.hasMedianCpuCyclesPerUnit()) {
+                    os << "|---------------:";
+                }
+                if (r.hasMedianInstructionsPerUnit() && r.hasMedianCpuCyclesPerUnit()) {
+                    os << "|-------:";
+                }
+                if (r.hasMedianBranchesPerUnit()) {
+                    os << "|---------------:";
+                }
+                if (r.hasMedianBranchesPerUnit() && r.hasMedianBranchMissesPerUnit()) {
+                    os << "|--------:";
+                }
+            }
+
+            os << "|:----------------------------------------------" << std::endl;
         }
 
         if (!errorMessage.empty()) {
             if (mConfig.relative()) {
                 os << "|        - ";
             }
-            os << "|                   - |                   - |       - | :boom: " << errorMessage << ' '
-               << detail::fmt::MarkDownCode(mName) << std::endl;
+            os << "|                   - |                   - |       - ";
+
+            if (showPc) {
+                if (r.hasMedianInstructionsPerUnit()) {
+                    os << "|              - ";
+                }
+                if (r.hasMedianCpuCyclesPerUnit()) {
+                    os << "|              - ";
+                }
+                if (r.hasMedianInstructionsPerUnit() && r.hasMedianCpuCyclesPerUnit()) {
+                    os << "|      - ";
+                }
+                if (r.hasMedianBranchesPerUnit()) {
+                    os << "|              - ";
+                }
+                if (r.hasMedianBranchesPerUnit() && r.hasMedianBranchMissesPerUnit()) {
+                    os << "|       - ";
+                }
+            }
+            os << "| :boom: " << errorMessage << ' ' << detail::fmt::MarkDownCode(mName) << std::endl;
         } else {
 
             // we want output that looks like this:
@@ -976,6 +1149,31 @@ Result IterationLogic::showResult(std::string const& errorMessage) const {
             // 4th column: MdAPE
             os << detail::fmt::Number(7, 1, r.medianAbsolutePercentError() * 100) << "% |";
 
+            if (showPc) {
+                if (r.hasMedianInstructionsPerUnit()) {
+                    os << detail::fmt::Number(15, 2, r.medianInstructionsPerUnit()) << " |";
+                }
+                if (r.hasMedianCpuCyclesPerUnit()) {
+                    os << detail::fmt::Number(15, 2, r.medianCpuCyclesPerUnit()) << " |";
+                }
+
+                if (r.hasMedianInstructionsPerUnit() && r.hasMedianCpuCyclesPerUnit()) {
+                    os << detail::fmt::Number(7, 3, r.medianInstructionsPerUnit() / r.medianCpuCyclesPerUnit()) << " |";
+                }
+
+                if (r.hasMedianBranchesPerUnit()) {
+                    os << detail::fmt::Number(15, 2, r.medianBranchesPerUnit()) << " |";
+                    if (r.hasMedianBranchMissesPerUnit()) {
+                        if (r.medianBranchesPerUnit() < 1e-9) {
+                            os << detail::fmt::Number(7, 1, 0) << "% |";
+                        } else {
+                            os << detail::fmt::Number(7, 1, 100.0 * r.medianBranchMissesPerUnit() / r.medianBranchesPerUnit())
+                               << "% |";
+                        }
+                    }
+                }
+            }
+
             // 5th column: possible symbols, possibly errormessage, benchmark name
             auto showUnstable = r.medianAbsolutePercentError() >= 0.05;
             if (showUnstable) {
@@ -995,6 +1193,292 @@ Result IterationLogic::showResult(std::string const& errorMessage) const {
     }
 
     return r;
+}
+
+#    if ANKERL_NANOBENCH(PERF_COUNTERS)
+
+ANKERL_NANOBENCH(IGNORE_PADDED_PUSH)
+class LinuxPerformanceCounters {
+public:
+    struct Target {
+        Target(uint64_t* targetValue_, bool correctMeasuringOverhead_, bool correctLoopOverhead_)
+            : targetValue(targetValue_)
+            , correctMeasuringOverhead(correctMeasuringOverhead_)
+            , correctLoopOverhead(correctLoopOverhead_) {}
+
+        uint64_t* targetValue{};
+        bool correctMeasuringOverhead{};
+        bool correctLoopOverhead{};
+    };
+
+    ~LinuxPerformanceCounters();
+
+    // quick operation
+    inline void start() {}
+
+    inline void stop() {}
+
+    bool monitor(perf_sw_ids swId, Target target);
+    bool monitor(perf_hw_id hwId, Target target);
+
+    // Just reading data is faster than enable & disabling.
+    // we substract data ourselfes.
+    inline void beginMeasure() {
+        ioctl(mFd, PERF_EVENT_IOC_RESET, PERF_IOC_FLAG_GROUP);  // NOLINT(hicpp-signed-bitwise)
+        ioctl(mFd, PERF_EVENT_IOC_ENABLE, PERF_IOC_FLAG_GROUP); // NOLINT(hicpp-signed-bitwise)
+    }
+
+    inline void endMeasure() {
+        ioctl(mFd, PERF_EVENT_IOC_DISABLE, PERF_IOC_FLAG_GROUP); // NOLINT(hicpp-signed-bitwise)
+
+        auto const numBytes = sizeof(uint64_t) * mCounters.size();
+        auto ret = read(mFd, mCounters.data(), numBytes);
+        if (ret != static_cast<ssize_t>(numBytes)) {
+            handleReadError();
+        }
+    }
+
+    void updateResults(uint64_t numIters);
+
+    // rounded integer division
+    template <typename T>
+    static inline T divRounded(T a, T divisor) {
+        return (a + divisor / 2) / divisor;
+    }
+
+    template <typename Op>
+    void calibrate(Op&& op) {
+        // clear current calibration data,
+        for (auto& v : mCalibratedOverhead) {
+            v = UINT64_C(0);
+        }
+
+        // create new calibration data
+        auto newCalibration = mCalibratedOverhead;
+        for (auto& v : newCalibration) {
+            v = (std::numeric_limits<uint64_t>::max)();
+        }
+        for (size_t iter = 0; iter < 100; ++iter) {
+            beginMeasure();
+            op();
+            endMeasure();
+            for (size_t i = 0; i < newCalibration.size(); ++i) {
+                auto diff = mCounters[i];
+                if (newCalibration[i] > diff) {
+                    newCalibration[i] = diff;
+                }
+            }
+        }
+
+        mCalibratedOverhead = std::move(newCalibration);
+
+        {
+            // calibrate loop overhead. For branches & instructions this makes sense, not so much for everything else like cycles.
+            // with g++, atomic operation compiles exactly to one instruction. see https://godbolt.org/z/dEXYd1
+            std::atomic<int> atomicVal(0);
+            uint64_t const numIters = 100000U + (std::random_device{}() & 3);
+            uint64_t n = numIters;
+            int y = 123;
+
+            auto fn = [&]() { atomicVal.compare_exchange_strong(y, 0); };
+
+            beginMeasure();
+            Clock::time_point before = Clock::now();
+            while (n-- > 0) {
+                fn();
+            }
+            Clock::time_point after = Clock::now();
+            endMeasure();
+
+            if ((after - before).count() == 0) {
+                std::cerr << "could not calibrate loop overhead" << std::endl;
+            }
+
+            for (size_t i = 0; i < mCounters.size(); ++i) {
+                auto sub = mCalibratedOverhead[i] + 1U * numIters;
+                auto val = mCounters[i];
+                if (val > sub) {
+                    val -= sub;
+                } else {
+                    val = 0;
+                }
+                mLoopOverhead[i] = divRounded(val, numIters);
+            }
+        }
+    }
+
+private:
+    bool monitor(uint32_t type, uint64_t eventid, Target target);
+    [[noreturn]] void handleReadError();
+
+    std::map<uint64_t, Target> mIdToTarget{};
+    std::vector<uint64_t> mCounters{};
+    std::vector<uint64_t> mCalibratedOverhead{};
+    std::vector<uint64_t> mLoopOverhead{};
+    uint64_t mTimeEnabledNanos = 0;
+    uint64_t mTimeRunningNanos = 0;
+    int mFd = -1;
+};
+ANKERL_NANOBENCH(IGNORE_PADDED_POP)
+
+LinuxPerformanceCounters::~LinuxPerformanceCounters() {
+    if (-1 != mFd) {
+        close(mFd);
+    }
+}
+
+bool LinuxPerformanceCounters::monitor(perf_sw_ids swId, LinuxPerformanceCounters::Target target) {
+    return monitor(PERF_TYPE_SOFTWARE, swId, target);
+}
+
+bool LinuxPerformanceCounters::monitor(perf_hw_id hwId, LinuxPerformanceCounters::Target target) {
+    return monitor(PERF_TYPE_HARDWARE, hwId, target);
+}
+
+void LinuxPerformanceCounters::updateResults(uint64_t numIters) {
+    // clear old data
+    for (auto& id_value : mIdToTarget) {
+        *id_value.second.targetValue = UINT64_C(0);
+    }
+
+    mTimeEnabledNanos = mCounters[1] - mCalibratedOverhead[1];
+    mTimeRunningNanos = mCounters[2] - mCalibratedOverhead[2];
+
+    for (uint64_t i = 0; i < mCounters[0]; ++i) {
+        auto idx = static_cast<size_t>(3 + i * 2 + 0);
+        auto id = mCounters[idx + 1U];
+
+        auto it = mIdToTarget.find(id);
+        if (it != mIdToTarget.end()) {
+
+            auto& tgt = it->second;
+            *tgt.targetValue = mCounters[idx];
+            if (tgt.correctMeasuringOverhead) {
+                if (*tgt.targetValue >= mCalibratedOverhead[idx]) {
+                    *tgt.targetValue -= mCalibratedOverhead[idx];
+                } else {
+                    *tgt.targetValue = 0U;
+                }
+            }
+            if (tgt.correctLoopOverhead) {
+                auto correctionVal = mLoopOverhead[idx] * numIters;
+                if (*tgt.targetValue >= correctionVal) {
+                    *tgt.targetValue -= correctionVal;
+                } else {
+                    *tgt.targetValue = 0U;
+                }
+            }
+        }
+    }
+}
+
+bool LinuxPerformanceCounters::monitor(uint32_t type, uint64_t eventid, Target target) {
+    *target.targetValue = UINT64_C(-1);
+
+    auto pea = perf_event_attr();
+    std::memset(&pea, 0, sizeof(perf_event_attr));
+    pea.type = type;
+    pea.size = sizeof(perf_event_attr);
+    pea.config = eventid;
+    pea.disabled = 1; // start counter as disabled
+    pea.exclude_kernel = 1;
+    pea.exclude_hv = 1;
+
+    // NOLINTNEXTLINE(hicpp-signed-bitwise)
+    pea.read_format = PERF_FORMAT_GROUP | PERF_FORMAT_ID | PERF_FORMAT_TOTAL_TIME_ENABLED | PERF_FORMAT_TOTAL_TIME_RUNNING;
+
+    const int pid = 0;  // the current process
+    const int cpu = -1; // all CPUs
+    const unsigned long flags = PERF_FLAG_FD_CLOEXEC;
+
+    auto fd = static_cast<int>(syscall(__NR_perf_event_open, &pea, pid, cpu, mFd, flags));
+    if (-1 == fd) {
+        return false;
+    }
+    if (-1 == mFd) {
+        // first call: set to fd, and use this from now on
+        mFd = fd;
+    }
+    uint64_t id = 0;
+    // NOLINTNEXTLINE(hicpp-signed-bitwise)
+    if (-1 == ioctl(fd, PERF_EVENT_IOC_ID, &id)) {
+        // couldn't get id
+        return false;
+    }
+
+    // insert into map, rely on the fact that map's references are constant.
+    mIdToTarget.emplace(id, target);
+
+    // prepare readformat with the correct size (after the insert)
+    auto size = 3 + 2 * mIdToTarget.size();
+    mCounters.resize(size);
+    mCalibratedOverhead.resize(size);
+    mLoopOverhead.resize(size);
+
+    return true;
+}
+
+void LinuxPerformanceCounters::handleReadError() {
+    throw std::runtime_error("not enough bytes read - maybe monitor the same thing twice?");
+}
+
+PerformanceCounters::PerformanceCounters()
+    : mPc(new LinuxPerformanceCounters())
+    , mVal()
+    , mHas() {
+
+    mHas.pageFaults = mPc->monitor(PERF_COUNT_SW_PAGE_FAULTS, LinuxPerformanceCounters::Target(&mVal.pageFaults, true, false));
+    mHas.cpuCycles = mPc->monitor(PERF_COUNT_HW_REF_CPU_CYCLES, LinuxPerformanceCounters::Target(&mVal.cpuCycles, true, false));
+    mHas.contextSwitches =
+        mPc->monitor(PERF_COUNT_SW_CONTEXT_SWITCHES, LinuxPerformanceCounters::Target(&mVal.contextSwitches, true, false));
+    mHas.instructions = mPc->monitor(PERF_COUNT_HW_INSTRUCTIONS, LinuxPerformanceCounters::Target(&mVal.instructions, true, true));
+    mHas.branchInstructions =
+        mPc->monitor(PERF_COUNT_HW_BRANCH_INSTRUCTIONS, LinuxPerformanceCounters::Target(&mVal.branchInstructions, true, false));
+    mHas.branchMisses = mPc->monitor(PERF_COUNT_HW_BRANCH_MISSES, LinuxPerformanceCounters::Target(&mVal.branchMisses, true, false));
+    // mHas.branchMisses = false;
+
+    mPc->start();
+    mPc->calibrate([] {
+        auto before = ankerl::nanobench::Clock::now();
+        auto after = ankerl::nanobench::Clock::now();
+        (void)before;
+        (void)after;
+    });
+}
+
+PerformanceCounters::~PerformanceCounters() {
+    if (nullptr != mPc) {
+        delete mPc;
+    }
+}
+
+void PerformanceCounters::beginMeasure() {
+    mPc->beginMeasure();
+}
+
+void PerformanceCounters::endMeasure() {
+    mPc->endMeasure();
+}
+
+void PerformanceCounters::updateResults(uint64_t numIters) {
+    mPc->updateResults(numIters);
+}
+
+#    else
+
+PerformanceCounters::PerformanceCounters() = default;
+PerformanceCounters::~PerformanceCounters() = default;
+void PerformanceCounters::beginMeasure() {}
+void PerformanceCounters::endMeasure() {}
+void PerformanceCounters::updateResults(uint64_t) {}
+
+#    endif
+
+ANKERL_NANOBENCH(NODISCARD) PerfCountSet<uint64_t> const& PerformanceCounters::val() const noexcept {
+    return mVal;
+}
+ANKERL_NANOBENCH(NODISCARD) PerfCountSet<bool> const& PerformanceCounters::has() const noexcept {
+    return mHas;
 }
 
 // formatting utilities
@@ -1178,6 +1662,18 @@ static void generateMeasurement(std::vector<Node> const& nodes, std::vector<anke
                     out << measurement.numIters();
                 } else if (n == "elapsed_ns") {
                     out << measurement.elapsed().count();
+                } else if (n == "pagefaults") {
+                    out << measurement.pageFaults();
+                } else if (n == "cpucycles") {
+                    out << measurement.cpuCycles();
+                } else if (n == "contextswitches") {
+                    out << measurement.contextSwitches();
+                } else if (n == "instructions") {
+                    out << measurement.instructions();
+                } else if (n == "branchinstructions") {
+                    out << measurement.branchInstructions();
+                } else if (n == "branchmisses") {
+                    out << measurement.branchMisses();
                 } else {
                     throw std::runtime_error("unknown tag '" + std::string(n.begin, n.end) + "'");
                 }
@@ -1225,6 +1721,12 @@ static void generateBenchmark(std::vector<Node> const& nodes, std::vector<ankerl
                     out << results.front().median() / result.median();
                 } else if (n == "num_measurements") {
                     out << result.sortedMeasurements().size();
+                } else if (n == "median_ins_per_unit") {
+                    out << result.medianInstructionsPerUnit();
+                } else if (n == "median_branches_per_unit") {
+                    out << result.medianBranchesPerUnit();
+                } else if (n == "median_branchmisses_per_unit") {
+                    out << result.medianBranchMissesPerUnit();
                 } else {
                     throw std::runtime_error("unknown tag '" + std::string(n.begin, n.end) + "'");
                 }
@@ -1275,10 +1777,29 @@ static void generate(char const* mustacheTemplate, ankerl::nanobench::Config con
 } // namespace fmt
 } // namespace detail
 
-Measurement::Measurement(Clock::duration totalElapsed, uint64_t iters, double batch) noexcept
+Measurement::Measurement(Clock::duration totalElapsed, uint64_t iters, double batch, detail::PerformanceCounters const& pc) noexcept
     : mTotalElapsed(totalElapsed)
     , mNumIters(iters)
-    , mSecPerUnit(std::chrono::duration_cast<std::chrono::duration<double>>(totalElapsed) / (batch * static_cast<double>(iters))) {}
+    , mSecPerUnit(std::chrono::duration_cast<std::chrono::duration<double>>(totalElapsed) / (batch * static_cast<double>(iters)))
+    , mVal(pc.val()) {
+
+    // correcting branches: remove branch introduced by the while (...) loop for each iteration.
+    if (mVal.branchInstructions > iters + 1U) {
+        mVal.branchInstructions -= iters + 1U;
+    } else {
+        mVal.branchInstructions = 0;
+    }
+
+    // correcting branch misses: typically just one miss per branch
+    if (mVal.branchMisses > mVal.branchInstructions) {
+        // can't have branch misses when there were branches...
+        mVal.branchMisses = mVal.branchInstructions;
+    }
+    if (mVal.branchMisses > 1) {
+        // assuming at least one missed branch for the loop
+        mVal.branchMisses -= 1;
+    }
+}
 
 bool Measurement::operator<(Measurement const& other) const noexcept {
     return mSecPerUnit < other.mSecPerUnit;
@@ -1292,38 +1813,101 @@ uint64_t Measurement::numIters() const noexcept {
     return mNumIters;
 }
 
-std::chrono::duration<double> Measurement::secPerUnit() const {
+std::chrono::duration<double> Measurement::secPerUnit() const noexcept {
     return mSecPerUnit;
 }
 
+uint64_t Measurement::pageFaults() const noexcept {
+    return mVal.pageFaults;
+}
+uint64_t Measurement::cpuCycles() const noexcept {
+    return mVal.cpuCycles;
+}
+uint64_t Measurement::contextSwitches() const noexcept {
+    return mVal.contextSwitches;
+}
+uint64_t Measurement::instructions() const noexcept {
+    return mVal.instructions;
+}
+uint64_t Measurement::branchInstructions() const noexcept {
+    return mVal.branchInstructions;
+}
+uint64_t Measurement::branchMisses() const noexcept {
+    return mVal.branchMisses;
+}
+
+template <typename T>
+inline double d(T t) noexcept {
+    return static_cast<double>(t);
+}
+
+template <typename T>
+class CalcMedian {
+public:
+    CalcMedian(T const& input)
+        : mInput(input)
+        , mData(mInput.size()) {}
+
+    template <typename Op>
+    double operator()(Op&& op) {
+        for (size_t i = 0; i < mInput.size(); ++i) {
+            mData[i] = op(mInput[i]);
+        }
+        std::sort(mData.begin(), mData.end());
+        auto midpoint = mData.size() / 2;
+        if (1U == (mData.size() & 1U)) {
+            return mData[midpoint];
+        } else {
+            return (mData[midpoint - 1U] + mData[midpoint]) / 2U;
+        }
+    }
+
+private:
+    T const& mInput;
+    std::vector<double> mData{};
+};
+
 // Result returned after a benchmark has finished. Can be used as a baseline for relative().
-Result::Result(std::string benchmarkName, std::vector<Measurement> measurements) noexcept
+Result::Result(std::string benchmarkName, std::vector<Measurement> measurements, double batch) noexcept
     : mName(std::move(benchmarkName))
-    , mSortedMeasurements(std::move(measurements)) {
+    , mSortedMeasurements(std::move(measurements))
+    , mHas(detail::performanceCounters().has()) {
 
     std::sort(mSortedMeasurements.begin(), mSortedMeasurements.end());
 
     // calculates MdAPE which is the median of percentage error
     // see https://www.spiderfinancial.com/support/documentation/numxl/reference-manual/forecasting-performance/mdape
     auto const med = median();
-    std::vector<double> absolutePercentageErrors;
-    for (auto const& m : mSortedMeasurements) {
+
+    CalcMedian<std::vector<Measurement>> calcMedian(mSortedMeasurements);
+    mMedianAbsolutePercentError = calcMedian([&](Measurement const& m) {
         auto percent = (m.secPerUnit() - med) / m.secPerUnit();
         if (percent < 0) {
             percent = -percent;
         }
-        absolutePercentageErrors.push_back(percent);
+        return percent;
+    });
+
+    if (mHas.cpuCycles) {
+        mMedianCpuCyclesPerUnit = calcMedian([&](Measurement const& m) { return d(m.cpuCycles()) / (batch * d(m.numIters())); });
     }
-    std::sort(absolutePercentageErrors.begin(), absolutePercentageErrors.end());
-    auto midpoint = absolutePercentageErrors.size() / 2;
-    if (1U == (absolutePercentageErrors.size() & 1U)) {
-        mMedianAbsolutePercentError = absolutePercentageErrors[midpoint];
-    } else {
-        mMedianAbsolutePercentError = (absolutePercentageErrors[midpoint - 1U] + absolutePercentageErrors[midpoint]) / 2U;
+
+    if (mHas.instructions) {
+        mMedianInstructionsPerUnit = calcMedian([&](Measurement const& m) { return d(m.instructions()) / (batch * d(m.numIters())); });
+    }
+
+    if (mHas.branchInstructions) {
+        mMedianBranchesPerUnit =
+            calcMedian([&](Measurement const& m) { return d(m.branchInstructions()) / (batch * d(m.numIters())); });
+    }
+
+    if (mHas.branchMisses) {
+        mMedianBranchMissesPerUnit = calcMedian([&](Measurement const& m) { return d(m.branchMisses()) / (batch * d(m.numIters())); });
     }
 }
 
-Result::Result() noexcept = default;
+Result::Result() noexcept
+    : mHas(detail::performanceCounters().has()) {}
 
 std::string const& Result::name() const noexcept {
     return mName;
@@ -1357,6 +1941,34 @@ std::chrono::duration<double> Result::maximum() const noexcept {
     return mSortedMeasurements.back().secPerUnit();
 }
 
+double Result::medianCpuCyclesPerUnit() const noexcept {
+    return mMedianCpuCyclesPerUnit;
+}
+bool Result::hasMedianCpuCyclesPerUnit() const noexcept {
+    return mHas.cpuCycles;
+}
+
+double Result::medianInstructionsPerUnit() const noexcept {
+    return mMedianInstructionsPerUnit;
+}
+bool Result::hasMedianInstructionsPerUnit() const noexcept {
+    return mHas.instructions;
+}
+
+double Result::medianBranchesPerUnit() const noexcept {
+    return mMedianBranchesPerUnit;
+}
+bool Result::hasMedianBranchesPerUnit() const noexcept {
+    return mHas.branchInstructions;
+}
+
+double Result::medianBranchMissesPerUnit() const noexcept {
+    return mMedianBranchMissesPerUnit;
+}
+bool Result::hasMedianBranchMissesPerUnit() const noexcept {
+    return mHas.branchMisses;
+}
+
 // Configuration of a microbenchmark.
 Config::Config()
     : mOut(&std::cout) {}
@@ -1379,6 +1991,14 @@ Config& Config::relative(bool isRelativeEnabled) noexcept {
 }
 bool Config::relative() const noexcept {
     return mIsRelative;
+}
+
+Config& Config::performanceCounters(bool showPerformanceCounters) noexcept {
+    mShowPerformanceCounters = showPerformanceCounters;
+    return *this;
+}
+bool Config::performanceCounters() const noexcept {
+    return mShowPerformanceCounters;
 }
 
 // Operation unit. Defaults to "op", could be e.g. "byte" for string processing.

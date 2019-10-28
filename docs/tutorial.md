@@ -46,12 +46,13 @@ int main() {
 Compiled with `g++ -O2 -DNDEBUG full_example.cpp -I../include -o full_example` runs for 5ms and then
 prints this markdown table:
 
-| relative |               ns/op |                op/s |   MdAPE | benchmark
-|---------:|--------------------:|--------------------:|--------:|:----------------------------------------------
-|          |                5.83 |      171,586,715.87 |    0.1% | `compare_exchange_strong`
+|               ns/op |                op/s |   MdAPE |         ins/op |         cyc/op |    IPC |    branches/op | missed% | benchmark
+|--------------------:|--------------------:|--------:|---------------:|---------------:|-------:|---------------:|--------:|:----------------------------------------------
+|                7.81 |      128,092,931.19 |    0.0% |           4.00 |          24.93 |  0.161 |           0.00 |    0.0% | `compare_exchange_strong`
 
-Which means that one `x.compare_exchange_strong(y, 0);` call takes 5.83ns on my machine, or 171 million
-operations per second. Runtime fluctuates by around 0.1%, so the results are very stable.
+Which means that one `x.compare_exchange_strong(y, 0);` call takes 7.81s on my machine, or ~128 million
+operations per second. Runtime fluctuates by around 0.0%, so the results are very stable. Each call required 4 instructions, which took ~25 CPU cycles.
+There were no branches in this code, so we also got no branch misspredictions.
 
 In the remaining examples, I compile nanobench's implementation once in a separate cpp file 
 [nanobench.cpp](https://github.com/martinus/nanobench/tree/master/src/test/app/nanobench.cpp). This compiles most of nanobench, and is relatively slow - but
@@ -78,9 +79,9 @@ TEST_CASE("comparison_fast_v1") {
 
 After 0.2ms we get this output:
 
-| relative |               ns/op |                op/s |   MdAPE | benchmark
-|---------:|--------------------:|--------------------:|--------:|:----------------------------------------------
-|        - |                   - |                   - |       - | :boom: iterations overflow. Maybe your code got optimized away? `x += x`
+|               ns/op |                op/s |   MdAPE |         ins/op |         cyc/op |    IPC |    branches/op | missed% | benchmark
+|--------------------:|--------------------:|--------:|---------------:|---------------:|-------:|---------------:|--------:|:----------------------------------------------
+|                   - |                   - |       - |              - |              - |      - |              - |       - | :boom: iterations overflow. Maybe your code got optimized away? `x += x`
 
 The compiler could optimize `x += x` away because we never used the output. Let's fix this:
 
@@ -93,11 +94,12 @@ TEST_CASE("comparison_fast_v2") {
 
 This time the benchmark runs for 2.2ms and gives us a good result:
 
-| relative |               ns/op |                op/s |   MdAPE | framework comparison
-|---------:|--------------------:|--------------------:|--------:|:----------------------------------------------
-|          |                0.31 |    3,195,591,912.16 |    0.0% | `x += x`
+|               ns/op |                op/s |   MdAPE |         ins/op |         cyc/op |    IPC |    branches/op | missed% | benchmark
+|--------------------:|--------------------:|--------:|---------------:|---------------:|-------:|---------------:|--------:|:----------------------------------------------
+|                0.32 |    3,170,869,554.81 |    0.2% |           1.00 |           1.01 |  0.993 |           0.00 |    0.0% | `x += x`
 
-It's a very stable result. One run the op/s is 3,196 million/sec, the next time I execute it I get 3,195 million/sec.
+It's a very stable result. One run the op/s is 3,170 million/sec, the next time I execute it I get 3,168 million/sec. It always takes 
+1.00 instructions per operation on my machine, and can do this in ~1 cycle.
 
 ## Something Slow
 
@@ -113,11 +115,11 @@ TEST_CASE("comparison_slow") {
 
 After 517ms I get
 
-| relative |               ns/op |                op/s |   MdAPE | framework comparison
-|---------:|--------------------:|--------------------:|--------:|:----------------------------------------------
-|          |       10,141,835.00 |               98.60 |    0.0% | `sleep 10ms`
+|               ns/op |                op/s |   MdAPE |         ins/op |         cyc/op |    IPC |    branches/op | missed% | framework comparison
+|--------------------:|--------------------:|--------:|---------------:|---------------:|-------:|---------------:|--------:|:----------------------------------------------
+|       10,145,437.00 |               98.57 |    0.0% |          28.00 |       2,394.00 |  0.012 |           8.00 |   87.5% | `sleep 10ms`
 
-So we actually take 10.141ms instead of 10ms. Next time I run it, I get 10.141. Also a very stable result.
+So we actually take 10.145ms instead of 10ms. Next time I run it, I get 10.141. Also a very stable result. Interestingly, sleep takes 28 instructions but 2394 cycles - so we only got 0.012 instructions per cycle. That's extremely low, but expected of `sleep`. It also required 8 branches, of which 87.5% were misspredicted on average.
 
 ## Something Unstable
 
@@ -139,11 +141,11 @@ TEST_CASE("comparison_fluctuating_v1") {
 
 After 2.3ms, I get this result:
 
-| relative |               ns/op |                op/s |   MdAPE | benchmark
-|---------:|--------------------:|--------------------:|--------:|:----------------------------------------------
-|          |            1,004.05 |          995,962.31 |    7.9% | :wavy_dash: `random fluctuations` Unstable with ~38.6 iters. Increase `minEpochIterations` to e.g. 386
+|               ns/op |                op/s |   MdAPE |         ins/op |         cyc/op |    IPC |    branches/op | missed% | benchmark
+|--------------------:|--------------------:|--------:|---------------:|---------------:|-------:|---------------:|--------:|:----------------------------------------------
+|            1,026.41 |          974,269.30 |    7.0% |       6,018.97 |       3,277.26 |  1.837 |         792.72 |    8.6% | :wavy_dash: `random fluctuations` Unstable with ~38.7 iters. Increase `minEpochIterations` to e.g. 387
 
-So on average each loop takes about 1,004ns, but we get a warning that the results are unstable. The median percentage error is ~8% which is quite high. Executed again, I get 984 ns.
+So on average each loop takes about 1,026.41ns, but we get a warning that the results are unstable. The median percentage error is ~7% which is quite high. Executed again, I get 987.86 ns.
 
 Let's use the suggestion and set the minimum number of iterations to 500, and try again:
 
@@ -163,11 +165,11 @@ TEST_CASE("comparison_fluctuating_v2") {
 
 The fluctuations are much better:
 
-| relative |               ns/op |                op/s |   MdAPE | benchmark
-|---------:|--------------------:|--------------------:|--------:|:----------------------------------------------
-|          |              987.19 |        1,012,971.22 |    1.9% | `random fluctuations`
+|               ns/op |                op/s |   MdAPE |         ins/op |         cyc/op |    IPC |    branches/op | missed% | benchmark
+|--------------------:|--------------------:|--------:|---------------:|---------------:|-------:|---------------:|--------:|:----------------------------------------------
+|              988.96 |        1,011,165.38 |    0.9% |       5,861.14 |       3,147.65 |  1.862 |         772.10 |    8.6% | `random fluctuations`
 
-The results are also more stable. This time the benchmark takes 27ms.
+The results are also more stable, with only 0.7% MdAPE. This time the benchmark takes 27ms.
 
 ## Comparing Results
 
@@ -213,18 +215,18 @@ TEST_CASE("example_random_number_generators") {
 
 Runs for 18ms and prints this table:
 
-| relative |         ns/uint64_t |          uint64_t/s |   MdAPE | Random Number Generators
-|---------:|--------------------:|--------------------:|--------:|:----------------------------------------------
-|          |               42.25 |       23,668,176.85 |    1.1% | `std::default_random_engine`
-|   193.1% |               21.88 |       45,712,836.12 |    2.1% | `std::mt19937`
-|   572.1% |                7.39 |      135,397,066.78 |    1.0% | `std::mt19937_64`
-|    89.5% |               47.19 |       21,192,450.36 |    0.6% | `std::ranlux24_base`
-|   119.9% |               35.23 |       28,384,568.54 |    0.6% | `std::ranlux48_base`
-|    21.0% |              200.76 |        4,980,979.23 |    1.1% | `std::ranlux24_base`
-|    11.4% |              369.46 |        2,706,636.37 |    1.8% | `std::ranlux48`
-|    66.6% |               63.41 |       15,769,698.89 |    1.4% | `std::knuth_b`
-| 2,049.4% |                2.06 |      485,045,939.09 |    0.1% | `ankerl::nanobench::Rng`
+| relative |         ns/uint64_t |          uint64_t/s |   MdAPE |   ins/uint64_t |   cyc/uint64_t |    IPC |branches/uint64_t | missed% | Random Number Generators
+|---------:|--------------------:|--------------------:|--------:|---------------:|---------------:|-------:|---------------:|--------:|:----------------------------------------------
+|   100.0% |               42.24 |       23,671,446.65 |    1.5% |         184.72 |         134.90 |  1.369 |          15.50 |    2.8% | `std::default_random_engine`
+|   195.8% |               21.57 |       46,351,638.16 |    1.2% |         174.93 |          68.88 |  2.540 |          23.99 |    4.3% | `std::mt19937`
+|   550.5% |                7.67 |      130,317,142.34 |    1.3% |          43.48 |          24.50 |  1.774 |           4.99 |   10.2% | `std::mt19937_64`
+|    92.1% |               45.86 |       21,803,766.11 |    0.6% |         211.58 |         146.49 |  1.444 |          26.51 |    5.6% | `std::ranlux24_base`
+|   124.5% |               33.92 |       29,478,806.51 |    0.4% |         144.01 |         108.33 |  1.329 |          17.00 |    4.9% | `std::ranlux48_base`
+|    21.2% |              199.49 |        5,012,780.11 |    0.9% |         716.43 |         637.00 |  1.125 |          95.08 |   15.8% | `std::ranlux24_base`
+|    10.9% |              386.79 |        2,585,356.75 |    2.2% |       1,429.99 |       1,234.62 |  1.158 |         191.51 |   15.6% | `std::ranlux48`
+|    65.2% |               64.76 |       15,442,579.88 |    1.3% |         356.97 |         206.55 |  1.728 |          33.05 |    0.8% | `std::knuth_b`
+| 2,069.1% |                2.04 |      489,778,900.82 |    0.1% |          18.00 |           6.52 |  2.760 |           0.00 |    0.0% | `ankerl::nanobench::Rng`
 
 It shows that `ankerl::nanobench::Rng` is by far the fastest RNG, and has the least amount of
-fluctuation. It takes only 2.06ns to generate a random `uint64_t`, so ~485 million calls per
-seconds are possible.
+fluctuation. It takes only 2.04ns to generate a random `uint64_t`, so ~489 million calls per
+seconds are possible. Interestingly, it requires *zero* branches, so no chance for misspredictions.

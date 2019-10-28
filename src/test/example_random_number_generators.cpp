@@ -19,6 +19,7 @@ TEST_CASE("example_random_number_generators") {
     // generator, increase the number of epochs to get more accurate numbers.
     ankerl::nanobench::Config cfg;
     cfg.title("Random Number Generators").unit("uint64_t").warmup(100).relative(true);
+    cfg.performanceCounters(true);
 
     // sets the first one as the baseline
     bench<std::default_random_engine>(&cfg, "std::default_random_engine");
