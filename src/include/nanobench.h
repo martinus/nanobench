@@ -192,6 +192,8 @@ public:
     ANKERL_NANOBENCH(NODISCARD) double medianBranchMissesPerUnit() const noexcept;
     ANKERL_NANOBENCH(NODISCARD) bool hasMedianBranchMissesPerUnit() const noexcept;
 
+    ANKERL_NANOBENCH(NODISCARD) Clock::duration total() const noexcept;
+
     ANKERL_NANOBENCH(NODISCARD) bool empty() const noexcept;
 
 private:
@@ -663,7 +665,9 @@ char const* json() noexcept {
 // helper stuff that only intended to be used internally
 namespace detail {
 
+char const* getEnv(char const* name);
 bool isEndlessRunning(std::string const& name);
+bool showTotalRuntime();
 
 template <typename T>
 T parseFile(std::string const& filename);
@@ -726,6 +730,7 @@ ANKERL_NANOBENCH(IGNORE_PADDED_POP)
 class Number {
 public:
     Number(int width, int precision, double value);
+    Number(int width, int precision, int64_t value);
 
 private:
     friend std::ostream& operator<<(std::ostream& os, Number const& n);
@@ -793,17 +798,24 @@ T parseFile(std::string const& filename) {
     return num;
 }
 
-bool isEndlessRunning(std::string const& name) {
+char const* getEnv(char const* name) {
 #    if defined(_MSC_VER)
 #        pragma warning(push)
 #        pragma warning(disable : 4996) // getenv': This function or variable may be unsafe.
 #    endif
-    auto endless = std::getenv("NANOBENCH_ENDLESS");
+    return std::getenv(name);
 #    if defined(_MSC_VER)
 #        pragma warning(pop)
 #    endif
+}
 
+bool isEndlessRunning(std::string const& name) {
+    auto endless = getEnv("NANOBENCH_ENDLESS");
     return nullptr != endless && endless == name;
+}
+
+bool showTotalRuntime() {
+    return nullptr != getEnv("NANOBENCH_SHOW_TOTAL_RUNTIME");
 }
 
 void printStabilityInformationOnce() {
@@ -1071,6 +1083,10 @@ Result IterationLogic::showResult(std::string const& errorMessage) const {
                     os << " |" << std::setw(8) << std::right << "missed%";
                 }
             }
+
+            if (detail::showTotalRuntime()) {
+                os << " |" << std::setw(20) << std::right << "total ns";
+            }
             os << " | " << mConfig.title() << std::endl;
 
             if (mConfig.relative()) {
@@ -1094,6 +1110,10 @@ Result IterationLogic::showResult(std::string const& errorMessage) const {
                 if (r.hasMedianBranchesPerUnit() && r.hasMedianBranchMissesPerUnit()) {
                     os << "|--------:";
                 }
+            }
+
+            if (detail::showTotalRuntime()) {
+                os << "|--------------------:";
             }
 
             os << "|:----------------------------------------------" << std::endl;
@@ -1122,6 +1142,10 @@ Result IterationLogic::showResult(std::string const& errorMessage) const {
                     os << "|       - ";
                 }
             }
+            if (detail::showTotalRuntime()) {
+                os << "|              - ";
+            }
+
             os << "| :boom: " << errorMessage << ' ' << detail::fmt::MarkDownCode(mName) << std::endl;
         } else {
 
@@ -1165,13 +1189,17 @@ Result IterationLogic::showResult(std::string const& errorMessage) const {
                     os << detail::fmt::Number(15, 2, r.medianBranchesPerUnit()) << " |";
                     if (r.hasMedianBranchMissesPerUnit()) {
                         if (r.medianBranchesPerUnit() < 1e-9) {
-                            os << detail::fmt::Number(7, 1, 0) << "% |";
+                            os << detail::fmt::Number(7, 1, 0.0) << "% |";
                         } else {
                             os << detail::fmt::Number(7, 1, 100.0 * r.medianBranchMissesPerUnit() / r.medianBranchesPerUnit())
                                << "% |";
                         }
                     }
                 }
+            }
+
+            if (detail::showTotalRuntime()) {
+                os << detail::fmt::Number(20, 2, r.total().count()) << " |";
             }
 
             // 5th column: possible symbols, possibly errormessage, benchmark name
@@ -1517,6 +1545,11 @@ void StreamStateRestorer::restore() {
     mStream.fill(mFill);
     mStream.flags(mFmtFlags);
 }
+
+Number::Number(int width, int precision, int64_t value)
+    : mWidth(width)
+    , mPrecision(precision)
+    , mValue(static_cast<double>(value)) {}
 
 Number::Number(int width, int precision, double value)
     : mWidth(width)
@@ -1919,6 +1952,14 @@ std::chrono::duration<double> Result::median() const noexcept {
         return mSortedMeasurements[mid].secPerUnit();
     }
     return (mSortedMeasurements[mid - 1U].secPerUnit() + mSortedMeasurements[mid].secPerUnit()) / 2U;
+}
+
+Clock::duration Result::total() const noexcept {
+    Clock::duration tot{};
+    for (auto const& m : mSortedMeasurements) {
+        tot += m.elapsed();
+    }
+    return tot;
 }
 
 std::vector<Measurement> const& Result::sortedMeasurements() const noexcept {

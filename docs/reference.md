@@ -129,7 +129,9 @@ It has a special member to produce `double` values in the range `[0, 1(`. That's
 |   340.8% |                2.81 |      355,346,638.93 |    0.0% |          14.00 |           8.99 |  1.557 |           0.00 |    0.0% | `ankerl::nanobench::Rng::uniform01()`
 
 
-# Endless Running
+# Environment Variables
+
+## NANOBENCH_ENDLESS
 
 Sometimes it helps to run a benchmark for a very long time, so that it's possible to attach with a profiler like `perf` and get meaningful statistics. This can be done with the environment variable `NANOBENCH_ENDLESS`. E.g. to run the benchmark with the name `x += x` infinitely, call the app this way:
 
@@ -137,3 +139,10 @@ Sometimes it helps to run a benchmark for a very long time, so that it's possibl
 NANOBENCH_ENDLESS="x += x" ./nb
 ```
 
+## NANOBENCH_SHOW_TOTAL_RUNTIME
+
+If set, shows total runtime of the benchmark in the table:
+
+```sh
+NANOBENCH_SHOW_TOTAL_RUNTIME=1 ./nb
+```
