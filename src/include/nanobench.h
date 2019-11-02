@@ -291,7 +291,7 @@ public:
     Config& output(std::ostream* outstream) noexcept;
     ANKERL_NANOBENCH(NODISCARD) std::ostream* output() const noexcept;
 
-    // Number of epochs to evaluate. The reported result will be the median of evaluation of each epoch. Defaults to 51. The higher you
+    // Number of epochs to evaluate. The reported result will be the median of evaluation of each epoch. Defaults to 11. The higher you
     // choose this, the more deterministic will the result be and outliers will be more easily removed. The default is already quite
     // high to be able to filter most outliers.
     //
@@ -301,7 +301,7 @@ public:
 
     // Modern processors have a very accurate clock, being able to measure as low as 20 nanoseconds. This allows nanobech to be so
     // fast: we only run the benchmark sufficiently often so that the clock's accuracy is good enough. The default is to run one epoch
-    // for 2000 times the clock resolution. So for 20ns resolution and 51 epochs, this gives a total runtime of `20ns * 2000 * 51 ~
+    // for 2000 times the clock resolution. So for 20ns resolution and 11 epochs, this gives a total runtime of `20ns * 8000 * 11 ~
     // 2ms` for a benchmark to get accurate results.
     Config& clockResolutionMultiple(size_t multiple) noexcept;
     ANKERL_NANOBENCH(NODISCARD) size_t clockResolutionMultiple() const noexcept;
@@ -344,8 +344,8 @@ private:
     std::string mBenchmarkTitle = "benchmark";
     std::string mUnit = "op";
     double mBatch = 1.0;
-    size_t mNumEpochs = 51;
-    size_t mClockResolutionMultiple = static_cast<size_t>(2000);
+    size_t mNumEpochs = 11;
+    size_t mClockResolutionMultiple = static_cast<size_t>(8000);
     std::chrono::nanoseconds mMaxEpochTime = std::chrono::milliseconds(100);
     std::chrono::nanoseconds mMinEpochTime{};
     uint64_t mMinEpochIterations{1};
@@ -605,7 +605,7 @@ namespace ankerl {
 namespace nanobench {
 namespace templates {
 char const* csv() noexcept {
-    return R"DELIM({{title}}; "relative %"; "s/{{unit}}"; "min/{{unit}}"; "max/{{unit}}"; "MdAPE %"; "measurements"; "instructions/{{unit}}"; "branches/{{unit}}"; "branch misses/{{unit}}"
+    return R"DELIM({{title}}; "relative %"; "s/{{unit}}"; "min/{{unit}}"; "max/{{unit}}"; "error %"; "measurements"; "instructions/{{unit}}"; "branches/{{unit}}"; "branch misses/{{unit}}"
 {{#benchmarks}}"{{name}}"; {{relative}}; {{median_sec_per_unit}}; {{min}}; {{max}}; {{md_ape}}; {{num_measurements}}; {{median_ins_per_unit}}; {{median_branches_per_unit}}; {{median_branchmisses_per_unit}}
 {{/benchmarks}})DELIM";
 }
@@ -822,8 +822,8 @@ void printStabilityInformationOnce() {
     static bool shouldPrint = true;
     if (shouldPrint) {
         shouldPrint = false;
-#    if !defined(NDEBUG)
-        std::cerr << "Warning: NDEBUG not defined, this is a debug build" << std::endl;
+#    if !defined(NDEBUG) || defined(DEBUG)
+        std::cerr << "Warning: DEBUG defined or NDEBUG undefined, this might be a debug build" << std::endl;
 #    endif
 
 #    if defined(__linux__)
@@ -1064,7 +1064,7 @@ Result IterationLogic::showResult(std::string const& errorMessage) const {
                 os << "| relative ";
             }
             os << "|" << std::setw(20) << std::right << ("ns/" + mConfig.unit()) << " |" << std::setw(20) << std::right
-               << (mConfig.unit() + "/s") << " |   MdAPE";
+               << (mConfig.unit() + "/s") << " |   error";
 
             if (showPc) {
                 if (r.hasMedianInstructionsPerUnit()) {
@@ -1170,7 +1170,7 @@ Result IterationLogic::showResult(std::string const& errorMessage) const {
             // 3rd column: unit/s
             os << detail::fmt::Number(20, 2, 1 / r.median().count()) << " |";
 
-            // 4th column: MdAPE
+            // 4th column: error
             os << detail::fmt::Number(7, 1, r.medianAbsolutePercentError() * 100) << "% |";
 
             if (showPc) {
@@ -1249,21 +1249,41 @@ public:
     bool monitor(perf_sw_ids swId, Target target);
     bool monitor(perf_hw_id hwId, Target target);
 
+    bool hasError() const noexcept {
+        return mHasError;
+    }
+
     // Just reading data is faster than enable & disabling.
-    // we substract data ourselfes.
+    // we subtract data ourselves.
     inline void beginMeasure() {
-        ioctl(mFd, PERF_EVENT_IOC_RESET, PERF_IOC_FLAG_GROUP);  // NOLINT(hicpp-signed-bitwise)
-        ioctl(mFd, PERF_EVENT_IOC_ENABLE, PERF_IOC_FLAG_GROUP); // NOLINT(hicpp-signed-bitwise)
+        if (mHasError) {
+            return;
+        }
+
+        // NOLINTNEXTLINE(hicpp-signed-bitwise)
+        mHasError = -1 == ioctl(mFd, PERF_EVENT_IOC_RESET, PERF_IOC_FLAG_GROUP);
+        if (mHasError) {
+            return;
+        }
+
+        // NOLINTNEXTLINE(hicpp-signed-bitwise)
+        mHasError = -1 == ioctl(mFd, PERF_EVENT_IOC_ENABLE, PERF_IOC_FLAG_GROUP);
     }
 
     inline void endMeasure() {
-        ioctl(mFd, PERF_EVENT_IOC_DISABLE, PERF_IOC_FLAG_GROUP); // NOLINT(hicpp-signed-bitwise)
+        if (mHasError) {
+            return;
+        }
+
+        // NOLINTNEXTLINE(hicpp-signed-bitwise)
+        mHasError = (-1 == ioctl(mFd, PERF_EVENT_IOC_DISABLE, PERF_IOC_FLAG_GROUP));
+        if (mHasError) {
+            return;
+        }
 
         auto const numBytes = sizeof(uint64_t) * mCounters.size();
         auto ret = read(mFd, mCounters.data(), numBytes);
-        if (ret != static_cast<ssize_t>(numBytes)) {
-            handleReadError();
-        }
+        mHasError = ret != static_cast<ssize_t>(numBytes);
     }
 
     void updateResults(uint64_t numIters);
@@ -1290,6 +1310,10 @@ public:
             beginMeasure();
             op();
             endMeasure();
+            if (mHasError) {
+                return;
+            }
+
             for (size_t i = 0; i < newCalibration.size(); ++i) {
                 auto diff = mCounters[i];
                 if (newCalibration[i] > diff) {
@@ -1337,15 +1361,18 @@ public:
 
 private:
     bool monitor(uint32_t type, uint64_t eventid, Target target);
-    [[noreturn]] void handleReadError();
 
     std::map<uint64_t, Target> mIdToTarget{};
-    std::vector<uint64_t> mCounters{};
-    std::vector<uint64_t> mCalibratedOverhead{};
-    std::vector<uint64_t> mLoopOverhead{};
+
+    // start with minimum size of 3 for read_format
+    std::vector<uint64_t> mCounters{3};
+    std::vector<uint64_t> mCalibratedOverhead{3};
+    std::vector<uint64_t> mLoopOverhead{3};
+
     uint64_t mTimeEnabledNanos = 0;
     uint64_t mTimeRunningNanos = 0;
     int mFd = -1;
+    bool mHasError = false;
 };
 ANKERL_NANOBENCH(IGNORE_PADDED_POP)
 
@@ -1367,6 +1394,10 @@ void LinuxPerformanceCounters::updateResults(uint64_t numIters) {
     // clear old data
     for (auto& id_value : mIdToTarget) {
         *id_value.second.targetValue = UINT64_C(0);
+    }
+
+    if (mHasError) {
+        return;
     }
 
     mTimeEnabledNanos = mCounters[1] - mCalibratedOverhead[1];
@@ -1401,7 +1432,7 @@ void LinuxPerformanceCounters::updateResults(uint64_t numIters) {
 }
 
 bool LinuxPerformanceCounters::monitor(uint32_t type, uint64_t eventid, Target target) {
-    *target.targetValue = UINT64_C(-1);
+    *target.targetValue = (std::numeric_limits<uint64_t>::max)();
 
     auto pea = perf_event_attr();
     std::memset(&pea, 0, sizeof(perf_event_attr));
@@ -1415,9 +1446,13 @@ bool LinuxPerformanceCounters::monitor(uint32_t type, uint64_t eventid, Target t
     // NOLINTNEXTLINE(hicpp-signed-bitwise)
     pea.read_format = PERF_FORMAT_GROUP | PERF_FORMAT_ID | PERF_FORMAT_TOTAL_TIME_ENABLED | PERF_FORMAT_TOTAL_TIME_RUNNING;
 
-    const int pid = 0;  // the current process
-    const int cpu = -1; // all CPUs
+    const int pid = 0;                    // the current process
+    const int cpu = -1;                   // all CPUs
+#        if defined(PERF_FLAG_FD_CLOEXEC) // since Linux 3.14
     const unsigned long flags = PERF_FLAG_FD_CLOEXEC;
+#        else
+    const unsigned long flags = 0;
+#        endif
 
     auto fd = static_cast<int>(syscall(__NR_perf_event_open, &pea, pid, cpu, mFd, flags));
     if (-1 == fd) {
@@ -1446,10 +1481,6 @@ bool LinuxPerformanceCounters::monitor(uint32_t type, uint64_t eventid, Target t
     return true;
 }
 
-void LinuxPerformanceCounters::handleReadError() {
-    throw std::runtime_error("not enough bytes read - maybe monitor the same thing twice?");
-}
-
 PerformanceCounters::PerformanceCounters()
     : mPc(new LinuxPerformanceCounters())
     , mVal()
@@ -1472,6 +1503,11 @@ PerformanceCounters::PerformanceCounters()
         (void)before;
         (void)after;
     });
+
+    if (mPc->hasError()) {
+        // something failed, don't monitor anything.
+        mHas = PerfCountSet<bool>{};
+    }
 }
 
 PerformanceCounters::~PerformanceCounters() {
@@ -1683,10 +1719,10 @@ static void generateMeasurement(std::vector<Node> const& nodes, std::vector<anke
                 break;
 
             case Node::Type::inverted_section:
-                throw std::runtime_error("got a inverted section inside measurment");
+                throw std::runtime_error("got a inverted section inside measurement");
 
             case Node::Type::section:
-                throw std::runtime_error("got a section inside measurment");
+                throw std::runtime_error("got a section inside measurement");
 
             case Node::Type::tag:
                 if (n == "sec_per_unit") {
