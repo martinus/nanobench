@@ -82,6 +82,12 @@
 #    define ANKERL_NANOBENCH_PRIVATE_PERF_COUNTERS() 0
 #endif
 
+#if defined(__clang__)
+#    define ANKERL_NANOBENCH_NO_SANITIZE(...) __attribute__((no_sanitize(__VA_ARGS__)))
+#else
+#    define ANKERL_NANOBENCH_NO_SANITIZE(...)
+#endif
+
 // declarations ///////////////////////////////////////////////////////////////////////////////////
 
 namespace ankerl {
@@ -345,7 +351,7 @@ private:
     std::string mUnit = "op";
     double mBatch = 1.0;
     size_t mNumEpochs = 11;
-    size_t mClockResolutionMultiple = static_cast<size_t>(8000);
+    size_t mClockResolutionMultiple = static_cast<size_t>(1000);
     std::chrono::nanoseconds mMaxEpochTime = std::chrono::milliseconds(100);
     std::chrono::nanoseconds mMinEpochTime{};
     uint64_t mMinEpochIterations{1};
@@ -451,6 +457,9 @@ constexpr uint64_t(Rng::max)() {
     return (std::numeric_limits<uint64_t>::max)();
 }
 
+// Mark this as no_sanitize, otherwise UBSAN will say we got an unsigned integer overflow. Which is not a undefined behavior, but often
+// a bug. Not here though.
+ANKERL_NANOBENCH_NO_SANITIZE("integer")
 uint64_t Rng::operator()() noexcept {
     uint64_t tmp = mA + mB + mCounter++;
     mA = mB ^ (mB >> 11U);
@@ -475,6 +484,7 @@ constexpr uint64_t Rng::rotl(uint64_t x, unsigned k) noexcept {
 
 // Performs all evaluations.
 template <typename Op>
+ANKERL_NANOBENCH_NO_SANITIZE("integer")
 Config& Config::run(std::string const& name, Op op) {
     // It is important that this method is kept short so the compiler can do better optimizations/ inlining of op()
     detail::IterationLogic iterationLogic(*this, name);
@@ -667,7 +677,6 @@ namespace detail {
 
 char const* getEnv(char const* name);
 bool isEndlessRunning(std::string const& name);
-bool showTotalRuntime();
 
 template <typename T>
 T parseFile(std::string const& filename);
@@ -814,10 +823,6 @@ bool isEndlessRunning(std::string const& name) {
     return nullptr != endless && endless == name;
 }
 
-bool showTotalRuntime() {
-    return nullptr != getEnv("NANOBENCH_SHOW_TOTAL_RUNTIME");
-}
-
 void printStabilityInformationOnce() {
     static bool shouldPrint = true;
     if (shouldPrint) {
@@ -958,7 +963,7 @@ uint64_t IterationLogic::calcBestNumIters(std::chrono::nanoseconds elapsed, uint
     if (doubleNewIters < doubleMinEpochIters) {
         doubleNewIters = doubleMinEpochIters;
     }
-    doubleNewIters *= 1.0 + 0.1 * mRng.uniform01();
+    doubleNewIters *= 1.0 + 0.2 * mRng.uniform01();
 
     // +0.5 for correct rounding when casting
     // NOLINTNEXTLINE(bugprone-incorrect-roundings)
@@ -1064,14 +1069,14 @@ Result IterationLogic::showResult(std::string const& errorMessage) const {
                 os << "| relative ";
             }
             os << "|" << std::setw(20) << std::right << ("ns/" + mConfig.unit()) << " |" << std::setw(20) << std::right
-               << (mConfig.unit() + "/s") << " |   error";
+               << (mConfig.unit() + "/s") << " | error %";
 
             if (showPc) {
                 if (r.hasMedianInstructionsPerUnit()) {
-                    os << " |" << std::setw(15) << std::right << ("ins/" + mConfig.unit());
+                    os << " |" << std::setw(16) << std::right << ("ins/" + mConfig.unit());
                 }
                 if (r.hasMedianCpuCyclesPerUnit()) {
-                    os << " |" << std::setw(15) << std::right << ("cyc/" + mConfig.unit());
+                    os << " |" << std::setw(16) << std::right << ("cyc/" + mConfig.unit());
                 }
                 if (r.hasMedianInstructionsPerUnit() && r.hasMedianCpuCyclesPerUnit()) {
                     os << " |" << std::setw(7) << std::right << "IPC";
@@ -1084,9 +1089,7 @@ Result IterationLogic::showResult(std::string const& errorMessage) const {
                 }
             }
 
-            if (detail::showTotalRuntime()) {
-                os << " |" << std::setw(20) << std::right << "total ns";
-            }
+            os << " |" << std::setw(10) << std::right << "total sec";
             os << " | " << mConfig.title() << std::endl;
 
             if (mConfig.relative()) {
@@ -1096,10 +1099,10 @@ Result IterationLogic::showResult(std::string const& errorMessage) const {
 
             if (showPc) {
                 if (r.hasMedianInstructionsPerUnit()) {
-                    os << "|---------------:";
+                    os << "|----------------:";
                 }
                 if (r.hasMedianCpuCyclesPerUnit()) {
-                    os << "|---------------:";
+                    os << "|----------------:";
                 }
                 if (r.hasMedianInstructionsPerUnit() && r.hasMedianCpuCyclesPerUnit()) {
                     os << "|-------:";
@@ -1112,9 +1115,7 @@ Result IterationLogic::showResult(std::string const& errorMessage) const {
                 }
             }
 
-            if (detail::showTotalRuntime()) {
-                os << "|--------------------:";
-            }
+            os << "|----------:";
 
             os << "|:----------------------------------------------" << std::endl;
         }
@@ -1127,10 +1128,10 @@ Result IterationLogic::showResult(std::string const& errorMessage) const {
 
             if (showPc) {
                 if (r.hasMedianInstructionsPerUnit()) {
-                    os << "|              - ";
+                    os << "|               - ";
                 }
                 if (r.hasMedianCpuCyclesPerUnit()) {
-                    os << "|              - ";
+                    os << "|               - ";
                 }
                 if (r.hasMedianInstructionsPerUnit() && r.hasMedianCpuCyclesPerUnit()) {
                     os << "|      - ";
@@ -1142,11 +1143,9 @@ Result IterationLogic::showResult(std::string const& errorMessage) const {
                     os << "|       - ";
                 }
             }
-            if (detail::showTotalRuntime()) {
-                os << "|              - ";
-            }
+            os << "|         - ";
 
-            os << "| :boom: " << errorMessage << ' ' << detail::fmt::MarkDownCode(mName) << std::endl;
+            os << "| :boom: " << detail::fmt::MarkDownCode(mName) << " (" << errorMessage << ')' << std::endl;
         } else {
 
             // we want output that looks like this:
@@ -1175,10 +1174,10 @@ Result IterationLogic::showResult(std::string const& errorMessage) const {
 
             if (showPc) {
                 if (r.hasMedianInstructionsPerUnit()) {
-                    os << detail::fmt::Number(15, 2, r.medianInstructionsPerUnit()) << " |";
+                    os << detail::fmt::Number(16, 2, r.medianInstructionsPerUnit()) << " |";
                 }
                 if (r.hasMedianCpuCyclesPerUnit()) {
-                    os << detail::fmt::Number(15, 2, r.medianCpuCyclesPerUnit()) << " |";
+                    os << detail::fmt::Number(16, 2, r.medianCpuCyclesPerUnit()) << " |";
                 }
 
                 if (r.hasMedianInstructionsPerUnit() && r.hasMedianCpuCyclesPerUnit()) {
@@ -1198,23 +1197,21 @@ Result IterationLogic::showResult(std::string const& errorMessage) const {
                 }
             }
 
-            if (detail::showTotalRuntime()) {
-                os << detail::fmt::Number(20, 2, r.total().count()) << " |";
-            }
+            os << detail::fmt::Number(10, 2, std::chrono::duration_cast<std::chrono::duration<double>>(r.total()).count()) << " |";
 
             // 5th column: possible symbols, possibly errormessage, benchmark name
             auto showUnstable = r.medianAbsolutePercentError() >= 0.05;
             if (showUnstable) {
                 os << " :wavy_dash:";
             }
-            os << ' ' << detail::fmt::MarkDownCode(mName);
+            os << ' ' << mName;
             if (showUnstable) {
                 auto avgIters = static_cast<double>(mTotalNumIters) / static_cast<double>(mConfig.epochs());
                 // NOLINTNEXTLINE(bugprone-incorrect-roundings)
                 auto suggestedIters = static_cast<uint64_t>(avgIters * 10 + 0.5);
 
-                os << " Unstable with ~" << detail::fmt::Number(1, 1, avgIters) << " iters. Increase `minEpochIterations` to e.g. "
-                   << suggestedIters;
+                os << " (Unstable with ~" << detail::fmt::Number(1, 1, avgIters) << " iters. Increase `minEpochIterations` to e.g. "
+                   << suggestedIters << ")";
             }
             os << std::endl;
         }
@@ -1433,6 +1430,9 @@ void LinuxPerformanceCounters::updateResults(uint64_t numIters) {
 
 bool LinuxPerformanceCounters::monitor(uint32_t type, uint64_t eventid, Target target) {
     *target.targetValue = (std::numeric_limits<uint64_t>::max)();
+    if (mHasError) {
+        return false;
+    }
 
     auto pea = perf_event_attr();
     std::memset(&pea, 0, sizeof(perf_event_attr));
