@@ -1071,7 +1071,7 @@ Result IterationLogic::showResult(std::string const& errorMessage) const {
                 os << "| relative ";
             }
             os << "|" << std::setw(20) << std::right << ("ns/" + mConfig.unit()) << " |" << std::setw(20) << std::right
-               << (mConfig.unit() + "/s") << " | error %";
+               << (mConfig.unit() + "/s") << " |    err%";
 
             if (showPc) {
                 if (r.hasMedianInstructionsPerUnit()) {
@@ -1084,14 +1084,14 @@ Result IterationLogic::showResult(std::string const& errorMessage) const {
                     os << " |" << std::setw(7) << std::right << "IPC";
                 }
                 if (r.hasMedianBranchesPerUnit()) {
-                    os << " |" << std::setw(15) << std::right << ("branch/" + mConfig.unit());
+                    os << " |" << std::setw(15) << std::right << ("bra/" + mConfig.unit());
                 }
                 if (r.hasMedianBranchesPerUnit() && r.hasMedianBranchMissesPerUnit()) {
-                    os << " |" << std::setw(8) << std::right << "miss %";
+                    os << " |" << std::setw(8) << std::right << "mis%";
                 }
             }
 
-            os << " |" << std::setw(10) << std::right << "total sec";
+            os << " |" << std::setw(10) << std::right << "total";
             os << " | " << mConfig.title() << std::endl;
 
             if (mConfig.relative()) {
