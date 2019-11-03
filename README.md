@@ -27,14 +27,14 @@ int main() {
 Runs for ~3ms to print
 
 ```markdown
-|               ns/op |                op/s | error % |          ins/op |          cyc/op |    IPC |    branches/op | missed% | total sec | benchmark
+|             ns / op |              op / s | error % |          ins/op |          cyc/op |    IPC |    branches/op | missed% | total sec | benchmark
 |--------------------:|--------------------:|--------:|----------------:|----------------:|-------:|---------------:|--------:|----------:|:----------------------------------------------
 |                8.75 |      114,278,296.99 |    0.8% |            8.31 |           27.98 |  0.297 |           1.00 |    8.9% |      0.00 | some double ops
 ```
 
 Which github renders as
 
-|               ns/op |                op/s | error % |          ins/op |          cyc/op |    IPC |    branches/op | missed% | total sec | benchmark
+|             ns / op |              op / s | error % |        ins / op |        cyc / op |    IPC |  branches / op | missed %| total sec | benchmark
 |--------------------:|--------------------:|--------:|----------------:|----------------:|-------:|---------------:|--------:|----------:|:----------------------------------------------
 |                8.75 |      114,278,296.99 |    0.8% |            8.31 |           27.98 |  0.297 |           1.00 |    8.9% |      0.00 | some double ops
 
