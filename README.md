@@ -12,29 +12,31 @@
 ```cpp
 #define ANKERL_NANOBENCH_IMPLEMENT
 #include <nanobench.h>
-#include <cmath>
 
 int main() {
     double d = 1.0;
-    ankerl::nanobench::Config().run("d += std::sin(d)", [&] {
-        d += std::sin(d);
+    ankerl::nanobench::Config().run("some double ops", [&] {
+        d += 1.0 / d;
+        if (d > 5.0) {
+            d -= 5.0;
+        }
     }).doNotOptimizeAway(d);
 }
 ```
 
-Runs for 3ms to print
+Runs for ~3ms to print
 
 ```markdown
-|               ns/op |                op/s |   MdAPE |         ins/op |         cyc/op |    IPC |    branches/op | missed% | benchmark
-|--------------------:|--------------------:|--------:|---------------:|---------------:|-------:|---------------:|--------:|:----------------------------------------------
-|               21.17 |       47,241,589.57 |    0.0% |          85.00 |          67.58 |  1.258 |          15.00 |    0.0% | `d += std::sin(d)`
+|               ns/op |                op/s | error % |          ins/op |          cyc/op |    IPC |    branches/op | missed% | total sec | benchmark
+|--------------------:|--------------------:|--------:|----------------:|----------------:|-------:|---------------:|--------:|----------:|:----------------------------------------------
+|                8.75 |      114,278,296.99 |    0.8% |            8.31 |           27.98 |  0.297 |           1.00 |    8.9% |      0.00 | some double ops
 ```
 
 Which github renders as
 
-|               ns/op |                op/s |   MdAPE |         ins/op |         cyc/op |    IPC |    branches/op | missed% | benchmark
-|--------------------:|--------------------:|--------:|---------------:|---------------:|-------:|---------------:|--------:|:----------------------------------------------
-|               21.17 |       47,241,589.57 |    0.0% |          85.00 |          67.58 |  1.258 |          15.00 |    0.0% | `d += std::sin(d)`
+|               ns/op |                op/s | error % |          ins/op |          cyc/op |    IPC |    branches/op | missed% | total sec | benchmark
+|--------------------:|--------------------:|--------:|----------------:|----------------:|-------:|---------------:|--------:|----------:|:----------------------------------------------
+|                8.75 |      114,278,296.99 |    0.8% |            8.31 |           27.98 |  0.297 |           1.00 |    8.9% |      0.00 | some double ops
 
 # Design Goals
 
