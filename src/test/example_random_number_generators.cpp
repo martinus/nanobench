@@ -11,7 +11,8 @@ void bench(ankerl::nanobench::Config* cfg, std::string name) {
     std::random_device dev;
     Rng rng(dev());
     uint64_t x = 0;
-    cfg->run(name, [&] { x += std::uniform_int_distribution<uint64_t>{}(rng); }).doNotOptimizeAway(x);
+    cfg->run(name, [&]() ANKERL_NANOBENCH_NO_SANITIZE("integer") { x += std::uniform_int_distribution<uint64_t>{}(rng); })
+        .doNotOptimizeAway(x);
 }
 
 TEST_CASE("example_random_number_generators") {

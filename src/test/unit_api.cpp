@@ -47,7 +47,7 @@ TEST_CASE("comparison") {
     cfg.run("x += x double", [&] { x += x; }).doNotOptimizeAway(x);
 
     uint64_t n = 1;
-    cfg.run("n *= 3", [&] { n *= 2; }).doNotOptimizeAway(n);
+    cfg.run("n *= 3", [&]() ANKERL_NANOBENCH_NO_SANITIZE("integer") { n *= 2; }).doNotOptimizeAway(n);
 
     x = 1.123;
     cfg.run("std::sin(x)", [&] { x += std::sin(x); }).doNotOptimizeAway(x);
@@ -73,7 +73,7 @@ TEST_CASE("unit_api") {
     cfg.batch(str.size())
         .unit("B")
         .run("std::hash",
-             [&] {
+             [&]() ANKERL_NANOBENCH_NO_SANITIZE("integer") {
                  h += std::hash<std::string>{}(str);
                  ++str[11];
              })

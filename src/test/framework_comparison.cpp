@@ -7,17 +7,20 @@
 
 TEST_CASE("comparison_fast_v1") {
     uint64_t x = 1;
-    ankerl::nanobench::Config().run("x += x", [&] { x += x; });
+    ankerl::nanobench::Config().run("x += x", [&]() ANKERL_NANOBENCH_NO_SANITIZE("integer") { x += x; });
 }
 
 TEST_CASE("comparison_fast_v2") {
     uint64_t x = 1;
-    ankerl::nanobench::Config().run("x += x", [&] { x += x; }).doNotOptimizeAway(x);
+    ankerl::nanobench::Config().run("x += x", [&]() ANKERL_NANOBENCH_NO_SANITIZE("integer") { x += x; }).doNotOptimizeAway(x);
 }
 
 TEST_CASE("comparison_fast") {
     uint64_t x = 1;
-    ankerl::nanobench::Config().title("framework comparison").run("x += x", [&] { x += x; }).doNotOptimizeAway(x);
+    ankerl::nanobench::Config()
+        .title("framework comparison")
+        .run("x += x", [&]() ANKERL_NANOBENCH_NO_SANITIZE("integer") { x += x; })
+        .doNotOptimizeAway(x);
 }
 
 TEST_CASE("comparison_slow") {

@@ -874,6 +874,7 @@ uint64_t& singletonLastTableSettingsHash() noexcept {
     return sTableSettingHash;
 }
 
+ANKERL_NANOBENCH_NO_SANITIZE("integer")
 inline uint64_t fnv1a(std::string const& str) noexcept {
     auto val = UINT64_C(14695981039346656037);
     for (auto c : str) {
@@ -882,6 +883,7 @@ inline uint64_t fnv1a(std::string const& str) noexcept {
     return val;
 }
 
+ANKERL_NANOBENCH_NO_SANITIZE("integer")
 inline void hash_combine(uint64_t* seed, uint64_t val) {
     *seed ^= val + UINT64_C(0x9e3779b9) + (*seed << 6U) + (*seed >> 2U);
 }
@@ -970,7 +972,7 @@ uint64_t IterationLogic::calcBestNumIters(std::chrono::nanoseconds elapsed, uint
     return static_cast<uint64_t>(doubleNewIters + 0.5);
 }
 
-void IterationLogic::upscale(std::chrono::nanoseconds elapsed) {
+ANKERL_NANOBENCH_NO_SANITIZE("integer") void IterationLogic::upscale(std::chrono::nanoseconds elapsed) {
     if (elapsed * 10 < mTargetRuntimePerEpoch) {
         // we are far below the target runtime. Multiply iterations by 10 (with overflow check)
         if (mNumIters * 10 < mNumIters) {
@@ -1292,6 +1294,7 @@ public:
     }
 
     template <typename Op>
+    ANKERL_NANOBENCH_NO_SANITIZE("integer")
     void calibrate(Op&& op) {
         // clear current calibration data,
         for (auto& v : mCalibratedOverhead) {
@@ -1387,6 +1390,8 @@ bool LinuxPerformanceCounters::monitor(perf_hw_id hwId, LinuxPerformanceCounters
     return monitor(PERF_TYPE_HARDWARE, hwId, target);
 }
 
+// overflow is ok, it's checked
+ANKERL_NANOBENCH_NO_SANITIZE("integer")
 void LinuxPerformanceCounters::updateResults(uint64_t numIters) {
     // clear old data
     for (auto& id_value : mIdToTarget) {
