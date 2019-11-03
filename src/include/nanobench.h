@@ -615,7 +615,7 @@ namespace ankerl {
 namespace nanobench {
 namespace templates {
 char const* csv() noexcept {
-    return R"DELIM({{title}}; "relative %"; "s/{{unit}}"; "min/{{unit}}"; "max/{{unit}}"; "error %"; "measurements"; "instructions/{{unit}}"; "branches/{{unit}}"; "branch misses/{{unit}}"
+    return R"DELIM({{title}}; "relative %"; "s/{{unit}}"; "min/{{unit}}"; "max/{{unit}}"; "error %"; "measurements"; "instructions/{{unit}}"; "branch/{{unit}}"; "branch misses/{{unit}}"
 {{#benchmarks}}"{{name}}"; {{relative}}; {{median_sec_per_unit}}; {{min}}; {{max}}; {{md_ape}}; {{num_measurements}}; {{median_ins_per_unit}}; {{median_branches_per_unit}}; {{median_branchmisses_per_unit}}
 {{/benchmarks}})DELIM";
 }
@@ -1084,10 +1084,10 @@ Result IterationLogic::showResult(std::string const& errorMessage) const {
                     os << " |" << std::setw(7) << std::right << "IPC";
                 }
                 if (r.hasMedianBranchesPerUnit()) {
-                    os << " |" << std::setw(15) << std::right << ("branches/" + mConfig.unit());
+                    os << " |" << std::setw(15) << std::right << ("branch/" + mConfig.unit());
                 }
                 if (r.hasMedianBranchesPerUnit() && r.hasMedianBranchMissesPerUnit()) {
-                    os << " |" << std::setw(8) << std::right << "missed%";
+                    os << " |" << std::setw(8) << std::right << "miss %";
                 }
             }
 

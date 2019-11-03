@@ -46,7 +46,7 @@ int main() {
 Compiled with `g++ -O2 -DNDEBUG full_example.cpp -I../include -o full_example` runs for 5ms and then
 prints this markdown table:
 
-|               ns/op |                op/s |   MdAPE |         ins/op |         cyc/op |    IPC |    branches/op | missed% | benchmark
+|               ns/op |                op/s |   MdAPE |         ins/op |         cyc/op |    IPC |      branch/op | missed% | benchmark
 |--------------------:|--------------------:|--------:|---------------:|---------------:|-------:|---------------:|--------:|:----------------------------------------------
 |                7.81 |      128,092,931.19 |    0.0% |           4.00 |          24.93 |  0.161 |           0.00 |    0.0% | `compare_exchange_strong`
 
@@ -79,7 +79,7 @@ TEST_CASE("comparison_fast_v1") {
 
 After 0.2ms we get this output:
 
-|               ns/op |                op/s |   MdAPE |         ins/op |         cyc/op |    IPC |    branches/op | missed% | benchmark
+|               ns/op |                op/s |   MdAPE |         ins/op |         cyc/op |    IPC |      branch/op | missed% | benchmark
 |--------------------:|--------------------:|--------:|---------------:|---------------:|-------:|---------------:|--------:|:----------------------------------------------
 |                   - |                   - |       - |              - |              - |      - |              - |       - | :boom: iterations overflow. Maybe your code got optimized away? `x += x`
 
@@ -94,7 +94,7 @@ TEST_CASE("comparison_fast_v2") {
 
 This time the benchmark runs for 2.2ms and gives us a good result:
 
-|               ns/op |                op/s |   MdAPE |         ins/op |         cyc/op |    IPC |    branches/op | missed% | benchmark
+|               ns/op |                op/s |   MdAPE |         ins/op |         cyc/op |    IPC |      branch/op | missed% | benchmark
 |--------------------:|--------------------:|--------:|---------------:|---------------:|-------:|---------------:|--------:|:----------------------------------------------
 |                0.32 |    3,170,869,554.81 |    0.2% |           1.00 |           1.01 |  0.993 |           0.00 |    0.0% | `x += x`
 
@@ -115,7 +115,7 @@ TEST_CASE("comparison_slow") {
 
 After 517ms I get
 
-|               ns/op |                op/s |   MdAPE |         ins/op |         cyc/op |    IPC |    branches/op | missed% | framework comparison
+|               ns/op |                op/s |   MdAPE |         ins/op |         cyc/op |    IPC |      branch/op | missed% | framework comparison
 |--------------------:|--------------------:|--------:|---------------:|---------------:|-------:|---------------:|--------:|:----------------------------------------------
 |       10,145,437.00 |               98.57 |    0.0% |          28.00 |       2,394.00 |  0.012 |           8.00 |   87.5% | `sleep 10ms`
 
@@ -141,7 +141,7 @@ TEST_CASE("comparison_fluctuating_v1") {
 
 After 2.3ms, I get this result:
 
-|               ns/op |                op/s |   MdAPE |         ins/op |         cyc/op |    IPC |    branches/op | missed% | benchmark
+|               ns/op |                op/s |   MdAPE |         ins/op |         cyc/op |    IPC |      branch/op | missed% | benchmark
 |--------------------:|--------------------:|--------:|---------------:|---------------:|-------:|---------------:|--------:|:----------------------------------------------
 |            1,026.41 |          974,269.30 |    7.0% |       6,018.97 |       3,277.26 |  1.837 |         792.72 |    8.6% | :wavy_dash: `random fluctuations` Unstable with ~38.7 iters. Increase `minEpochIterations` to e.g. 387
 
@@ -165,7 +165,7 @@ TEST_CASE("comparison_fluctuating_v2") {
 
 The fluctuations are much better:
 
-|               ns/op |                op/s |   MdAPE |         ins/op |         cyc/op |    IPC |    branches/op | missed% | benchmark
+|               ns/op |                op/s |   MdAPE |         ins/op |         cyc/op |    IPC |      branch/op | missed% | benchmark
 |--------------------:|--------------------:|--------:|---------------:|---------------:|-------:|---------------:|--------:|:----------------------------------------------
 |              988.96 |        1,011,165.38 |    0.9% |       5,861.14 |       3,147.65 |  1.862 |         772.10 |    8.6% | `random fluctuations`
 
@@ -215,7 +215,7 @@ TEST_CASE("example_random_number_generators") {
 
 Runs for 18ms and prints this table:
 
-| relative |         ns/uint64_t |          uint64_t/s |   MdAPE |   ins/uint64_t |   cyc/uint64_t |    IPC |branches/uint64_t | missed% | Random Number Generators
+| relative |         ns/uint64_t |          uint64_t/s |   MdAPE |   ins/uint64_t |   cyc/uint64_t |    IPC |  branch/uint64_t | missed% | Random Number Generators
 |---------:|--------------------:|--------------------:|--------:|---------------:|---------------:|-------:|---------------:|--------:|:----------------------------------------------
 |   100.0% |               42.24 |       23,671,446.65 |    1.5% |         184.72 |         134.90 |  1.369 |          15.50 |    2.8% | `std::default_random_engine`
 |   195.8% |               21.57 |       46,351,638.16 |    1.2% |         174.93 |          68.88 |  2.540 |          23.99 |    4.3% | `std::mt19937`
