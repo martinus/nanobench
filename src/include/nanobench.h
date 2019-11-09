@@ -1184,7 +1184,7 @@ Result IterationLogic::showResult(std::string const& errorMessage) const {
             os << "| ";
             auto showUnstable = r.medianAbsolutePercentError() >= 0.05;
             if (showUnstable) {
-                os << ":wavy_dash:";
+                os << ":wavy_dash: ";
             }
             os << mName;
             if (showUnstable) {
