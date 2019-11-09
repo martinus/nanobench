@@ -572,6 +572,7 @@ void doNotOptimizeAway(T& value) {
 #    include <iomanip>   // setw, setprecision
 #    include <iostream>  // cout
 #    include <random>    // random_device
+#    include <sstream>   // to_s in Number
 #    include <stdexcept> // throw for rendering templates
 #    include <vector>    // manage results
 #    if defined(__linux__)
@@ -681,6 +682,7 @@ bool isEndlessRunning(std::string const& name);
 template <typename T>
 T parseFile(std::string const& filename);
 
+void gatherStabilityInformation(std::vector<std::string>& warnings, std::vector<std::string>& recommendations);
 void printStabilityInformationOnce();
 
 // remembers the last table settings used. When it changes, a new table header is automatically written for the new entry.
@@ -740,6 +742,7 @@ class Number {
 public:
     Number(int width, int precision, double value);
     Number(int width, int precision, int64_t value);
+    std::string to_s() const;
 
 private:
     friend std::ostream& operator<<(std::ostream& os, Number const& n);
@@ -823,48 +826,85 @@ bool isEndlessRunning(std::string const& name) {
     return nullptr != endless && endless == name;
 }
 
-void printStabilityInformationOnce() {
-    static bool shouldPrint = true;
-    if (shouldPrint) {
-        shouldPrint = false;
-#    if !defined(NDEBUG) || defined(DEBUG)
-        std::cerr << "Warning: DEBUG defined or NDEBUG undefined, this might be a debug build" << std::endl;
+void gatherStabilityInformation(std::vector<std::string>& warnings, std::vector<std::string>& recommendations) {
+    warnings.clear();
+    recommendations.clear();
+
+    bool recommendCheckFlags = false;
+#    if !defined(NDEBUG)
+    warnings.emplace_back("NDEBUG not defined, assert() macros are evaluated");
+    recommendCheckFlags = true;
 #    endif
 
+#    if defined(DEBUG)
+    warnings.emplace_back("DEBUG defined");
+    recommendCheckFlags = true;
+#    endif
+
+    bool recommendPyPerf = false;
 #    if defined(__linux__)
-        auto nprocs = sysconf(_SC_NPROCESSORS_CONF);
-        if (nprocs <= 0) {
-            std::cerr << "Warning: Can't figure out number of processors." << std::endl;
-            return;
-        }
+    auto nprocs = sysconf(_SC_NPROCESSORS_CONF);
+    if (nprocs <= 0) {
+        warnings.emplace_back("couldn't figure out number of processors - no governor, turbo check possible");
+    } else {
 
         // check frequency scaling
-        bool isFrequencyLocked = true;
-        bool isGovernorPerformance = "performance" == parseFile<std::string>("/sys/devices/system/cpu/cpu0/cpufreq/scaling_governor");
         for (long id = 0; id < nprocs; ++id) {
             auto sysCpu = "/sys/devices/system/cpu/cpu" + std::to_string(id);
             auto minFreq = parseFile<int64_t>(sysCpu + "/cpufreq/scaling_min_freq");
             auto maxFreq = parseFile<int64_t>(sysCpu + "/cpufreq/scaling_max_freq");
             if (minFreq != maxFreq) {
-                isFrequencyLocked = false;
+                auto minMHz = static_cast<double>(minFreq) / 1000.0;
+                auto maxMHz = static_cast<double>(maxFreq) / 1000.0;
+                warnings.emplace_back("CPU frequency scaling enabled: CPU " + std::to_string(id) + " between " +
+                                      detail::fmt::Number(1, 1, minMHz).to_s() + " and " + detail::fmt::Number(1, 1, maxMHz).to_s() +
+                                      " MHz");
+                recommendPyPerf = true;
+                break;
             }
         }
-        bool isTurbo = 0 == parseFile<int>("/sys/devices/system/cpu/intel_pstate/no_turbo");
-        if (!isFrequencyLocked) {
-            std::cerr << "Warning: CPU frequency scaling enabled, results will be invalid" << std::endl;
-        }
-        if (!isGovernorPerformance) {
-            std::cerr << "Warning: CPU governor is not performance, results will be invalid" << std::endl;
-        }
-        if (isTurbo) {
-            std::cerr << "Warning: Turbo is enabled" << std::endl;
+
+        auto currentGovernor = parseFile<std::string>("/sys/devices/system/cpu/cpu0/cpufreq/scaling_governor");
+        if ("performance" != currentGovernor) {
+            warnings.emplace_back("CPU governor is '" + currentGovernor + "' but should be 'performance'");
+            recommendPyPerf = true;
         }
 
-        if (!isFrequencyLocked || !isGovernorPerformance || isTurbo) {
-            std::cerr << "Recommendation: use 'pyperf system tune' before benchmarking. See https://pypi.org/project/pyperf/"
-                      << std::endl;
+        if (0 == parseFile<int>("/sys/devices/system/cpu/intel_pstate/no_turbo")) {
+            warnings.emplace_back("Turbo is enabled, CPU frequency will fluctuate");
+            recommendPyPerf = true;
         }
+    }
 #    endif
+
+    if (recommendCheckFlags) {
+        recommendations.emplace_back("Make sure you compile for Release");
+    }
+    if (recommendPyPerf) {
+        recommendations.emplace_back("Use 'pyperf system tune' before benchmarking. See https://github.com/vstinner/pyperf");
+    }
+}
+
+void printStabilityInformationOnce() {
+    static bool shouldPrint = true;
+    if (shouldPrint) {
+        shouldPrint = false;
+        std::vector<std::string> warnings;
+        std::vector<std::string> recommendations;
+        gatherStabilityInformation(warnings, recommendations);
+        if (warnings.empty()) {
+            return;
+        }
+
+        std::cerr << "Warning, results might be unstable:" << std::endl;
+        for (auto const& w : warnings) {
+            std::cerr << "* " << w << std::endl;
+        }
+
+        std::cerr << std::endl << "Recommendations" << std::endl;
+        for (auto const& r : recommendations) {
+            std::cerr << "* " << r << std::endl;
+        }
     }
 }
 
@@ -1071,7 +1111,7 @@ Result IterationLogic::showResult(std::string const& errorMessage) const {
                 os << "| relative ";
             }
             os << "|" << std::setw(20) << std::right << ("ns/" + mConfig.unit()) << " |" << std::setw(20) << std::right
-               << (mConfig.unit() + "/s") << " |    err%";
+               << (mConfig.unit() + "/s") << " | error %";
 
             if (showPc) {
                 if (r.hasMedianInstructionsPerUnit()) {
@@ -1084,14 +1124,14 @@ Result IterationLogic::showResult(std::string const& errorMessage) const {
                     os << " |" << std::setw(7) << std::right << "IPC";
                 }
                 if (r.hasMedianBranchesPerUnit()) {
-                    os << " |" << std::setw(15) << std::right << ("bra/" + mConfig.unit());
+                    os << " |" << std::setw(15) << std::right << ("branch/" + mConfig.unit());
                 }
                 if (r.hasMedianBranchesPerUnit() && r.hasMedianBranchMissesPerUnit()) {
-                    os << " |" << std::setw(8) << std::right << "mis%";
+                    os << " |" << std::setw(8) << std::right << "miss %";
                 }
             }
 
-            os << " |" << std::setw(10) << std::right << "total";
+            os << " |" << std::setw(10) << std::right << "total sec";
             os << " | " << mConfig.title() << std::endl;
 
             if (mConfig.relative()) {
@@ -1602,6 +1642,12 @@ std::ostream& Number::write(std::ostream& os) const {
     os.imbue(std::locale(os.getloc(), new NumSep(',')));
     os << std::setw(mWidth) << std::setprecision(mPrecision) << std::fixed << mValue;
     return os;
+}
+
+std::string Number::to_s() const {
+    std::stringstream ss;
+    write(ss);
+    return ss.str();
 }
 
 std::ostream& operator<<(std::ostream& os, Number const& n) {
