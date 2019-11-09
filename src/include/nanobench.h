@@ -603,6 +603,7 @@ namespace fmt {
 class NumSep;
 class StreamStateRestorer;
 class Number;
+class MarkDownColumn;
 class MarkDownCode;
 
 } // namespace fmt
@@ -754,6 +755,22 @@ private:
 };
 
 std::ostream& operator<<(std::ostream& os, Number const& n);
+
+class MarkDownColumn {
+public:
+    MarkDownColumn(int width, int precision, std::string const& title, std::string const& suffix, double value);
+    std::string title() const;
+    std::string separator() const;
+    std::string invalid() const;
+    std::string value() const;
+
+private:
+    int mWidth;
+    int mPrecision;
+    std::string mTitle;
+    std::string mSuffix;
+    double mValue;
+};
 
 // Formats any text as markdown code, escaping backticks.
 class MarkDownCode {
@@ -1097,156 +1114,79 @@ Result IterationLogic::showResult(std::string const& errorMessage) const {
     }
 
     if (mConfig.output() != nullptr) {
+        // prepare column data ///////
+        std::vector<fmt::MarkDownColumn> columns;
 
-        auto showPc = mConfig.performanceCounters();
+        if (mConfig.relative()) {
+            double d = 100.0;
+            if (!mConfig.results().empty()) {
+                d = mConfig.results().front().median() / r.median() * 100;
+            }
+            columns.emplace_back(11, 1, "relative", "%", d);
+        }
 
+        columns.emplace_back(22, 2, "ns/" + mConfig.unit(), "", 1e9 * r.median().count());
+        columns.emplace_back(22, 2, mConfig.unit() + "/s", "", 1.0 / r.median().count());
+        columns.emplace_back(10, 1, "error %", "%", r.medianAbsolutePercentError() * 100);
+
+        if (mConfig.performanceCounters()) {
+            if (r.hasMedianInstructionsPerUnit()) {
+                columns.emplace_back(18, 2, "ins/" + mConfig.unit(), "", r.medianInstructionsPerUnit());
+            }
+            if (r.hasMedianCpuCyclesPerUnit()) {
+                columns.emplace_back(18, 2, "cyc/" + mConfig.unit(), "", r.medianCpuCyclesPerUnit());
+            }
+            if (r.hasMedianInstructionsPerUnit() && r.hasMedianCpuCyclesPerUnit()) {
+                columns.emplace_back(9, 3, "IPC", "", r.medianInstructionsPerUnit() / r.medianCpuCyclesPerUnit());
+            }
+            if (r.hasMedianBranchesPerUnit()) {
+                columns.emplace_back(17, 2, "branch/" + mConfig.unit(), "", r.medianBranchesPerUnit());
+                if (r.hasMedianBranchMissesPerUnit()) {
+                    double p = 0.0;
+                    if (r.medianBranchesPerUnit() >= 1e-9) {
+                        p = 100.0 * r.medianBranchMissesPerUnit() / r.medianBranchesPerUnit();
+                    }
+                    columns.emplace_back(10, 1, "miss %", "%", p);
+                }
+            }
+        }
+
+        columns.emplace_back(12, 2, "total sec", "", std::chrono::duration_cast<std::chrono::duration<double>>(r.total()).count());
+
+        // write everything
         auto& os = *mConfig.output();
-        detail::fmt::StreamStateRestorer restorer(os);
+
         auto h = calcTableSettingsHash(mConfig);
         if (h != singletonLastTableSettingsHash()) {
             singletonLastTableSettingsHash() = h;
 
             os << std::endl;
-            if (mConfig.relative()) {
-                os << "| relative ";
+            for (auto const& col : columns) {
+                os << col.title();
             }
-            os << "|" << std::setw(20) << std::right << ("ns/" + mConfig.unit()) << " |" << std::setw(20) << std::right
-               << (mConfig.unit() + "/s") << " | error %";
+            os << "| " << mConfig.title() << std::endl;
 
-            if (showPc) {
-                if (r.hasMedianInstructionsPerUnit()) {
-                    os << " |" << std::setw(16) << std::right << ("ins/" + mConfig.unit());
-                }
-                if (r.hasMedianCpuCyclesPerUnit()) {
-                    os << " |" << std::setw(16) << std::right << ("cyc/" + mConfig.unit());
-                }
-                if (r.hasMedianInstructionsPerUnit() && r.hasMedianCpuCyclesPerUnit()) {
-                    os << " |" << std::setw(7) << std::right << "IPC";
-                }
-                if (r.hasMedianBranchesPerUnit()) {
-                    os << " |" << std::setw(15) << std::right << ("branch/" + mConfig.unit());
-                }
-                if (r.hasMedianBranchesPerUnit() && r.hasMedianBranchMissesPerUnit()) {
-                    os << " |" << std::setw(8) << std::right << "miss %";
-                }
+            for (auto const& col : columns) {
+                os << col.separator();
             }
-
-            os << " |" << std::setw(10) << std::right << "total sec";
-            os << " | " << mConfig.title() << std::endl;
-
-            if (mConfig.relative()) {
-                os << "|---------:";
-            }
-            os << "|--------------------:|--------------------:|--------:";
-
-            if (showPc) {
-                if (r.hasMedianInstructionsPerUnit()) {
-                    os << "|----------------:";
-                }
-                if (r.hasMedianCpuCyclesPerUnit()) {
-                    os << "|----------------:";
-                }
-                if (r.hasMedianInstructionsPerUnit() && r.hasMedianCpuCyclesPerUnit()) {
-                    os << "|-------:";
-                }
-                if (r.hasMedianBranchesPerUnit()) {
-                    os << "|---------------:";
-                }
-                if (r.hasMedianBranchesPerUnit() && r.hasMedianBranchMissesPerUnit()) {
-                    os << "|--------:";
-                }
-            }
-
-            os << "|----------:";
-
-            os << "|:----------------------------------------------" << std::endl;
+            os << "|:" << std::string(mConfig.title().size() + 1U, '-') << std::endl;
         }
 
         if (!errorMessage.empty()) {
-            if (mConfig.relative()) {
-                os << "|        - ";
+            for (auto const& col : columns) {
+                os << col.invalid();
             }
-            os << "|                   - |                   - |       - ";
-
-            if (showPc) {
-                if (r.hasMedianInstructionsPerUnit()) {
-                    os << "|               - ";
-                }
-                if (r.hasMedianCpuCyclesPerUnit()) {
-                    os << "|               - ";
-                }
-                if (r.hasMedianInstructionsPerUnit() && r.hasMedianCpuCyclesPerUnit()) {
-                    os << "|      - ";
-                }
-                if (r.hasMedianBranchesPerUnit()) {
-                    os << "|              - ";
-                }
-                if (r.hasMedianBranchesPerUnit() && r.hasMedianBranchMissesPerUnit()) {
-                    os << "|       - ";
-                }
-            }
-            os << "|         - ";
-
-            os << "| :boom: " << detail::fmt::MarkDownCode(mName) << " (" << errorMessage << ')' << std::endl;
+            os << "| :boom: " << fmt::MarkDownCode(mName) << " (" << errorMessage << ')' << std::endl;
         } else {
-
-            // we want output that looks like this:
-            // |  1208.4% |               14.15 |       70,649,422.38 |    0.3% | `std::vector<std::string> emplace + release`
-
-            os << '|';
-
-            // 1st column: relative
-            if (mConfig.relative()) {
-                double d = 100.0;
-                if (!mConfig.results().empty()) {
-                    d = mConfig.results().front().median() / r.median() * 100;
-                }
-
-                os << detail::fmt::Number(8, 1, d) << "% |";
+            for (auto const& col : columns) {
+                os << col.value();
             }
-
-            // 2nd column: ns/unit
-            os << detail::fmt::Number(20, 2, 1e9 * r.median().count()) << " |";
-
-            // 3rd column: unit/s
-            os << detail::fmt::Number(20, 2, 1 / r.median().count()) << " |";
-
-            // 4th column: error
-            os << detail::fmt::Number(7, 1, r.medianAbsolutePercentError() * 100) << "% |";
-
-            if (showPc) {
-                if (r.hasMedianInstructionsPerUnit()) {
-                    os << detail::fmt::Number(16, 2, r.medianInstructionsPerUnit()) << " |";
-                }
-                if (r.hasMedianCpuCyclesPerUnit()) {
-                    os << detail::fmt::Number(16, 2, r.medianCpuCyclesPerUnit()) << " |";
-                }
-
-                if (r.hasMedianInstructionsPerUnit() && r.hasMedianCpuCyclesPerUnit()) {
-                    os << detail::fmt::Number(7, 3, r.medianInstructionsPerUnit() / r.medianCpuCyclesPerUnit()) << " |";
-                }
-
-                if (r.hasMedianBranchesPerUnit()) {
-                    os << detail::fmt::Number(15, 2, r.medianBranchesPerUnit()) << " |";
-                    if (r.hasMedianBranchMissesPerUnit()) {
-                        if (r.medianBranchesPerUnit() < 1e-9) {
-                            os << detail::fmt::Number(7, 1, 0.0) << "% |";
-                        } else {
-                            os << detail::fmt::Number(7, 1, 100.0 * r.medianBranchMissesPerUnit() / r.medianBranchesPerUnit())
-                               << "% |";
-                        }
-                    }
-                }
-            }
-
-            os << detail::fmt::Number(10, 2, std::chrono::duration_cast<std::chrono::duration<double>>(r.total()).count()) << " |";
-
-            // 5th column: possible symbols, possibly errormessage, benchmark name
+            os << "| ";
             auto showUnstable = r.medianAbsolutePercentError() >= 0.05;
             if (showUnstable) {
-                os << " :wavy_dash:";
+                os << ":wavy_dash:";
             }
-            os << ' ' << mName;
+            os << mName;
             if (showUnstable) {
                 auto avgIters = static_cast<double>(mTotalNumIters) / static_cast<double>(mConfig.epochs());
                 // NOLINTNEXTLINE(bugprone-incorrect-roundings)
@@ -1654,6 +1594,40 @@ std::ostream& operator<<(std::ostream& os, Number const& n) {
     return n.write(os);
 }
 
+MarkDownColumn::MarkDownColumn(int width, int precision, std::string const& title, std::string const& suffix, double val)
+    : mWidth(width)
+    , mPrecision(precision)
+    , mTitle(title)
+    , mSuffix(suffix)
+    , mValue(val) {}
+
+std::string MarkDownColumn::title() const {
+    std::stringstream ss;
+    ss << '|' << std::setw(mWidth - 2) << std::right << mTitle << ' ';
+    return ss.str();
+}
+
+std::string MarkDownColumn::separator() const {
+    std::string sep(static_cast<size_t>(mWidth), '-');
+    sep.front() = '|';
+    sep.back() = ':';
+    return sep;
+}
+
+std::string MarkDownColumn::invalid() const {
+    std::string sep(static_cast<size_t>(mWidth), ' ');
+    sep.front() = '|';
+    sep[sep.size() - 2] = '-';
+    return sep;
+}
+
+std::string MarkDownColumn::value() const {
+    std::stringstream ss;
+    auto width = mWidth - 2 - static_cast<int>(mSuffix.size());
+    ss << '|' << Number(width, mPrecision, mValue) << mSuffix << ' ';
+    return ss.str();
+}
+
 // Formats any text as markdown code, escaping backticks.
 MarkDownCode::MarkDownCode(std::string const& what) {
     mWhat.reserve(what.size() + 2);
@@ -2034,6 +2008,10 @@ std::string const& Result::name() const noexcept {
 }
 
 std::chrono::duration<double> Result::median() const noexcept {
+    if (mSortedMeasurements.empty()) {
+        return {};
+    }
+
     auto mid = mSortedMeasurements.size() / 2U;
     if (1U == (mSortedMeasurements.size() & 1U)) {
         return mSortedMeasurements[mid].secPerUnit();
