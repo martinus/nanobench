@@ -1127,7 +1127,7 @@ Result IterationLogic::showResult(std::string const& errorMessage) const {
 
         columns.emplace_back(22, 2, "ns/" + mConfig.unit(), "", 1e9 * r.median().count());
         columns.emplace_back(22, 2, mConfig.unit() + "/s", "", 1.0 / r.median().count());
-        columns.emplace_back(10, 1, "error %", "%", r.medianAbsolutePercentError() * 100);
+        columns.emplace_back(10, 1, "err%", "%", r.medianAbsolutePercentError() * 100);
 
         if (mConfig.performanceCounters()) {
             if (r.hasMedianInstructionsPerUnit()) {
@@ -1140,18 +1140,18 @@ Result IterationLogic::showResult(std::string const& errorMessage) const {
                 columns.emplace_back(9, 3, "IPC", "", r.medianInstructionsPerUnit() / r.medianCpuCyclesPerUnit());
             }
             if (r.hasMedianBranchesPerUnit()) {
-                columns.emplace_back(17, 2, "branch/" + mConfig.unit(), "", r.medianBranchesPerUnit());
+                columns.emplace_back(17, 2, "bra/" + mConfig.unit(), "", r.medianBranchesPerUnit());
                 if (r.hasMedianBranchMissesPerUnit()) {
                     double p = 0.0;
                     if (r.medianBranchesPerUnit() >= 1e-9) {
                         p = 100.0 * r.medianBranchMissesPerUnit() / r.medianBranchesPerUnit();
                     }
-                    columns.emplace_back(10, 1, "miss %", "%", p);
+                    columns.emplace_back(10, 1, "miss%", "%", p);
                 }
             }
         }
 
-        columns.emplace_back(12, 2, "total sec", "", std::chrono::duration_cast<std::chrono::duration<double>>(r.total()).count());
+        columns.emplace_back(12, 2, "tot", "", std::chrono::duration_cast<std::chrono::duration<double>>(r.total()).count());
 
         // write everything
         auto& os = *mConfig.output();
