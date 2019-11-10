@@ -758,7 +758,7 @@ std::ostream& operator<<(std::ostream& os, Number const& n);
 
 class MarkDownColumn {
 public:
-    MarkDownColumn(int width, int precision, std::string const& title, std::string const& suffix, double value);
+    MarkDownColumn(int w, int prec, std::string const& tit, std::string const& suff, double val);
     std::string title() const;
     std::string separator() const;
     std::string invalid() const;
@@ -1594,11 +1594,11 @@ std::ostream& operator<<(std::ostream& os, Number const& n) {
     return n.write(os);
 }
 
-MarkDownColumn::MarkDownColumn(int width, int precision, std::string const& title, std::string const& suffix, double val)
-    : mWidth(width)
-    , mPrecision(precision)
-    , mTitle(title)
-    , mSuffix(suffix)
+MarkDownColumn::MarkDownColumn(int w, int prec, std::string const& tit, std::string const& suff, double val)
+    : mWidth(w)
+    , mPrecision(prec)
+    , mTitle(tit)
+    , mSuffix(suff)
     , mValue(val) {}
 
 std::string MarkDownColumn::title() const {
@@ -1824,6 +1824,7 @@ static void generateBenchmark(std::vector<Node> const& nodes, std::vector<ankerl
                 } else {
                     throw std::runtime_error("unknown tag '" + std::string(n.begin, n.end) + "'");
                 }
+                break;
             }
         }
     }
