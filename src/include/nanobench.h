@@ -284,11 +284,11 @@ public:
     ANKERL_NANOBENCH(NODISCARD) bool performanceCounters() const noexcept;
 
     // Operation unit. Defaults to "op", could be e.g. "byte" for string processing. This is used for the table header, e.g. to show
-    // `ns/byte`. Use singular (byte, not bytes).
+    // `ns/byte`. Use singular (byte, not bytes). A change clears the currently collected results.
     Config& unit(std::string unit);
     ANKERL_NANOBENCH(NODISCARD) std::string const& unit() const noexcept;
 
-    // Title of the benchmark, will be shown in the table header.
+    // Title of the benchmark, will be shown in the table header. A change clears the currently collected results.
     Config& title(std::string benchmarkTitle);
     ANKERL_NANOBENCH(NODISCARD) std::string const& title() const noexcept;
 
@@ -617,9 +617,10 @@ namespace ankerl {
 namespace nanobench {
 namespace templates {
 char const* csv() noexcept {
-    return R"DELIM({{title}}; "relative %"; "s/{{unit}}"; "min/{{unit}}"; "max/{{unit}}"; "error %"; "measurements"; "instructions/{{unit}}"; "branch/{{unit}}"; "branch misses/{{unit}}"
+    return R"DELIM("{{title}}"; "relative %"; "s/{{unit}}"; "min/{{unit}}"; "max/{{unit}}"; "error %"; "measurements"; "instructions/{{unit}}"; "branch/{{unit}}"; "branch misses/{{unit}}"
 {{#benchmarks}}"{{name}}"; {{relative}}; {{median_sec_per_unit}}; {{min}}; {{max}}; {{md_ape}}; {{num_measurements}}; {{median_ins_per_unit}}; {{median_branches_per_unit}}; {{median_branchmisses_per_unit}}
-{{/benchmarks}})DELIM";
+{{/benchmarks}}
+)DELIM";
 }
 //
 char const* htmlBoxplot() noexcept {
@@ -684,11 +685,10 @@ template <typename T>
 T parseFile(std::string const& filename);
 
 void gatherStabilityInformation(std::vector<std::string>& warnings, std::vector<std::string>& recommendations);
-void printStabilityInformationOnce();
+void printStabilityInformationOnce(std::ostream* os);
 
 // remembers the last table settings used. When it changes, a new table header is automatically written for the new entry.
-uint64_t& singletonLastTableSettingsHash() noexcept;
-uint64_t calcTableSettingsHash(std::string const& unit, std::string const& title) noexcept;
+bool& singletonShowHeader() noexcept;
 
 // determines resolution of the given clock. This is done by measuring multiple times and returning the minimum time difference.
 Clock::duration calcClockResolution(size_t numEvaluations) noexcept;
@@ -902,9 +902,10 @@ void gatherStabilityInformation(std::vector<std::string>& warnings, std::vector<
     }
 }
 
-void printStabilityInformationOnce() {
+void printStabilityInformationOnce(std::ostream* outStream) {
     static bool shouldPrint = true;
-    if (shouldPrint) {
+    if (shouldPrint && outStream) {
+        auto& os = *outStream;
         shouldPrint = false;
         std::vector<std::string> warnings;
         std::vector<std::string> recommendations;
@@ -913,22 +914,22 @@ void printStabilityInformationOnce() {
             return;
         }
 
-        std::cerr << "Warning, results might be unstable:" << std::endl;
+        os << "Warning, results might be unstable:" << std::endl;
         for (auto const& w : warnings) {
-            std::cerr << "* " << w << std::endl;
+            os << "* " << w << std::endl;
         }
 
-        std::cerr << std::endl << "Recommendations" << std::endl;
+        os << std::endl << "Recommendations" << std::endl;
         for (auto const& r : recommendations) {
-            std::cerr << "* " << r << std::endl;
+            os << "* " << r << std::endl;
         }
     }
 }
 
 // remembers the last table settings used. When it changes, a new table header is automatically written for the new entry.
-uint64_t& singletonLastTableSettingsHash() noexcept {
-    static uint64_t sTableSettingHash = {};
-    return sTableSettingHash;
+bool& singletonShowHeader() noexcept {
+    static bool sShowHeader = true;
+    return sShowHeader;
 }
 
 ANKERL_NANOBENCH_NO_SANITIZE("integer")
@@ -943,13 +944,6 @@ inline uint64_t fnv1a(std::string const& str) noexcept {
 ANKERL_NANOBENCH_NO_SANITIZE("integer")
 inline void hash_combine(uint64_t* seed, uint64_t val) {
     *seed ^= val + UINT64_C(0x9e3779b9) + (*seed << 6U) + (*seed >> 2U);
-}
-
-inline uint64_t calcTableSettingsHash(Config const& cfg) noexcept {
-    uint64_t h = 0;
-    hash_combine(&h, fnv1a(cfg.unit()));
-    hash_combine(&h, fnv1a(cfg.title()));
-    return h;
 }
 
 // determines resolution of the given clock. This is done by measuring multiple times and returning the minimum time difference.
@@ -976,7 +970,7 @@ Clock::duration clockResolution() noexcept {
 IterationLogic::IterationLogic(Config const& config, std::string name) noexcept
     : mConfig(config)
     , mName(std::move(name)) {
-    printStabilityInformationOnce();
+    printStabilityInformationOnce(mConfig.output());
 
     // determine target runtime per epoch
     mTargetRuntimePerEpoch = detail::clockResolution() * mConfig.clockResolutionMultiple();
@@ -1151,15 +1145,15 @@ Result IterationLogic::showResult(std::string const& errorMessage) const {
             }
         }
 
-        columns.emplace_back(12, 2, "tot", "", std::chrono::duration_cast<std::chrono::duration<double>>(r.total()).count());
+        columns.emplace_back(12, 2, "total", "", std::chrono::duration_cast<std::chrono::duration<double>>(r.total()).count());
 
         // write everything
         auto& os = *mConfig.output();
 
-        auto h = calcTableSettingsHash(mConfig);
-        if (h != singletonLastTableSettingsHash()) {
-            singletonLastTableSettingsHash() = h;
+        if (singletonShowHeader()) {
+            singletonShowHeader() = false;
 
+            // no result yet, print header
             os << std::endl;
             for (auto const& col : columns) {
                 os << col.title();
@@ -2109,8 +2103,13 @@ bool Config::performanceCounters() const noexcept {
 }
 
 // Operation unit. Defaults to "op", could be e.g. "byte" for string processing.
+// If u differs from currently set unit, the stored results will be cleared.
 // Use singular (byte, not bytes).
 Config& Config::unit(std::string u) {
+    if (u != mUnit) {
+        mResults.clear();
+        detail::singletonShowHeader() = true;
+    }
     mUnit = std::move(u);
     return *this;
 }
@@ -2118,7 +2117,12 @@ std::string const& Config::unit() const noexcept {
     return mUnit;
 }
 
+// If benchmarkTitle differs from currently set title, the stored results will be cleared.
 Config& Config::title(std::string benchmarkTitle) {
+    if (benchmarkTitle != mBenchmarkTitle) {
+        mResults.clear();
+        detail::singletonShowHeader() = true;
+    }
     mBenchmarkTitle = std::move(benchmarkTitle);
     return *this;
 }
