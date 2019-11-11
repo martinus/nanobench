@@ -1180,7 +1180,7 @@ Result IterationLogic::showResult(std::string const& errorMessage) const {
             if (showUnstable) {
                 os << ":wavy_dash: ";
             }
-            os << mName;
+            os << fmt::MarkDownCode(mName);
             if (showUnstable) {
                 auto avgIters = static_cast<double>(mTotalNumIters) / static_cast<double>(mConfig.epochs());
                 // NOLINTNEXTLINE(bugprone-incorrect-roundings)

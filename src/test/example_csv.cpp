@@ -39,10 +39,10 @@ void exampleCsv(bool useCsv) {
 
 } // namespace
 
-TEST_CASE("example_csv_md") {
+TEST_CASE("example_csv_csv") {
     exampleCsv(true);
 }
 
-TEST_CASE("example_csv_csv") {
+TEST_CASE("example_csv_md") {
     exampleCsv(false);
 }
