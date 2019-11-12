@@ -32,7 +32,11 @@ void exampleCsv(bool useCsv) {
         testBenchSet<std::deque<int>>("std::deque<int>", n, cfg);
         testBenchSet<std::list<int>>("std::list<int>", n, cfg);
         if (useCsv) {
-            cfg.render(ankerl::nanobench::templates::csv(), std::cout);
+            // could also use ankerl::nanobench::templates::csv() which contains a header
+            cfg.render(
+                R"({{#benchmarks}}"{{name}}"; {{relative}}; {{median_sec_per_unit}}; {{min}}; {{max}}; {{md_ape}}; {{num_measurements}}; {{median_ins_per_unit}}; {{median_branches_per_unit}}; {{median_branchmisses_per_unit}}
+{{/benchmarks}})",
+                std::cout);
         }
     }
 }
