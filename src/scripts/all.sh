@@ -21,7 +21,7 @@ function build() {
     mkdir -p ${DIRNAME}
     cd ${DIRNAME}
 
-    CXX=$(which ${COMPILER}) cmake -G Ninja -DCMAKE_CXX_FLAGS=${CXXFLAGS} -DCMAKE_BUILD_TYPE=Debug -DNB_cxx_standard=${CXX_STANDARD} -DNB_sanitizer=${SANITIZER} ${ROOTDIR}
+    CXX=$(which ${COMPILER}) cmake -G Ninja -DCMAKE_CXX_FLAGS=${CXXFLAGS} -DCMAKE_BUILD_TYPE=Release -DNB_cxx_standard=${CXX_STANDARD} -DNB_sanitizer=${SANITIZER} ${ROOTDIR}
     ${NICE} cmake --build .
     ${NICE} ./nb
 
