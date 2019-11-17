@@ -10,13 +10,12 @@ namespace {
 
 template <typename ContainerT>
 static void testBenchSet(std::string const& label, int n, ankerl::nanobench::Config& cfg) {
-
     cfg.run(label, [&] {
         ContainerT items;
         for (int i = 0; i < n; ++i) {
             items.push_back(i);
         }
-        ankerl::nanobench::doNotOptimizeAway(items);
+        ankerl::nanobench::doNotOptimizeAway(&items);
     });
 }
 

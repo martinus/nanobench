@@ -181,7 +181,7 @@ private:
 ANKERL_NANOBENCH(IGNORE_PADDED_PUSH)
 class Result {
 public:
-    Result(std::string benchmarkName, std::vector<Measurement> measurements, double batch, double complexityN) noexcept;
+    Result(std::string benchmarkName, std::vector<Measurement> measurements, double batch, double complN) noexcept;
     Result() noexcept;
 
     ANKERL_NANOBENCH(NODISCARD) std::string const& name() const noexcept;
@@ -2027,10 +2027,10 @@ private:
 };
 
 // Result returned after a benchmark has finished. Can be used as a baseline for relative().
-Result::Result(std::string benchmarkName, std::vector<Measurement> measurements, double batch, double complexityN) noexcept
+Result::Result(std::string benchmarkName, std::vector<Measurement> measurements, double batch, double complN) noexcept
     : mName(std::move(benchmarkName))
     , mSortedMeasurements(std::move(measurements))
-    , mComplexityN(complexityN)
+    , mComplexityN(complN)
     , mHas(detail::performanceCounters().has()) {
 
     std::sort(mSortedMeasurements.begin(), mSortedMeasurements.end());
