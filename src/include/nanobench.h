@@ -363,6 +363,10 @@ public:
     // calculates bigO of the results with all preconfigured complexity functions
     std::vector<complexity::BigO> complexityBigO() const;
 
+    // calculates bigO for a custom function
+    template <typename Op>
+    complexity::BigO complexityBigO(std::string const& name, Op op) const;
+
 private:
     std::string mBenchmarkTitle = "benchmark";
     std::string mUnit = "op";
@@ -457,25 +461,29 @@ ANKERL_NANOBENCH(IGNORE_PADDED_POP)
 // Gets the singleton
 PerformanceCounters& performanceCounters();
 
-template <typename Container, typename Op>
-Container mapData(Container data, Op op) {
-    for (auto& x : data) {
-        x = op(x);
-    }
-    return data;
-}
-
 } // namespace detail
 
 namespace complexity {
 
 class BigO {
 public:
-    template <typename Op>
-    BigO(std::string const& bigOName, std::vector<double> const& range, std::vector<double> const& measure, Op rangeToN)
-        : BigO(bigOName, detail::mapData(range, rangeToN), measure) {}
+    using RangeMeasure = std::vector<std::pair<double, double>>;
 
-    BigO(std::string const& bigOName, std::vector<double> const& scaledRange, std::vector<double> const& measure);
+    template <typename Op>
+    static RangeMeasure mapRangeMeasure(RangeMeasure data, Op op) {
+        for (auto& rangeMeasure : data) {
+            rangeMeasure.first = op(rangeMeasure.first);
+        }
+        return data;
+    }
+
+    static RangeMeasure collectRangeMeasure(std::vector<Result> const& results);
+
+    template <typename Op>
+    BigO(std::string const& bigOName, RangeMeasure const& rangeMeasure, Op rangeToN)
+        : BigO(bigOName, mapRangeMeasure(rangeMeasure, rangeToN)) {}
+
+    BigO(std::string const& bigOName, RangeMeasure const& scaledRangeMeasure);
     ANKERL_NANOBENCH(NODISCARD) std::string const& name() const noexcept;
     ANKERL_NANOBENCH(NODISCARD) double constant() const noexcept;
     ANKERL_NANOBENCH(NODISCARD) double normalizedRootMeanSquare() const noexcept;
@@ -553,6 +561,11 @@ Config& Config::run(std::string const& name, Op op) {
     }
     mResults.emplace_back(std::move(iterationLogic.result()));
     return *this;
+}
+
+template <typename Op>
+complexity::BigO Config::complexityBigO(std::string const& name, Op op) const {
+    return complexity::BigO(name, complexity::BigO::collectRangeMeasure(mResults), op);
 }
 
 // Set the batch size, e.g. number of processed bytes, or some other metric for the size of the processed data in each iteration.
@@ -2268,23 +2281,14 @@ Config& Config::render(char const* templateContent, std::ostream& os) {
 
 std::vector<complexity::BigO> Config::complexityBigO() const {
     // collect data
-    std::vector<double> range;
-    std::vector<double> measure;
-    for (auto const& result : mResults) {
-        if (result.complexityN() > 0.0) {
-            range.push_back(result.complexityN());
-            measure.push_back(result.median().count());
-        }
-    }
-
     std::vector<complexity::BigO> bigOs;
-    bigOs.emplace_back("O(1)", range, measure, [](double) { return 1.0; });
-    bigOs.emplace_back("O(n)", range, measure, [](double n) { return n; });
-    bigOs.emplace_back("O(log n)", range, measure, [](double n) { return std::log2(n); });
-    bigOs.emplace_back("O(n log n)", range, measure, [](double n) { return n * std::log2(n); });
-    bigOs.emplace_back("O(n^2)", range, measure, [](double n) { return n * n; });
-    bigOs.emplace_back("O(n^3)", range, measure, [](double n) { return n * n * n; });
-    bigOs.emplace_back("O(n^3)", range, measure, [](double n) { return n * n * n; });
+    auto rangeMeasure = complexity::BigO::collectRangeMeasure(mResults);
+    bigOs.emplace_back("O(1)", rangeMeasure, [](double) { return 1.0; });
+    bigOs.emplace_back("O(n)", rangeMeasure, [](double n) { return n; });
+    bigOs.emplace_back("O(log n)", rangeMeasure, [](double n) { return std::log2(n); });
+    bigOs.emplace_back("O(n log n)", rangeMeasure, [](double n) { return n * std::log2(n); });
+    bigOs.emplace_back("O(n^2)", rangeMeasure, [](double n) { return n * n; });
+    bigOs.emplace_back("O(n^3)", rangeMeasure, [](double n) { return n * n * n; });
     std::sort(bigOs.begin(), bigOs.end());
     return bigOs;
 
@@ -2322,30 +2326,40 @@ void Rng::assign(Rng const& other) noexcept {
 
 namespace complexity {
 
-BigO::BigO(std::string const& bigOName, std::vector<double> const& range, std::vector<double> const& measure)
+BigO::RangeMeasure BigO::collectRangeMeasure(std::vector<Result> const& results) {
+    BigO::RangeMeasure rangeMeasure;
+    for (auto const& result : results) {
+        if (result.complexityN() > 0.0) {
+            rangeMeasure.emplace_back(result.complexityN(), result.median().count());
+        }
+    }
+    return rangeMeasure;
+}
+
+BigO::BigO(std::string const& bigOName, RangeMeasure const& rangeMeasure)
     : mName(bigOName) {
 
     // estimate the constant factor
     double sumRangeMeasure = 0.0;
     double sumRangeRange = 0.0;
 
-    for (size_t i = 0; i < range.size(); ++i) {
-        sumRangeMeasure += range[i] * measure[i];
-        sumRangeRange += range[i] * range[i];
+    for (size_t i = 0; i < rangeMeasure.size(); ++i) {
+        sumRangeMeasure += rangeMeasure[i].first * rangeMeasure[i].second;
+        sumRangeRange += rangeMeasure[i].first * rangeMeasure[i].first;
     }
     mConstant = sumRangeMeasure / sumRangeRange;
 
     // calculate root mean square
     double err = 0.0;
     double sumMeasure = 0.0;
-    for (size_t i = 0; i < range.size(); ++i) {
-        auto diff = mConstant * range[i] - measure[i];
+    for (size_t i = 0; i < rangeMeasure.size(); ++i) {
+        auto diff = mConstant * rangeMeasure[i].first - rangeMeasure[i].second;
         err += diff * diff;
 
-        sumMeasure += measure[i];
+        sumMeasure += rangeMeasure[i].second;
     }
 
-    auto n = static_cast<double>(range.size());
+    auto n = static_cast<double>(rangeMeasure.size());
     auto mean = sumMeasure / n;
     mNormalizedRootMeanSquare = std::sqrt(err / n) / mean;
 }
