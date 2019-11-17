@@ -113,6 +113,11 @@ char const* json() noexcept;
 
 } // namespace templates
 
+// BigO calculation
+namespace complexity {
+class BigO;
+}
+
 namespace detail {
 
 template <typename T>
@@ -176,7 +181,7 @@ private:
 ANKERL_NANOBENCH(IGNORE_PADDED_PUSH)
 class Result {
 public:
-    Result(std::string benchmarkName, std::vector<Measurement> measurements, double batch) noexcept;
+    Result(std::string benchmarkName, std::vector<Measurement> measurements, double batch, double complexityN) noexcept;
     Result() noexcept;
 
     ANKERL_NANOBENCH(NODISCARD) std::string const& name() const noexcept;
@@ -198,6 +203,8 @@ public:
     ANKERL_NANOBENCH(NODISCARD) double medianBranchMissesPerUnit() const noexcept;
     ANKERL_NANOBENCH(NODISCARD) bool hasMedianBranchMissesPerUnit() const noexcept;
 
+    ANKERL_NANOBENCH(NODISCARD) double complexityN() const noexcept;
+
     ANKERL_NANOBENCH(NODISCARD) Clock::duration total() const noexcept;
 
     ANKERL_NANOBENCH(NODISCARD) bool empty() const noexcept;
@@ -211,6 +218,8 @@ private:
     double mMedianInstructionsPerUnit{};
     double mMedianBranchesPerUnit{};
     double mMedianBranchMissesPerUnit{};
+
+    double mComplexityN{};
 
     detail::PerfCountSet<bool> mHas{};
 };
@@ -346,10 +355,19 @@ public:
     // Parses the mustache-like template and renders the output into os.
     Config& render(char const* templateContent, std::ostream& os);
 
+    // Set the length of N for the next benchmark run, so it is possible to calculate bigO.
+    template <typename T>
+    Config& complexityN(T b) noexcept;
+    ANKERL_NANOBENCH(NODISCARD) double complexityN() const noexcept;
+
+    // calculates bigO of the results with all preconfigured complexity functions
+    std::vector<complexity::BigO> complexityBigO() const;
+
 private:
     std::string mBenchmarkTitle = "benchmark";
     std::string mUnit = "op";
     double mBatch = 1.0;
+    double mComplexityN = -1.0;
     size_t mNumEpochs = 11;
     size_t mClockResolutionMultiple = static_cast<size_t>(1000);
     std::chrono::nanoseconds mMaxEpochTime = std::chrono::milliseconds(100);
@@ -439,7 +457,39 @@ ANKERL_NANOBENCH(IGNORE_PADDED_POP)
 // Gets the singleton
 PerformanceCounters& performanceCounters();
 
+template <typename Container, typename Op>
+Container mapData(Container data, Op op) {
+    for (auto& x : data) {
+        x = op(x);
+    }
+    return data;
+}
+
 } // namespace detail
+
+namespace complexity {
+
+class BigO {
+public:
+    template <typename Op>
+    BigO(std::string const& bigOName, std::vector<double> const& range, std::vector<double> const& measure, Op rangeToN)
+        : BigO(bigOName, detail::mapData(range, rangeToN), measure) {}
+
+    BigO(std::string const& bigOName, std::vector<double> const& scaledRange, std::vector<double> const& measure);
+    ANKERL_NANOBENCH(NODISCARD) std::string const& name() const noexcept;
+    ANKERL_NANOBENCH(NODISCARD) double constant() const noexcept;
+    ANKERL_NANOBENCH(NODISCARD) double normalizedRootMeanSquare() const noexcept;
+    ANKERL_NANOBENCH(NODISCARD) bool operator<(BigO const& other) const noexcept;
+
+private:
+    std::string mName{};
+    double mConstant{};
+    double mNormalizedRootMeanSquare{};
+};
+std::ostream& operator<<(std::ostream& os, BigO const& bigO);
+
+} // namespace complexity
+
 } // namespace nanobench
 } // namespace ankerl
 
@@ -510,6 +560,13 @@ Config& Config::run(std::string const& name, Op op) {
 template <typename T>
 Config& Config::batch(T b) noexcept {
     mBatch = static_cast<double>(b);
+    return *this;
+}
+
+// Sets the computation complexity of the next run. Any argument is cast to double.
+template <typename T>
+Config& Config::complexityN(T n) noexcept {
+    mComplexityN = static_cast<double>(n);
     return *this;
 }
 
@@ -1104,7 +1161,7 @@ Result IterationLogic::showResult(std::string const& errorMessage) const {
     ANKERL_NANOBENCH_LOG("mMeasurements.size()=" << mMeasurements.size());
     Result r;
     if (errorMessage.empty()) {
-        r = Result(mName, mMeasurements, mConfig.batch());
+        r = Result(mName, mMeasurements, mConfig.batch(), mConfig.complexityN());
     }
 
     if (mConfig.output() != nullptr) {
@@ -1957,9 +2014,10 @@ private:
 };
 
 // Result returned after a benchmark has finished. Can be used as a baseline for relative().
-Result::Result(std::string benchmarkName, std::vector<Measurement> measurements, double batch) noexcept
+Result::Result(std::string benchmarkName, std::vector<Measurement> measurements, double batch, double complexityN) noexcept
     : mName(std::move(benchmarkName))
     , mSortedMeasurements(std::move(measurements))
+    , mComplexityN(complexityN)
     , mHas(detail::performanceCounters().has()) {
 
     std::sort(mSortedMeasurements.begin(), mSortedMeasurements.end());
@@ -2000,6 +2058,10 @@ Result::Result() noexcept
 
 std::string const& Result::name() const noexcept {
     return mName;
+}
+
+double Result::complexityN() const noexcept {
+    return mComplexityN;
 }
 
 std::chrono::duration<double> Result::median() const noexcept {
@@ -2082,6 +2144,10 @@ Config::~Config() noexcept = default;
 
 double Config::batch() const noexcept {
     return mBatch;
+}
+
+double Config::complexityN() const noexcept {
+    return mComplexityN;
 }
 
 // Set a baseline to compare it to. 100% it is exactly as fast as the baseline, >100% means it is faster than the baseline, <100%
@@ -2200,6 +2266,31 @@ Config& Config::render(char const* templateContent, std::ostream& os) {
     return *this;
 }
 
+std::vector<complexity::BigO> Config::complexityBigO() const {
+    // collect data
+    std::vector<double> range;
+    std::vector<double> measure;
+    for (auto const& result : mResults) {
+        if (result.complexityN() > 0.0) {
+            range.push_back(result.complexityN());
+            measure.push_back(result.median().count());
+        }
+    }
+
+    std::vector<complexity::BigO> bigOs;
+    bigOs.emplace_back("O(1)", range, measure, [](double) { return 1.0; });
+    bigOs.emplace_back("O(n)", range, measure, [](double n) { return n; });
+    bigOs.emplace_back("O(log n)", range, measure, [](double n) { return std::log2(n); });
+    bigOs.emplace_back("O(n log n)", range, measure, [](double n) { return n * std::log2(n); });
+    bigOs.emplace_back("O(n^2)", range, measure, [](double n) { return n * n; });
+    bigOs.emplace_back("O(n^3)", range, measure, [](double n) { return n * n * n; });
+    bigOs.emplace_back("O(n^3)", range, measure, [](double n) { return n * n * n; });
+    std::sort(bigOs.begin(), bigOs.end());
+    return bigOs;
+
+    return {};
+}
+
 Rng::Rng()
     : Rng(UINT64_C(0xd3b45fd780a1b6a3)) {}
 
@@ -2229,6 +2320,57 @@ void Rng::assign(Rng const& other) noexcept {
     mCounter = other.mCounter;
 }
 
+namespace complexity {
+
+BigO::BigO(std::string const& bigOName, std::vector<double> const& range, std::vector<double> const& measure)
+    : mName(bigOName) {
+
+    // estimate the constant factor
+    double sumRangeMeasure = 0.0;
+    double sumRangeRange = 0.0;
+
+    for (size_t i = 0; i < range.size(); ++i) {
+        sumRangeMeasure += range[i] * measure[i];
+        sumRangeRange += range[i] * range[i];
+    }
+    mConstant = sumRangeMeasure / sumRangeRange;
+
+    // calculate root mean square
+    double err = 0.0;
+    double sumMeasure = 0.0;
+    for (size_t i = 0; i < range.size(); ++i) {
+        auto diff = mConstant * range[i] - measure[i];
+        err += diff * diff;
+
+        sumMeasure += measure[i];
+    }
+
+    auto n = static_cast<double>(range.size());
+    auto mean = sumMeasure / n;
+    mNormalizedRootMeanSquare = std::sqrt(err / n) / mean;
+}
+
+std::string const& BigO::name() const noexcept {
+    return mName;
+}
+
+double BigO::constant() const noexcept {
+    return mConstant;
+}
+
+double BigO::normalizedRootMeanSquare() const noexcept {
+    return mNormalizedRootMeanSquare;
+}
+
+bool BigO::operator<(BigO const& other) const noexcept {
+    return std::tie(mNormalizedRootMeanSquare, mName) < std::tie(other.mNormalizedRootMeanSquare, other.mName);
+}
+
+std::ostream& operator<<(std::ostream& os, BigO const& bigO) {
+    return os << bigO.constant() << " * " << bigO.name() << ", rms=" << bigO.normalizedRootMeanSquare();
+}
+
+} // namespace complexity
 } // namespace nanobench
 } // namespace ankerl
 

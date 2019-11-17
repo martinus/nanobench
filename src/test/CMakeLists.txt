@@ -7,6 +7,7 @@ target_sources_local(nb PRIVATE
     example_always_the_same.cpp
     example_atomic.cpp
     example_branch_misses.cpp
+    example_complexity.cpp
     example_containers.cpp
     example_csv.cpp
     example_hide_output.cpp
