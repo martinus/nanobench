@@ -29,7 +29,7 @@ TEST_CASE("example_complexity_set") {
 TEST_CASE("example_complexity_sort") {
     ankerl::nanobench::Rng rng;
     ankerl::nanobench::Config cfg;
-    for (uint64_t n = 10; n < 10000; n *= 2) {
+    for (size_t n = 10; n < 10000; n *= 2) {
         // prepare a set with range number of elements
         std::vector<uint64_t> data(n);
         for (size_t i = 0; i < n; ++i) {
