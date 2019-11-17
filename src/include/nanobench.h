@@ -88,6 +88,14 @@
 #    define ANKERL_NANOBENCH_NO_SANITIZE(...)
 #endif
 
+// workaround missing "is_trivially_copyable" in g++ < 5.0
+// See https://stackoverflow.com/a/31798726/48181
+#if defined(__GNUC__) && __GNUC__ < 5
+#    define ANKERL_NANOBENCH_IS_TRIVIALLY_COPYABLE(...) __has_trivial_copy(__VA_ARGS__)
+#else
+#    define ANKERL_NANOBENCH_IS_TRIVIALLY_COPYABLE(...) std::is_trivially_copyable<__VA_ARGS__>::value
+#endif
+
 // declarations ///////////////////////////////////////////////////////////////////////////////////
 
 namespace ankerl {
@@ -393,13 +401,31 @@ namespace detail {
 
 #if defined(_MSC_VER)
 void doNotOptimizeAwaySink(void const*);
-#else
-template <typename T>
-void doNotOptimizeAway(T& value);
-#endif
 
 template <typename T>
 void doNotOptimizeAway(T const& val);
+
+#else
+
+// see folly's Benchmark.h
+template <typename T>
+constexpr bool doNotOptimizeNeedsIndirect() {
+    using Decayed = typename std::decay<T>::type;
+    return !ANKERL_NANOBENCH_IS_TRIVIALLY_COPYABLE(Decayed) || sizeof(Decayed) > sizeof(long) || std::is_pointer<Decayed>::value;
+}
+
+template <typename T>
+typename std::enable_if<!doNotOptimizeNeedsIndirect<T>()>::type doNotOptimizeAway(T const& val) {
+    // NOLINTNEXTLINE(hicpp-no-assembler)
+    asm volatile("" ::"r"(val));
+}
+
+template <typename T>
+typename std::enable_if<doNotOptimizeNeedsIndirect<T>()>::type doNotOptimizeAway(T const& val) {
+    // NOLINTNEXTLINE(hicpp-no-assembler)
+    asm volatile("" ::"m"(val) : "memory");
+}
+#endif
 
 // internally used, but visible because run() is templated
 ANKERL_NANOBENCH(IGNORE_PADDED_PUSH)
@@ -604,24 +630,6 @@ void doNotOptimizeAway(T const& val) {
     doNotOptimizeAwaySink(&val);
 }
 
-#else
-
-template <typename T>
-void doNotOptimizeAway(T const& val) {
-    // NOLINTNEXTLINE(hicpp-no-assembler)
-    asm volatile("" : : "r,m"(val) : "memory");
-}
-
-template <typename T>
-void doNotOptimizeAway(T& value) {
-#    if defined(__clang__)
-    // NOLINTNEXTLINE(hicpp-no-assembler)
-    asm volatile("" : "+r,m"(value) : : "memory");
-#    else
-    // NOLINTNEXTLINE(hicpp-no-assembler)
-    asm volatile("" : "+m,r"(value) : : "memory");
-#    endif
-}
 #endif
 
 } // namespace detail
@@ -1371,12 +1379,15 @@ public:
         {
             // calibrate loop overhead. For branches & instructions this makes sense, not so much for everything else like cycles.
             // with g++, atomic operation compiles exactly to one instruction. see https://godbolt.org/z/dEXYd1
-            std::atomic<int> atomicVal(0);
             uint64_t const numIters = 100000U + (std::random_device{}() & 3);
             uint64_t n = numIters;
-            int y = 123;
-
-            auto fn = [&]() { atomicVal.compare_exchange_strong(y, 0); };
+            uint32_t x = 0;
+            auto fn = [&]() {
+                // sub, shr, xor, imul
+                x += UINT32_C(0x9065e173);
+                x ^= (x >> 11);
+                x *= UINT32_C(0xbac28739);
+            };
 
             beginMeasure();
             Clock::time_point before = Clock::now();
@@ -1385,20 +1396,28 @@ public:
             }
             Clock::time_point after = Clock::now();
             endMeasure();
+            detail::doNotOptimizeAway(x);
 
             if ((after - before).count() == 0) {
                 std::cerr << "could not calibrate loop overhead" << std::endl;
             }
 
             for (size_t i = 0; i < mCounters.size(); ++i) {
-                auto sub = mCalibratedOverhead[i] + 1U * numIters;
+                // factor 2 because we have two instructions per loop
                 auto val = mCounters[i];
+                auto sub = mCalibratedOverhead[i];
                 if (val > sub) {
                     val -= sub;
                 } else {
                     val = 0;
                 }
+                // minus 3 for the dummy-hash above
                 mLoopOverhead[i] = divRounded(val, numIters);
+                if (mLoopOverhead[i] > 4) {
+                    mLoopOverhead[i] -= 4;
+                } else {
+                    mLoopOverhead[i] = 0;
+                }
             }
         }
     }

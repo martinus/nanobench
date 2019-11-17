@@ -41,13 +41,14 @@ TEST_CASE("simplest_api") {
 }
 
 TEST_CASE("comparison") {
-    double x = 1.0;
+    double x = 1.321;
 
     auto cfg = ankerl::nanobench::Config().title("relative comparisons").relative(true);
     cfg.run("x += x double", [&] { x += x; }).doNotOptimizeAway(x);
 
     uint64_t n = 1;
-    cfg.run("n *= 3", [&]() ANKERL_NANOBENCH_NO_SANITIZE("integer") { n *= 2; }).doNotOptimizeAway(n);
+    cfg.run("n *= 0x42ad44f557ff4d43", [&]() ANKERL_NANOBENCH_NO_SANITIZE("integer") { n *= UINT64_C(0x42ad44f557ff4d43); })
+        .doNotOptimizeAway(n);
 
     x = 1.123;
     cfg.run("std::sin(x)", [&] { x += std::sin(x); }).doNotOptimizeAway(x);
