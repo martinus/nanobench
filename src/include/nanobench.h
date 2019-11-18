@@ -766,7 +766,7 @@ void gatherStabilityInformation(std::vector<std::string>& warnings, std::vector<
 void printStabilityInformationOnce(std::ostream* os);
 
 // remembers the last table settings used. When it changes, a new table header is automatically written for the new entry.
-bool& singletonShowHeader() noexcept;
+uint64_t& singletonHeaderHash() noexcept;
 
 // determines resolution of the given clock. This is done by measuring multiple times and returning the minimum time difference.
 Clock::duration calcClockResolution(size_t numEvaluations) noexcept;
@@ -1005,9 +1005,9 @@ void printStabilityInformationOnce(std::ostream* outStream) {
 }
 
 // remembers the last table settings used. When it changes, a new table header is automatically written for the new entry.
-bool& singletonShowHeader() noexcept {
-    static bool sShowHeader = true;
-    return sShowHeader;
+uint64_t& singletonHeaderHash() noexcept {
+    static uint64_t sHeaderHash{};
+    return sHeaderHash;
 }
 
 ANKERL_NANOBENCH_NO_SANITIZE("integer")
@@ -1020,8 +1020,8 @@ inline uint64_t fnv1a(std::string const& str) noexcept {
 }
 
 ANKERL_NANOBENCH_NO_SANITIZE("integer")
-inline void hash_combine(uint64_t* seed, uint64_t val) {
-    *seed ^= val + UINT64_C(0x9e3779b9) + (*seed << 6U) + (*seed >> 2U);
+inline uint64_t hash_combine(uint64_t seed, uint64_t val) {
+    return seed ^ (val + UINT64_C(0x9e3779b9) + (seed << 6U) + (seed >> 2U));
 }
 
 // determines resolution of the given clock. This is done by measuring multiple times and returning the minimum time difference.
@@ -1230,8 +1230,9 @@ Result IterationLogic::showResult(std::string const& errorMessage) const {
         // write everything
         auto& os = *mConfig.output();
 
-        if (singletonShowHeader()) {
-            singletonShowHeader() = false;
+        auto hash = hash_combine(fnv1a(mConfig.unit()), fnv1a(mConfig.title()));
+        if (hash != singletonHeaderHash()) {
+            singletonHeaderHash() = hash;
 
             // no result yet, print header
             os << std::endl;
@@ -2208,7 +2209,6 @@ bool Config::performanceCounters() const noexcept {
 Config& Config::unit(std::string u) {
     if (u != mUnit) {
         mResults.clear();
-        detail::singletonShowHeader() = true;
     }
     mUnit = std::move(u);
     return *this;
@@ -2221,7 +2221,6 @@ std::string const& Config::unit() const noexcept {
 Config& Config::title(std::string benchmarkTitle) {
     if (benchmarkTitle != mBenchmarkTitle) {
         mResults.clear();
-        detail::singletonShowHeader() = true;
     }
     mBenchmarkTitle = std::move(benchmarkTitle);
     return *this;
