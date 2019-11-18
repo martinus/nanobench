@@ -1198,7 +1198,7 @@ Result IterationLogic::showResult(std::string const& errorMessage) const {
         }
 
         columns.emplace_back(22, 2, "ns/" + mConfig.unit(), "", 1e9 * r.median().count());
-        columns.emplace_back(22, 2, mConfig.unit() + "/s", "", 1.0 / r.median().count());
+        columns.emplace_back(22, 2, mConfig.unit() + "/s", "", r.median().count() <= 0.0 ? 0.0 : 1.0 / r.median().count());
         columns.emplace_back(10, 1, "err%", "%", r.medianAbsolutePercentError() * 100);
 
         if (mConfig.performanceCounters()) {
