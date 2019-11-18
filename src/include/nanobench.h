@@ -2311,8 +2311,6 @@ std::vector<complexity::BigO> Config::complexityBigO() const {
     bigOs.emplace_back("O(n^3)", rangeMeasure, [](double n) { return n * n * n; });
     std::sort(bigOs.begin(), bigOs.end());
     return bigOs;
-
-    return {};
 }
 
 Rng::Rng()
