@@ -60,7 +60,7 @@ TEST_CASE("example_complexity_quadratic") {
             x = rng();
         }
 
-        cfg.complexityN(range).run("std::vector erase front " + std::to_string(range), [&] {
+        cfg.complexityN(range).run("minimum pair " + std::to_string(range), [&] {
             // find minimum pair
             uint64_t minVal = (std::numeric_limits<uint64_t>::max)();
             for (size_t i = 0; i < vec.size() - 1; ++i) {
