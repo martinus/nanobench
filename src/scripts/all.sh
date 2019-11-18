@@ -23,8 +23,14 @@ function build() {
 
     CXX=$(which ${COMPILER}) cmake -G Ninja -DCMAKE_CXX_FLAGS=${CXXFLAGS} -DCMAKE_BUILD_TYPE=Release -DNB_cxx_standard=${CXX_STANDARD} -DNB_sanitizer=${SANITIZER} ${ROOTDIR}
     ${NICE} cmake --build .
-    ${NICE} ./nb
+    rm -f ubsan.log*
 
+    UBSAN_OPTIONS=print_stacktrace=1:log_path=ubsan.log:suppressions=${ROOTDIR}/ubsan.supp ${NICE} ./nb
+    if ls ubsan.log* 1> /dev/null 2>&1; then
+        cat ubsan.log*
+        exit 1
+    fi
+ 
     cd ${ORIGINDIR}
 }
 

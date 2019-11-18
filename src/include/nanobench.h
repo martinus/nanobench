@@ -1192,7 +1192,7 @@ Result IterationLogic::showResult(std::string const& errorMessage) const {
         if (mConfig.relative()) {
             double d = 100.0;
             if (!mConfig.results().empty()) {
-                d = mConfig.results().front().median() / r.median() * 100;
+                d = r.median() <= decltype(r.median())::zero() ? 0.0 : mConfig.results().front().median() / r.median() * 100;
             }
             columns.emplace_back(11, 1, "relative", "%", d);
         }
@@ -1209,7 +1209,9 @@ Result IterationLogic::showResult(std::string const& errorMessage) const {
                 columns.emplace_back(18, 2, "cyc/" + mConfig.unit(), "", r.medianCpuCyclesPerUnit());
             }
             if (r.hasMedianInstructionsPerUnit() && r.hasMedianCpuCyclesPerUnit()) {
-                columns.emplace_back(9, 3, "IPC", "", r.medianInstructionsPerUnit() / r.medianCpuCyclesPerUnit());
+                columns.emplace_back(9, 3, "IPC", "",
+                                     r.medianCpuCyclesPerUnit() <= 0.0 ? 0.0
+                                                                       : r.medianInstructionsPerUnit() / r.medianCpuCyclesPerUnit());
             }
             if (r.hasMedianBranchesPerUnit()) {
                 columns.emplace_back(17, 2, "bra/" + mConfig.unit(), "", r.medianBranchesPerUnit());

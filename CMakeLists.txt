@@ -25,8 +25,8 @@ if (NB_sanitizer)
         target_compile_options(nb PRIVATE -fsanitize=address)
         target_link_libraries(nb PRIVATE -fsanitize=address)
 
-        target_compile_options(nb PRIVATE -fsanitize=undefined)
-        target_link_libraries(nb PRIVATE -fsanitize=undefined)
+        target_compile_options(nb PRIVATE -fsanitize=undefined,float-divide-by-zero)
+        target_link_libraries(nb PRIVATE -fsanitize=undefined,float-divide-by-zero)
 
         target_compile_options(nb PRIVATE -fsanitize=integer)
         target_compile_options(nb PRIVATE -fno-sanitize=unsigned-integer-overflow)
