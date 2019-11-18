@@ -21,9 +21,7 @@ TEST_CASE("example_complexity_set") {
         cfg.complexityN(range).run("std::set find " + std::to_string(range),
                                    [&] { ankerl::nanobench::doNotOptimizeAway(set.find(rng())); });
     }
-    for (auto const& bigO : cfg.complexityBigO()) {
-        std::cout << bigO << std::endl;
-    }
+    std::cout << cfg.complexityBigO() << std::endl;
 }
 
 TEST_CASE("example_complexity_sort") {
@@ -44,9 +42,7 @@ TEST_CASE("example_complexity_sort") {
     }
 
     // calculates bigO of all preconfigured complexity functions
-    for (auto const& bigO : cfg.complexityBigO()) {
-        std::cout << bigO << std::endl;
-    }
+    std::cout << cfg.complexityBigO() << std::endl;
 
     // calculates bigO for a custom function
     auto logLogN = cfg.complexityBigO("O(log log n)", [](double n) { return std::log2(std::log2(n)); });
@@ -76,7 +72,5 @@ TEST_CASE("example_complexity_quadratic") {
             ankerl::nanobench::doNotOptimizeAway(minVal);
         });
     }
-    for (auto const& bigO : cfg.complexityBigO()) {
-        std::cout << bigO << std::endl;
-    }
+    std::cout << cfg.complexityBigO() << std::endl;
 }

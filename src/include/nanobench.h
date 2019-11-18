@@ -106,6 +106,7 @@ class Config;
 class Measurement;
 class Result;
 class Rng;
+class BigO;
 
 // Contains mustache-like templates
 namespace templates {
@@ -120,11 +121,6 @@ char const* htmlBoxplot() noexcept;
 char const* json() noexcept;
 
 } // namespace templates
-
-// BigO calculation
-namespace complexity {
-class BigO;
-}
 
 namespace detail {
 
@@ -369,11 +365,11 @@ public:
     ANKERL_NANOBENCH(NODISCARD) double complexityN() const noexcept;
 
     // calculates bigO of the results with all preconfigured complexity functions
-    std::vector<complexity::BigO> complexityBigO() const;
+    std::vector<BigO> complexityBigO() const;
 
     // calculates bigO for a custom function
     template <typename Op>
-    complexity::BigO complexityBigO(std::string const& name, Op op) const;
+    BigO complexityBigO(std::string const& name, Op op) const;
 
 private:
     std::string mBenchmarkTitle = "benchmark";
@@ -489,8 +485,6 @@ PerformanceCounters& performanceCounters();
 
 } // namespace detail
 
-namespace complexity {
-
 class BigO {
 public:
     using RangeMeasure = std::vector<std::pair<double, double>>;
@@ -521,8 +515,7 @@ private:
     double mNormalizedRootMeanSquare{};
 };
 std::ostream& operator<<(std::ostream& os, BigO const& bigO);
-
-} // namespace complexity
+std::ostream& operator<<(std::ostream& os, std::vector<ankerl::nanobench::BigO> const& bigOs);
 
 } // namespace nanobench
 } // namespace ankerl
@@ -590,8 +583,8 @@ Config& Config::run(std::string const& name, Op op) {
 }
 
 template <typename Op>
-complexity::BigO Config::complexityBigO(std::string const& name, Op op) const {
-    return complexity::BigO(name, complexity::BigO::collectRangeMeasure(mResults), op);
+BigO Config::complexityBigO(std::string const& name, Op op) const {
+    return BigO(name, BigO::collectRangeMeasure(mResults), op);
 }
 
 // Set the batch size, e.g. number of processed bytes, or some other metric for the size of the processed data in each iteration.
@@ -2299,10 +2292,9 @@ Config& Config::render(char const* templateContent, std::ostream& os) {
     return *this;
 }
 
-std::vector<complexity::BigO> Config::complexityBigO() const {
-    // collect data
-    std::vector<complexity::BigO> bigOs;
-    auto rangeMeasure = complexity::BigO::collectRangeMeasure(mResults);
+std::vector<BigO> Config::complexityBigO() const {
+    std::vector<BigO> bigOs;
+    auto rangeMeasure = BigO::collectRangeMeasure(mResults);
     bigOs.emplace_back("O(1)", rangeMeasure, [](double) { return 1.0; });
     bigOs.emplace_back("O(n)", rangeMeasure, [](double n) { return n; });
     bigOs.emplace_back("O(log n)", rangeMeasure, [](double n) { return std::log2(n); });
@@ -2341,8 +2333,6 @@ void Rng::assign(Rng const& other) noexcept {
     mC = other.mC;
     mCounter = other.mCounter;
 }
-
-namespace complexity {
 
 BigO::RangeMeasure BigO::collectRangeMeasure(std::vector<Result> const& results) {
     BigO::RangeMeasure rangeMeasure;
@@ -2402,7 +2392,17 @@ std::ostream& operator<<(std::ostream& os, BigO const& bigO) {
     return os << bigO.constant() << " * " << bigO.name() << ", rms=" << bigO.normalizedRootMeanSquare();
 }
 
-} // namespace complexity
+std::ostream& operator<<(std::ostream& os, std::vector<ankerl::nanobench::BigO> const& bigOs) {
+    os << std::endl << "|   coefficient |   err% | complexity" << std::endl << "|--------------:|-------:|------------" << std::endl;
+    for (auto const& bigO : bigOs) {
+        os << "|" << std::setw(14) << bigO.constant() << " ";
+        os << "|" << detail::fmt::Number(6, 1, bigO.normalizedRootMeanSquare() * 100.0) << "% ";
+        os << "| " << bigO.name();
+        os << std::endl;
+    }
+    return os;
+}
+
 } // namespace nanobench
 } // namespace ankerl
 
