@@ -1374,46 +1374,44 @@ public:
 
         {
             // calibrate loop overhead. For branches & instructions this makes sense, not so much for everything else like cycles.
-            // with g++, atomic operation compiles exactly to one instruction. see https://godbolt.org/z/dEXYd1
+            // marsaglia's xorshift: mov, sal/shr, xor. Times 3.
+            // This has the nice property that the compiler doesn't seem to be able to optimize multiple calls any further.
+            // see https://godbolt.org/z/49RVQ5
             uint64_t const numIters = 100000U + (std::random_device{}() & 3);
             uint64_t n = numIters;
-            uint32_t x = 0;
+            uint32_t x = 1234567;
             auto fn = [&]() {
-                // sub, shr, xor, imul
-                x += UINT32_C(0x9065e173);
-                x ^= (x >> 11);
-                x *= UINT32_C(0xbac28739);
+                x ^= x << 13;
+                x ^= x >> 17;
+                x ^= x << 5;
             };
 
             beginMeasure();
-            Clock::time_point before = Clock::now();
             while (n-- > 0) {
                 fn();
             }
-            Clock::time_point after = Clock::now();
             endMeasure();
             detail::doNotOptimizeAway(x);
+            auto measure1 = mCounters;
 
-            if ((after - before).count() == 0) {
-                std::cerr << "could not calibrate loop overhead" << std::endl;
+            n = numIters;
+            beginMeasure();
+            while (n-- > 0) {
+                // we now run *twice* so we can easily calculate the overhead
+                fn();
+                fn();
             }
+            endMeasure();
+            detail::doNotOptimizeAway(x);
+            auto measure2 = mCounters;
 
             for (size_t i = 0; i < mCounters.size(); ++i) {
                 // factor 2 because we have two instructions per loop
-                auto val = mCounters[i];
-                auto sub = mCalibratedOverhead[i];
-                if (val > sub) {
-                    val -= sub;
-                } else {
-                    val = 0;
-                }
-                // minus 3 for the dummy-hash above
-                mLoopOverhead[i] = divRounded(val, numIters);
-                if (mLoopOverhead[i] > 4) {
-                    mLoopOverhead[i] -= 4;
-                } else {
-                    mLoopOverhead[i] = 0;
-                }
+                auto m1 = measure1[i] > mCalibratedOverhead[i] ? measure1[i] - mCalibratedOverhead[i] : 0;
+                auto m2 = measure2[i] > mCalibratedOverhead[i] ? measure2[i] - mCalibratedOverhead[i] : 0;
+                auto overhead = m1 * 2 > m2 ? m1 * 2 - m2 : 0;
+
+                mLoopOverhead[i] = divRounded(overhead, numIters);
             }
         }
     }
