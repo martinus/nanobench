@@ -50,27 +50,32 @@ TEST_CASE("example_complexity_sort") {
 }
 
 TEST_CASE("example_complexity_quadratic") {
+    // create an ankerl::nanobench::Config object that is used in all the benchmarks
     ankerl::nanobench::Config cfg;
-
     ankerl::nanobench::Rng rng;
-    for (size_t range = 10; range <= 1000; range = range * 3 / 2) {
+
+    // run the same benchmark multiple times with different ranges
+    for (size_t range = 10; range <= 1000; range *= 2) {
         // create vector with random data
-        std::vector<uint64_t> vec(range, 0);
+        std::vector<double> vec(range, 0.0);
         for (auto& x : vec) {
-            x = rng();
+            x = rng.uniform01();
         }
 
+        // each run is configured with complexityN(range) to specify the run's input N
         cfg.complexityN(range).run("minimum pair " + std::to_string(range), [&] {
-            // find minimum pair
-            uint64_t minVal = (std::numeric_limits<uint64_t>::max)();
+            // Actual algorithm we want to evaluate
+            double minVal = std::numeric_limits<double>::max();
             for (size_t i = 0; i < vec.size() - 1; ++i) {
-                for (size_t j = 0; j < vec.size(); ++j) {
-                    minVal = std::min(minVal, vec[i] - vec[j]);
-                    minVal = std::min(minVal, vec[j] - vec[i]);
+                for (size_t j = i + 1; j < vec.size(); ++j) {
+                    auto diff = vec[i] - vec[j];
+                    minVal = std::min(minVal, diff * diff);
                 }
             }
             ankerl::nanobench::doNotOptimizeAway(minVal);
         });
     }
+
+    // after all the runs are done, calculate the BigO, and show the results
     std::cout << cfg.complexityBigO() << std::endl;
 }
