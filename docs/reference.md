@@ -8,6 +8,7 @@
       * [Controlling Measurement](#controlling-measurement)
       * [Running Benchmarks](#running-benchmarks)
       * [Processing Results](#processing-results)
+      * [Asymptotic Complexity](#asymptotic-complexity)
    * [ankerl::nanobench::Rng](#ankerlnanobenchrng)
    * [Environment Variables](#environment-variables)
       * [NANOBENCH_ENDLESS](#nanobench_endless)
