@@ -32,7 +32,7 @@
 
 // see https://semver.org/
 #define ANKERL_NANOBENCH_VERSION_MAJOR 3 // incompatible API changes
-#define ANKERL_NANOBENCH_VERSION_MINOR 0 // backwards-compatible changes
+#define ANKERL_NANOBENCH_VERSION_MINOR 1 // backwards-compatible changes
 #define ANKERL_NANOBENCH_VERSION_PATCH 0 // backwards-compatible bug fixes
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
