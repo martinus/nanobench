@@ -7,7 +7,7 @@
 //
 // Licensed under the MIT License <http://opensource.org/licenses/MIT>.
 // SPDX-License-Identifier: MIT
-// Copyright (c) 2019 Martin Ankerl <http://martin.ankerl.com>
+// Copyright (c) 2019-2020 Martin Ankerl <http://martin.ankerl.com>
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -32,7 +32,7 @@
 
 // see https://semver.org/
 #define ANKERL_NANOBENCH_VERSION_MAJOR 3 // incompatible API changes
-#define ANKERL_NANOBENCH_VERSION_MINOR 1 // backwards-compatible changes
+#define ANKERL_NANOBENCH_VERSION_MINOR 2 // backwards-compatible changes
 #define ANKERL_NANOBENCH_VERSION_PATCH 0 // backwards-compatible bug fixes
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
@@ -69,7 +69,7 @@
 #    define ANKERL_NANOBENCH_PRIVATE_IGNORE_PADDED_POP()
 #endif
 
-#ifdef ANKERL_NANOBENCH_LOG_ENABLED
+#if defined(ANKERL_NANOBENCH_LOG_ENABLED)
 #    include <iostream>
 #    define ANKERL_NANOBENCH_LOG(x) std::cout << __FUNCTION__ << "@" << __LINE__ << ": " << x << std::endl
 #else
@@ -86,6 +86,12 @@
 #    define ANKERL_NANOBENCH_NO_SANITIZE(...) __attribute__((no_sanitize(__VA_ARGS__)))
 #else
 #    define ANKERL_NANOBENCH_NO_SANITIZE(...)
+#endif
+
+#if defined(_MSC_VER)
+#    define ANKERL_NANOBENCH_PRIVATE_NOINLINE() __declspec(noinline)
+#else
+#    define ANKERL_NANOBENCH_PRIVATE_NOINLINE() __attribute__((noinline))
 #endif
 
 // workaround missing "is_trivially_copyable" in g++ < 5.0
@@ -349,8 +355,9 @@ public:
     ANKERL_NANOBENCH(NODISCARD) std::vector<Result> const& results() const noexcept;
 
     // Repeatedly calls op() based on the configuration, and performs measurements.
+    // Make sure this is noinline to prevent the compiler to optimize beyond different benchmarks. This can have quite a big effect
     template <typename Op>
-    Config& run(std::string const& name, Op op);
+    ANKERL_NANOBENCH(NOINLINE) Config& run(std::string const& name, Op op);
 
     // Convenience: makes sure none of the given arguments are optimized away by the compiler.
     template <typename... Args>
@@ -629,7 +636,7 @@ void doNotOptimizeAway(T const& val) {
 } // namespace nanobench
 } // namespace ankerl
 
-#ifdef ANKERL_NANOBENCH_IMPLEMENT
+#if defined(ANKERL_NANOBENCH_IMPLEMENT)
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 // implementation part
@@ -1110,7 +1117,7 @@ ANKERL_NANOBENCH_NO_SANITIZE("integer") void IterationLogic::upscale(std::chrono
 }
 
 void IterationLogic::add(std::chrono::nanoseconds elapsed, PerformanceCounters const& pc) noexcept {
-#    ifdef ANKERL_NANOBENCH_LOG_ENABLED
+#    if defined(ANKERL_NANOBENCH_LOG_ENABLED)
     auto oldIters = mNumIters;
 #    endif
 
