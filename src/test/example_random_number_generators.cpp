@@ -71,7 +71,22 @@ private:
         return _umul128(a, b, high);
 #    endif
 #else
-#    error No hardware umul
+        uint64_t ha = a >> 32U;
+        uint64_t hb = b >> 32U;
+        uint64_t la = static_cast<uint32_t>(a);
+        uint64_t lb = static_cast<uint32_t>(b);
+
+        uint64_t rh = ha * hb;
+        uint64_t rm0 = ha * lb;
+        uint64_t rm1 = hb * la;
+        uint64_t rl = la * lb;
+
+        uint64_t t = rl + (rm0 << 32U);
+        uint64_t lo = t + (rm1 << 32U);
+        uint64_t c = t < rl;
+        c += lo < t;
+        *high = rh + (rm0 >> 32U) + (rm1 >> 32U) + c;
+        return lo;
 #endif
     }
     uint64_t mState;
