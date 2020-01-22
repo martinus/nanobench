@@ -652,6 +652,7 @@ void doNotOptimizeAway(T const& val) {
 #    include <random>    // random_device
 #    include <sstream>   // to_s in Number
 #    include <stdexcept> // throw for rendering templates
+#    include <tuple>     // std::tie
 #    include <vector>    // manage results
 #    if defined(__linux__)
 #        include <unistd.h> //sysconf
