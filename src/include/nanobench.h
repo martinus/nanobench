@@ -357,7 +357,8 @@ public:
     // Repeatedly calls op() based on the configuration, and performs measurements.
     // Make sure this is noinline to prevent the compiler to optimize beyond different benchmarks. This can have quite a big effect
     template <typename Op>
-    ANKERL_NANOBENCH(NOINLINE) Config& run(std::string const& name, Op op);
+    ANKERL_NANOBENCH(NOINLINE)
+    Config& run(std::string const& name, Op op);
 
     // Convenience: makes sure none of the given arguments are optimized away by the compiler.
     template <typename... Args>
@@ -642,7 +643,7 @@ void doNotOptimizeAway(T const& val) {
 // implementation part
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 
-#    include <algorithm> // sort
+#    include <algorithm> // sort, reverse
 #    include <atomic>    // compare_exchange_strong in loop overhead
 #    include <cstdlib>   // getenv
 #    include <cstring>   // strstr, strncmp
@@ -833,6 +834,9 @@ private:
     double mValue;
 };
 
+// helper replacement for std::to_string of signed/unsigned numbers so we are locale independent
+std::string to_s(uint64_t s);
+
 std::ostream& operator<<(std::ostream& os, Number const& n);
 
 class MarkDownColumn {
@@ -946,13 +950,14 @@ void gatherStabilityInformation(std::vector<std::string>& warnings, std::vector<
 
         // check frequency scaling
         for (long id = 0; id < nprocs; ++id) {
-            auto sysCpu = "/sys/devices/system/cpu/cpu" + std::to_string(id);
+            auto idStr = detail::fmt::to_s(static_cast<uint64_t>(id));
+            auto sysCpu = "/sys/devices/system/cpu/cpu" + idStr;
             auto minFreq = parseFile<int64_t>(sysCpu + "/cpufreq/scaling_min_freq");
             auto maxFreq = parseFile<int64_t>(sysCpu + "/cpufreq/scaling_max_freq");
             if (minFreq != maxFreq) {
                 auto minMHz = static_cast<double>(minFreq) / 1000.0;
                 auto maxMHz = static_cast<double>(maxFreq) / 1000.0;
-                warnings.emplace_back("CPU frequency scaling enabled: CPU " + std::to_string(id) + " between " +
+                warnings.emplace_back("CPU frequency scaling enabled: CPU " + idStr + " between " +
                                       detail::fmt::Number(1, 1, minMHz).to_s() + " and " + detail::fmt::Number(1, 1, maxMHz).to_s() +
                                       " MHz");
                 recommendPyPerf = true;
@@ -1673,6 +1678,16 @@ std::string Number::to_s() const {
     std::stringstream ss;
     write(ss);
     return ss.str();
+}
+
+std::string to_s(uint64_t n) {
+    std::string str;
+    do {
+        str += static_cast<char>('0' + static_cast<char>(n % 10));
+        n /= 10;
+    } while (n != 0);
+    std::reverse(str.begin(), str.end());
+    return str;
 }
 
 std::ostream& operator<<(std::ostream& os, Number const& n) {
