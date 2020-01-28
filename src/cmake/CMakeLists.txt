@@ -29,12 +29,6 @@ function(target_sources_local target)
   target_sources(${target} ${_srcList})
 endfunction()
 
-find_program(CCACHE_FOUND ccache)
-if(CCACHE_FOUND)
-    SET_PROPERTY(GLOBAL PROPERTY RULE_LAUNCH_COMPILE ccache)
-    SET_PROPERTY(GLOBAL PROPERTY RULE_LAUNCH_LINK ccache)
-endif(CCACHE_FOUND)
-
 MESSAGE(STATUS "${CMAKE_CXX_COMPILER_ID} ${CMAKE_CXX_COMPILER_VERSION}, C++${CMAKE_CXX_STANDARD}, CMAKE_CXX_FLAGS=${CMAKE_CXX_FLAGS}")
 
 function(add_compile_flags_target target)

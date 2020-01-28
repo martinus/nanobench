@@ -12,6 +12,11 @@ if(CMAKE_CXX_COMPILER_ID MATCHES "Clang")
     set(CMAKE_CXX_CLANG_TIDY clang-tidy)
 endif()
 
+find_program(CCACHE_PROGRAM ccache)
+if(CCACHE_PROGRAM)
+    SET(CMAKE_CXX_COMPILER_LAUNCHER "${CCACHE_PROGRAM}")
+endif(CCACHE_PROGRAM)
+
 add_executable(nb "")
 
 if (NB_sanitizer)
