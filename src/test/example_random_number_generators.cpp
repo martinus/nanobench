@@ -7,11 +7,11 @@
 
 // Benchmarks how fast we can get 64bit random values from Rng
 template <typename Rng>
-void bench(ankerl::nanobench::Config* cfg, std::string name) {
+void bench(ankerl::nanobench::Bench* bench, std::string name) {
     std::random_device dev;
     Rng rng(dev());
     uint64_t x = 0;
-    cfg->run(name, [&]() ANKERL_NANOBENCH_NO_SANITIZE("integer") { x += std::uniform_int_distribution<uint64_t>{}(rng); })
+    bench->run(name, [&]() ANKERL_NANOBENCH_NO_SANITIZE("integer") { x += std::uniform_int_distribution<uint64_t>{}(rng); })
         .doNotOptimizeAway(x);
 }
 
@@ -132,38 +132,38 @@ private:
 TEST_CASE("example_random_number_generators") {
     // perform a few warmup calls, and since the runtime is not always stable for each
     // generator, increase the number of epochs to get more accurate numbers.
-    ankerl::nanobench::Config cfg;
-    cfg.title("Random Number Generators").unit("uint64_t").warmup(100).relative(true);
-    cfg.performanceCounters(true);
+    ankerl::nanobench::Bench b;
+    b.title("Random Number Generators").unit("uint64_t").warmup(100).relative(true);
+    b.performanceCounters(true);
 
     // sets the first one as the baseline
-    bench<std::default_random_engine>(&cfg, "std::default_random_engine");
-    bench<std::mt19937>(&cfg, "std::mt19937");
-    bench<std::mt19937_64>(&cfg, "std::mt19937_64");
-    bench<std::ranlux24_base>(&cfg, "std::ranlux24_base");
-    bench<std::ranlux48_base>(&cfg, "std::ranlux48_base");
-    bench<std::ranlux24>(&cfg, "std::ranlux24_base");
-    bench<std::ranlux48>(&cfg, "std::ranlux48");
-    bench<std::knuth_b>(&cfg, "std::knuth_b");
-    bench<ankerl::nanobench::Rng>(&cfg, "ankerl::nanobench::Rng");
-    bench<WyRng>(&cfg, "WyRng");
-    bench<NasamRng>(&cfg, "NasamRng");
+    bench<std::default_random_engine>(&b, "std::default_random_engine");
+    bench<std::mt19937>(&b, "std::mt19937");
+    bench<std::mt19937_64>(&b, "std::mt19937_64");
+    bench<std::ranlux24_base>(&b, "std::ranlux24_base");
+    bench<std::ranlux48_base>(&b, "std::ranlux48_base");
+    bench<std::ranlux24>(&b, "std::ranlux24_base");
+    bench<std::ranlux48>(&b, "std::ranlux48");
+    bench<std::knuth_b>(&b, "std::knuth_b");
+    bench<ankerl::nanobench::Rng>(&b, "ankerl::nanobench::Rng");
+    bench<WyRng>(&b, "WyRng");
+    bench<NasamRng>(&b, "NasamRng");
 
     // Let's create a JSON file with all the results
     std::ofstream fout("example_random_number_generators.json");
-    cfg.render(ankerl::nanobench::templates::json(), fout);
+    b.render(ankerl::nanobench::templates::json(), fout);
     fout.close();
 
     // A nice HTML graph too!
     fout.open("example_random_number_generators.html");
-    cfg.render(ankerl::nanobench::templates::htmlBoxplot(), fout);
+    b.render(ankerl::nanobench::templates::htmlBoxplot(), fout);
     fout.close();
 
     // finally, a CSV file for data reuse.
     fout.open("example_random_number_generators.csv");
-    cfg.render(ankerl::nanobench::templates::csv(), fout);
+    b.render(ankerl::nanobench::templates::csv(), fout);
     fout.close();
 
     // just generate a very simple overview of the results
-    cfg.render("\n{{#benchmarks}}{{median_sec_per_unit}} for {{name}}\n{{/benchmarks}}", std::cout);
+    b.render("\n{{#benchmarks}}{{median_sec_per_unit}} for {{name}}\n{{/benchmarks}}", std::cout);
 }

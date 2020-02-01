@@ -12,7 +12,7 @@
 //
 // example from https://github.com/cameron314/microbench
 TEST_CASE("performance_counters") {
-    ankerl::nanobench::Config cfg;
+    ankerl::nanobench::Bench bench;
 
-    cfg.run("start & stop counting", [&] { std::vector<int> v = {{11, 5, 5, 5, 5, 5, 5, 5, 5, 6, 7}}; });
+    bench.run("start & stop counting", [&] { std::vector<int> v = {{11, 5, 5, 5, 5, 5, 5, 5, 5, 6, 7}}; });
 }

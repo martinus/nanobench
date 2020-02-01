@@ -50,7 +50,7 @@ After you've done the configuration, you `run` one or more benchmarks with these
 
 ```cpp
 uint64_t x = 1;
-ankerl::nanobench::Config().run("x += x", [&] {
+ankerl::nanobench::Bench().run("x += x", [&] {
     x += x;
 }).doNotOptimizeAway(x);
 ```
@@ -63,7 +63,7 @@ The `Config` class comes with a powerful [mustache](https://mustache.github.io/)
 
 ```cpp
 std::ofstream fout("example_random_number_generators.json");
-cfg.render(ankerl::nanobench::templates::htmlBoxplot(), fout);
+bench.render(ankerl::nanobench::templates::htmlBoxplot(), fout);
 ```
 
 ![html boxplot example](htmlBoxplot_example.png)
@@ -116,7 +116,7 @@ For example, let's find out the complexity of an algorithm that finds the closes
 ```cpp
 TEST_CASE("example_complexity_quadratic") {
     // create an ankerl::nanobench::Config object that is used in all the benchmarks
-    ankerl::nanobench::Config cfg;
+    ankerl::nanobench::Bench bench;
     ankerl::nanobench::Rng rng;
 
     // run the same benchmark multiple times with different ranges
@@ -128,7 +128,7 @@ TEST_CASE("example_complexity_quadratic") {
         }
 
         // each run is configured with complexityN(range) to specify the run's input N
-        cfg.complexityN(range).run("minimum pair " + std::to_string(range), [&] {
+        bench.complexityN(range).run("minimum pair " + std::to_string(range), [&] {
             // Actual algorithm we want to evaluate
             double minVal = std::numeric_limits<double>::max();
             for (size_t i = 0; i < vec.size() - 1; ++i) {
@@ -142,7 +142,7 @@ TEST_CASE("example_complexity_quadratic") {
     }
 
     // after all the runs are done, calculate the BigO, and show the results
-    std::cout << cfg.complexityBigO() << std::endl;
+    std::cout << bench.complexityBigO() << std::endl;
 }
 ```
 
@@ -158,7 +158,7 @@ On my machine this runs for ~60ms and prints this output:
 |           63,890.00 |           15,651.90 |    0.0% |      411,209.00 |      204,022.00 |  2.016 |      51,679.00 |    0.6% |      0.00 | `minimum pair 320`
 |          255,767.00 |            3,909.81 |    0.0% |    1,641,609.00 |      816,487.00 |  2.011 |     205,759.00 |    0.3% |      0.00 | `minimum pair 640`
 
-So as `range` increases, its getting slower. The call `cfg.complexityBigO()` calculates Big O's and returns a sorted result prints this table:
+So as `range` increases, its getting slower. The call `bench.complexityBigO()` calculates Big O's and returns a sorted result prints this table:
 
 |   coefficient |   err% | complexity
 |--------------:|-------:|------------

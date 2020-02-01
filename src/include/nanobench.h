@@ -32,7 +32,7 @@
 
 // see https://semver.org/
 #define ANKERL_NANOBENCH_VERSION_MAJOR 4 // incompatible API changes
-#define ANKERL_NANOBENCH_VERSION_MINOR 3 // backwards-compatible changes
+#define ANKERL_NANOBENCH_VERSION_MINOR 0 // backwards-compatible changes
 #define ANKERL_NANOBENCH_VERSION_PATCH 0 // backwards-compatible bug fixes
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
@@ -108,7 +108,8 @@ namespace ankerl {
 namespace nanobench {
 
 using Clock = std::chrono::high_resolution_clock;
-class Config;
+class Bench;
+struct Config;
 class Measurement;
 class Result;
 class Rng;
@@ -187,14 +188,34 @@ private:
     detail::PerfCountSet<uint64_t> mVal;
 };
 
+ANKERL_NANOBENCH(IGNORE_PADDED_PUSH)
+struct Config {
+    // actual benchmark config
+    std::string mBenchmarkTitle = "benchmark";
+    std::string mBenchmarkName = "noname";
+    std::string mUnit = "op";
+    double mBatch = 1.0;
+    double mComplexityN = -1.0;
+    size_t mNumEpochs = 11;
+    size_t mClockResolutionMultiple = static_cast<size_t>(1000);
+    std::chrono::nanoseconds mMaxEpochTime = std::chrono::milliseconds(100);
+    std::chrono::nanoseconds mMinEpochTime{};
+    uint64_t mMinEpochIterations{1};
+    uint64_t mWarmup = 0;
+    std::ostream* mOut = nullptr;
+    bool mShowPerformanceCounters = true;
+    bool mIsRelative = false;
+};
+ANKERL_NANOBENCH(IGNORE_PADDED_POP)
+
 // Result returned after a benchmark has finished. Can be used as a baseline for relative().
 ANKERL_NANOBENCH(IGNORE_PADDED_PUSH)
 class Result {
 public:
-    Result(std::string benchmarkName, std::vector<Measurement> measurements, double batch, double complN) noexcept;
+    Result(Config const& benchmarkConfig, std::vector<Measurement> measurements, double batch, double complN) noexcept;
     Result() noexcept;
 
-    ANKERL_NANOBENCH(NODISCARD) std::string const& name() const noexcept;
+    ANKERL_NANOBENCH(NODISCARD) Config const& config() const noexcept;
     ANKERL_NANOBENCH(NODISCARD) std::vector<Measurement> const& sortedMeasurements() const noexcept;
     ANKERL_NANOBENCH(NODISCARD) std::chrono::duration<double> median() const noexcept;
     ANKERL_NANOBENCH(NODISCARD) double medianAbsolutePercentError() const noexcept;
@@ -220,7 +241,7 @@ public:
     ANKERL_NANOBENCH(NODISCARD) bool empty() const noexcept;
 
 private:
-    std::string mName{};
+    Config mConfig{};
     std::vector<Measurement> mSortedMeasurements{};
     double mMedianAbsolutePercentError{};
 
@@ -274,50 +295,50 @@ private:
     uint64_t mCounter;
 };
 
-// Configuration of a microbenchmark.
+// Main entry class for the microbenchmark framework.
 ANKERL_NANOBENCH(IGNORE_PADDED_PUSH)
-class Config {
+class Bench {
 public:
-    Config();
+    Bench();
 
-    Config(Config&& other);
-    Config& operator=(Config&& other);
-    Config(Config const& other);
-    Config& operator=(Config const& other);
+    Bench(Bench&& other);
+    Bench& operator=(Bench&& other);
+    Bench(Bench const& other);
+    Bench& operator=(Bench const& other);
 
-    ~Config() noexcept;
+    ~Bench() noexcept;
 
     // Set the batch size, e.g. number of processed bytes, or some other metric for the size of the processed data in each iteration.
     // Best used in combination with `unit`. Any argument is cast to double.
     template <typename T>
-    Config& batch(T b) noexcept;
+    Bench& batch(T b) noexcept;
     ANKERL_NANOBENCH(NODISCARD) double batch() const noexcept;
 
     // Marks the next run as the baseline. The following runs will be compared to this run. 100% will mean it is exactly as fast as the
     // baseline, >100% means it is faster than the baseline. It is calculated by `100% * runtime_baseline / runtime`. So e.g. 200%
     // means the current run is twice as fast as the baseline.
-    Config& relative(bool isRelativeEnabled) noexcept;
+    Bench& relative(bool isRelativeEnabled) noexcept;
     ANKERL_NANOBENCH(NODISCARD) bool relative() const noexcept;
 
-    Config& performanceCounters(bool showPerformanceCounters) noexcept;
+    Bench& performanceCounters(bool showPerformanceCounters) noexcept;
     ANKERL_NANOBENCH(NODISCARD) bool performanceCounters() const noexcept;
 
     // Operation unit. Defaults to "op", could be e.g. "byte" for string processing. This is used for the table header, e.g. to show
     // `ns/byte`. Use singular (byte, not bytes). A change clears the currently collected results.
-    Config& unit(std::string unit);
+    Bench& unit(std::string unit);
     ANKERL_NANOBENCH(NODISCARD) std::string const& unit() const noexcept;
 
     // Title of the benchmark, will be shown in the table header. A change clears the currently collected results.
-    Config& title(std::string benchmarkTitle);
+    Bench& title(std::string benchmarkTitle);
     ANKERL_NANOBENCH(NODISCARD) std::string const& title() const noexcept;
 
     // Name of the benchmark, will be shown in the table row.
-    Config& name(std::string benchmarkName);
+    Bench& name(std::string benchmarkName);
     ANKERL_NANOBENCH(NODISCARD) std::string const& name() const noexcept;
 
     // Set the output stream where the resulting markdown table will be printed to. The default is `&std::cout`. You can disable all
     // output by setting `nullptr`.
-    Config& output(std::ostream* outstream) noexcept;
+    Bench& output(std::ostream* outstream) noexcept;
     ANKERL_NANOBENCH(NODISCARD) std::ostream* output() const noexcept;
 
     // Number of epochs to evaluate. The reported result will be the median of evaluation of each epoch. Defaults to 11. The higher you
@@ -325,34 +346,34 @@ public:
     // high to be able to filter most outliers.
     //
     // For slow benchmarks you might want to reduce this number.
-    Config& epochs(size_t numEpochs) noexcept;
+    Bench& epochs(size_t numEpochs) noexcept;
     ANKERL_NANOBENCH(NODISCARD) size_t epochs() const noexcept;
 
     // Modern processors have a very accurate clock, being able to measure as low as 20 nanoseconds. This allows nanobech to be so
     // fast: we only run the benchmark sufficiently often so that the clock's accuracy is good enough. The default is to run one epoch
     // for 2000 times the clock resolution. So for 20ns resolution and 11 epochs, this gives a total runtime of `20ns * 8000 * 11 ~
     // 2ms` for a benchmark to get accurate results.
-    Config& clockResolutionMultiple(size_t multiple) noexcept;
+    Bench& clockResolutionMultiple(size_t multiple) noexcept;
     ANKERL_NANOBENCH(NODISCARD) size_t clockResolutionMultiple() const noexcept;
 
     // As a safety precausion if the clock is not very accurate, we can set an upper limit for the maximum evaluation time per epoch.
     // Default is 100ms.
-    Config& maxEpochTime(std::chrono::nanoseconds t) noexcept;
+    Bench& maxEpochTime(std::chrono::nanoseconds t) noexcept;
     ANKERL_NANOBENCH(NODISCARD) std::chrono::nanoseconds maxEpochTime() const noexcept;
 
     // Sets the minimum time each epoch should take. Default is zero, so clockResolutionMultiple() can do it's best guess. You can
     // increase this if you have the time and results are not accurate enough.
-    Config& minEpochTime(std::chrono::nanoseconds t) noexcept;
+    Bench& minEpochTime(std::chrono::nanoseconds t) noexcept;
     ANKERL_NANOBENCH(NODISCARD) std::chrono::nanoseconds minEpochTime() const noexcept;
 
     // Sets the minimum number of iterations each epoch should take. Default is 1. For high median average percentage error (MdAPE),
     // which happens when your benchmark is unstable, you might want to increase the minimum number to get more accurate reslts.
-    Config& minEpochIterations(uint64_t numIters) noexcept;
+    Bench& minEpochIterations(uint64_t numIters) noexcept;
     ANKERL_NANOBENCH(NODISCARD) uint64_t minEpochIterations() const noexcept;
 
     // Set a number of iterations that are initially performed without any measurements, to warmup caches / database / whatever.
     // Normally this is not needed, since we show the median result so initial outliers will be filtered away automatically.
-    Config& warmup(uint64_t numWarmupIters) noexcept;
+    Bench& warmup(uint64_t numWarmupIters) noexcept;
     ANKERL_NANOBENCH(NODISCARD) uint64_t warmup() const noexcept;
 
     // Gets all benchmark results
@@ -362,24 +383,24 @@ public:
     // Make sure this is noinline to prevent the compiler to optimize beyond different benchmarks. This can have quite a big effect
     template <typename Op>
     ANKERL_NANOBENCH(NOINLINE)
-    Config& run(std::string const& benchmarkName, Op op);
+    Bench& run(std::string const& benchmarkName, Op op);
 
     // Repeatedly calls op() based on the configuration, and performs measurements. Uses previously set name.
     // Make sure this is noinline to prevent the compiler to optimize beyond different benchmarks. This can have quite a big effect
     template <typename Op>
     ANKERL_NANOBENCH(NOINLINE)
-    Config& run(Op op);
+    Bench& run(Op op);
 
     // Convenience: makes sure none of the given arguments are optimized away by the compiler.
     template <typename... Args>
-    Config& doNotOptimizeAway(Args&&... args);
+    Bench& doNotOptimizeAway(Args&&... args);
 
     // Parses the mustache-like template and renders the output into os.
-    Config& render(char const* templateContent, std::ostream& os);
+    Bench& render(char const* templateContent, std::ostream& os);
 
     // Set the length of N for the next benchmark run, so it is possible to calculate bigO.
     template <typename T>
-    Config& complexityN(T b) noexcept;
+    Bench& complexityN(T b) noexcept;
     ANKERL_NANOBENCH(NODISCARD) double complexityN() const noexcept;
 
     // calculates bigO of the results with all preconfigured complexity functions
@@ -389,27 +410,15 @@ public:
     template <typename Op>
     BigO complexityBigO(std::string const& name, Op op) const;
 
+    // Set all the configuration.
+    Bench& config(Config const& benchmarkConfig);
+    ANKERL_NANOBENCH(NODISCARD) Config const& config() const noexcept;
+
 private:
-    // actual benchmark config
-    std::string mBenchmarkTitle = "benchmark";
-    std::string mBenchmarkName = "noname";
-    std::string mUnit = "op";
-    double mBatch = 1.0;
-    double mComplexityN = -1.0;
-    size_t mNumEpochs = 11;
-    size_t mClockResolutionMultiple = static_cast<size_t>(1000);
-    std::chrono::nanoseconds mMaxEpochTime = std::chrono::milliseconds(100);
-    std::chrono::nanoseconds mMinEpochTime{};
-    uint64_t mMinEpochIterations{1};
-    uint64_t mWarmup = 0;
+    Config mConfig{};
 
     // results
     std::vector<Result> mResults{};
-
-    // output configuration
-    std::ostream* mOut = nullptr;
-    bool mIsRelative = false;
-    bool mShowPerformanceCounters = true;
 };
 ANKERL_NANOBENCH(IGNORE_PADDED_POP)
 
@@ -451,7 +460,7 @@ typename std::enable_if<doNotOptimizeNeedsIndirect<T>()>::type doNotOptimizeAway
 ANKERL_NANOBENCH(IGNORE_PADDED_PUSH)
 class IterationLogic {
 public:
-    IterationLogic(Config const& config, std::string name) noexcept;
+    IterationLogic(Bench const& config, std::string name) noexcept;
 
     ANKERL_NANOBENCH(NODISCARD) uint64_t numIters() const noexcept;
     void add(std::chrono::nanoseconds elapsed, PerformanceCounters const& pc) noexcept;
@@ -466,7 +475,7 @@ private:
     void upscale(std::chrono::nanoseconds elapsed);
 
     uint64_t mNumIters = 1;
-    Config const& mConfig;
+    Bench const& mBench;
     std::chrono::nanoseconds mTargetRuntimePerEpoch{};
     std::string mName;
     Result mResult{};
@@ -584,14 +593,14 @@ constexpr uint64_t Rng::rotl(uint64_t x, unsigned k) noexcept {
 }
 
 template <typename Op>
-Config& Config::run(Op op) {
+Bench& Bench::run(Op op) {
     return run(name(), std::move(op));
 }
 
 // Performs all evaluations.
 template <typename Op>
 ANKERL_NANOBENCH_NO_SANITIZE("integer")
-Config& Config::run(std::string const& benchmarkName, Op op) {
+Bench& Bench::run(std::string const& benchmarkName, Op op) {
     // It is important that this method is kept short so the compiler can do better optimizations/ inlining of op()
     detail::IterationLogic iterationLogic(*this, benchmarkName);
     auto& pc = detail::performanceCounters();
@@ -612,28 +621,28 @@ Config& Config::run(std::string const& benchmarkName, Op op) {
 }
 
 template <typename Op>
-BigO Config::complexityBigO(std::string const& benchmarkName, Op op) const {
+BigO Bench::complexityBigO(std::string const& benchmarkName, Op op) const {
     return BigO(benchmarkName, BigO::collectRangeMeasure(mResults), op);
 }
 
 // Set the batch size, e.g. number of processed bytes, or some other metric for the size of the processed data in each iteration.
 // Any argument is cast to double.
 template <typename T>
-Config& Config::batch(T b) noexcept {
-    mBatch = static_cast<double>(b);
+Bench& Bench::batch(T b) noexcept {
+    mConfig.mBatch = static_cast<double>(b);
     return *this;
 }
 
 // Sets the computation complexity of the next run. Any argument is cast to double.
 template <typename T>
-Config& Config::complexityN(T n) noexcept {
-    mComplexityN = static_cast<double>(n);
+Bench& Bench::complexityN(T n) noexcept {
+    mConfig.mComplexityN = static_cast<double>(n);
     return *this;
 }
 
 // Convenience: makes sure none of the given arguments are optimized away by the compiler.
 template <typename... Args>
-Config& Config::doNotOptimizeAway(Args&&... args) {
+Bench& Bench::doNotOptimizeAway(Args&&... args) {
     (void)std::initializer_list<int>{(detail::doNotOptimizeAway(std::forward<Args>(args)), 0)...};
     return *this;
 }
@@ -1072,32 +1081,32 @@ Clock::duration clockResolution() noexcept {
     return sResolution;
 }
 
-IterationLogic::IterationLogic(Config const& config, std::string name) noexcept
-    : mConfig(config)
+IterationLogic::IterationLogic(Bench const& bench, std::string name) noexcept
+    : mBench(bench)
     , mName(std::move(name)) {
-    printStabilityInformationOnce(mConfig.output());
+    printStabilityInformationOnce(mBench.output());
 
     // determine target runtime per epoch
-    mTargetRuntimePerEpoch = detail::clockResolution() * mConfig.clockResolutionMultiple();
-    if (mTargetRuntimePerEpoch > mConfig.maxEpochTime()) {
-        mTargetRuntimePerEpoch = mConfig.maxEpochTime();
+    mTargetRuntimePerEpoch = detail::clockResolution() * mBench.clockResolutionMultiple();
+    if (mTargetRuntimePerEpoch > mBench.maxEpochTime()) {
+        mTargetRuntimePerEpoch = mBench.maxEpochTime();
     }
-    if (mTargetRuntimePerEpoch < mConfig.minEpochTime()) {
-        mTargetRuntimePerEpoch = mConfig.minEpochTime();
+    if (mTargetRuntimePerEpoch < mBench.minEpochTime()) {
+        mTargetRuntimePerEpoch = mBench.minEpochTime();
     }
 
     // prepare array for measurement results
-    mMeasurements.reserve(mConfig.epochs());
+    mMeasurements.reserve(mBench.epochs());
 
     if (isEndlessRunning(mName)) {
         std::cerr << "NANOBENCH_ENDLESS set: running '" << mName << "' endlessly" << std::endl;
         mNumIters = (std::numeric_limits<uint64_t>::max)();
         mState = State::endless;
-    } else if (0 != mConfig.warmup()) {
-        mNumIters = mConfig.warmup();
+    } else if (0 != mBench.warmup()) {
+        mNumIters = mBench.warmup();
         mState = State::warmup;
     } else {
-        mNumIters = mConfig.minEpochIterations();
+        mNumIters = mBench.minEpochIterations();
         mState = State::upscaling_runtime;
     }
 }
@@ -1117,7 +1126,7 @@ uint64_t IterationLogic::calcBestNumIters(std::chrono::nanoseconds elapsed, uint
     auto doubleTargetRuntimePerEpoch = std::chrono::duration_cast<std::chrono::duration<double>>(mTargetRuntimePerEpoch);
     auto doubleNewIters = doubleTargetRuntimePerEpoch / doubleElapsed * static_cast<double>(iters);
 
-    auto doubleMinEpochIters = static_cast<double>(mConfig.minEpochIterations());
+    auto doubleMinEpochIters = static_cast<double>(mBench.minEpochIterations());
     if (doubleNewIters < doubleMinEpochIters) {
         doubleNewIters = doubleMinEpochIters;
     }
@@ -1168,7 +1177,7 @@ void IterationLogic::add(std::chrono::nanoseconds elapsed, PerformanceCounters c
             mState = State::measuring;
             mTotalElapsed += elapsed;
             mTotalNumIters += mNumIters;
-            mMeasurements.emplace_back(elapsed, mNumIters, mConfig.batch(), pc);
+            mMeasurements.emplace_back(elapsed, mNumIters, mBench.batch(), pc);
             mNumIters = calcBestNumIters(mTotalElapsed, mTotalNumIters);
         } else {
             upscale(elapsed);
@@ -1180,7 +1189,7 @@ void IterationLogic::add(std::chrono::nanoseconds elapsed, PerformanceCounters c
         // that fluctuation, or else we would bias the result
         mTotalElapsed += elapsed;
         mTotalNumIters += mNumIters;
-        mMeasurements.emplace_back(elapsed, mNumIters, mConfig.batch(), pc);
+        mMeasurements.emplace_back(elapsed, mNumIters, mBench.batch(), pc);
         mNumIters = calcBestNumIters(mTotalElapsed, mTotalNumIters);
         break;
 
@@ -1189,7 +1198,7 @@ void IterationLogic::add(std::chrono::nanoseconds elapsed, PerformanceCounters c
         break;
     }
 
-    if (static_cast<uint64_t>(mMeasurements.size()) == mConfig.epochs()) {
+    if (static_cast<uint64_t>(mMeasurements.size()) == mBench.epochs()) {
         // we got all the results that we need, finish it
         mResult = showResult("");
         mNumIters = 0;
@@ -1209,31 +1218,31 @@ Result IterationLogic::showResult(std::string const& errorMessage) const {
     ANKERL_NANOBENCH_LOG("mMeasurements.size()=" << mMeasurements.size());
     Result r;
     if (errorMessage.empty()) {
-        r = Result(mName, mMeasurements, mConfig.batch(), mConfig.complexityN());
+        r = Result(mBench.config(), mMeasurements, mBench.batch(), mBench.complexityN());
     }
 
-    if (mConfig.output() != nullptr) {
+    if (mBench.output() != nullptr) {
         // prepare column data ///////
         std::vector<fmt::MarkDownColumn> columns;
 
-        if (mConfig.relative()) {
+        if (mBench.relative()) {
             double d = 100.0;
-            if (!mConfig.results().empty()) {
-                d = r.median() <= decltype(r.median())::zero() ? 0.0 : mConfig.results().front().median() / r.median() * 100;
+            if (!mBench.results().empty()) {
+                d = r.median() <= decltype(r.median())::zero() ? 0.0 : mBench.results().front().median() / r.median() * 100;
             }
             columns.emplace_back(11, 1, "relative", "%", d);
         }
 
-        columns.emplace_back(22, 2, "ns/" + mConfig.unit(), "", 1e9 * r.median().count());
-        columns.emplace_back(22, 2, mConfig.unit() + "/s", "", r.median().count() <= 0.0 ? 0.0 : 1.0 / r.median().count());
+        columns.emplace_back(22, 2, "ns/" + mBench.unit(), "", 1e9 * r.median().count());
+        columns.emplace_back(22, 2, mBench.unit() + "/s", "", r.median().count() <= 0.0 ? 0.0 : 1.0 / r.median().count());
         columns.emplace_back(10, 1, "err%", "%", r.medianAbsolutePercentError() * 100);
 
-        if (mConfig.performanceCounters()) {
+        if (mBench.performanceCounters()) {
             if (r.hasMedianInstructionsPerUnit()) {
-                columns.emplace_back(18, 2, "ins/" + mConfig.unit(), "", r.medianInstructionsPerUnit());
+                columns.emplace_back(18, 2, "ins/" + mBench.unit(), "", r.medianInstructionsPerUnit());
             }
             if (r.hasMedianCpuCyclesPerUnit()) {
-                columns.emplace_back(18, 2, "cyc/" + mConfig.unit(), "", r.medianCpuCyclesPerUnit());
+                columns.emplace_back(18, 2, "cyc/" + mBench.unit(), "", r.medianCpuCyclesPerUnit());
             }
             if (r.hasMedianInstructionsPerUnit() && r.hasMedianCpuCyclesPerUnit()) {
                 columns.emplace_back(9, 3, "IPC", "",
@@ -1241,7 +1250,7 @@ Result IterationLogic::showResult(std::string const& errorMessage) const {
                                                                        : r.medianInstructionsPerUnit() / r.medianCpuCyclesPerUnit());
             }
             if (r.hasMedianBranchesPerUnit()) {
-                columns.emplace_back(17, 2, "bra/" + mConfig.unit(), "", r.medianBranchesPerUnit());
+                columns.emplace_back(17, 2, "bra/" + mBench.unit(), "", r.medianBranchesPerUnit());
                 if (r.hasMedianBranchMissesPerUnit()) {
                     double p = 0.0;
                     if (r.medianBranchesPerUnit() >= 1e-9) {
@@ -1255,9 +1264,9 @@ Result IterationLogic::showResult(std::string const& errorMessage) const {
         columns.emplace_back(12, 2, "total", "", std::chrono::duration_cast<std::chrono::duration<double>>(r.total()).count());
 
         // write everything
-        auto& os = *mConfig.output();
+        auto& os = *mBench.output();
 
-        auto hash = hash_combine(fnv1a(mConfig.unit()), fnv1a(mConfig.title()));
+        auto hash = hash_combine(fnv1a(mBench.unit()), fnv1a(mBench.title()));
         if (hash != singletonHeaderHash()) {
             singletonHeaderHash() = hash;
 
@@ -1266,12 +1275,12 @@ Result IterationLogic::showResult(std::string const& errorMessage) const {
             for (auto const& col : columns) {
                 os << col.title();
             }
-            os << "| " << mConfig.title() << std::endl;
+            os << "| " << mBench.title() << std::endl;
 
             for (auto const& col : columns) {
                 os << col.separator();
             }
-            os << "|:" << std::string(mConfig.title().size() + 1U, '-') << std::endl;
+            os << "|:" << std::string(mBench.title().size() + 1U, '-') << std::endl;
         }
 
         if (!errorMessage.empty()) {
@@ -1290,7 +1299,7 @@ Result IterationLogic::showResult(std::string const& errorMessage) const {
             }
             os << fmt::MarkDownCode(mName);
             if (showUnstable) {
-                auto avgIters = static_cast<double>(mTotalNumIters) / static_cast<double>(mConfig.epochs());
+                auto avgIters = static_cast<double>(mTotalNumIters) / static_cast<double>(mBench.epochs());
                 // NOLINTNEXTLINE(bugprone-incorrect-roundings)
                 auto suggestedIters = static_cast<uint64_t>(avgIters * 10 + 0.5);
 
@@ -1923,7 +1932,7 @@ static void generateBenchmark(std::vector<Node> const& nodes, std::vector<ankerl
 
             case Node::Type::tag:
                 if (n == "name") {
-                    out << result.name();
+                    out << result.config().mBenchmarkName;
                 } else if (n == "median_sec_per_unit") {
                     out << result.median().count();
                 } else if (n == "md_ape") {
@@ -1951,7 +1960,7 @@ static void generateBenchmark(std::vector<Node> const& nodes, std::vector<ankerl
     }
 }
 
-static void generate(char const* mustacheTemplate, ankerl::nanobench::Config const& cfg, std::ostream& out) {
+static void generate(char const* mustacheTemplate, ankerl::nanobench::Bench const& bench, std::ostream& out) {
     // TODO(martinus) safe stream status
     out.precision(std::numeric_limits<double>::digits10);
     auto nodes = parseMustacheTemplate(&mustacheTemplate);
@@ -1966,8 +1975,8 @@ static void generate(char const* mustacheTemplate, ankerl::nanobench::Config con
 
         case Node::Type::section:
             if (n == "benchmarks") {
-                for (size_t i = 0; i < cfg.results().size(); ++i) {
-                    generateBenchmark(n.children, cfg.results(), i, out);
+                for (size_t i = 0; i < bench.results().size(); ++i) {
+                    generateBenchmark(n.children, bench.results(), i, out);
                 }
             } else {
                 throw std::runtime_error("unknown tag '" + std::string(n.begin, n.end) + "'");
@@ -1976,11 +1985,11 @@ static void generate(char const* mustacheTemplate, ankerl::nanobench::Config con
 
         case Node::Type::tag:
             if (n == "unit") {
-                out << cfg.unit();
+                out << bench.unit();
             } else if (n == "title") {
-                out << cfg.title();
+                out << bench.title();
             } else if (n == "batch") {
-                out << cfg.batch();
+                out << bench.batch();
             } else {
                 throw std::runtime_error("unknown tag '" + std::string(n.begin, n.end) + "'");
             }
@@ -2084,8 +2093,8 @@ private:
 };
 
 // Result returned after a benchmark has finished. Can be used as a baseline for relative().
-Result::Result(std::string benchmarkName, std::vector<Measurement> measurements, double batch, double complN) noexcept
-    : mName(std::move(benchmarkName))
+Result::Result(Config const& benchmarkConfig, std::vector<Measurement> measurements, double batch, double complN) noexcept
+    : mConfig(benchmarkConfig)
     , mSortedMeasurements(std::move(measurements))
     , mComplexityN(complN)
     , mHas(detail::performanceCounters().has()) {
@@ -2126,8 +2135,8 @@ Result::Result(std::string benchmarkName, std::vector<Measurement> measurements,
 Result::Result() noexcept
     : mHas(detail::performanceCounters().has()) {}
 
-std::string const& Result::name() const noexcept {
-    return mName;
+Config const& Result::config() const noexcept {
+    return mConfig;
 }
 
 double Result::complexityN() const noexcept {
@@ -2203,146 +2212,155 @@ bool Result::hasMedianBranchMissesPerUnit() const noexcept {
 }
 
 // Configuration of a microbenchmark.
-Config::Config()
-    : mOut(&std::cout) {}
-
-Config::Config(Config&&) = default;
-Config& Config::operator=(Config&&) = default;
-Config::Config(Config const&) = default;
-Config& Config::operator=(Config const&) = default;
-Config::~Config() noexcept = default;
-
-double Config::batch() const noexcept {
-    return mBatch;
+Bench::Bench() {
+    mConfig.mOut = &std::cout;
 }
 
-double Config::complexityN() const noexcept {
-    return mComplexityN;
+Bench::Bench(Bench&&) = default;
+Bench& Bench::operator=(Bench&&) = default;
+Bench::Bench(Bench const&) = default;
+Bench& Bench::operator=(Bench const&) = default;
+Bench::~Bench() noexcept = default;
+
+double Bench::batch() const noexcept {
+    return mConfig.mBatch;
+}
+
+double Bench::complexityN() const noexcept {
+    return mConfig.mComplexityN;
 }
 
 // Set a baseline to compare it to. 100% it is exactly as fast as the baseline, >100% means it is faster than the baseline, <100%
 // means it is slower than the baseline.
-Config& Config::relative(bool isRelativeEnabled) noexcept {
-    mIsRelative = isRelativeEnabled;
+Bench& Bench::relative(bool isRelativeEnabled) noexcept {
+    mConfig.mIsRelative = isRelativeEnabled;
     return *this;
 }
-bool Config::relative() const noexcept {
-    return mIsRelative;
+bool Bench::relative() const noexcept {
+    return mConfig.mIsRelative;
 }
 
-Config& Config::performanceCounters(bool showPerformanceCounters) noexcept {
-    mShowPerformanceCounters = showPerformanceCounters;
+Bench& Bench::performanceCounters(bool showPerformanceCounters) noexcept {
+    mConfig.mShowPerformanceCounters = showPerformanceCounters;
     return *this;
 }
-bool Config::performanceCounters() const noexcept {
-    return mShowPerformanceCounters;
+bool Bench::performanceCounters() const noexcept {
+    return mConfig.mShowPerformanceCounters;
 }
 
 // Operation unit. Defaults to "op", could be e.g. "byte" for string processing.
 // If u differs from currently set unit, the stored results will be cleared.
 // Use singular (byte, not bytes).
-Config& Config::unit(std::string u) {
-    if (u != mUnit) {
+Bench& Bench::unit(std::string u) {
+    if (u != mConfig.mUnit) {
         mResults.clear();
     }
-    mUnit = std::move(u);
+    mConfig.mUnit = std::move(u);
     return *this;
 }
-std::string const& Config::unit() const noexcept {
-    return mUnit;
+std::string const& Bench::unit() const noexcept {
+    return mConfig.mUnit;
 }
 
 // If benchmarkTitle differs from currently set title, the stored results will be cleared.
-Config& Config::title(std::string benchmarkTitle) {
-    if (benchmarkTitle != mBenchmarkTitle) {
+Bench& Bench::title(std::string benchmarkTitle) {
+    if (benchmarkTitle != mConfig.mBenchmarkTitle) {
         mResults.clear();
     }
-    mBenchmarkTitle = std::move(benchmarkTitle);
+    mConfig.mBenchmarkTitle = std::move(benchmarkTitle);
     return *this;
 }
-std::string const& Config::title() const noexcept {
-    return mBenchmarkTitle;
+std::string const& Bench::title() const noexcept {
+    return mConfig.mBenchmarkTitle;
 }
 
-Config& Config::name(std::string benchmarkName) {
-    mBenchmarkName = std::move(benchmarkName);
+Bench& Bench::name(std::string benchmarkName) {
+    mConfig.mBenchmarkName = std::move(benchmarkName);
     return *this;
 }
-std::string const& Config::name() const noexcept {
-    return mBenchmarkName;
+std::string const& Bench::name() const noexcept {
+    return mConfig.mBenchmarkName;
 }
 
 // Number of epochs to evaluate. The reported result will be the median of evaluation of each epoch.
-Config& Config::epochs(size_t numEpochs) noexcept {
-    mNumEpochs = numEpochs;
+Bench& Bench::epochs(size_t numEpochs) noexcept {
+    mConfig.mNumEpochs = numEpochs;
     return *this;
 }
-size_t Config::epochs() const noexcept {
-    return mNumEpochs;
+size_t Bench::epochs() const noexcept {
+    return mConfig.mNumEpochs;
 }
 
 // Desired evaluation time is a multiple of clock resolution. Default is to be 1000 times above this measurement precision.
-Config& Config::clockResolutionMultiple(size_t multiple) noexcept {
-    mClockResolutionMultiple = multiple;
+Bench& Bench::clockResolutionMultiple(size_t multiple) noexcept {
+    mConfig.mClockResolutionMultiple = multiple;
     return *this;
 }
-size_t Config::clockResolutionMultiple() const noexcept {
-    return mClockResolutionMultiple;
+size_t Bench::clockResolutionMultiple() const noexcept {
+    return mConfig.mClockResolutionMultiple;
 }
 
 // Sets the maximum time each epoch should take. Default is 100ms.
-Config& Config::maxEpochTime(std::chrono::nanoseconds t) noexcept {
-    mMaxEpochTime = t;
+Bench& Bench::maxEpochTime(std::chrono::nanoseconds t) noexcept {
+    mConfig.mMaxEpochTime = t;
     return *this;
 }
-std::chrono::nanoseconds Config::maxEpochTime() const noexcept {
-    return mMaxEpochTime;
+std::chrono::nanoseconds Bench::maxEpochTime() const noexcept {
+    return mConfig.mMaxEpochTime;
 }
 
 // Sets the maximum time each epoch should take. Default is 100ms.
-Config& Config::minEpochTime(std::chrono::nanoseconds t) noexcept {
-    mMinEpochTime = t;
+Bench& Bench::minEpochTime(std::chrono::nanoseconds t) noexcept {
+    mConfig.mMinEpochTime = t;
     return *this;
 }
-std::chrono::nanoseconds Config::minEpochTime() const noexcept {
-    return mMinEpochTime;
+std::chrono::nanoseconds Bench::minEpochTime() const noexcept {
+    return mConfig.mMinEpochTime;
 }
 
-Config& Config::minEpochIterations(uint64_t numIters) noexcept {
-    mMinEpochIterations = (numIters == 0) ? 1 : numIters;
+Bench& Bench::minEpochIterations(uint64_t numIters) noexcept {
+    mConfig.mMinEpochIterations = (numIters == 0) ? 1 : numIters;
     return *this;
 }
-uint64_t Config::minEpochIterations() const noexcept {
-    return mMinEpochIterations;
+uint64_t Bench::minEpochIterations() const noexcept {
+    return mConfig.mMinEpochIterations;
 }
 
-Config& Config::warmup(uint64_t numWarmupIters) noexcept {
-    mWarmup = numWarmupIters;
+Bench& Bench::warmup(uint64_t numWarmupIters) noexcept {
+    mConfig.mWarmup = numWarmupIters;
     return *this;
 }
-uint64_t Config::warmup() const noexcept {
-    return mWarmup;
+uint64_t Bench::warmup() const noexcept {
+    return mConfig.mWarmup;
 }
 
-Config& Config::output(std::ostream* outstream) noexcept {
-    mOut = outstream;
+Bench& Bench::config(Config const& benchmarkConfig) {
+    mConfig = benchmarkConfig;
+    return *this;
+}
+Config const& Bench::config() const noexcept {
+    return mConfig;
+}
+
+Bench& Bench::output(std::ostream* outstream) noexcept {
+    mConfig.mOut = outstream;
     return *this;
 }
 
-ANKERL_NANOBENCH(NODISCARD) std::ostream* Config::output() const noexcept {
-    return mOut;
+ANKERL_NANOBENCH(NODISCARD) std::ostream* Bench::output() const noexcept {
+    return mConfig.mOut;
 }
 
-std::vector<Result> const& Config::results() const noexcept {
+std::vector<Result> const& Bench::results() const noexcept {
     return mResults;
 }
 
-Config& Config::render(char const* templateContent, std::ostream& os) {
+Bench& Bench::render(char const* templateContent, std::ostream& os) {
     detail::fmt::mustache::generate(templateContent, *this, os);
     return *this;
 }
 
-std::vector<BigO> Config::complexityBigO() const {
+std::vector<BigO> Bench::complexityBigO() const {
     std::vector<BigO> bigOs;
     auto rangeMeasure = BigO::collectRangeMeasure(mResults);
     bigOs.emplace_back("O(1)", rangeMeasure, [](double) { return 1.0; });

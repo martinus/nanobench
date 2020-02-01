@@ -39,7 +39,7 @@ This code from [full_example.cpp](https://github.com/martinus/nanobench/tree/mas
 int main() {
     int y = 0;
     std::atomic<int> x(0);
-    ankerl::nanobench::Config().run("compare_exchange_strong", [&] { x.compare_exchange_strong(y, 0); });
+    ankerl::nanobench::Bench().run("compare_exchange_strong", [&] { x.compare_exchange_strong(y, 0); });
 }
 ```
 
@@ -73,7 +73,7 @@ Let's benchmarks how fast we can do `x += x` for `uint64_t`:
 ```cpp
 TEST_CASE("comparison_fast_v1") {
     uint64_t x = 1;
-    ankerl::nanobench::Config().run("x += x", [&] { x += x; });
+    ankerl::nanobench::Bench().run("x += x", [&] { x += x; });
 }
 ```
 
@@ -88,7 +88,7 @@ The compiler could optimize `x += x` away because we never used the output. Let'
 ```cpp
 TEST_CASE("comparison_fast_v2") {
     uint64_t x = 1;
-    ankerl::nanobench::Config().run("x += x", [&] { x += x; }).doNotOptimizeAway(x);
+    ankerl::nanobench::Bench().run("x += x", [&] { x += x; }).doNotOptimizeAway(x);
 }
 ```
 
@@ -107,7 +107,7 @@ Let's benchmark if sleeping for 10ms really takes 10ms.
 
 ```cpp
 TEST_CASE("comparison_slow") {
-    ankerl::nanobench::Config().run("sleep 10ms", [&] {
+    ankerl::nanobench::Bench().run("sleep 10ms", [&] {
         std::this_thread::sleep_for(std::chrono::milliseconds(10));
     });
 }
@@ -129,7 +129,7 @@ Lets create an extreme artifical test that's hard to benchmark, because runtime 
 TEST_CASE("comparison_fluctuating_v1") {
     std::random_device dev;
     std::mt19937_64 rng(dev());
-    ankerl::nanobench::Config().run("random fluctuations", [&] {
+    ankerl::nanobench::Bench().run("random fluctuations", [&] {
         // each run, perform a random number of rng calls
         auto iterations = rng() & UINT64_C(0xff);
         for (uint64_t i = 0; i < iterations; ++i) {
@@ -153,7 +153,7 @@ Let's use the suggestion and set the minimum number of iterations to 500, and tr
 TEST_CASE("comparison_fluctuating_v2") {
     std::random_device dev;
     std::mt19937_64 rng(dev());
-    ankerl::nanobench::Config().minEpochIterations(500).run("random fluctuations", [&] {
+    ankerl::nanobench::Bench().minEpochIterations(500).run("random fluctuations", [&] {
         // each run, perform a random number of rng calls
         auto iterations = rng() & UINT64_C(0xff);
         for (uint64_t i = 0; i < iterations; ++i) {
@@ -185,31 +185,31 @@ Here several RNGs are compared to a baseline calculated from `std::default_rando
 
 // Benchmarks how fast we can get 64bit random values from Rng
 template <typename Rng>
-ankerl::nanobench::Result bench(ankerl::nanobench::Config const& cfg, std::string name) {
+ankerl::nanobench::Result bench(ankerl::nanobench::Bench const& bench, std::string name) {
     Rng rng;
     uint64_t x = 0;
-    return cfg.run(name, [&] { x += std::uniform_int_distribution<uint64_t>{}(rng); }).doNotOptimizeAway(x);
+    return bench.run(name, [&] { x += std::uniform_int_distribution<uint64_t>{}(rng); }).doNotOptimizeAway(x);
 }
 
 TEST_CASE("example_random_number_generators") {
     // perform a few warmup calls, and since the runtime is not always stable for each
     // generator, increase the number of epochs to get more accurate numbers.
-    ankerl::nanobench::Config cfg;
-    cfg.title("Random Number Generators").unit("uint64_t").warmup(100);
+    ankerl::nanobench::Bench bench;
+    bench.title("Random Number Generators").unit("uint64_t").warmup(100);
 
     // Get the baseline against which the other random engines are compared
-    auto baseline = bench<std::default_random_engine>(cfg, "std::default_random_engine");
-    cfg.relative(baseline);
+    auto baseline = bench<std::default_random_engine>(bench, "std::default_random_engine");
+    bench.relative(baseline);
 
     // benchmark all remaining random engines
-    bench<std::mt19937>(cfg, "std::mt19937");
-    bench<std::mt19937_64>(cfg, "std::mt19937_64");
-    bench<std::ranlux24_base>(cfg, "std::ranlux24_base");
-    bench<std::ranlux48_base>(cfg, "std::ranlux48_base");
-    bench<std::ranlux24>(cfg, "std::ranlux24_base");
-    bench<std::ranlux48>(cfg, "std::ranlux48");
-    bench<std::knuth_b>(cfg, "std::knuth_b");
-    bench<ankerl::nanobench::Rng>(cfg, "ankerl::nanobench::Rng");
+    bench<std::mt19937>(bench, "std::mt19937");
+    bench<std::mt19937_64>(bench, "std::mt19937_64");
+    bench<std::ranlux24_base>(bench, "std::ranlux24_base");
+    bench<std::ranlux48_base>(bench, "std::ranlux48_base");
+    bench<std::ranlux24>(bench, "std::ranlux24_base");
+    bench<std::ranlux48>(bench, "std::ranlux48");
+    bench<std::knuth_b>(bench, "std::knuth_b");
+    bench<ankerl::nanobench::Rng>(bench, "ankerl::nanobench::Rng");
 }
 ```
 

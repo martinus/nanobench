@@ -15,11 +15,11 @@
 TEST_CASE("example_atomic") {
     int y = 0;
     std::atomic<int> x(0);
-    ankerl::nanobench::Config cfg;
+    ankerl::nanobench::Bench bench;
 
     // don't write anything
-    cfg.output(nullptr);
-    
-    cfg.run("compare_exchange_strong", [&] { x.compare_exchange_strong(y, 0); });
-    std::cout << "result: " << cfg.results().front().median().count() << "s/" << cfg.unit() << std::endl;
+    bench.output(nullptr);
+
+    bench.run("compare_exchange_strong", [&] { x.compare_exchange_strong(y, 0); });
+    std::cout << "result: " << bench.results().front().median().count() << "s/" << bench.unit() << std::endl;
 }
