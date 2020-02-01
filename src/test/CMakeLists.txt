@@ -11,6 +11,7 @@ target_sources_local(nb PRIVATE
     example_containers.cpp
     example_csv.cpp
     example_hide_output.cpp
+    example_preconfigured_name.cpp
     example_random_number_generators.cpp
     example_random_uniform01.cpp
     framework_comparison.cpp

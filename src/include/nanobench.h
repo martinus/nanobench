@@ -32,8 +32,8 @@
 
 // see https://semver.org/
 #define ANKERL_NANOBENCH_VERSION_MAJOR 3 // incompatible API changes
-#define ANKERL_NANOBENCH_VERSION_MINOR 2 // backwards-compatible changes
-#define ANKERL_NANOBENCH_VERSION_PATCH 1 // backwards-compatible bug fixes
+#define ANKERL_NANOBENCH_VERSION_MINOR 3 // backwards-compatible changes
+#define ANKERL_NANOBENCH_VERSION_PATCH 0 // backwards-compatible bug fixes
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 // public facing api - as minimal as possible
@@ -311,6 +311,10 @@ public:
     Config& title(std::string benchmarkTitle);
     ANKERL_NANOBENCH(NODISCARD) std::string const& title() const noexcept;
 
+    // Name of the benchmark, will be shown in the table row.
+    Config& name(std::string benchmarkName);
+    ANKERL_NANOBENCH(NODISCARD) std::string const& name() const noexcept;
+
     // Set the output stream where the resulting markdown table will be printed to. The default is `&std::cout`. You can disable all
     // output by setting `nullptr`.
     Config& output(std::ostream* outstream) noexcept;
@@ -360,6 +364,12 @@ public:
     ANKERL_NANOBENCH(NOINLINE)
     Config& run(std::string const& name, Op op);
 
+    // Repeatedly calls op() based on the configuration, and performs measurements. Uses previously set name.
+    // Make sure this is noinline to prevent the compiler to optimize beyond different benchmarks. This can have quite a big effect
+    template <typename Op>
+    ANKERL_NANOBENCH(NOINLINE)
+    Config& run(Op op);
+
     // Convenience: makes sure none of the given arguments are optimized away by the compiler.
     template <typename... Args>
     Config& doNotOptimizeAway(Args&&... args);
@@ -380,7 +390,9 @@ public:
     BigO complexityBigO(std::string const& name, Op op) const;
 
 private:
+    // actual benchmark config
     std::string mBenchmarkTitle = "benchmark";
+    std::string mBenchmarkName = "noname";
     std::string mUnit = "op";
     double mBatch = 1.0;
     double mComplexityN = -1.0;
@@ -390,7 +402,11 @@ private:
     std::chrono::nanoseconds mMinEpochTime{};
     uint64_t mMinEpochIterations{1};
     uint64_t mWarmup = 0;
+
+    // results
     std::vector<Result> mResults{};
+
+    // output configuration
     std::ostream* mOut = nullptr;
     bool mIsRelative = false;
     bool mShowPerformanceCounters = true;
@@ -565,6 +581,11 @@ double Rng::uniform01() noexcept {
 
 constexpr uint64_t Rng::rotl(uint64_t x, unsigned k) noexcept {
     return (x << k) | (x >> (64U - k));
+}
+
+template <typename Op>
+Config& Config::run(Op op) {
+    return run(name(), std::move(op));
 }
 
 // Performs all evaluations.
@@ -2241,6 +2262,14 @@ Config& Config::title(std::string benchmarkTitle) {
 }
 std::string const& Config::title() const noexcept {
     return mBenchmarkTitle;
+}
+
+Config& Config::name(std::string benchmarkName) {
+    mBenchmarkName = std::move(benchmarkName);
+    return *this;
+}
+std::string const& Config::name() const noexcept {
+    return mBenchmarkName;
 }
 
 // Number of epochs to evaluate. The reported result will be the median of evaluation of each epoch.
