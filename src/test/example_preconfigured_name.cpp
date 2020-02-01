@@ -13,8 +13,18 @@
 // example from https://github.com/cameron314/microbench
 TEST_CASE("preconfigured_name") {
     ankerl::nanobench::Config cfg;
-    cfg.name("start & stop 1").run([&] { std::vector<int> v = {{11, 5, 5, 5, 5, 5, 5, 5, 5, 6, 7}}; });
-    
+    cfg.name("start & stop 1").run([] { std::vector<int> v = {{11, 5, 5, 5, 5, 5, 5, 5, 5, 6, 7}}; });
+
     cfg.name("run2");
-    cfg.run([&] { std::vector<int> v = {{11, 5, 5, 5, 5, 5, 5, 5, 5, 6, 7}}; });
+    cfg.run([] { std::vector<int> v = {{11, 5, 5, 5, 5, 5, 5, 5, 5, 6, 7}}; });
+}
+
+TEST_CASE("keep_only_results") {
+
+    std::vector<ankerl::nanobench::Result> results;
+    ankerl::nanobench::Config cfg;
+    ankerl::nanobench::Rng rng(123);
+
+    cfg.run("a", [&] { rng(); });
+    results.insert(results.end(), cfg.results().begin(), cfg.results().end());
 }

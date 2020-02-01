@@ -31,7 +31,7 @@
 #define ANKERL_NANOBENCH_H_INCLUDED
 
 // see https://semver.org/
-#define ANKERL_NANOBENCH_VERSION_MAJOR 3 // incompatible API changes
+#define ANKERL_NANOBENCH_VERSION_MAJOR 4 // incompatible API changes
 #define ANKERL_NANOBENCH_VERSION_MINOR 3 // backwards-compatible changes
 #define ANKERL_NANOBENCH_VERSION_PATCH 0 // backwards-compatible bug fixes
 
@@ -362,7 +362,7 @@ public:
     // Make sure this is noinline to prevent the compiler to optimize beyond different benchmarks. This can have quite a big effect
     template <typename Op>
     ANKERL_NANOBENCH(NOINLINE)
-    Config& run(std::string const& name, Op op);
+    Config& run(std::string const& benchmarkName, Op op);
 
     // Repeatedly calls op() based on the configuration, and performs measurements. Uses previously set name.
     // Make sure this is noinline to prevent the compiler to optimize beyond different benchmarks. This can have quite a big effect
@@ -591,9 +591,9 @@ Config& Config::run(Op op) {
 // Performs all evaluations.
 template <typename Op>
 ANKERL_NANOBENCH_NO_SANITIZE("integer")
-Config& Config::run(std::string const& name, Op op) {
+Config& Config::run(std::string const& benchmarkName, Op op) {
     // It is important that this method is kept short so the compiler can do better optimizations/ inlining of op()
-    detail::IterationLogic iterationLogic(*this, name);
+    detail::IterationLogic iterationLogic(*this, benchmarkName);
     auto& pc = detail::performanceCounters();
 
     while (auto n = iterationLogic.numIters()) {
@@ -612,8 +612,8 @@ Config& Config::run(std::string const& name, Op op) {
 }
 
 template <typename Op>
-BigO Config::complexityBigO(std::string const& name, Op op) const {
-    return BigO(name, BigO::collectRangeMeasure(mResults), op);
+BigO Config::complexityBigO(std::string const& benchmarkName, Op op) const {
+    return BigO(benchmarkName, BigO::collectRangeMeasure(mResults), op);
 }
 
 // Set the batch size, e.g. number of processed bytes, or some other metric for the size of the processed data in each iteration.
