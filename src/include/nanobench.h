@@ -44,6 +44,7 @@
 #include <initializer_list> // for doNotOptimizeAway
 #include <iosfwd>           // for std::ostream* custom output target in Config
 #include <string>           // all names
+#include <unordered_map>    // used by Result
 #include <vector>           // holds all results
 
 #define ANKERL_NANOBENCH(x) ANKERL_NANOBENCH_PRIVATE_##x()
@@ -110,7 +111,6 @@ namespace nanobench {
 using Clock = std::chrono::high_resolution_clock;
 class Bench;
 struct Config;
-class Measurement;
 class Result;
 class Rng;
 class BigO;
@@ -163,31 +163,6 @@ struct PerfCountSet {
 
 } // namespace detail
 
-// Holds measurement results of one epoch of a benchmark.
-class Measurement {
-public:
-    Measurement(Clock::duration totalElapsed, uint64_t iters, double batch, detail::PerformanceCounters const& pc) noexcept;
-
-    // sortable fastest to slowest
-    ANKERL_NANOBENCH(NODISCARD) bool operator<(Measurement const& other) const noexcept;
-    ANKERL_NANOBENCH(NODISCARD) Clock::duration const& elapsed() const noexcept;
-    ANKERL_NANOBENCH(NODISCARD) uint64_t numIters() const noexcept;
-    ANKERL_NANOBENCH(NODISCARD) std::chrono::duration<double> secPerUnit() const noexcept;
-
-    ANKERL_NANOBENCH(NODISCARD) uint64_t pageFaults() const noexcept;
-    ANKERL_NANOBENCH(NODISCARD) uint64_t cpuCycles() const noexcept;
-    ANKERL_NANOBENCH(NODISCARD) uint64_t contextSwitches() const noexcept;
-    ANKERL_NANOBENCH(NODISCARD) uint64_t instructions() const noexcept;
-    ANKERL_NANOBENCH(NODISCARD) uint64_t branchInstructions() const noexcept;
-    ANKERL_NANOBENCH(NODISCARD) uint64_t branchMisses() const noexcept;
-
-private:
-    Clock::duration mTotalElapsed;
-    uint64_t mNumIters;
-    std::chrono::duration<double> mSecPerUnit;
-    detail::PerfCountSet<uint64_t> mVal;
-};
-
 ANKERL_NANOBENCH(IGNORE_PADDED_PUSH)
 struct Config {
     // actual benchmark config
@@ -212,47 +187,29 @@ ANKERL_NANOBENCH(IGNORE_PADDED_POP)
 ANKERL_NANOBENCH(IGNORE_PADDED_PUSH)
 class Result {
 public:
-    Result(Config const& benchmarkConfig, std::vector<Measurement> measurements, double batch, double complN) noexcept;
-    Result() noexcept;
+    Result(Config const& benchmarkConfig);
+
+    // adds new measurement results
+    // all values are scaled by iters (except iters...)
+    void add(Clock::duration totalElapsed, uint64_t iters, detail::PerformanceCounters const& pc);
 
     ANKERL_NANOBENCH(NODISCARD) Config const& config() const noexcept;
-    ANKERL_NANOBENCH(NODISCARD) std::vector<Measurement> const& sortedMeasurements() const noexcept;
-    ANKERL_NANOBENCH(NODISCARD) std::chrono::duration<double> median() const noexcept;
-    ANKERL_NANOBENCH(NODISCARD) double medianAbsolutePercentError() const noexcept;
-    ANKERL_NANOBENCH(NODISCARD) std::chrono::duration<double> minimum() const noexcept;
-    ANKERL_NANOBENCH(NODISCARD) std::chrono::duration<double> maximum() const noexcept;
 
-    ANKERL_NANOBENCH(NODISCARD) double medianCpuCyclesPerUnit() const noexcept;
-    ANKERL_NANOBENCH(NODISCARD) bool hasMedianCpuCyclesPerUnit() const noexcept;
+    ANKERL_NANOBENCH(NODISCARD) double median(std::string const& query) const;
+    ANKERL_NANOBENCH(NODISCARD) double medianAbsolutePercentError(std::string const& query) const;
+    ANKERL_NANOBENCH(NODISCARD) double sum(std::string const& query) const noexcept;
+    ANKERL_NANOBENCH(NODISCARD) double sumProduct(std::string const& query1, std::string const& query2) const noexcept;
+    ANKERL_NANOBENCH(NODISCARD) double minimum(std::string const& query) const noexcept;
+    ANKERL_NANOBENCH(NODISCARD) double maximum(std::string const& query) const noexcept;
 
-    ANKERL_NANOBENCH(NODISCARD) double medianInstructionsPerUnit() const noexcept;
-    ANKERL_NANOBENCH(NODISCARD) bool hasMedianInstructionsPerUnit() const noexcept;
-
-    ANKERL_NANOBENCH(NODISCARD) double medianBranchesPerUnit() const noexcept;
-    ANKERL_NANOBENCH(NODISCARD) bool hasMedianBranchesPerUnit() const noexcept;
-
-    ANKERL_NANOBENCH(NODISCARD) double medianBranchMissesPerUnit() const noexcept;
-    ANKERL_NANOBENCH(NODISCARD) bool hasMedianBranchMissesPerUnit() const noexcept;
-
-    ANKERL_NANOBENCH(NODISCARD) double complexityN() const noexcept;
-
-    ANKERL_NANOBENCH(NODISCARD) Clock::duration total() const noexcept;
-
+    ANKERL_NANOBENCH(NODISCARD) bool has(std::string const& query) const noexcept;
+    ANKERL_NANOBENCH(NODISCARD) double get(size_t idx, std::string const& query) const;
     ANKERL_NANOBENCH(NODISCARD) bool empty() const noexcept;
+    ANKERL_NANOBENCH(NODISCARD) size_t size() const noexcept;
 
 private:
     Config mConfig{};
-    std::vector<Measurement> mSortedMeasurements{};
-    double mMedianAbsolutePercentError{};
-
-    double mMedianCpuCyclesPerUnit{};
-    double mMedianInstructionsPerUnit{};
-    double mMedianBranchesPerUnit{};
-    double mMedianBranchMissesPerUnit{};
-
-    double mComplexityN{};
-
-    detail::PerfCountSet<bool> mHas{};
+    std::unordered_map<std::string, std::vector<double>> mNameToMeasurements{};
 };
 ANKERL_NANOBENCH(IGNORE_PADDED_POP)
 
@@ -460,7 +417,7 @@ typename std::enable_if<doNotOptimizeNeedsIndirect<T>()>::type doNotOptimizeAway
 ANKERL_NANOBENCH(IGNORE_PADDED_PUSH)
 class IterationLogic {
 public:
-    IterationLogic(Bench const& config, std::string name) noexcept;
+    IterationLogic(Bench const& config) noexcept;
 
     ANKERL_NANOBENCH(NODISCARD) uint64_t numIters() const noexcept;
     void add(std::chrono::nanoseconds elapsed, PerformanceCounters const& pc) noexcept;
@@ -469,7 +426,7 @@ public:
 private:
     enum class State { warmup, upscaling_runtime, measuring, endless };
 
-    ANKERL_NANOBENCH(NODISCARD) Result showResult(std::string const& errorMessage) const;
+    ANKERL_NANOBENCH(NODISCARD) void showResult(std::string const& errorMessage) const;
     ANKERL_NANOBENCH(NODISCARD) bool isCloseEnoughForMeasurements(std::chrono::nanoseconds elapsed) const noexcept;
     ANKERL_NANOBENCH(NODISCARD) uint64_t calcBestNumIters(std::chrono::nanoseconds elapsed, uint64_t iters) noexcept;
     void upscale(std::chrono::nanoseconds elapsed);
@@ -477,9 +434,7 @@ private:
     uint64_t mNumIters = 1;
     Bench const& mBench;
     std::chrono::nanoseconds mTargetRuntimePerEpoch{};
-    std::string mName;
-    Result mResult{};
-    std::vector<Measurement> mMeasurements{};
+    Result mResult;
     Rng mRng{};
     std::chrono::nanoseconds mTotalElapsed{};
     uint64_t mTotalNumIters = 0;
@@ -594,15 +549,8 @@ constexpr uint64_t Rng::rotl(uint64_t x, unsigned k) noexcept {
 
 template <typename Op>
 Bench& Bench::run(Op op) {
-    return run(name(), std::move(op));
-}
-
-// Performs all evaluations.
-template <typename Op>
-ANKERL_NANOBENCH_NO_SANITIZE("integer")
-Bench& Bench::run(std::string const& benchmarkName, Op op) {
     // It is important that this method is kept short so the compiler can do better optimizations/ inlining of op()
-    detail::IterationLogic iterationLogic(*this, benchmarkName);
+    detail::IterationLogic iterationLogic(*this);
     auto& pc = detail::performanceCounters();
 
     while (auto n = iterationLogic.numIters()) {
@@ -618,6 +566,14 @@ Bench& Bench::run(std::string const& benchmarkName, Op op) {
     }
     mResults.emplace_back(std::move(iterationLogic.result()));
     return *this;
+}
+
+// Performs all evaluations.
+template <typename Op>
+ANKERL_NANOBENCH_NO_SANITIZE("integer")
+Bench& Bench::run(std::string const& benchmarkName, Op op) {
+    name(benchmarkName);
+    return run(std::move(op));
 }
 
 template <typename Op>
@@ -680,11 +636,12 @@ void doNotOptimizeAway(T const& val) {
 #    include <fstream>   // ifstream to parse proc files
 #    include <iomanip>   // setw, setprecision
 #    include <iostream>  // cout
+#    include <numeric>   // accumulate
 #    include <random>    // random_device
+#    include <regex>     // for template matching
 #    include <sstream>   // to_s in Number
 #    include <stdexcept> // throw for rendering templates
 #    include <tuple>     // std::tie
-#    include <vector>    // manage results
 #    if defined(__linux__)
 #        include <unistd.h> //sysconf
 #    endif
@@ -726,10 +683,11 @@ class MarkDownCode;
 namespace ankerl {
 namespace nanobench {
 namespace templates {
+
 char const* csv() noexcept {
-    return R"DELIM("{{title}}"; "relative %"; "s/{{unit}}"; "min/{{unit}}"; "max/{{unit}}"; "error %"; "measurements"; "instructions/{{unit}}"; "branch/{{unit}}"; "branch misses/{{unit}}"
-{{#benchmarks}}"{{name}}"; {{relative}}; {{median_sec_per_unit}}; {{min}}; {{max}}; {{md_ape}}; {{num_measurements}}; {{median_ins_per_unit}}; {{median_branches_per_unit}}; {{median_branchmisses_per_unit}}
-{{/benchmarks}}
+    return R"DELIM("title"; "name"; "unit"; "batch"; "elapsed"; "error %"; "instructions"; "branches"; "branch misses"; "total"
+{{#result}}"{{title}}"; "{{name}}"; "{{unit}}"; {{batch}}; {{median(elapsed)}}; {{medianAbsolutePercentError(elapsed)}}; {{median(instructions)}}; {{median(branchinstructions)}}; {{median(branchmisses)}}; {{sumProduct(iterations, elapsed)}}
+{{/result}}
 )DELIM";
 }
 //
@@ -744,16 +702,16 @@ char const* htmlBoxplot() noexcept {
     <div id="myDiv" style="width:1024px; height:768px"></div>
     <script>
         var data = [
-            {{#benchmarks}}{
+            {{#result}}{
                 name: '{{name}}',
-                y: [{{#results}}{{elapsed_ns}}e-9/{{iters}}{{^-last}}, {{/last}}{{/results}}],
+                y: [{{#measurement}}{{elapsed}}{{^-last}}, {{/last}}{{/measurement}}],
             },
-            {{/benchmarks}}
+            {{/result}}
         ];
-        var title = '{{title}}';
+        var title = 'benchmark';
 
         data = data.map(a => Object.assign(a, { boxpoints: 'all', pointpos: 0, type: 'box' }));
-        var layout = { title: { text: title }, showlegend: false, yaxis: { title: 'time per {{unit}}', rangemode: 'tozero', autorange: true } }; Plotly.newPlot('myDiv', data, layout, {responsive: true});
+        var layout = { title: { text: title }, showlegend: false, yaxis: { title: 'time per unit', rangemode: 'tozero', autorange: true } }; Plotly.newPlot('myDiv', data, layout, {responsive: true});
     </script>
 </body>
 
@@ -762,25 +720,45 @@ char const* htmlBoxplot() noexcept {
 
 char const* json() noexcept {
     return R"DELIM({
- "title": "{{title}}",
- "unit": "{{unit}}",
- "batch": {{batch}},
- "benchmarks": [
-{{#benchmarks}}  {
-   "name": "{{name}}",
-   "median_sec_per_unit": {{median_sec_per_unit}},
-   "md_ape": {{md_ape}},
-   "min": {{min}},
-   "max": {{max}},
-   "relative": {{relative}},
-   "num_measurements": {{num_measurements}},
-   "results": [
-{{#results}}    { "sec_per_unit": {{sec_per_unit}}, "iters": {{iters}}, "elapsed_ns": {{elapsed_ns}}, "pagefaults": {{pagefaults}}, "cpucycles": {{cpucycles}}, "contextswitches": {{contextswitches}}, "instructions": {{instructions}}, "branchinstructions": {{branchinstructions}}, "branchmisses": {{branchmisses}}}{{^-last}}, {{/-last}}
-{{/results}}   ]
-  }{{^-last}},{{/-last}}
-{{/benchmarks}} ]
-}
-)DELIM";
+    "results": [
+{{#result}}        {
+            "title": "{{title}}",
+            "name": "{{name}}",
+            "unit": "{{unit}}",
+            "batch": {{batch}},
+            "complexityN": {{complexityN}},
+            "epochs": {{epochs}},
+            "clockResolutionMultiple": {{clockResolutionMultiple}},
+            "maxEpochTime": {{maxEpochTime}},
+            "minEpochTime": {{minEpochTime}},
+            "minEpochIterations": {{minEpochIterations}},
+            "warmup": {{warmup}},
+            "relative": {{relative}},
+            "median(elapsed)": {{median(elapsed)}},
+            "medianAbsolutePercentError(elapsed)": {{medianAbsolutePercentError(elapsed)}},
+            "median(instructions)": {{median(instructions)}},
+            "medianAbsolutePercentError(instructions)": {{medianAbsolutePercentError(instructions)}},
+            "median(cpucycles)": {{median(cpucycles)}},
+            "median(contextswitches)": {{median(contextswitches)}},
+            "median(pagefaults)": {{median(pagefaults)}},
+            "median(branchinstructions)": {{median(branchinstructions)}},
+            "median(branchmisses)": {{median(branchmisses)}},
+            "totalTime": {{sumProduct(iterations, elapsed)}},
+            "measurements": [
+{{#measurement}}                {
+                    "iterations": {{iterations}},
+                    "elapsed": {{elapsed}},
+                    "pagefaults": {{pagefaults}},
+                    "cpucycles": {{cpucycles}},
+                    "contextswitches": {{contextswitches}},
+                    "instructions": {{instructions}},
+                    "branchinstructions": {{branchinstructions}},
+                    "branchmisses": {{branchmisses}}
+                }{{^-last}},{{/-last}}
+{{/measurement}}            ]
+        }{{^-last}},{{/-last}}
+{{/result}}    ]
+})DELIM";
 }
 
 } // namespace templates
@@ -1081,9 +1059,9 @@ Clock::duration clockResolution() noexcept {
     return sResolution;
 }
 
-IterationLogic::IterationLogic(Bench const& bench, std::string name) noexcept
+IterationLogic::IterationLogic(Bench const& bench) noexcept
     : mBench(bench)
-    , mName(std::move(name)) {
+    , mResult(bench.config()) {
     printStabilityInformationOnce(mBench.output());
 
     // determine target runtime per epoch
@@ -1095,11 +1073,8 @@ IterationLogic::IterationLogic(Bench const& bench, std::string name) noexcept
         mTargetRuntimePerEpoch = mBench.minEpochTime();
     }
 
-    // prepare array for measurement results
-    mMeasurements.reserve(mBench.epochs());
-
-    if (isEndlessRunning(mName)) {
-        std::cerr << "NANOBENCH_ENDLESS set: running '" << mName << "' endlessly" << std::endl;
+    if (isEndlessRunning(mBench.name())) {
+        std::cerr << "NANOBENCH_ENDLESS set: running '" << mBench.name() << "' endlessly" << std::endl;
         mNumIters = (std::numeric_limits<uint64_t>::max)();
         mState = State::endless;
     } else if (0 != mBench.warmup()) {
@@ -1112,7 +1087,7 @@ IterationLogic::IterationLogic(Bench const& bench, std::string name) noexcept
 }
 
 uint64_t IterationLogic::numIters() const noexcept {
-    ANKERL_NANOBENCH_LOG(mName << ": mNumIters=" << mNumIters);
+    ANKERL_NANOBENCH_LOG(mBench.name() << ": mNumIters=" << mNumIters);
     return mNumIters;
 }
 
@@ -1120,13 +1095,22 @@ bool IterationLogic::isCloseEnoughForMeasurements(std::chrono::nanoseconds elaps
     return elapsed * 3 >= mTargetRuntimePerEpoch * 2;
 }
 
+// helpers to get double values
+template <typename T>
+inline double d(T t) noexcept {
+    return static_cast<double>(t);
+}
+inline double d(Clock::duration dur) noexcept {
+    return std::chrono::duration_cast<std::chrono::duration<double>>(dur).count();
+}
+
 // directly calculates new iters based on elapsed&iters, and adds a 10% noise. Makes sure we don't underflow.
 uint64_t IterationLogic::calcBestNumIters(std::chrono::nanoseconds elapsed, uint64_t iters) noexcept {
-    auto doubleElapsed = std::chrono::duration_cast<std::chrono::duration<double>>(elapsed);
-    auto doubleTargetRuntimePerEpoch = std::chrono::duration_cast<std::chrono::duration<double>>(mTargetRuntimePerEpoch);
-    auto doubleNewIters = doubleTargetRuntimePerEpoch / doubleElapsed * static_cast<double>(iters);
+    auto doubleElapsed = d(elapsed);
+    auto doubleTargetRuntimePerEpoch = d(mTargetRuntimePerEpoch);
+    auto doubleNewIters = doubleTargetRuntimePerEpoch / doubleElapsed * d(iters);
 
-    auto doubleMinEpochIters = static_cast<double>(mBench.minEpochIterations());
+    auto doubleMinEpochIters = d(mBench.minEpochIterations());
     if (doubleNewIters < doubleMinEpochIters) {
         doubleNewIters = doubleMinEpochIters;
     }
@@ -1142,7 +1126,7 @@ ANKERL_NANOBENCH_NO_SANITIZE("integer") void IterationLogic::upscale(std::chrono
         // we are far below the target runtime. Multiply iterations by 10 (with overflow check)
         if (mNumIters * 10 < mNumIters) {
             // overflow :-(
-            mResult = showResult("iterations overflow. Maybe your code got optimized away?");
+            showResult("iterations overflow. Maybe your code got optimized away?");
             mNumIters = 0;
             return;
         }
@@ -1177,7 +1161,7 @@ void IterationLogic::add(std::chrono::nanoseconds elapsed, PerformanceCounters c
             mState = State::measuring;
             mTotalElapsed += elapsed;
             mTotalNumIters += mNumIters;
-            mMeasurements.emplace_back(elapsed, mNumIters, mBench.batch(), pc);
+            mResult.add(elapsed, mNumIters, pc);
             mNumIters = calcBestNumIters(mTotalElapsed, mTotalNumIters);
         } else {
             upscale(elapsed);
@@ -1189,7 +1173,7 @@ void IterationLogic::add(std::chrono::nanoseconds elapsed, PerformanceCounters c
         // that fluctuation, or else we would bias the result
         mTotalElapsed += elapsed;
         mTotalNumIters += mNumIters;
-        mMeasurements.emplace_back(elapsed, mNumIters, mBench.batch(), pc);
+        mResult.add(elapsed, mNumIters, pc);
         mNumIters = calcBestNumIters(mTotalElapsed, mTotalNumIters);
         break;
 
@@ -1198,9 +1182,9 @@ void IterationLogic::add(std::chrono::nanoseconds elapsed, PerformanceCounters c
         break;
     }
 
-    if (static_cast<uint64_t>(mMeasurements.size()) == mBench.epochs()) {
+    if (static_cast<uint64_t>(mResult.size()) == mBench.epochs()) {
         // we got all the results that we need, finish it
-        mResult = showResult("");
+        showResult("");
         mNumIters = 0;
     }
 
@@ -1214,54 +1198,56 @@ Result& IterationLogic::result() {
     return mResult;
 }
 
-Result IterationLogic::showResult(std::string const& errorMessage) const {
+void IterationLogic::showResult(std::string const& errorMessage) const {
     ANKERL_NANOBENCH_LOG("mMeasurements.size()=" << mMeasurements.size());
-    Result r;
-    if (errorMessage.empty()) {
-        r = Result(mBench.config(), mMeasurements, mBench.batch(), mBench.complexityN());
-    }
 
     if (mBench.output() != nullptr) {
         // prepare column data ///////
         std::vector<fmt::MarkDownColumn> columns;
 
+        auto rMedian = mResult.median("elapsed");
+
         if (mBench.relative()) {
             double d = 100.0;
             if (!mBench.results().empty()) {
-                d = r.median() <= decltype(r.median())::zero() ? 0.0 : mBench.results().front().median() / r.median() * 100;
+                d = rMedian <= 0.0 ? 0.0 : mBench.results().front().median("elapsed") / rMedian * 100.0;
             }
             columns.emplace_back(11, 1, "relative", "%", d);
         }
 
-        columns.emplace_back(22, 2, "ns/" + mBench.unit(), "", 1e9 * r.median().count());
-        columns.emplace_back(22, 2, mBench.unit() + "/s", "", r.median().count() <= 0.0 ? 0.0 : 1.0 / r.median().count());
-        columns.emplace_back(10, 1, "err%", "%", r.medianAbsolutePercentError() * 100);
+        columns.emplace_back(22, 2, "ns/" + mBench.unit(), "", 1e9 * rMedian / mBench.batch());
+        columns.emplace_back(22, 2, mBench.unit() + "/s", "", rMedian <= 0.0 ? 0.0 : mBench.batch() / rMedian);
 
-        if (mBench.performanceCounters()) {
-            if (r.hasMedianInstructionsPerUnit()) {
-                columns.emplace_back(18, 2, "ins/" + mBench.unit(), "", r.medianInstructionsPerUnit());
-            }
-            if (r.hasMedianCpuCyclesPerUnit()) {
-                columns.emplace_back(18, 2, "cyc/" + mBench.unit(), "", r.medianCpuCyclesPerUnit());
-            }
-            if (r.hasMedianInstructionsPerUnit() && r.hasMedianCpuCyclesPerUnit()) {
-                columns.emplace_back(9, 3, "IPC", "",
-                                     r.medianCpuCyclesPerUnit() <= 0.0 ? 0.0
-                                                                       : r.medianInstructionsPerUnit() / r.medianCpuCyclesPerUnit());
-            }
-            if (r.hasMedianBranchesPerUnit()) {
-                columns.emplace_back(17, 2, "bra/" + mBench.unit(), "", r.medianBranchesPerUnit());
-                if (r.hasMedianBranchMissesPerUnit()) {
-                    double p = 0.0;
-                    if (r.medianBranchesPerUnit() >= 1e-9) {
-                        p = 100.0 * r.medianBranchMissesPerUnit() / r.medianBranchesPerUnit();
-                    }
-                    columns.emplace_back(10, 1, "miss%", "%", p);
+        double rErrorMedian = mResult.medianAbsolutePercentError("elapsed");
+        columns.emplace_back(10, 1, "err%", "%", rErrorMedian * 100.0);
+
+        double rInsMedian = -1.0;
+        if (mResult.has("instructions")) {
+            rInsMedian = mResult.median("instructions");
+            columns.emplace_back(18, 2, "ins/" + mBench.unit(), "", rInsMedian / mBench.batch());
+        }
+
+        double rCycMedian = -1.0;
+        if (mResult.has("cpucycles")) {
+            rCycMedian = mResult.median("cpucycles");
+            columns.emplace_back(18, 2, "cyc/" + mBench.unit(), "", rCycMedian / mBench.batch());
+        }
+        if (rInsMedian > 0.0 && rCycMedian > 0.0) {
+            columns.emplace_back(9, 3, "IPC", "", rCycMedian <= 0.0 ? 0.0 : rInsMedian / rCycMedian);
+        }
+        if (mResult.has("branches")) {
+            double rBraMedian = mResult.median("branches");
+            columns.emplace_back(17, 2, "bra/" + mBench.unit(), "", rBraMedian / mBench.batch());
+            if (mResult.has("branchmisses")) {
+                double p = 0.0;
+                if (rBraMedian >= 1e-9) {
+                    p = 100.0 * mResult.median("branchmisses") / rBraMedian;
                 }
+                columns.emplace_back(10, 1, "miss%", "%", p);
             }
         }
 
-        columns.emplace_back(12, 2, "total", "", std::chrono::duration_cast<std::chrono::duration<double>>(r.total()).count());
+        columns.emplace_back(12, 2, "total", "", mResult.sum("elapsed"));
 
         // write everything
         auto& os = *mBench.output();
@@ -1287,17 +1273,17 @@ Result IterationLogic::showResult(std::string const& errorMessage) const {
             for (auto const& col : columns) {
                 os << col.invalid();
             }
-            os << "| :boom: " << fmt::MarkDownCode(mName) << " (" << errorMessage << ')' << std::endl;
+            os << "| :boom: " << fmt::MarkDownCode(mBench.name()) << " (" << errorMessage << ')' << std::endl;
         } else {
             for (auto const& col : columns) {
                 os << col.value();
             }
             os << "| ";
-            auto showUnstable = r.medianAbsolutePercentError() >= 0.05;
+            auto showUnstable = rErrorMedian >= 0.05;
             if (showUnstable) {
                 os << ":wavy_dash: ";
             }
-            os << fmt::MarkDownCode(mName);
+            os << fmt::MarkDownCode(mBench.name());
             if (showUnstable) {
                 auto avgIters = static_cast<double>(mTotalNumIters) / static_cast<double>(mBench.epochs());
                 // NOLINTNEXTLINE(bugprone-incorrect-roundings)
@@ -1309,8 +1295,6 @@ Result IterationLogic::showResult(std::string const& errorMessage) const {
             os << std::endl;
         }
     }
-
-    return r;
 }
 
 #    if ANKERL_NANOBENCH(PERF_COUNTERS)
@@ -1863,11 +1847,86 @@ static bool generateFirstLast(Node const& n, size_t idx, size_t size, std::ostre
     return true;
 }
 
-static void generateMeasurement(std::vector<Node> const& nodes, std::vector<ankerl::nanobench::Measurement> const& measurements,
-                                size_t measurementIdx, std::ostream& out) {
-    auto const& measurement = measurements[measurementIdx];
+static std::ostream& generateResultTag(Node const& n, Result const& r, std::ostream& out) {
+    if (n == "title") {
+        return out << r.config().mBenchmarkTitle;
+    }
+    if (n == "name") {
+        return out << r.config().mBenchmarkName;
+    }
+    if (n == "unit") {
+        return out << r.config().mUnit;
+    }
+    if (n == "batch") {
+        return out << r.config().mBatch;
+    }
+    if (n == "complexityN") {
+        return out << r.config().mComplexityN;
+    }
+    if (n == "epochs") {
+        return out << r.config().mNumEpochs;
+    }
+    if (n == "clockResolutionMultiple") {
+        return out << r.config().mClockResolutionMultiple;
+    }
+    if (n == "maxEpochTime") {
+        return out << d(r.config().mMaxEpochTime);
+    }
+    if (n == "minEpochTime") {
+        return out << d(r.config().mMinEpochTime);
+    }
+    if (n == "minEpochIterations") {
+        return out << r.config().mMinEpochIterations;
+    }
+    if (n == "warmup") {
+        return out << r.config().mWarmup;
+    }
+    if (n == "relative") {
+        return out << r.config().mIsRelative;
+    }
+
+    // match e.g. "median(elapsed)"
+    static std::regex const regOpArg1("^([a-zA-Z]+)\\(([a-zA-Z]*)\\)$");
+    std::cmatch matchResult;
+    if (std::regex_match(n.begin, n.end, matchResult, regOpArg1)) {
+        auto op = matchResult[1];
+        auto query = matchResult[2];
+        if (op == "median") {
+            return out << r.median(query);
+        }
+        if (op == "medianAbsolutePercentError") {
+            return out << r.medianAbsolutePercentError(query);
+        }
+        if (op == "sum") {
+            return out << r.sum(query);
+        }
+        if (op == "minimum") {
+            return out << r.minimum(query);
+        }
+        if (op == "maximum") {
+            return out << r.maximum(query);
+        }
+    }
+
+    // match e.g. "sumProduct(elapsed, iterations)"
+    static std::regex const regOpArg2("^([a-zA-Z]+)\\(([a-zA-Z]*)\\s*,\\s+([a-zA-Z]*)\\)$");
+    if (std::regex_match(n.begin, n.end, matchResult, regOpArg2)) {
+        auto op = matchResult[1];
+        auto query1 = matchResult[2];
+        auto query2 = matchResult[3];
+
+        if (op == "sumProduct") {
+            return out << r.sumProduct(query1, query2);
+        }
+    }
+
+    // nothing matches :(
+    throw std::runtime_error("command '" + std::string(n.begin, n.end) + "' not understood");
+}
+
+static void generateResultMeasurement(std::vector<Node> const& nodes, size_t idx, Result const& r, std::ostream& out) {
     for (auto const& n : nodes) {
-        if (!generateFirstLast(n, measurementIdx, measurements.size(), out)) {
+        if (!generateFirstLast(n, idx, r.size(), out)) {
             switch (n.type) {
             case Node::Type::content:
                 out.write(n.begin, std::distance(n.begin, n.end));
@@ -1879,91 +1938,50 @@ static void generateMeasurement(std::vector<Node> const& nodes, std::vector<anke
             case Node::Type::section:
                 throw std::runtime_error("got a section inside measurement");
 
-            case Node::Type::tag:
-                if (n == "sec_per_unit") {
-                    out << measurement.secPerUnit().count();
-                } else if (n == "iters") {
-                    out << measurement.numIters();
-                } else if (n == "elapsed_ns") {
-                    out << measurement.elapsed().count();
-                } else if (n == "pagefaults") {
-                    out << measurement.pageFaults();
-                } else if (n == "cpucycles") {
-                    out << measurement.cpuCycles();
-                } else if (n == "contextswitches") {
-                    out << measurement.contextSwitches();
-                } else if (n == "instructions") {
-                    out << measurement.instructions();
-                } else if (n == "branchinstructions") {
-                    out << measurement.branchInstructions();
-                } else if (n == "branchmisses") {
-                    out << measurement.branchMisses();
-                } else {
-                    throw std::runtime_error("unknown tag '" + std::string(n.begin, n.end) + "'");
-                }
+            case Node::Type::tag: {
+                out << r.get(idx, std::string(n.begin, n.end));
                 break;
+            }
             }
         }
     }
 }
 
-static void generateBenchmark(std::vector<Node> const& nodes, std::vector<ankerl::nanobench::Result> const& results, size_t resultIdx,
-                              std::ostream& out) {
-    auto const& result = results[resultIdx];
+static void generateResult(std::vector<Node> const& nodes, size_t idx, std::vector<Result> const& results, std::ostream& out) {
+    auto const& r = results[idx];
     for (auto const& n : nodes) {
-        if (!generateFirstLast(n, resultIdx, results.size(), out)) {
+        if (!generateFirstLast(n, idx, results.size(), out)) {
             switch (n.type) {
             case Node::Type::content:
                 out.write(n.begin, std::distance(n.begin, n.end));
                 break;
 
+            case Node::Type::inverted_section:
+                throw std::runtime_error("got a inverted section inside result");
+
             case Node::Type::section:
-                if (n == "results") {
-                    for (size_t m = 0; m < result.sortedMeasurements().size(); ++m) {
-                        generateMeasurement(n.children, result.sortedMeasurements(), m, out);
+                if (n == "measurement") {
+                    for (size_t i = 0; i < r.size(); ++i) {
+                        generateResultMeasurement(n.children, i, r, out);
                     }
                 } else {
-                    throw std::runtime_error("unknown list '" + std::string(n.begin, n.end) + "'");
+                    throw std::runtime_error("got a section inside result");
                 }
                 break;
 
-            case Node::Type::inverted_section:
-                throw std::runtime_error("unknown list '" + std::string(n.begin, n.end) + "'");
-
             case Node::Type::tag:
-                if (n == "name") {
-                    out << result.config().mBenchmarkName;
-                } else if (n == "median_sec_per_unit") {
-                    out << result.median().count();
-                } else if (n == "md_ape") {
-                    out << result.medianAbsolutePercentError();
-                } else if (n == "min") {
-                    out << result.minimum().count();
-                } else if (n == "max") {
-                    out << result.maximum().count();
-                } else if (n == "relative") {
-                    out << results.front().median() / result.median();
-                } else if (n == "num_measurements") {
-                    out << result.sortedMeasurements().size();
-                } else if (n == "median_ins_per_unit") {
-                    out << result.medianInstructionsPerUnit();
-                } else if (n == "median_branches_per_unit") {
-                    out << result.medianBranchesPerUnit();
-                } else if (n == "median_branchmisses_per_unit") {
-                    out << result.medianBranchMissesPerUnit();
-                } else {
-                    throw std::runtime_error("unknown tag '" + std::string(n.begin, n.end) + "'");
-                }
+                generateResultTag(n, r, out);
                 break;
             }
         }
     }
 }
 
-static void generate(char const* mustacheTemplate, ankerl::nanobench::Bench const& bench, std::ostream& out) {
-    // TODO(martinus) safe stream status
+static void generate(char const* mustacheTemplate, std::vector<Result> const& results, std::ostream& out) {
+    // TODO(martinus) save & restore stream status
     out.precision(std::numeric_limits<double>::digits10);
     auto nodes = parseMustacheTemplate(&mustacheTemplate);
+
     for (auto const& n : nodes) {
         switch (n.type) {
         case Node::Type::content:
@@ -1974,25 +1992,17 @@ static void generate(char const* mustacheTemplate, ankerl::nanobench::Bench cons
             throw std::runtime_error("unknown list '" + std::string(n.begin, n.end) + "'");
 
         case Node::Type::section:
-            if (n == "benchmarks") {
-                for (size_t i = 0; i < bench.results().size(); ++i) {
-                    generateBenchmark(n.children, bench.results(), i, out);
+            if (n == "result") {
+                for (size_t i = 0; i < results.size(); ++i) {
+                    generateResult(n.children, i, results, out);
                 }
             } else {
-                throw std::runtime_error("unknown tag '" + std::string(n.begin, n.end) + "'");
+                throw std::runtime_error("unknown section '" + std::string(n.begin, n.end) + "'");
             }
             break;
 
         case Node::Type::tag:
-            if (n == "unit") {
-                out << bench.unit();
-            } else if (n == "title") {
-                out << bench.title();
-            } else if (n == "batch") {
-                out << bench.batch();
-            } else {
-                throw std::runtime_error("unknown tag '" + std::string(n.begin, n.end) + "'");
-            }
+            throw std::runtime_error("unknown tag '" + std::string(n.begin, n.end) + "'");
             break;
         }
     }
@@ -2002,213 +2012,167 @@ static void generate(char const* mustacheTemplate, ankerl::nanobench::Bench cons
 } // namespace fmt
 } // namespace detail
 
-Measurement::Measurement(Clock::duration totalElapsed, uint64_t iters, double batch, detail::PerformanceCounters const& pc) noexcept
-    : mTotalElapsed(totalElapsed)
-    , mNumIters(iters)
-    , mSecPerUnit(std::chrono::duration_cast<std::chrono::duration<double>>(totalElapsed) / (batch * static_cast<double>(iters)))
-    , mVal(pc.val()) {
-
-    // correcting branches: remove branch introduced by the while (...) loop for each iteration.
-    if (mVal.branchInstructions > iters + 1U) {
-        mVal.branchInstructions -= iters + 1U;
-    } else {
-        mVal.branchInstructions = 0;
-    }
-
-    // correcting branch misses: typically just one miss per branch
-    if (mVal.branchMisses > mVal.branchInstructions) {
-        // can't have branch misses when there were branches...
-        mVal.branchMisses = mVal.branchInstructions;
-    }
-    if (mVal.branchMisses > 1) {
-        // assuming at least one missed branch for the loop
-        mVal.branchMisses -= 1;
-    }
-}
-
-bool Measurement::operator<(Measurement const& other) const noexcept {
-    return mSecPerUnit < other.mSecPerUnit;
-}
-
-Clock::duration const& Measurement::elapsed() const noexcept {
-    return mTotalElapsed;
-}
-
-uint64_t Measurement::numIters() const noexcept {
-    return mNumIters;
-}
-
-std::chrono::duration<double> Measurement::secPerUnit() const noexcept {
-    return mSecPerUnit;
-}
-
-uint64_t Measurement::pageFaults() const noexcept {
-    return mVal.pageFaults;
-}
-uint64_t Measurement::cpuCycles() const noexcept {
-    return mVal.cpuCycles;
-}
-uint64_t Measurement::contextSwitches() const noexcept {
-    return mVal.contextSwitches;
-}
-uint64_t Measurement::instructions() const noexcept {
-    return mVal.instructions;
-}
-uint64_t Measurement::branchInstructions() const noexcept {
-    return mVal.branchInstructions;
-}
-uint64_t Measurement::branchMisses() const noexcept {
-    return mVal.branchMisses;
-}
-
-template <typename T>
-inline double d(T t) noexcept {
-    return static_cast<double>(t);
-}
-
-template <typename T>
-class CalcMedian {
-public:
-    CalcMedian(T const& input)
-        : mInput(input)
-        , mData(mInput.size()) {}
-
-    template <typename Op>
-    double operator()(Op&& op) {
-        for (size_t i = 0; i < mInput.size(); ++i) {
-            mData[i] = op(mInput[i]);
-        }
-        std::sort(mData.begin(), mData.end());
-        auto midpoint = mData.size() / 2;
-        if (1U == (mData.size() & 1U)) {
-            return mData[midpoint];
-        } else {
-            return (mData[midpoint - 1U] + mData[midpoint]) / 2U;
-        }
-    }
-
-private:
-    T const& mInput;
-    std::vector<double> mData{};
-};
-
 // Result returned after a benchmark has finished. Can be used as a baseline for relative().
-Result::Result(Config const& benchmarkConfig, std::vector<Measurement> measurements, double batch, double complN) noexcept
-    : mConfig(benchmarkConfig)
-    , mSortedMeasurements(std::move(measurements))
-    , mComplexityN(complN)
-    , mHas(detail::performanceCounters().has()) {
+Result::Result(Config const& benchmarkConfig)
+    : mConfig(benchmarkConfig) {}
 
-    std::sort(mSortedMeasurements.begin(), mSortedMeasurements.end());
+void Result::add(Clock::duration totalElapsed, uint64_t iters, detail::PerformanceCounters const& pc) {
+    using detail::d;
 
-    // calculates MdAPE which is the median of percentage error
-    // see https://www.spiderfinancial.com/support/documentation/numxl/reference-manual/forecasting-performance/mdape
-    auto const med = median();
+    double dIters = d(iters);
+    mNameToMeasurements["iterations"].push_back(dIters);
 
-    CalcMedian<std::vector<Measurement>> calcMedian(mSortedMeasurements);
-    mMedianAbsolutePercentError = calcMedian([&](Measurement const& m) {
-        auto percent = (m.secPerUnit() - med) / m.secPerUnit();
-        if (percent < 0) {
-            percent = -percent;
+    mNameToMeasurements["elapsed"].push_back(d(totalElapsed) / dIters);
+    if (pc.has().pageFaults) {
+        mNameToMeasurements["pagefaults"].push_back(d(pc.val().pageFaults) / dIters);
+    }
+    if (pc.has().cpuCycles) {
+        mNameToMeasurements["cpucycles"].push_back(d(pc.val().cpuCycles) / dIters);
+    }
+    if (pc.has().contextSwitches) {
+        mNameToMeasurements["contextswitches"].push_back(d(pc.val().contextSwitches) / dIters);
+    }
+    if (pc.has().instructions) {
+        mNameToMeasurements["instructions"].push_back(d(pc.val().instructions) / dIters);
+    }
+    if (pc.has().branchInstructions) {
+        double branchInstructions = 0.0;
+        // correcting branches: remove branch introduced by the while (...) loop for each iteration.
+        if (pc.val().branchInstructions > iters + 1U) {
+            branchInstructions = d(pc.val().branchInstructions - (iters + 1U));
         }
-        return percent;
-    });
+        mNameToMeasurements["branchinstructions"].push_back(branchInstructions / dIters);
 
-    if (mHas.cpuCycles) {
-        mMedianCpuCyclesPerUnit = calcMedian([&](Measurement const& m) { return d(m.cpuCycles()) / (batch * d(m.numIters())); });
-    }
+        if (pc.has().branchMisses) {
+            // correcting branch misses
+            double branchMisses = d(pc.val().branchMisses);
+            if (branchMisses > branchInstructions) {
+                // can't have branch misses when there were branches...
+                branchMisses = branchInstructions;
+            }
 
-    if (mHas.instructions) {
-        mMedianInstructionsPerUnit = calcMedian([&](Measurement const& m) { return d(m.instructions()) / (batch * d(m.numIters())); });
-    }
-
-    if (mHas.branchInstructions) {
-        mMedianBranchesPerUnit =
-            calcMedian([&](Measurement const& m) { return d(m.branchInstructions()) / (batch * d(m.numIters())); });
-    }
-
-    if (mHas.branchMisses) {
-        mMedianBranchMissesPerUnit = calcMedian([&](Measurement const& m) { return d(m.branchMisses()) / (batch * d(m.numIters())); });
+            // assuming at least one missed branch for the loop
+            branchMisses -= 1.0;
+            if (branchMisses < 1.0) {
+                branchMisses = 1.0;
+            }
+            mNameToMeasurements["branchmisses"].push_back(branchMisses / dIters);
+        }
     }
 }
-
-Result::Result() noexcept
-    : mHas(detail::performanceCounters().has()) {}
 
 Config const& Result::config() const noexcept {
     return mConfig;
 }
 
-double Result::complexityN() const noexcept {
-    return mComplexityN;
+inline double calcMedian(std::vector<double>& data) {
+    std::sort(data.begin(), data.end());
+
+    auto midIdx = data.size() / 2U;
+    if (1U == (data.size() & 1U)) {
+        return data[midIdx];
+    }
+    return (data[midIdx - 1U] + data[midIdx]) / 2U;
 }
 
-std::chrono::duration<double> Result::median() const noexcept {
-    if (mSortedMeasurements.empty()) {
-        return {};
+double Result::median(std::string const& query) const {
+    auto it = mNameToMeasurements.find(query);
+    if (it == mNameToMeasurements.end()) {
+        return 0.0;
     }
 
-    auto mid = mSortedMeasurements.size() / 2U;
-    if (1U == (mSortedMeasurements.size() & 1U)) {
-        return mSortedMeasurements[mid].secPerUnit();
+    // create a copy so we can sort
+    auto data = it->second;
+    return calcMedian(data);
+}
+
+double Result::medianAbsolutePercentError(std::string const& query) const {
+    auto it = mNameToMeasurements.find(query);
+    if (it == mNameToMeasurements.end()) {
+        return 0.0;
     }
-    return (mSortedMeasurements[mid - 1U].secPerUnit() + mSortedMeasurements[mid].secPerUnit()) / 2U;
-}
 
-Clock::duration Result::total() const noexcept {
-    Clock::duration tot{};
-    for (auto const& m : mSortedMeasurements) {
-        tot += m.elapsed();
+    auto data = it->second;
+
+    // calculates MdAPE which is the median of percentage error
+    // see https://www.spiderfinancial.com/support/documentation/numxl/reference-manual/forecasting-performance/mdape
+    auto med = calcMedian(data);
+
+    // transform the data to absolute error
+    for (auto& x : data) {
+        x = (x - med) / x;
+        if (x < 0) {
+            x = -x;
+        }
     }
-    return tot;
+    return calcMedian(data);
 }
 
-std::vector<Measurement> const& Result::sortedMeasurements() const noexcept {
-    return mSortedMeasurements;
+double Result::sum(std::string const& query) const noexcept {
+    auto it = mNameToMeasurements.find(query);
+    if (it == mNameToMeasurements.end()) {
+        return 0.0;
+    }
+    return std::accumulate(it->second.begin(), it->second.end(), 0.0);
 }
 
-double Result::medianAbsolutePercentError() const noexcept {
-    return mMedianAbsolutePercentError;
+double Result::sumProduct(std::string const& query1, std::string const& query2) const noexcept {
+    auto it1 = mNameToMeasurements.find(query1);
+    auto it2 = mNameToMeasurements.find(query2);
+
+    if (it1 == mNameToMeasurements.end() || it2 == mNameToMeasurements.end() || it1->second.size() != it2->second.size()) {
+        return 0.0;
+    }
+
+    double result = 0.0;
+    for (size_t i = 0, size = it1->second.size(); i != size; ++i) {
+        result += it1->second[i] * it2->second[i];
+    }
+    return result;
+}
+
+bool Result::has(std::string const& query) const noexcept {
+    return mNameToMeasurements.end() != mNameToMeasurements.find(query);
+}
+
+double Result::get(size_t idx, std::string const& query) const {
+    auto it = mNameToMeasurements.find(query);
+    if (it == mNameToMeasurements.end()) {
+        return 0.0;
+    }
+    return it->second.at(idx);
 }
 
 bool Result::empty() const noexcept {
-    return mSortedMeasurements.empty();
+    return 0U == size();
 }
 
-std::chrono::duration<double> Result::minimum() const noexcept {
-    return mSortedMeasurements.front().secPerUnit();
+size_t Result::size() const noexcept {
+    auto it = mNameToMeasurements.find("elapsed");
+    if (it == mNameToMeasurements.end()) {
+        return 0U;
+    }
+    return it->second.size();
 }
 
-std::chrono::duration<double> Result::maximum() const noexcept {
-    return mSortedMeasurements.back().secPerUnit();
+double Result::minimum(std::string const& query) const noexcept {
+    auto it = mNameToMeasurements.find(query);
+    if (it == mNameToMeasurements.end()) {
+        return 0.0;
+    }
+
+    // here its save to assume that at least one element is there
+    return *std::min_element(it->second.begin(), it->second.end());
 }
 
-double Result::medianCpuCyclesPerUnit() const noexcept {
-    return mMedianCpuCyclesPerUnit;
-}
-bool Result::hasMedianCpuCyclesPerUnit() const noexcept {
-    return mHas.cpuCycles;
-}
+double Result::maximum(std::string const& query) const noexcept {
+    auto it = mNameToMeasurements.find(query);
+    if (it == mNameToMeasurements.end()) {
+        return 0.0;
+    }
 
-double Result::medianInstructionsPerUnit() const noexcept {
-    return mMedianInstructionsPerUnit;
-}
-bool Result::hasMedianInstructionsPerUnit() const noexcept {
-    return mHas.instructions;
-}
-
-double Result::medianBranchesPerUnit() const noexcept {
-    return mMedianBranchesPerUnit;
-}
-bool Result::hasMedianBranchesPerUnit() const noexcept {
-    return mHas.branchInstructions;
-}
-
-double Result::medianBranchMissesPerUnit() const noexcept {
-    return mMedianBranchMissesPerUnit;
-}
-bool Result::hasMedianBranchMissesPerUnit() const noexcept {
-    return mHas.branchMisses;
+    // here its save to assume that at least one element is there
+    return *std::max_element(it->second.begin(), it->second.end());
 }
 
 // Configuration of a microbenchmark.
@@ -2356,7 +2320,7 @@ std::vector<Result> const& Bench::results() const noexcept {
 }
 
 Bench& Bench::render(char const* templateContent, std::ostream& os) {
-    detail::fmt::mustache::generate(templateContent, *this, os);
+    detail::fmt::mustache::generate(templateContent, mResults, os);
     return *this;
 }
 
@@ -2405,8 +2369,8 @@ void Rng::assign(Rng const& other) noexcept {
 BigO::RangeMeasure BigO::collectRangeMeasure(std::vector<Result> const& results) {
     BigO::RangeMeasure rangeMeasure;
     for (auto const& result : results) {
-        if (result.complexityN() > 0.0) {
-            rangeMeasure.emplace_back(result.complexityN(), result.median().count());
+        if (result.config().mComplexityN > 0.0) {
+            rangeMeasure.emplace_back(result.config().mComplexityN, result.median("elapsed"));
         }
     }
     return rangeMeasure;
