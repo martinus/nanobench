@@ -21,5 +21,6 @@ TEST_CASE("example_atomic") {
     bench.output(nullptr);
 
     bench.run("compare_exchange_strong", [&] { x.compare_exchange_strong(y, 0); });
-    std::cout << "result: " << bench.results().front().median().count() << "s/" << bench.unit() << std::endl;
+    auto const& r = bench.results().front();
+    std::cout << "result: " << r.median("elapsed") / r.config().mBatch << "s/" << r.config().mUnit << std::endl;
 }

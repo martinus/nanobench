@@ -32,10 +32,7 @@ void exampleCsv(bool useCsv) {
         testBenchSet<std::list<int>>("std::list<int>", n, bench);
         if (useCsv) {
             // could also use ankerl::nanobench::templates::csv() which contains a header
-            bench.render(
-                R"({{#benchmarks}}"{{name}}"; {{relative}}; {{median_sec_per_unit}}; {{min}}; {{max}}; {{md_ape}}; {{num_measurements}}; {{median_ins_per_unit}}; {{median_branches_per_unit}}; {{median_branchmisses_per_unit}}
-{{/benchmarks}})",
-                std::cout);
+            bench.render(ankerl::nanobench::templates::csv(), std::cout);
         }
     }
 }

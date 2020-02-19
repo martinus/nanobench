@@ -165,5 +165,5 @@ TEST_CASE("example_random_number_generators") {
     fout.close();
 
     // just generate a very simple overview of the results
-    b.render("\n{{#benchmarks}}{{median_sec_per_unit}} for {{name}}\n{{/benchmarks}}", std::cout);
+    b.render("\n{{#result}}{{median(elapsed)}} for {{name}}\n{{/result}}", std::cout);
 }
