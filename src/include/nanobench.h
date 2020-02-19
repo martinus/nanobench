@@ -638,7 +638,6 @@ void doNotOptimizeAway(T const& val) {
 #    include <iostream>  // cout
 #    include <numeric>   // accumulate
 #    include <random>    // random_device
-#    include <regex>     // for template matching
 #    include <sstream>   // to_s in Number
 #    include <stdexcept> // throw for rendering templates
 #    include <tuple>     // std::tie
@@ -1847,6 +1846,34 @@ static bool generateFirstLast(Node const& n, size_t idx, size_t size, std::ostre
     return true;
 }
 
+static bool matchCmdArgs(std::string const& str, std::vector<std::string>& matchResult) {
+    matchResult.clear();
+    auto idxOpen = str.find('(');
+    auto idxClose = str.find(')', idxOpen);
+    if (idxClose == std::string::npos) {
+        return false;
+    }
+
+    matchResult.emplace_back(str.substr(0, idxOpen));
+
+    // split by comma
+    matchResult.emplace_back(std::string{});
+    for (size_t i = idxOpen + 1; i != idxClose; ++i) {
+        if (str[i] == ' ' || str[i] == '\t') {
+            // skip whitespace
+            continue;
+        }
+        if (str[i] == ',') {
+            // got a comma => new string
+            matchResult.emplace_back(std::string{});
+            continue;
+        }
+        // no whitespace no comma, append
+        matchResult.back() += str[i];
+    }
+    return true;
+}
+
 static std::ostream& generateResultTag(Node const& n, Result const& r, std::ostream& out) {
     if (n == "title") {
         return out << r.config().mBenchmarkTitle;
@@ -1886,39 +1913,37 @@ static std::ostream& generateResultTag(Node const& n, Result const& r, std::ostr
     }
 
     // match e.g. "median(elapsed)"
-    static std::regex const regOpArg1("^([a-zA-Z]+)\\(([a-zA-Z]*)\\)$");
-    std::cmatch matchResult;
-    if (std::regex_match(n.begin, n.end, matchResult, regOpArg1)) {
-        auto op = matchResult[1];
-        auto query = matchResult[2];
-        if (op == "median") {
-            return out << r.median(query);
-        }
-        if (op == "medianAbsolutePercentError") {
-            return out << r.medianAbsolutePercentError(query);
-        }
-        if (op == "sum") {
-            return out << r.sum(query);
-        }
-        if (op == "minimum") {
-            return out << r.minimum(query);
-        }
-        if (op == "maximum") {
-            return out << r.maximum(query);
+    // g++ 4.8 doesn't implement std::regex :(
+    // static std::regex const regOpArg1("^([a-zA-Z]+)\\(([a-zA-Z]*)\\)$");
+    // std::cmatch matchResult;
+    // if (std::regex_match(n.begin, n.end, matchResult, regOpArg1)) {
+    std::vector<std::string> matchResult;
+    if (matchCmdArgs(std::string(n.begin, n.end), matchResult)) {
+        if (matchResult.size() == 2) {
+            if (matchResult[0] == "median") {
+                return out << r.median(matchResult[1]);
+            }
+            if (matchResult[0] == "medianAbsolutePercentError") {
+                return out << r.medianAbsolutePercentError(matchResult[1]);
+            }
+            if (matchResult[0] == "sum") {
+                return out << r.sum(matchResult[1]);
+            }
+            if (matchResult[0] == "minimum") {
+                return out << r.minimum(matchResult[1]);
+            }
+            if (matchResult[0] == "maximum") {
+                return out << r.maximum(matchResult[1]);
+            }
+        } else if (matchResult.size() == 3) {
+            if (matchResult[0] == "sumProduct") {
+                return out << r.sumProduct(matchResult[1], matchResult[2]);
+            }
         }
     }
 
     // match e.g. "sumProduct(elapsed, iterations)"
-    static std::regex const regOpArg2("^([a-zA-Z]+)\\(([a-zA-Z]*)\\s*,\\s+([a-zA-Z]*)\\)$");
-    if (std::regex_match(n.begin, n.end, matchResult, regOpArg2)) {
-        auto op = matchResult[1];
-        auto query1 = matchResult[2];
-        auto query2 = matchResult[3];
-
-        if (op == "sumProduct") {
-            return out << r.sumProduct(query1, query2);
-        }
-    }
+    // static std::regex const regOpArg2("^([a-zA-Z]+)\\(([a-zA-Z]*)\\s*,\\s+([a-zA-Z]*)\\)$");
 
     // nothing matches :(
     throw std::runtime_error("command '" + std::string(n.begin, n.end) + "' not understood");
@@ -2125,7 +2150,7 @@ double Result::sumProduct(std::string const& query1, std::string const& query2) 
     }
 
     double result = 0.0;
-    for (size_t i = 0, size = it1->second.size(); i != size; ++i) {
+    for (size_t i = 0, s = it1->second.size(); i != s; ++i) {
         result += it1->second[i] * it2->second[i];
     }
     return result;
