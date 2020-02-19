@@ -426,7 +426,7 @@ public:
 private:
     enum class State { warmup, upscaling_runtime, measuring, endless };
 
-    ANKERL_NANOBENCH(NODISCARD) void showResult(std::string const& errorMessage) const;
+    void showResult(std::string const& errorMessage) const;
     ANKERL_NANOBENCH(NODISCARD) bool isCloseEnoughForMeasurements(std::chrono::nanoseconds elapsed) const noexcept;
     ANKERL_NANOBENCH(NODISCARD) uint64_t calcBestNumIters(std::chrono::nanoseconds elapsed, uint64_t iters) noexcept;
     void upscale(std::chrono::nanoseconds elapsed);
