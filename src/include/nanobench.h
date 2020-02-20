@@ -127,6 +127,9 @@ char const* htmlBoxplot() noexcept;
 // JSON that contains all result data
 char const* json() noexcept;
 
+// Generates output from the template and results into the given stream
+void generate(char const* mustacheTemplate, std::vector<Result> const& results, std::ostream& out);
+
 } // namespace templates
 
 namespace detail {
@@ -197,6 +200,7 @@ public:
 
     ANKERL_NANOBENCH(NODISCARD) double median(std::string const& query) const;
     ANKERL_NANOBENCH(NODISCARD) double medianAbsolutePercentError(std::string const& query) const;
+    ANKERL_NANOBENCH(NODISCARD) double average(std::string const& query) const;
     ANKERL_NANOBENCH(NODISCARD) double sum(std::string const& query) const noexcept;
     ANKERL_NANOBENCH(NODISCARD) double sumProduct(std::string const& query1, std::string const& query2) const noexcept;
     ANKERL_NANOBENCH(NODISCARD) double minimum(std::string const& query) const noexcept;
@@ -548,6 +552,7 @@ constexpr uint64_t Rng::rotl(uint64_t x, unsigned k) noexcept {
 }
 
 template <typename Op>
+ANKERL_NANOBENCH_NO_SANITIZE("integer")
 Bench& Bench::run(Op op) {
     // It is important that this method is kept short so the compiler can do better optimizations/ inlining of op()
     detail::IterationLogic iterationLogic(*this);
@@ -570,7 +575,6 @@ Bench& Bench::run(Op op) {
 
 // Performs all evaluations.
 template <typename Op>
-ANKERL_NANOBENCH_NO_SANITIZE("integer")
 Bench& Bench::run(std::string const& benchmarkName, Op op) {
     name(benchmarkName);
     return run(std::move(op));
@@ -681,6 +685,19 @@ class MarkDownCode;
 
 namespace ankerl {
 namespace nanobench {
+namespace detail {
+
+// helpers to get double values
+template <typename T>
+inline double d(T t) noexcept {
+    return static_cast<double>(t);
+}
+inline double d(Clock::duration dur) noexcept {
+    return std::chrono::duration_cast<std::chrono::duration<double>>(dur).count();
+}
+
+} // namespace detail
+
 namespace templates {
 
 char const* csv() noexcept {
@@ -758,6 +775,280 @@ char const* json() noexcept {
         }{{^-last}},{{/-last}}
 {{/result}}    ]
 })DELIM";
+}
+
+ANKERL_NANOBENCH(IGNORE_PADDED_PUSH)
+struct Node {
+    enum class Type { tag, content, section, inverted_section };
+
+    char const* begin;
+    char const* end;
+    std::vector<Node> children;
+    Type type;
+
+    template <size_t N>
+    // NOLINTNEXTLINE(hicpp-avoid-c-arrays,modernize-avoid-c-arrays,cppcoreguidelines-avoid-c-arrays)
+    bool operator==(char const (&str)[N]) const noexcept {
+        return static_cast<size_t>(std::distance(begin, end) + 1) == N && 0 == strncmp(str, begin, N - 1);
+    }
+};
+ANKERL_NANOBENCH(IGNORE_PADDED_POP)
+
+static std::vector<Node> parseMustacheTemplate(char const** tpl) {
+    std::vector<Node> nodes;
+
+    while (true) {
+        auto begin = std::strstr(*tpl, "{{");
+        auto end = begin;
+        if (begin != nullptr) {
+            begin += 2;
+            end = std::strstr(begin, "}}");
+        }
+
+        if (begin == nullptr || end == nullptr) {
+            // nothing found, finish node
+            nodes.emplace_back(Node{*tpl, *tpl + std::strlen(*tpl), std::vector<Node>{}, Node::Type::content});
+            return nodes;
+        }
+
+        nodes.emplace_back(Node{*tpl, begin - 2, std::vector<Node>{}, Node::Type::content});
+
+        // we found a tag
+        *tpl = end + 2;
+        switch (*begin) {
+        case '/':
+            // finished! bail out
+            return nodes;
+
+        case '#':
+            nodes.emplace_back(Node{begin + 1, end, parseMustacheTemplate(tpl), Node::Type::section});
+            break;
+
+        case '^':
+            nodes.emplace_back(Node{begin + 1, end, parseMustacheTemplate(tpl), Node::Type::inverted_section});
+            break;
+
+        default:
+            nodes.emplace_back(Node{begin, end, std::vector<Node>{}, Node::Type::tag});
+            break;
+        }
+    }
+}
+
+static bool generateFirstLast(Node const& n, size_t idx, size_t size, std::ostream& out) {
+    bool matchFirst = n == "-first";
+    bool matchLast = n == "-last";
+    if (!matchFirst && !matchLast) {
+        return false;
+    }
+
+    bool doWrite = false;
+    if (n.type == Node::Type::section) {
+        doWrite = (matchFirst && idx == 0) || (matchLast && idx == size - 1);
+    } else if (n.type == Node::Type::inverted_section) {
+        doWrite = (matchFirst && idx != 0) || (matchLast && idx != size - 1);
+    }
+
+    if (doWrite) {
+        for (auto const& child : n.children) {
+            if (child.type == Node::Type::content) {
+                out.write(child.begin, std::distance(child.begin, child.end));
+            }
+        }
+    }
+    return true;
+}
+
+static bool matchCmdArgs(std::string const& str, std::vector<std::string>& matchResult) {
+    matchResult.clear();
+    auto idxOpen = str.find('(');
+    auto idxClose = str.find(')', idxOpen);
+    if (idxClose == std::string::npos) {
+        return false;
+    }
+
+    matchResult.emplace_back(str.substr(0, idxOpen));
+
+    // split by comma
+    matchResult.emplace_back(std::string{});
+    for (size_t i = idxOpen + 1; i != idxClose; ++i) {
+        if (str[i] == ' ' || str[i] == '\t') {
+            // skip whitespace
+            continue;
+        }
+        if (str[i] == ',') {
+            // got a comma => new string
+            matchResult.emplace_back(std::string{});
+            continue;
+        }
+        // no whitespace no comma, append
+        matchResult.back() += str[i];
+    }
+    return true;
+}
+
+static std::ostream& generateResultTag(Node const& n, Result const& r, std::ostream& out) {
+    using detail::d;
+
+    if (n == "title") {
+        return out << r.config().mBenchmarkTitle;
+    }
+    if (n == "name") {
+        return out << r.config().mBenchmarkName;
+    }
+    if (n == "unit") {
+        return out << r.config().mUnit;
+    }
+    if (n == "batch") {
+        return out << r.config().mBatch;
+    }
+    if (n == "complexityN") {
+        return out << r.config().mComplexityN;
+    }
+    if (n == "epochs") {
+        return out << r.config().mNumEpochs;
+    }
+    if (n == "clockResolutionMultiple") {
+        return out << r.config().mClockResolutionMultiple;
+    }
+    if (n == "maxEpochTime") {
+        return out << d(r.config().mMaxEpochTime);
+    }
+    if (n == "minEpochTime") {
+        return out << d(r.config().mMinEpochTime);
+    }
+    if (n == "minEpochIterations") {
+        return out << r.config().mMinEpochIterations;
+    }
+    if (n == "warmup") {
+        return out << r.config().mWarmup;
+    }
+    if (n == "relative") {
+        return out << r.config().mIsRelative;
+    }
+
+    // match e.g. "median(elapsed)"
+    // g++ 4.8 doesn't implement std::regex :(
+    // static std::regex const regOpArg1("^([a-zA-Z]+)\\(([a-zA-Z]*)\\)$");
+    // std::cmatch matchResult;
+    // if (std::regex_match(n.begin, n.end, matchResult, regOpArg1)) {
+    std::vector<std::string> matchResult;
+    if (matchCmdArgs(std::string(n.begin, n.end), matchResult)) {
+        if (matchResult.size() == 2) {
+            if (matchResult[0] == "median") {
+                return out << r.median(matchResult[1]);
+            }
+            if (matchResult[0] == "average") {
+                return out << r.average(matchResult[1]);
+            }
+            if (matchResult[0] == "medianAbsolutePercentError") {
+                return out << r.medianAbsolutePercentError(matchResult[1]);
+            }
+            if (matchResult[0] == "sum") {
+                return out << r.sum(matchResult[1]);
+            }
+            if (matchResult[0] == "minimum") {
+                return out << r.minimum(matchResult[1]);
+            }
+            if (matchResult[0] == "maximum") {
+                return out << r.maximum(matchResult[1]);
+            }
+        } else if (matchResult.size() == 3) {
+            if (matchResult[0] == "sumProduct") {
+                return out << r.sumProduct(matchResult[1], matchResult[2]);
+            }
+        }
+    }
+
+    // match e.g. "sumProduct(elapsed, iterations)"
+    // static std::regex const regOpArg2("^([a-zA-Z]+)\\(([a-zA-Z]*)\\s*,\\s+([a-zA-Z]*)\\)$");
+
+    // nothing matches :(
+    throw std::runtime_error("command '" + std::string(n.begin, n.end) + "' not understood");
+}
+
+static void generateResultMeasurement(std::vector<Node> const& nodes, size_t idx, Result const& r, std::ostream& out) {
+    for (auto const& n : nodes) {
+        if (!generateFirstLast(n, idx, r.size(), out)) {
+            switch (n.type) {
+            case Node::Type::content:
+                out.write(n.begin, std::distance(n.begin, n.end));
+                break;
+
+            case Node::Type::inverted_section:
+                throw std::runtime_error("got a inverted section inside measurement");
+
+            case Node::Type::section:
+                throw std::runtime_error("got a section inside measurement");
+
+            case Node::Type::tag: {
+                out << r.get(idx, std::string(n.begin, n.end));
+                break;
+            }
+            }
+        }
+    }
+}
+
+static void generateResult(std::vector<Node> const& nodes, size_t idx, std::vector<Result> const& results, std::ostream& out) {
+    auto const& r = results[idx];
+    for (auto const& n : nodes) {
+        if (!generateFirstLast(n, idx, results.size(), out)) {
+            switch (n.type) {
+            case Node::Type::content:
+                out.write(n.begin, std::distance(n.begin, n.end));
+                break;
+
+            case Node::Type::inverted_section:
+                throw std::runtime_error("got a inverted section inside result");
+
+            case Node::Type::section:
+                if (n == "measurement") {
+                    for (size_t i = 0; i < r.size(); ++i) {
+                        generateResultMeasurement(n.children, i, r, out);
+                    }
+                } else {
+                    throw std::runtime_error("got a section inside result");
+                }
+                break;
+
+            case Node::Type::tag:
+                generateResultTag(n, r, out);
+                break;
+            }
+        }
+    }
+}
+
+void generate(char const* mustacheTemplate, std::vector<Result> const& results, std::ostream& out) {
+    // TODO(martinus) save & restore stream status
+    out.precision(std::numeric_limits<double>::digits10);
+    auto nodes = parseMustacheTemplate(&mustacheTemplate);
+
+    for (auto const& n : nodes) {
+        switch (n.type) {
+        case Node::Type::content:
+            out.write(n.begin, std::distance(n.begin, n.end));
+            break;
+
+        case Node::Type::inverted_section:
+            throw std::runtime_error("unknown list '" + std::string(n.begin, n.end) + "'");
+
+        case Node::Type::section:
+            if (n == "result") {
+                for (size_t i = 0; i < results.size(); ++i) {
+                    generateResult(n.children, i, results, out);
+                }
+            } else {
+                throw std::runtime_error("unknown section '" + std::string(n.begin, n.end) + "'");
+            }
+            break;
+
+        case Node::Type::tag:
+            throw std::runtime_error("unknown tag '" + std::string(n.begin, n.end) + "'");
+            break;
+        }
+    }
 }
 
 } // namespace templates
@@ -1092,15 +1383,6 @@ uint64_t IterationLogic::numIters() const noexcept {
 
 bool IterationLogic::isCloseEnoughForMeasurements(std::chrono::nanoseconds elapsed) const noexcept {
     return elapsed * 3 >= mTargetRuntimePerEpoch * 2;
-}
-
-// helpers to get double values
-template <typename T>
-inline double d(T t) noexcept {
-    return static_cast<double>(t);
-}
-inline double d(Clock::duration dur) noexcept {
-    return std::chrono::duration_cast<std::chrono::duration<double>>(dur).count();
 }
 
 // directly calculates new iters based on elapsed&iters, and adds a 10% noise. Makes sure we don't underflow.
@@ -1761,279 +2043,6 @@ std::ostream& MarkDownCode::write(std::ostream& os) const {
 std::ostream& operator<<(std::ostream& os, MarkDownCode const& mdCode) {
     return mdCode.write(os);
 }
-
-namespace mustache {
-
-ANKERL_NANOBENCH(IGNORE_PADDED_PUSH)
-struct Node {
-    enum class Type { tag, content, section, inverted_section };
-
-    char const* begin;
-    char const* end;
-    std::vector<Node> children;
-    Type type;
-
-    template <size_t N>
-    // NOLINTNEXTLINE(hicpp-avoid-c-arrays,modernize-avoid-c-arrays,cppcoreguidelines-avoid-c-arrays)
-    bool operator==(char const (&str)[N]) const noexcept {
-        return static_cast<size_t>(std::distance(begin, end) + 1) == N && 0 == strncmp(str, begin, N - 1);
-    }
-};
-ANKERL_NANOBENCH(IGNORE_PADDED_POP)
-
-static std::vector<Node> parseMustacheTemplate(char const** tpl) {
-    std::vector<Node> nodes;
-
-    while (true) {
-        auto begin = std::strstr(*tpl, "{{");
-        auto end = begin;
-        if (begin != nullptr) {
-            begin += 2;
-            end = std::strstr(begin, "}}");
-        }
-
-        if (begin == nullptr || end == nullptr) {
-            // nothing found, finish node
-            nodes.emplace_back(Node{*tpl, *tpl + std::strlen(*tpl), std::vector<Node>{}, Node::Type::content});
-            return nodes;
-        }
-
-        nodes.emplace_back(Node{*tpl, begin - 2, std::vector<Node>{}, Node::Type::content});
-
-        // we found a tag
-        *tpl = end + 2;
-        switch (*begin) {
-        case '/':
-            // finished! bail out
-            return nodes;
-
-        case '#':
-            nodes.emplace_back(Node{begin + 1, end, parseMustacheTemplate(tpl), Node::Type::section});
-            break;
-
-        case '^':
-            nodes.emplace_back(Node{begin + 1, end, parseMustacheTemplate(tpl), Node::Type::inverted_section});
-            break;
-
-        default:
-            nodes.emplace_back(Node{begin, end, std::vector<Node>{}, Node::Type::tag});
-            break;
-        }
-    }
-}
-
-static bool generateFirstLast(Node const& n, size_t idx, size_t size, std::ostream& out) {
-    bool matchFirst = n == "-first";
-    bool matchLast = n == "-last";
-    if (!matchFirst && !matchLast) {
-        return false;
-    }
-
-    bool doWrite = false;
-    if (n.type == Node::Type::section) {
-        doWrite = (matchFirst && idx == 0) || (matchLast && idx == size - 1);
-    } else if (n.type == Node::Type::inverted_section) {
-        doWrite = (matchFirst && idx != 0) || (matchLast && idx != size - 1);
-    }
-
-    if (doWrite) {
-        for (auto const& child : n.children) {
-            if (child.type == Node::Type::content) {
-                out.write(child.begin, std::distance(child.begin, child.end));
-            }
-        }
-    }
-    return true;
-}
-
-static bool matchCmdArgs(std::string const& str, std::vector<std::string>& matchResult) {
-    matchResult.clear();
-    auto idxOpen = str.find('(');
-    auto idxClose = str.find(')', idxOpen);
-    if (idxClose == std::string::npos) {
-        return false;
-    }
-
-    matchResult.emplace_back(str.substr(0, idxOpen));
-
-    // split by comma
-    matchResult.emplace_back(std::string{});
-    for (size_t i = idxOpen + 1; i != idxClose; ++i) {
-        if (str[i] == ' ' || str[i] == '\t') {
-            // skip whitespace
-            continue;
-        }
-        if (str[i] == ',') {
-            // got a comma => new string
-            matchResult.emplace_back(std::string{});
-            continue;
-        }
-        // no whitespace no comma, append
-        matchResult.back() += str[i];
-    }
-    return true;
-}
-
-static std::ostream& generateResultTag(Node const& n, Result const& r, std::ostream& out) {
-    if (n == "title") {
-        return out << r.config().mBenchmarkTitle;
-    }
-    if (n == "name") {
-        return out << r.config().mBenchmarkName;
-    }
-    if (n == "unit") {
-        return out << r.config().mUnit;
-    }
-    if (n == "batch") {
-        return out << r.config().mBatch;
-    }
-    if (n == "complexityN") {
-        return out << r.config().mComplexityN;
-    }
-    if (n == "epochs") {
-        return out << r.config().mNumEpochs;
-    }
-    if (n == "clockResolutionMultiple") {
-        return out << r.config().mClockResolutionMultiple;
-    }
-    if (n == "maxEpochTime") {
-        return out << d(r.config().mMaxEpochTime);
-    }
-    if (n == "minEpochTime") {
-        return out << d(r.config().mMinEpochTime);
-    }
-    if (n == "minEpochIterations") {
-        return out << r.config().mMinEpochIterations;
-    }
-    if (n == "warmup") {
-        return out << r.config().mWarmup;
-    }
-    if (n == "relative") {
-        return out << r.config().mIsRelative;
-    }
-
-    // match e.g. "median(elapsed)"
-    // g++ 4.8 doesn't implement std::regex :(
-    // static std::regex const regOpArg1("^([a-zA-Z]+)\\(([a-zA-Z]*)\\)$");
-    // std::cmatch matchResult;
-    // if (std::regex_match(n.begin, n.end, matchResult, regOpArg1)) {
-    std::vector<std::string> matchResult;
-    if (matchCmdArgs(std::string(n.begin, n.end), matchResult)) {
-        if (matchResult.size() == 2) {
-            if (matchResult[0] == "median") {
-                return out << r.median(matchResult[1]);
-            }
-            if (matchResult[0] == "medianAbsolutePercentError") {
-                return out << r.medianAbsolutePercentError(matchResult[1]);
-            }
-            if (matchResult[0] == "sum") {
-                return out << r.sum(matchResult[1]);
-            }
-            if (matchResult[0] == "minimum") {
-                return out << r.minimum(matchResult[1]);
-            }
-            if (matchResult[0] == "maximum") {
-                return out << r.maximum(matchResult[1]);
-            }
-        } else if (matchResult.size() == 3) {
-            if (matchResult[0] == "sumProduct") {
-                return out << r.sumProduct(matchResult[1], matchResult[2]);
-            }
-        }
-    }
-
-    // match e.g. "sumProduct(elapsed, iterations)"
-    // static std::regex const regOpArg2("^([a-zA-Z]+)\\(([a-zA-Z]*)\\s*,\\s+([a-zA-Z]*)\\)$");
-
-    // nothing matches :(
-    throw std::runtime_error("command '" + std::string(n.begin, n.end) + "' not understood");
-}
-
-static void generateResultMeasurement(std::vector<Node> const& nodes, size_t idx, Result const& r, std::ostream& out) {
-    for (auto const& n : nodes) {
-        if (!generateFirstLast(n, idx, r.size(), out)) {
-            switch (n.type) {
-            case Node::Type::content:
-                out.write(n.begin, std::distance(n.begin, n.end));
-                break;
-
-            case Node::Type::inverted_section:
-                throw std::runtime_error("got a inverted section inside measurement");
-
-            case Node::Type::section:
-                throw std::runtime_error("got a section inside measurement");
-
-            case Node::Type::tag: {
-                out << r.get(idx, std::string(n.begin, n.end));
-                break;
-            }
-            }
-        }
-    }
-}
-
-static void generateResult(std::vector<Node> const& nodes, size_t idx, std::vector<Result> const& results, std::ostream& out) {
-    auto const& r = results[idx];
-    for (auto const& n : nodes) {
-        if (!generateFirstLast(n, idx, results.size(), out)) {
-            switch (n.type) {
-            case Node::Type::content:
-                out.write(n.begin, std::distance(n.begin, n.end));
-                break;
-
-            case Node::Type::inverted_section:
-                throw std::runtime_error("got a inverted section inside result");
-
-            case Node::Type::section:
-                if (n == "measurement") {
-                    for (size_t i = 0; i < r.size(); ++i) {
-                        generateResultMeasurement(n.children, i, r, out);
-                    }
-                } else {
-                    throw std::runtime_error("got a section inside result");
-                }
-                break;
-
-            case Node::Type::tag:
-                generateResultTag(n, r, out);
-                break;
-            }
-        }
-    }
-}
-
-static void generate(char const* mustacheTemplate, std::vector<Result> const& results, std::ostream& out) {
-    // TODO(martinus) save & restore stream status
-    out.precision(std::numeric_limits<double>::digits10);
-    auto nodes = parseMustacheTemplate(&mustacheTemplate);
-
-    for (auto const& n : nodes) {
-        switch (n.type) {
-        case Node::Type::content:
-            out.write(n.begin, std::distance(n.begin, n.end));
-            break;
-
-        case Node::Type::inverted_section:
-            throw std::runtime_error("unknown list '" + std::string(n.begin, n.end) + "'");
-
-        case Node::Type::section:
-            if (n == "result") {
-                for (size_t i = 0; i < results.size(); ++i) {
-                    generateResult(n.children, i, results, out);
-                }
-            } else {
-                throw std::runtime_error("unknown section '" + std::string(n.begin, n.end) + "'");
-            }
-            break;
-
-        case Node::Type::tag:
-            throw std::runtime_error("unknown tag '" + std::string(n.begin, n.end) + "'");
-            break;
-        }
-    }
-}
-
-} // namespace mustache
 } // namespace fmt
 } // namespace detail
 
@@ -2109,6 +2118,17 @@ double Result::median(std::string const& query) const {
     // create a copy so we can sort
     auto data = it->second;
     return calcMedian(data);
+}
+
+double Result::average(std::string const& query) const {
+    using detail::d;
+    auto it = mNameToMeasurements.find(query);
+    if (it == mNameToMeasurements.end() || it->second.empty()) {
+        return 0.0;
+    }
+
+    // create a copy so we can sort
+    return sum(query) / d(it->second.size());
 }
 
 double Result::medianAbsolutePercentError(std::string const& query) const {
@@ -2345,7 +2365,7 @@ std::vector<Result> const& Bench::results() const noexcept {
 }
 
 Bench& Bench::render(char const* templateContent, std::ostream& os) {
-    detail::fmt::mustache::generate(templateContent, mResults, os);
+    templates::generate(templateContent, mResults, os);
     return *this;
 }
 

@@ -34,9 +34,7 @@ if (NB_sanitizer)
         target_link_libraries(nb PRIVATE -fsanitize=undefined,float-divide-by-zero)
 
         target_compile_options(nb PRIVATE -fsanitize=integer)
-        target_compile_options(nb PRIVATE -fno-sanitize=unsigned-integer-overflow)
         target_link_libraries(nb PRIVATE -fsanitize=integer)
-        target_link_libraries(nb PRIVATE -fno-sanitize=unsigned-integer-overflow)
 
         target_compile_options(nb PRIVATE -fsanitize=nullability)
         target_link_libraries(nb PRIVATE -fsanitize=nullability)

@@ -1,1 +1,5 @@
 implicit-integer-sign-change:random.tcc
+signed-integer-overflow:random.tcc
+unsigned-integer-overflow:random.tcc
+unsigned-integer-overflow:random.h
+unsigned-integer-overflow:example_random_number_generators.cpp
