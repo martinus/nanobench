@@ -23,7 +23,7 @@ TEST_CASE("example_random_uniform01") {
              [&] { d += std::generate_canonical<double, std::numeric_limits<double>::digits>(defaultRng); })
         .doNotOptimizeAway(d);
 
-    ankerl::nanobench::Rng nanobenchRng;
+    ankerl::nanobench::Rng nanobenchRng{123};
     d = 0;
     bench
         .run("ankerl::nanobench::Rng & std::uniform_real_distribution", [&] { d += std::uniform_real_distribution<>{}(nanobenchRng); })

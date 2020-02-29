@@ -5,15 +5,35 @@
 #include <random>
 #include <thirdparty/doctest/doctest.h>
 
-// Benchmarks how fast we can get 64bit random values from Rng
+namespace {
+
+// Benchmarks how fast we can get 64bit random values from Rng.
+// For a good benchmark, we actually not only calculate rng(), we also do something else to see how much can be done in parallel due to
+// instruction parallelism. For more info, see the excellent paper on the Romu generators: http://www.romu-random.org/
 template <typename Rng>
 void bench(ankerl::nanobench::Bench* bench, std::string name) {
     std::random_device dev;
     Rng rng(dev());
     uint64_t x = 0;
-    bench->run(name, [&]() ANKERL_NANOBENCH_NO_SANITIZE("integer") { x += std::uniform_int_distribution<uint64_t>{}(rng); })
+    //
+    bench
+        ->run(name,
+              [&]() ANKERL_NANOBENCH_NO_SANITIZE("integer") {
+                  auto h = std::uniform_int_distribution<uint64_t>{}(rng);
+
+                  // murmur3 hash finalizer of the hash value
+                  h ^= h >> 33;
+                  h *= 0xff51afd7ed558ccd;
+                  h ^= h >> 33;
+                  h *= 0xc4ceb9fe1a85ec53;
+                  h ^= h >> 33;
+
+                  x ^= h;
+              })
         .doNotOptimizeAway(x);
 }
+
+} // namespace
 
 class WyRng {
 public:
@@ -129,6 +149,158 @@ private:
     uint64_t mState;
 };
 
+class Sfc4 {
+public:
+    using result_type = uint64_t;
+
+    static constexpr uint64_t(min)() {
+        return 0;
+    }
+    static constexpr uint64_t(max)() {
+        return UINT64_C(0xffffffffffffffff);
+    }
+
+    Sfc4(uint64_t seed) noexcept
+        : mA(seed)
+        , mB(seed)
+        , mC(seed)
+        , mCounter(1) {
+        for (size_t i = 0; i < 12; ++i) {
+            operator()();
+        }
+    }
+
+    uint64_t operator()() noexcept {
+        uint64_t tmp = mA + mB + mCounter++;
+        mA = mB ^ (mB >> 11U);
+        mB = mC + (mC << 3U);
+        mC = rotl(mC, 24U) + tmp;
+        return tmp;
+    }
+
+private:
+    static constexpr uint64_t rotl(uint64_t x, unsigned k) noexcept {
+        return (x << k) | (x >> (64U - k));
+    }
+
+    uint64_t mA;
+    uint64_t mB;
+    uint64_t mC;
+    uint64_t mCounter;
+};
+
+class RomuTrio {
+public:
+    using result_type = uint64_t;
+
+    static constexpr uint64_t(min)() {
+        return 0;
+    }
+    static constexpr uint64_t(max)() {
+        return UINT64_C(0xffffffffffffffff);
+    }
+
+    RomuTrio(uint64_t seed) noexcept
+        : mX(seed)
+        , mY(UINT64_C(0x9E6C63D0676A9A99))
+        , mZ(UINT64_C(0xe7037ed1a0b428db)) {
+        operator()();
+    }
+
+    uint64_t operator()() noexcept {
+        uint64_t x = mX;
+        uint64_t y = mY;
+        uint64_t z = mZ;
+
+        mX = UINT64_C(15241094284759029579) * z;
+        mY = rotl(y - x, 12);
+        mZ = rotl(z - y, 44);
+
+        return x;
+    }
+
+private:
+    static constexpr uint64_t rotl(uint64_t x, unsigned k) noexcept {
+        return (x << k) | (x >> (64U - k));
+    }
+
+    uint64_t mX;
+    uint64_t mY;
+    uint64_t mZ;
+};
+
+class RomuDuo {
+public:
+    using result_type = uint64_t;
+
+    static constexpr uint64_t(min)() {
+        return 0;
+    }
+    static constexpr uint64_t(max)() {
+        return UINT64_C(0xffffffffffffffff);
+    }
+
+    RomuDuo(uint64_t seed) noexcept
+        : mX(seed)
+        , mY(UINT64_C(0x9E6C63D0676A9A99)) {
+        operator()();
+    }
+
+    uint64_t operator()() noexcept {
+        uint64_t x = mX;
+
+        mX = UINT64_C(15241094284759029579) * mY;
+        mY = rotl(mY, 36) + rotl(mY, 15) - x;
+
+        return x;
+    }
+
+private:
+    static constexpr uint64_t rotl(uint64_t x, unsigned k) noexcept {
+        return (x << k) | (x >> (64U - k));
+    }
+
+    uint64_t mX;
+    uint64_t mY;
+};
+
+class RomuDuoJr {
+public:
+    using result_type = uint64_t;
+
+    static constexpr uint64_t(min)() {
+        return 0;
+    }
+    static constexpr uint64_t(max)() {
+        return UINT64_C(0xffffffffffffffff);
+    }
+
+    RomuDuoJr(uint64_t seed) noexcept
+        : mX(seed)
+        , mY(UINT64_C(0x9E6C63D0676A9A99)) {
+        for (size_t i = 0; i < 10; ++i) {
+            operator()();
+        }
+    }
+
+    uint64_t operator()() noexcept {
+        uint64_t x = mX;
+
+        mX = UINT64_C(15241094284759029579) * mY;
+        mY = rotl(mY - x, 27);
+
+        return x;
+    }
+
+private:
+    static constexpr uint64_t rotl(uint64_t x, unsigned k) noexcept {
+        return (x << k) | (x >> (64U - k));
+    }
+
+    uint64_t mX;
+    uint64_t mY;
+};
+
 TEST_CASE("example_random_number_generators") {
     // perform a few warmup calls, and since the runtime is not always stable for each
     // generator, increase the number of epochs to get more accurate numbers.
@@ -145,9 +317,13 @@ TEST_CASE("example_random_number_generators") {
     bench<std::ranlux24>(&b, "std::ranlux24_base");
     bench<std::ranlux48>(&b, "std::ranlux48");
     bench<std::knuth_b>(&b, "std::knuth_b");
-    bench<ankerl::nanobench::Rng>(&b, "ankerl::nanobench::Rng");
     bench<WyRng>(&b, "WyRng");
     bench<NasamRng>(&b, "NasamRng");
+    bench<Sfc4>(&b, "Sfc4");
+    bench<RomuTrio>(&b, "RomuTrio");
+    bench<RomuDuo>(&b, "RomuDuo");
+    bench<RomuDuoJr>(&b, "RomuDuoJr");
+    bench<ankerl::nanobench::Rng>(&b, "ankerl::nanobench::Rng");
 
     // Let's create a JSON file with all the results
     std::ofstream fout("example_random_number_generators.json");

@@ -25,7 +25,7 @@ TEST_CASE("example_complexity_set") {
 }
 
 TEST_CASE("example_complexity_sort") {
-    ankerl::nanobench::Rng rng;
+    ankerl::nanobench::Rng rng{123};
     ankerl::nanobench::Bench bench;
     for (size_t n = 10; n < 10000; n *= 2) {
         // prepare a set with range number of elements
@@ -52,7 +52,7 @@ TEST_CASE("example_complexity_sort") {
 TEST_CASE("example_complexity_quadratic") {
     // create an ankerl::nanobench::Config object that is used in all the benchmarks
     ankerl::nanobench::Bench bench;
-    ankerl::nanobench::Rng rng;
+    ankerl::nanobench::Rng rng{123};
 
     // run the same benchmark multiple times with different ranges
     for (size_t range = 10; range <= 1000; range *= 2) {

@@ -217,16 +217,15 @@ private:
 };
 ANKERL_NANOBENCH(IGNORE_PADDED_POP)
 
-// Sfc64, V4 - Small Fast Counting RNG, version 4
-// Based on code from http://pracrand.sourceforge.net
+// RomuTrio, Great for general purpose work, including huge jobs.
+// Est. capacity = 2^75 bytes. Register pressure = 6. State size = 192 bits.
+// By Mark Overton, Source: http://www.romu-random.org/
 class Rng final {
 public:
     using result_type = uint64_t;
 
     static constexpr uint64_t(min)();
     static constexpr uint64_t(max)();
-
-    Rng();
 
     // don't allow copying, it's dangerous
     Rng(Rng const&) = delete;
@@ -237,7 +236,10 @@ public:
     Rng& operator=(Rng&&) noexcept = default;
     ~Rng() noexcept = default;
 
+    Rng();
     explicit Rng(uint64_t seed) noexcept;
+    Rng(uint64_t x, uint64_t y, uint64_t z) noexcept;
+
     ANKERL_NANOBENCH(NODISCARD) Rng copy() const noexcept;
     void assign(Rng const& other) noexcept;
 
@@ -250,10 +252,9 @@ public:
 private:
     static constexpr uint64_t rotl(uint64_t x, unsigned k) noexcept;
 
-    uint64_t mA;
-    uint64_t mB;
-    uint64_t mC;
-    uint64_t mCounter;
+    uint64_t mX;
+    uint64_t mY;
+    uint64_t mZ;
 };
 
 // Main entry class for the microbenchmark framework.
@@ -439,7 +440,7 @@ private:
     Bench const& mBench;
     std::chrono::nanoseconds mTargetRuntimePerEpoch{};
     Result mResult;
-    Rng mRng{};
+    Rng mRng{123};
     std::chrono::nanoseconds mTotalElapsed{};
     uint64_t mTotalNumIters = 0;
 
@@ -517,7 +518,6 @@ std::ostream& operator<<(std::ostream& os, std::vector<ankerl::nanobench::BigO> 
 namespace ankerl {
 namespace nanobench {
 
-// Small Fast Counting RNG, version 4
 constexpr uint64_t(Rng::min)() {
     return 0;
 }
@@ -530,11 +530,12 @@ constexpr uint64_t(Rng::max)() {
 // a bug. Not here though.
 ANKERL_NANOBENCH_NO_SANITIZE("integer")
 uint64_t Rng::operator()() noexcept {
-    uint64_t tmp = mA + mB + mCounter++;
-    mA = mB ^ (mB >> 11U);
-    mB = mC + (mC << 3U);
-    mC = rotl(mC, 24U) + tmp;
-    return tmp;
+    uint64_t x = mX;
+    uint64_t y = mY;
+    mX = UINT64_C(15241094284759029579) * mZ;
+    mZ = rotl(mZ - y, 44U);
+    mY = rotl(mY - x, 12U);
+    return x;
 }
 
 // see http://prng.di.unimi.it/
@@ -2387,32 +2388,42 @@ std::vector<BigO> Bench::complexityBigO() const {
 }
 
 Rng::Rng()
-    : Rng(UINT64_C(0xd3b45fd780a1b6a3)) {}
+    : mX(0)
+    , mY(0)
+    , mZ(0) {
+    std::random_device rd;
+    std::uniform_int_distribution<uint64_t> dist;
+    do {
+        mX = dist(rd);
+        mY = dist(rd);
+        mZ = dist(rd);
+    } while (mX == 0 && mY == 0 && mZ == 0);
+}
 
+// mY and mZ are set to random numbers. I don't set them to seed, because then the whole state would be zero.
+// calling operator()() a few times to get some initial mixing.
 Rng::Rng(uint64_t seed) noexcept
-    : mA(seed)
-    , mB(seed)
-    , mC(seed)
-    , mCounter(1) {
+    : mX(seed)
+    , mY(UINT64_C(0x31b69f9239739e03))
+    , mZ(UINT64_C(0xb86f0df2ab5b2501)) {
     for (size_t i = 0; i < 12; ++i) {
         operator()();
     }
 }
 
+Rng::Rng(uint64_t x, uint64_t y, uint64_t z) noexcept
+    : mX(x)
+    , mY(y)
+    , mZ(z) {}
+
 Rng Rng::copy() const noexcept {
-    Rng r;
-    r.mA = mA;
-    r.mB = mB;
-    r.mC = mC;
-    r.mCounter = mCounter;
-    return r;
+    return Rng{mX, mY, mZ};
 }
 
 void Rng::assign(Rng const& other) noexcept {
-    mA = other.mA;
-    mB = other.mB;
-    mC = other.mC;
-    mCounter = other.mCounter;
+    mX = other.mX;
+    mY = other.mY;
+    mZ = other.mZ;
 }
 
 BigO::RangeMeasure BigO::collectRangeMeasure(std::vector<Result> const& results) {
