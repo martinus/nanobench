@@ -38,16 +38,43 @@ uint64_t romuTrio_random() {
     return xp;
 }
 
+void romuTrio_seed(uint64_t seed) {
+    xState = seed;
+    yState = UINT64_C(0xcc2d6b0743b14800);
+    zState = UINT64_C(0xd932cff2dd2324a7);
+
+    for (int i = 0; i < 10; ++i) {
+        romuTrio_random();
+    }
+}
+
 } // namespace
 
-TEST_CASE("unit_romuquad_correctness") {
+TEST_CASE("unit_romutrio_correctness") {
     xState = UINT64_C(0xbd46aa54f33bc225);
     yState = UINT64_C(0xcc2d6b0743b14800);
-    yState = UINT64_C(0xd932cff2dd2324a7);
+    zState = UINT64_C(0xd932cff2dd2324a7);
 
     ankerl::nanobench::Rng rng(xState, yState, zState);
 
     for (int i = 0; i < 1000; ++i) {
         REQUIRE(romuTrio_random() == rng());
+    }
+}
+
+#include <iomanip>
+#include <iostream>
+
+TEST_CASE("unit_romutrio_seed") {
+
+    for (int skip = 0; skip < 10; ++skip) {
+        for (uint64_t i = 0; i < 10; ++i) {
+            romuTrio_seed(i);
+            for (auto s = 0; s < skip; ++s) {
+                romuTrio_random();
+            }
+            std::cout << std::setw(16) << std::setfill('0') << std::hex << romuTrio_random() << " ";
+        }
+        std::cout << std::endl;
     }
 }
