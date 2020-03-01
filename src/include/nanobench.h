@@ -39,13 +39,12 @@
 // public facing api - as minimal as possible
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 
-#include <chrono>           // high_resolution_clock
-#include <cstring>          // memcpy
-#include <initializer_list> // for doNotOptimizeAway
-#include <iosfwd>           // for std::ostream* custom output target in Config
-#include <string>           // all names
-#include <unordered_map>    // used by Result
-#include <vector>           // holds all results
+#include <chrono>        // high_resolution_clock
+#include <cstring>       // memcpy
+#include <iosfwd>        // for std::ostream* custom output target in Config
+#include <string>        // all names
+#include <unordered_map> // used by Result
+#include <vector>        // holds all results
 
 #define ANKERL_NANOBENCH(x) ANKERL_NANOBENCH_PRIVATE_##x()
 
@@ -354,8 +353,8 @@ public:
     Bench& run(Op op);
 
     // Convenience: makes sure none of the given arguments are optimized away by the compiler.
-    template <typename... Args>
-    Bench& doNotOptimizeAway(Args&&... args);
+    template <typename Arg>
+    Bench& doNotOptimizeAway(Arg&& arg);
 
     // Parses the mustache-like template and renders the output into os.
     Bench& render(char const* templateContent, std::ostream& os);
@@ -385,8 +384,8 @@ private:
 ANKERL_NANOBENCH(IGNORE_PADDED_POP)
 
 // Makes sure none of the given arguments are optimized away by the compiler.
-template <typename... Args>
-void doNotOptimizeAway(Args&&... args);
+template <typename Arg>
+void doNotOptimizeAway(Arg&& arg);
 
 namespace detail {
 
@@ -542,7 +541,7 @@ uint64_t Rng::operator()() noexcept {
 double Rng::uniform01() noexcept {
     auto i = (UINT64_C(0x3ff) << 52U) | (operator()() >> 12U);
     // can't use union in c++ here for type puning, it's undefined behavior.
-    // std::memcpy is optimized away anyways.
+    // std::memcpy is optimized anyways.
     double d;
     std::memcpy(&d, &i, sizeof(double));
     return d - 1.0;
@@ -602,16 +601,16 @@ Bench& Bench::complexityN(T n) noexcept {
 }
 
 // Convenience: makes sure none of the given arguments are optimized away by the compiler.
-template <typename... Args>
-Bench& Bench::doNotOptimizeAway(Args&&... args) {
-    (void)std::initializer_list<int>{(detail::doNotOptimizeAway(std::forward<Args>(args)), 0)...};
+template <typename Arg>
+Bench& Bench::doNotOptimizeAway(Arg&& arg) {
+    detail::doNotOptimizeAway(std::forward<Arg>(arg));
     return *this;
 }
 
 // Makes sure none of the given arguments are optimized away by the compiler.
-template <typename... Args>
-void doNotOptimizeAway(Args&&... args) {
-    (void)std::initializer_list<int>{(detail::doNotOptimizeAway(std::forward<Args>(args)), 0)...};
+template <typename Arg>
+void doNotOptimizeAway(Arg&& arg) {
+    detail::doNotOptimizeAway(std::forward<Arg>(arg));
 }
 
 namespace detail {
