@@ -189,7 +189,7 @@ ANKERL_NANOBENCH(IGNORE_PADDED_POP)
 ANKERL_NANOBENCH(IGNORE_PADDED_PUSH)
 class Result {
 public:
-    Result(Config const& benchmarkConfig);
+    explicit Result(Config const& benchmarkConfig);
 
     // adds new measurement results
     // all values are scaled by iters (except iters...)
@@ -377,8 +377,6 @@ public:
 
 private:
     Config mConfig{};
-
-    // results
     std::vector<Result> mResults{};
 };
 ANKERL_NANOBENCH(IGNORE_PADDED_POP)
@@ -421,7 +419,7 @@ typename std::enable_if<doNotOptimizeNeedsIndirect<T>()>::type doNotOptimizeAway
 ANKERL_NANOBENCH(IGNORE_PADDED_PUSH)
 class IterationLogic {
 public:
-    IterationLogic(Bench const& config) noexcept;
+    explicit IterationLogic(Bench const& config) noexcept;
 
     ANKERL_NANOBENCH(NODISCARD) uint64_t numIters() const noexcept;
     void add(std::chrono::nanoseconds elapsed, PerformanceCounters const& pc) noexcept;
@@ -2399,7 +2397,7 @@ Rng::Rng()
     } while (mX == 0 && mY == 0 && mZ == 0);
 }
 
-// mY and mZ are set to random numbers. I don't set them to seed, because then the whole state would be zero.
+// mY and mZ are set to random numbers. I don't set them to seed, because then the whole state could be zero if seed itself is zero.
 // calling operator()() a few times to get some initial mixing.
 Rng::Rng(uint64_t seed) noexcept
     : mX(seed)
