@@ -1518,8 +1518,8 @@ void IterationLogic::showResult(std::string const& errorMessage) const {
         if (rInsMedian > 0.0 && rCycMedian > 0.0) {
             columns.emplace_back(9, 3, "IPC", "", rCycMedian <= 0.0 ? 0.0 : rInsMedian / rCycMedian);
         }
-        if (mResult.has("branches")) {
-            double rBraMedian = mResult.median("branches");
+        if (mResult.has("branchinstructions")) {
+            double rBraMedian = mResult.median("branchinstructions");
             columns.emplace_back(17, 2, "bra/" + mBench.unit(), "", rBraMedian / mBench.batch());
             if (mResult.has("branchmisses")) {
                 double p = 0.0;
