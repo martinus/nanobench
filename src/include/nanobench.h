@@ -312,8 +312,8 @@ public:
 
     // Modern processors have a very accurate clock, being able to measure as low as 20 nanoseconds. This allows nanobech to be so
     // fast: we only run the benchmark sufficiently often so that the clock's accuracy is good enough. The default is to run one epoch
-    // for 2000 times the clock resolution. So for 20ns resolution and 11 epochs, this gives a total runtime of `20ns * 8000 * 11 ~
-    // 2ms` for a benchmark to get accurate results.
+    // for 1000 times the clock resolution. So for 20ns resolution and 11 epochs, this gives a total runtime of `20ns * 1000 * 11 ~
+    // 0.2ms` for a benchmark to get accurate results.
     Bench& clockResolutionMultiple(size_t multiple) noexcept;
     ANKERL_NANOBENCH(NODISCARD) size_t clockResolutionMultiple() const noexcept;
 
