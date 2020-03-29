@@ -107,7 +107,8 @@
 namespace ankerl {
 namespace nanobench {
 
-using Clock = std::chrono::high_resolution_clock;
+using Clock = std::conditional<std::chrono::high_resolution_clock::is_steady, std::chrono::high_resolution_clock,
+                               std::chrono::steady_clock>::type;
 class Bench;
 struct Config;
 class Result;
