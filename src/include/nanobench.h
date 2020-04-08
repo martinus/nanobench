@@ -128,7 +128,7 @@ char const* htmlBoxplot() noexcept;
 char const* json() noexcept;
 
 // Generates output from the template and results into the given stream
-void generate(char const* mustacheTemplate, std::vector<Result> const& results, std::ostream& out);
+void generate(char const* mustacheTemplate, Bench const& bench, std::ostream& out);
 
 } // namespace templates
 
@@ -886,46 +886,54 @@ static bool matchCmdArgs(std::string const& str, std::vector<std::string>& match
     return true;
 }
 
-static std::ostream& generateResultTag(Node const& n, Result const& r, std::ostream& out) {
+static bool generateConfigTag(Node const& n, Config const& config, std::ostream& out) {
     using detail::d;
 
     if (n == "title") {
-        return out << r.config().mBenchmarkTitle;
+        out << config.mBenchmarkTitle;
+        return true;
+    } else if (n == "name") {
+        out << config.mBenchmarkName;
+        return true;
+    } else if (n == "unit") {
+        out << config.mUnit;
+        return true;
+    } else if (n == "batch") {
+        out << config.mBatch;
+        return true;
+    } else if (n == "complexityN") {
+        out << config.mComplexityN;
+        return true;
+    } else if (n == "epochs") {
+        out << config.mNumEpochs;
+        return true;
+    } else if (n == "clockResolutionMultiple") {
+        out << config.mClockResolutionMultiple;
+        return true;
+    } else if (n == "maxEpochTime") {
+        out << d(config.mMaxEpochTime);
+        return true;
+    } else if (n == "minEpochTime") {
+        out << d(config.mMinEpochTime);
+        return true;
+    } else if (n == "minEpochIterations") {
+        out << config.mMinEpochIterations;
+        return true;
+    } else if (n == "warmup") {
+        out << config.mWarmup;
+        return true;
+    } else if (n == "relative") {
+        out << config.mIsRelative;
+        return true;
     }
-    if (n == "name") {
-        return out << r.config().mBenchmarkName;
-    }
-    if (n == "unit") {
-        return out << r.config().mUnit;
-    }
-    if (n == "batch") {
-        return out << r.config().mBatch;
-    }
-    if (n == "complexityN") {
-        return out << r.config().mComplexityN;
-    }
-    if (n == "epochs") {
-        return out << r.config().mNumEpochs;
-    }
-    if (n == "clockResolutionMultiple") {
-        return out << r.config().mClockResolutionMultiple;
-    }
-    if (n == "maxEpochTime") {
-        return out << d(r.config().mMaxEpochTime);
-    }
-    if (n == "minEpochTime") {
-        return out << d(r.config().mMinEpochTime);
-    }
-    if (n == "minEpochIterations") {
-        return out << r.config().mMinEpochIterations;
-    }
-    if (n == "warmup") {
-        return out << r.config().mWarmup;
-    }
-    if (n == "relative") {
-        return out << r.config().mIsRelative;
-    }
+    return false;
+}
 
+static std::ostream& generateResultTag(Node const& n, Result const& r, std::ostream& out) {
+    if(generateConfigTag(n, r.config(), out))
+    {
+        return out;
+    }
     // match e.g. "median(elapsed)"
     // g++ 4.8 doesn't implement std::regex :(
     // static std::regex const regOpArg1("^([a-zA-Z]+)\\(([a-zA-Z]*)\\)$");
@@ -1019,7 +1027,7 @@ static void generateResult(std::vector<Node> const& nodes, size_t idx, std::vect
     }
 }
 
-void generate(char const* mustacheTemplate, std::vector<Result> const& results, std::ostream& out) {
+void generate(char const* mustacheTemplate, const Bench& bench, std::ostream& out) {
     // TODO(martinus) save & restore stream status
     out.precision(std::numeric_limits<double>::digits10);
     auto nodes = parseMustacheTemplate(&mustacheTemplate);
@@ -1035,8 +1043,9 @@ void generate(char const* mustacheTemplate, std::vector<Result> const& results, 
 
         case Node::Type::section:
             if (n == "result") {
-                for (size_t i = 0; i < results.size(); ++i) {
-                    generateResult(n.children, i, results, out);
+                const size_t nbResults = bench.results().size();
+                for (size_t i = 0; i < nbResults; ++i) {
+                    generateResult(n.children, i, bench.results(), out);
                 }
             } else {
                 throw std::runtime_error("unknown section '" + std::string(n.begin, n.end) + "'");
@@ -1044,7 +1053,9 @@ void generate(char const* mustacheTemplate, std::vector<Result> const& results, 
             break;
 
         case Node::Type::tag:
-            throw std::runtime_error("unknown tag '" + std::string(n.begin, n.end) + "'");
+            if (!generateConfigTag(n, bench.config() , out)) {
+                throw std::runtime_error("unknown tag '" + std::string(n.begin, n.end) + "'");
+            }
             break;
         }
     }
@@ -2368,7 +2379,7 @@ std::vector<Result> const& Bench::results() const noexcept {
 }
 
 Bench& Bench::render(char const* templateContent, std::ostream& os) {
-    templates::generate(templateContent, mResults, os);
+    templates::generate(templateContent, *this, os);
     return *this;
 }
 
