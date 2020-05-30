@@ -524,14 +524,18 @@ constexpr uint64_t(Rng::max)() {
     return (std::numeric_limits<uint64_t>::max)();
 }
 
+// RomuTrio http://www.romu-random.org/
+//
+// Great for general purpose work, including huge jobs
+// Est. capacity = 2^75 bytes. Register pressure = 6. State size = 192 bits.
+//
 // Mark this as no_sanitize, otherwise UBSAN will say we got an unsigned integer overflow. Which is not a undefined behavior, but often
 // a bug. Not here though.
 ANKERL_NANOBENCH_NO_SANITIZE("integer")
 uint64_t Rng::operator()() noexcept {
     uint64_t x = mX;
-    uint64_t y = mY;
     mX = UINT64_C(15241094284759029579) * mZ;
-    mZ = rotl(mZ - y, 44U);
+    mZ = rotl(mZ - mY, 44U);
     mY = rotl(mY - x, 12U);
     return x;
 }
@@ -629,7 +633,7 @@ void doNotOptimizeAway(T const& val) {
 #if defined(ANKERL_NANOBENCH_IMPLEMENT)
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
-// implementation part
+// implementation part - only visible in .cpp
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 
 #    include <algorithm> // sort, reverse
@@ -684,6 +688,9 @@ class MarkDownCode;
 
 namespace ankerl {
 namespace nanobench {
+
+uint64_t splitMix64(uint64_t& state) noexcept;
+
 namespace detail {
 
 // helpers to get double values
@@ -2408,13 +2415,20 @@ Rng::Rng()
     } while (mX == 0 && mY == 0 && mZ == 0);
 }
 
-// mY and mZ are set to random numbers. I don't set them to seed, because then the whole state could be zero if seed itself is zero.
-// calling operator()() a few times to get some initial mixing.
+ANKERL_NANOBENCH_NO_SANITIZE("integer")
+uint64_t splitMix64(uint64_t& state) noexcept {
+    uint64_t z = (state += UINT64_C(0x9e3779b97f4a7c15));
+    z = (z ^ (z >> 30U)) * UINT64_C(0xbf58476d1ce4e5b9);
+    z = (z ^ (z >> 27U)) * UINT64_C(0x94d049bb133111eb);
+    return z ^ (z >> 31U);
+}
+
+// Seeded as described in romu paper (update april 2020)
 Rng::Rng(uint64_t seed) noexcept
-    : mX(seed)
-    , mY(UINT64_C(0x31b69f9239739e03))
-    , mZ(UINT64_C(0xb86f0df2ab5b2501)) {
-    for (size_t i = 0; i < 12; ++i) {
+    : mX(splitMix64(seed))
+    , mY(splitMix64(seed))
+    , mZ(splitMix64(seed)) {
+    for (size_t i = 0; i < 10; ++i) {
         operator()();
     }
 }
