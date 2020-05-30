@@ -50,7 +50,7 @@ prints this markdown table:
 |--------------------:|--------------------:|--------:|---------------:|---------------:|-------:|---------------:|--------:|:----------------------------------------------
 |                7.81 |      128,092,931.19 |    0.0% |           4.00 |          24.93 |  0.161 |           0.00 |    0.0% | `compare_exchange_strong`
 
-Which means that one `x.compare_exchange_strong(y, 0);` call takes 7.81s on my machine, or ~128 million
+Which means that one `x.compare_exchange_strong(y, 0);` call takes 7.81ns on my machine, or ~128 million
 operations per second. Runtime fluctuates by around 0.0%, so the results are very stable. Each call required 4 instructions, which took ~25 CPU cycles.
 There were no branches in this code, so we also got no branch misspredictions.
 
