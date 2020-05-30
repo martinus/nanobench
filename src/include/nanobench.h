@@ -930,8 +930,7 @@ static bool generateConfigTag(Node const& n, Config const& config, std::ostream&
 }
 
 static std::ostream& generateResultTag(Node const& n, Result const& r, std::ostream& out) {
-    if(generateConfigTag(n, r.config(), out))
-    {
+    if (generateConfigTag(n, r.config(), out)) {
         return out;
     }
     // match e.g. "median(elapsed)"
@@ -1053,7 +1052,7 @@ void generate(char const* mustacheTemplate, const Bench& bench, std::ostream& ou
             break;
 
         case Node::Type::tag:
-            if (!generateConfigTag(n, bench.config() , out)) {
+            if (!generateConfigTag(n, bench.config(), out)) {
                 throw std::runtime_error("unknown tag '" + std::string(n.begin, n.end) + "'");
             }
             break;
