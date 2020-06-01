@@ -702,6 +702,9 @@ inline double d(Clock::duration dur) noexcept {
     return std::chrono::duration_cast<std::chrono::duration<double>>(dur).count();
 }
 
+// Calculates clock resolution once, and remembers the result
+inline Clock::duration clockResolution() noexcept;
+
 } // namespace detail
 
 namespace templates {
@@ -750,6 +753,7 @@ char const* json() noexcept {
             "batch": {{batch}},
             "complexityN": {{complexityN}},
             "epochs": {{epochs}},
+            "clockResolution": {{clockResolution}},
             "clockResolutionMultiple": {{clockResolutionMultiple}},
             "maxEpochTime": {{maxEpochTime}},
             "minEpochTime": {{minEpochTime}},
@@ -913,6 +917,9 @@ static bool generateConfigTag(Node const& n, Config const& config, std::ostream&
         return true;
     } else if (n == "epochs") {
         out << config.mNumEpochs;
+        return true;
+    } else if (n == "clockResolution") {
+        out << d(detail::clockResolution());
         return true;
     } else if (n == "clockResolutionMultiple") {
         out << config.mClockResolutionMultiple;
@@ -1086,9 +1093,6 @@ uint64_t& singletonHeaderHash() noexcept;
 
 // determines resolution of the given clock. This is done by measuring multiple times and returning the minimum time difference.
 Clock::duration calcClockResolution(size_t numEvaluations) noexcept;
-
-// Calculates clock resolution once, and remembers the result
-inline Clock::duration clockResolution() noexcept;
 
 // formatting utilities
 namespace fmt {
