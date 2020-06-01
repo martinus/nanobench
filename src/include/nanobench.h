@@ -534,9 +534,13 @@ constexpr uint64_t(Rng::max)() {
 ANKERL_NANOBENCH_NO_SANITIZE("integer")
 uint64_t Rng::operator()() noexcept {
     uint64_t x = mX;
-    mX = UINT64_C(15241094284759029579) * mZ;
-    mZ = rotl(mZ - mY, 44U);
-    mY = rotl(mY - x, 12U);
+    uint64_t y = mY;
+    uint64_t z = mZ;
+
+    mX = UINT64_C(15241094284759029579) * z;
+    mY = rotl(y - x, 12);
+    mZ = rotl(z - y, 44);
+
     return x;
 }
 
