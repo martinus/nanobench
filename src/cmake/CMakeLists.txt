@@ -36,6 +36,7 @@ function(add_compile_flags_target target)
         target_compile_options(${target} PRIVATE -march=native)
         if(NOT CMAKE_CXX_COMPILER_VERSION VERSION_LESS 5.0)
             target_compile_options(${target} PRIVATE -fdiagnostics-color)
+            target_compile_options(${target} PRIVATE -Wno-zero-as-null-pointer-constant) # doesn't work with spaceship operator
         endif()
         target_compile_options(${target} PRIVATE -Werror)
         target_compile_options(${target} PRIVATE -pedantic)

@@ -39,9 +39,7 @@ function build() {
 #if false; then
 #fi
 
-build "g++" "17" "OFF" "-m32"
-build "g++-4.8" "11" "OFF"
-build "clang++" "17" "OFF"
+build "clang++" "20" "OFF"
 
 
 ## DON'T MODIFY PAST HERE! Just copy&past above this line to test it before other stuff.
