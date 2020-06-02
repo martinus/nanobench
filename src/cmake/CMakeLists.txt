@@ -86,7 +86,7 @@ function(add_compile_flags_target target)
         if(NOT CMAKE_CXX_COMPILER_VERSION VERSION_LESS 5.0)
             target_compile_options(${target} PRIVATE -Wdouble-promotion)
             target_compile_options(${target} PRIVATE -Wtrampolines)
-            target_compile_options(${target} PRIVATE -Wzero-as-null-pointer-constant)
+            #target_compile_options(${target} PRIVATE -Wzero-as-null-pointer-constant) # doesn't work with spaceship operator
             #target_compile_options(${target} PRIVATE -Wuseless-cast)
             target_compile_options(${target} PRIVATE -Wvector-operation-performance)
         endif()
