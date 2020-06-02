@@ -79,8 +79,8 @@ build "clang++-6" "17" "OFF" "-m32"
 #build "clang++-6" "17" "ON" # can't find asan lib
 #build "clang++-6" "17" "ON" "-m32" # can't find asan lib
 
-build "clang++-6" "20" "OFF"
-build "clang++-6" "20" "OFF" "-m32"
+#build "clang++-6" "20" "OFF"
+#build "clang++-6" "20" "OFF" "-m32"
 #build "clang++-6" "20" "ON" # can't find asan lib
 #build "clang++-6" "20" "ON" "-m32" # can't find asan lib
 
