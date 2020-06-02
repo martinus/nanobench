@@ -64,17 +64,19 @@ TEST_CASE("unit_romutrio_correctness") {
 
 #include <iomanip>
 #include <iostream>
+#include <sstream>
 
 TEST_CASE("unit_romutrio_seed") {
-
+    std::ostringstream out;
     for (int skip = 0; skip < 10; ++skip) {
         for (uint64_t i = 0; i < 10; ++i) {
             romuTrio_seed(i);
             for (auto s = 0; s < skip; ++s) {
                 romuTrio_random();
             }
-            std::cout << std::setw(16) << std::setfill('0') << std::hex << romuTrio_random() << " ";
+            out << std::setw(16) << std::setfill('0') << std::hex << romuTrio_random() << " ";
         }
-        std::cout << std::endl;
+        out << std::endl;
     }
+    std::cout << out.str() << std::endl;
 }
