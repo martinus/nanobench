@@ -61,4 +61,10 @@ endif()
 add_subdirectory(src)
 add_compile_flags_target(nb)
 
+# we have to globally set the property here, so it actually works https://cmake.org/pipermail/cmake/2010-March/036020.html
+set_source_files_properties(
+    src/test/tutorial_fast_v1.cpp 
+    src/test/tutorial_fast_v2.cpp
+    PROPERTIES COMPILE_FLAGS "-fno-sanitize=integer")
+
 target_sources_local(nb PUBLIC .clang-tidy)
