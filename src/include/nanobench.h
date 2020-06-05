@@ -270,109 +270,109 @@ public:
 
     ~Bench() noexcept;
 
-    // Set the batch size, e.g. number of processed bytes, or some other metric for the size of the processed data in each iteration.
-    // Best used in combination with `unit`. Any argument is cast to double.
+    /// Set the batch size, e.g. number of processed bytes, or some other metric for the size of the processed data in each iteration.
+    /// Best used in combination with `unit`. Any argument is cast to double.
     template <typename T>
     Bench& batch(T b) noexcept;
     ANKERL_NANOBENCH(NODISCARD) double batch() const noexcept;
 
-    // Marks the next run as the baseline. The following runs will be compared to this run. 100% will mean it is exactly as fast as the
-    // baseline, >100% means it is faster than the baseline. It is calculated by `100% * runtime_baseline / runtime`. So e.g. 200%
-    // means the current run is twice as fast as the baseline.
+    /// Marks the next run as the baseline. The following runs will be compared to this run. 100% will mean it is exactly as fast as
+    /// the baseline, >100% means it is faster than the baseline. It is calculated by `100% * runtime_baseline / runtime`. So e.g. 200%
+    /// means the current run is twice as fast as the baseline.
     Bench& relative(bool isRelativeEnabled) noexcept;
     ANKERL_NANOBENCH(NODISCARD) bool relative() const noexcept;
 
     Bench& performanceCounters(bool showPerformanceCounters) noexcept;
     ANKERL_NANOBENCH(NODISCARD) bool performanceCounters() const noexcept;
 
-    // Operation unit. Defaults to "op", could be e.g. "byte" for string processing. This is used for the table header, e.g. to show
-    // `ns/byte`. Use singular (byte, not bytes). A change clears the currently collected results.
+    /// Operation unit. Defaults to "op", could be e.g. "byte" for string processing. This is used for the table header, e.g. to show
+    /// `ns/byte`. Use singular (byte, not bytes). A change clears the currently collected results.
     Bench& unit(std::string unit);
     ANKERL_NANOBENCH(NODISCARD) std::string const& unit() const noexcept;
 
-    // Title of the benchmark, will be shown in the table header. A change clears the currently collected results.
+    /// Title of the benchmark, will be shown in the table header. A change clears the currently collected results.
     Bench& title(std::string benchmarkTitle);
     ANKERL_NANOBENCH(NODISCARD) std::string const& title() const noexcept;
 
-    // Name of the benchmark, will be shown in the table row.
+    /// Name of the benchmark, will be shown in the table row.
     Bench& name(std::string benchmarkName);
     ANKERL_NANOBENCH(NODISCARD) std::string const& name() const noexcept;
 
-    // Set the output stream where the resulting markdown table will be printed to. The default is `&std::cout`. You can disable all
-    // output by setting `nullptr`.
+    /// Set the output stream where the resulting markdown table will be printed to. The default is `&std::cout`. You can disable all
+    /// output by setting `nullptr`.
     Bench& output(std::ostream* outstream) noexcept;
     ANKERL_NANOBENCH(NODISCARD) std::ostream* output() const noexcept;
 
-    // Number of epochs to evaluate. The reported result will be the median of evaluation of each epoch. Defaults to 11. The higher you
-    // choose this, the more deterministic will the result be and outliers will be more easily removed. The default is already quite
-    // high to be able to filter most outliers.
-    //
-    // For slow benchmarks you might want to reduce this number.
+    /// Number of epochs to evaluate. The reported result will be the median of evaluation of each epoch. Defaults to 11. The higher
+    /// you choose this, the more deterministic will the result be and outliers will be more easily removed. The default is already
+    /// quite high to be able to filter most outliers.
+    ///
+    /// For slow benchmarks you might want to reduce this number.
     Bench& epochs(size_t numEpochs) noexcept;
     ANKERL_NANOBENCH(NODISCARD) size_t epochs() const noexcept;
 
-    // Modern processors have a very accurate clock, being able to measure as low as 20 nanoseconds. This allows nanobech to be so
-    // fast: we only run the benchmark sufficiently often so that the clock's accuracy is good enough. The default is to run one epoch
-    // for 1000 times the clock resolution. So for 20ns resolution and 11 epochs, this gives a total runtime of `20ns * 1000 * 11 ~
-    // 0.2ms` for a benchmark to get accurate results.
+    /// Modern processors have a very accurate clock, being able to measure as low as 20 nanoseconds. This allows nanobech to be so
+    /// fast: we only run the benchmark sufficiently often so that the clock's accuracy is good enough. The default is to run one epoch
+    /// for 1000 times the clock resolution. So for 20ns resolution and 11 epochs, this gives a total runtime of `20ns * 1000 * 11 ~
+    /// 0.2ms` for a benchmark to get accurate results.
     Bench& clockResolutionMultiple(size_t multiple) noexcept;
     ANKERL_NANOBENCH(NODISCARD) size_t clockResolutionMultiple() const noexcept;
 
-    // As a safety precausion if the clock is not very accurate, we can set an upper limit for the maximum evaluation time per epoch.
-    // Default is 100ms.
+    /// As a safety precausion if the clock is not very accurate, we can set an upper limit for the maximum evaluation time per epoch.
+    /// Default is 100ms.
     Bench& maxEpochTime(std::chrono::nanoseconds t) noexcept;
     ANKERL_NANOBENCH(NODISCARD) std::chrono::nanoseconds maxEpochTime() const noexcept;
 
-    // Sets the minimum time each epoch should take. Default is zero, so clockResolutionMultiple() can do it's best guess. You can
-    // increase this if you have the time and results are not accurate enough.
+    /// Sets the minimum time each epoch should take. Default is zero, so clockResolutionMultiple() can do it's best guess. You can
+    /// increase this if you have the time and results are not accurate enough.
     Bench& minEpochTime(std::chrono::nanoseconds t) noexcept;
     ANKERL_NANOBENCH(NODISCARD) std::chrono::nanoseconds minEpochTime() const noexcept;
 
-    // Sets the minimum number of iterations each epoch should take. Default is 1. For high median average percentage error (MdAPE),
-    // which happens when your benchmark is unstable, you might want to increase the minimum number to get more accurate reslts.
+    /// Sets the minimum number of iterations each epoch should take. Default is 1. For high median average percentage error (MdAPE),
+    /// which happens when your benchmark is unstable, you might want to increase the minimum number to get more accurate reslts.
     Bench& minEpochIterations(uint64_t numIters) noexcept;
     ANKERL_NANOBENCH(NODISCARD) uint64_t minEpochIterations() const noexcept;
 
-    // Set a number of iterations that are initially performed without any measurements, to warmup caches / database / whatever.
-    // Normally this is not needed, since we show the median result so initial outliers will be filtered away automatically.
+    /// Set a number of iterations that are initially performed without any measurements, to warmup caches / database / whatever.
+    /// Normally this is not needed, since we show the median result so initial outliers will be filtered away automatically.
     Bench& warmup(uint64_t numWarmupIters) noexcept;
     ANKERL_NANOBENCH(NODISCARD) uint64_t warmup() const noexcept;
 
-    // Gets all benchmark results
+    /// Gets all benchmark results
     ANKERL_NANOBENCH(NODISCARD) std::vector<Result> const& results() const noexcept;
 
-    // Repeatedly calls op() based on the configuration, and performs measurements.
-    // Make sure this is noinline to prevent the compiler to optimize beyond different benchmarks. This can have quite a big effect
+    /// Repeatedly calls op() based on the configuration, and performs measurements.
+    /// Make sure this is noinline to prevent the compiler to optimize beyond different benchmarks. This can have quite a big effect
     template <typename Op>
     ANKERL_NANOBENCH(NOINLINE)
     Bench& run(std::string const& benchmarkName, Op op);
 
-    // Repeatedly calls op() based on the configuration, and performs measurements. Uses previously set name.
-    // Make sure this is noinline to prevent the compiler to optimize beyond different benchmarks. This can have quite a big effect
+    /// Repeatedly calls op() based on the configuration, and performs measurements. Uses previously set name.
+    /// Make sure this is noinline to prevent the compiler to optimize beyond different benchmarks. This can have quite a big effect
     template <typename Op>
     ANKERL_NANOBENCH(NOINLINE)
     Bench& run(Op op);
 
-    // Convenience: makes sure none of the given arguments are optimized away by the compiler.
+    /// Convenience: makes sure none of the given arguments are optimized away by the compiler.
     template <typename Arg>
     Bench& doNotOptimizeAway(Arg&& arg);
 
-    // Parses the mustache-like template and renders the output into os.
+    /// Parses the mustache-like template and renders the output into os.
     Bench& render(char const* templateContent, std::ostream& os);
 
-    // Set the length of N for the next benchmark run, so it is possible to calculate bigO.
+    /// Set the length of N for the next benchmark run, so it is possible to calculate bigO.
     template <typename T>
     Bench& complexityN(T b) noexcept;
     ANKERL_NANOBENCH(NODISCARD) double complexityN() const noexcept;
 
-    // calculates bigO of the results with all preconfigured complexity functions
+    /// calculates bigO of the results with all preconfigured complexity functions
     std::vector<BigO> complexityBigO() const;
 
-    // calculates bigO for a custom function
+    /// calculates bigO for a custom function
     template <typename Op>
     BigO complexityBigO(std::string const& name, Op op) const;
 
-    // Set all the configuration.
+    /// Set all the configuration.
     Bench& config(Config const& benchmarkConfig);
     ANKERL_NANOBENCH(NODISCARD) Config const& config() const noexcept;
 

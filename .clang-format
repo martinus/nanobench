@@ -12,6 +12,7 @@ UseTab: Never
 
 AlignEscapedNewlines: Left
 AllowShortFunctionsOnASingleLine: Empty
+AllowShortLambdasOnASingleLine: Empty
 AlwaysBreakTemplateDeclarations: true
 BreakConstructorInitializers: BeforeComma
 IndentPPDirectives: AfterHash
