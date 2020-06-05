@@ -12,8 +12,9 @@ This is a test, is it not?
    :maxdepth: 2
    :caption: Contents:
 
-   reference
    tutorial
+   comparison
+   reference
 
 Indices and tables
 ==================

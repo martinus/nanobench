@@ -2,7 +2,6 @@
 Tutorial
 ========
 
-
 Installation
 ============
 
@@ -227,9 +226,11 @@ It shows that ``ankerl::nanobench::Rng`` is one of the fastest RNG, and has the 
 fluctuation. It takes only 1.57ns to generate a random ``uint64_t``, so ~638 million calls per
 seconds are possible. To the left we show relative performance compared to ``std::default_random_engine``. 
 
-Note that here pure runtime performance is not necessarily the best benchmark.
-Especially the fastest RNG's can be inlined and use instruction level parallelism
-to their advantage: they immediately return an old state, and while user code can
-already use that value, the next value is calculated in parallel. See The excellent paper
-at `romu-random <http://www.romu-random.org>`_ for details.
+.. note::
+
+   Here pure runtime performance is not necessarily the best benchmark.
+   Especially the fastest RNG's can be inlined and use instruction level parallelism
+   to their advantage: they immediately return an old state, and while user code can
+   already use that value, the next value is calculated in parallel. See the excellent paper
+   at `romu-random <http://www.romu-random.org>`_ for details.
 
