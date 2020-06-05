@@ -45,7 +45,7 @@ Full Example
 
 #. Run ``./full_example``, which gives an output like this:
 
-   .. code:: txt
+   .. code:: text
 
       |               ns/op |                op/s |    err% |          ins/op |          cyc/op |    IPC |         bra/op |   miss% |     total | benchmark
       |--------------------:|--------------------:|--------:|----------------:|----------------:|-------:|---------------:|--------:|----------:|:----------
@@ -80,7 +80,7 @@ Let’s benchmarks how fast we can do ``x += x`` for ``uint64_t``:
 
 After 0.2ms we get this output:
 
-.. code-block:: txt
+.. code-block:: text
 
    |               ns/op |                op/s |    err% |     total | benchmark
    |--------------------:|--------------------:|--------:|----------:|:----------
@@ -97,7 +97,7 @@ away because we never used the output. Thanks to ``doNotOptimizeAway``, this is 
 
 This time the benchmark runs for 2.2ms and we actually get reasonable data:
 
-.. code-block:: txt
+.. code-block:: text
 
    |               ns/op |                op/s |    err% |          ins/op |          cyc/op |    IPC |         bra/op |   miss% |     total | benchmark
    |--------------------:|--------------------:|--------:|----------------:|----------------:|-------:|---------------:|--------:|----------:|:----------
@@ -119,7 +119,7 @@ Let's benchmark if sleeping for 100ms really takes 100ms.
 
 After 1.1 seconds I get
 
-.. code-block:: txt
+.. code-block:: text
 
    |               ns/op |                op/s |    err% |          ins/op |          cyc/op |    IPC |         bra/op |   miss% |     total | benchmark
    |--------------------:|--------------------:|--------:|----------------:|----------------:|-------:|---------------:|--------:|----------:|:---------------------
@@ -135,7 +135,7 @@ If the extremely slow 1.1 second is too much for you, you can manually configure
    :linenos:
    :caption: tutorial_slow_v2.cpp
 
-.. code-block:: txt
+.. code-block:: text
 
    |               ns/op |                op/s |    err% |          ins/op |          cyc/op |    IPC |         bra/op |   miss% |     total | benchmark
    |--------------------:|--------------------:|--------:|----------------:|----------------:|-------:|---------------:|--------:|----------:|:----------
@@ -157,7 +157,7 @@ randomly skip between 0-254 random numbers:
 
 After 2.3ms, I get this result:
 
-.. code-block:: txt
+.. code-block:: text
 
    |               ns/op |                op/s |    err% |          ins/op |          cyc/op |    IPC |         bra/op |   miss% |     total | benchmark
    |--------------------:|--------------------:|--------:|----------------:|----------------:|-------:|---------------:|--------:|----------:|:----------
@@ -176,7 +176,7 @@ Let's use the suggestion and set the minimum number of iterations to 5000, and t
 
 The fluctuations are much better:
 
-.. code-block:: txt
+.. code-block:: text
 
    |               ns/op |                op/s |    err% |          ins/op |          cyc/op |    IPC |         bra/op |   miss% |     total | benchmark
    |--------------------:|--------------------:|--------:|----------------:|----------------:|-------:|---------------:|--------:|----------:|:----------
@@ -203,7 +203,7 @@ I factored out the general benchmarking code so it's easy to use for each of the
 
 Runs for 60ms and prints this table:
 
-.. code-block:: txt
+.. code-block:: text
 
    | relative |         ns/uint64_t |          uint64_t/s |    err% |    ins/uint64_t |    cyc/uint64_t |    IPC |   bra/uint64_t |   miss% |     total | Random Number Generators
    |---------:|--------------------:|--------------------:|--------:|----------------:|----------------:|-------:|---------------:|--------:|----------:|:-------------------------

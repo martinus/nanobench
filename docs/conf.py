@@ -31,7 +31,7 @@ release = '4.0.0'
 # extensions coming with Sphinx (named 'sphinx.ext.*') or your custom
 # ones.
 extensions = [ "breathe" ]
-breathe_projects = { "nanobench": "./xml" }
+breathe_projects = { "nanobench": "./_build/doxygen/xml" }
 breathe_default_project = "nanobench"
 
 # Add any paths that contain templates here, relative to this directory.
