@@ -18,6 +18,8 @@ target_sources_local(nb PRIVATE
     tutorial_fast_v2.cpp
     tutorial_slow_v1.cpp
     tutorial_slow_v2.cpp
+    tutorial_fluctuating_v1.cpp
+    tutorial_fluctuating_v2.cpp
     unit_api.cpp
     unit_romutrio.cpp
     unit_to_s.cpp

@@ -38,6 +38,13 @@ if (NB_sanitizer)
 
         target_compile_options(nb PRIVATE -fsanitize=nullability)
         target_link_libraries(nb PRIVATE -fsanitize=nullability)
+
+        # we have to globally set the property here, so it actually works https://cmake.org/pipermail/cmake/2010-March/036020.html
+        set_source_files_properties(
+            src/test/tutorial_fast_v1.cpp 
+            src/test/tutorial_fast_v2.cpp
+            PROPERTIES COMPILE_FLAGS "-fno-sanitize=integer")
+
     endif()
     if (CMAKE_CXX_COMPILER_ID MATCHES "GNU")
         # need to use gold linker, otherwise travis gets '/usr/bin/ld: --push-state: unknown option' error
@@ -60,11 +67,5 @@ endif()
 
 add_subdirectory(src)
 add_compile_flags_target(nb)
-
-# we have to globally set the property here, so it actually works https://cmake.org/pipermail/cmake/2010-March/036020.html
-set_source_files_properties(
-    src/test/tutorial_fast_v1.cpp 
-    src/test/tutorial_fast_v2.cpp
-    PROPERTIES COMPILE_FLAGS "-fno-sanitize=integer")
 
 target_sources_local(nb PUBLIC .clang-tidy)

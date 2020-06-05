@@ -5,36 +5,6 @@
 #include <random>
 #include <thirdparty/doctest/doctest.h>
 
-namespace {
-
-// Benchmarks how fast we can get 64bit random values from Rng.
-// For a good benchmark, we actually not only calculate rng(), we also do something else to see how much can be done in parallel due to
-// instruction parallelism. For more info, see the excellent paper on the Romu generators: http://www.romu-random.org/
-template <typename Rng>
-void bench(ankerl::nanobench::Bench* bench, std::string name) {
-    std::random_device dev;
-    Rng rng(dev());
-    uint64_t x = 0;
-    //
-    bench
-        ->run(name,
-              [&]() ANKERL_NANOBENCH_NO_SANITIZE("integer") {
-                  auto h = std::uniform_int_distribution<uint64_t>{}(rng);
-
-                  // murmur3 hash finalizer of the hash value
-                  h ^= h >> 33;
-                  h *= 0xff51afd7ed558ccd;
-                  h ^= h >> 33;
-                  h *= 0xc4ceb9fe1a85ec53;
-                  h ^= h >> 33;
-
-                  x ^= h;
-              })
-        .doNotOptimizeAway(x);
-}
-
-} // namespace
-
 class WyRng {
 public:
     using result_type = uint64_t;
@@ -301,6 +271,22 @@ private:
     uint64_t mY;
 };
 
+namespace {
+
+// Benchmarks how fast we can get 64bit random values from Rng.
+template <typename Rng>
+void bench(ankerl::nanobench::Bench* bench, std::string name) {
+    std::random_device dev;
+    Rng rng(dev());
+
+    bench->run(name, [&]() {
+        auto r = std::uniform_int_distribution<uint64_t>{}(rng);
+        ankerl::nanobench::doNotOptimizeAway(r);
+    });
+}
+
+} // namespace
+
 TEST_CASE("example_random_number_generators") {
     // perform a few warmup calls, and since the runtime is not always stable for each
     // generator, increase the number of epochs to get more accurate numbers.
@@ -324,22 +310,4 @@ TEST_CASE("example_random_number_generators") {
     bench<RomuDuo>(&b, "RomuDuo");
     bench<RomuDuoJr>(&b, "RomuDuoJr");
     bench<ankerl::nanobench::Rng>(&b, "ankerl::nanobench::Rng");
-
-    // Let's create a JSON file with all the results
-    std::ofstream fout("example_random_number_generators.json");
-    b.render(ankerl::nanobench::templates::json(), fout);
-    fout.close();
-
-    // A nice HTML graph too!
-    fout.open("example_random_number_generators.html");
-    b.render(ankerl::nanobench::templates::htmlBoxplot(), fout);
-    fout.close();
-
-    // finally, a CSV file for data reuse.
-    fout.open("example_random_number_generators.csv");
-    b.render(ankerl::nanobench::templates::csv(), fout);
-    fout.close();
-
-    // just generate a very simple overview of the results
-    b.render("\n{{#result}}{{median(elapsed)}} for {{name}}\n{{/result}}", std::cout);
 }
