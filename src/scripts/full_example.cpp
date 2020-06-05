@@ -1,4 +1,3 @@
-#define ANKERL_NANOBENCH_IMPLEMENT
 #include <nanobench.h>
 
 #include <atomic>

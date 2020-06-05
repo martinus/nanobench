@@ -1,37 +1,10 @@
+#if 0
 #include <nanobench.h>
 #include <thirdparty/doctest/doctest.h>
 
 #include <chrono>
 #include <random>
 #include <thread>
-
-TEST_CASE("comparison_fast_v1") {
-    uint64_t x = 1;
-    ankerl::nanobench::Bench().run("x += x", [&]() {
-        x += x;
-    });
-}
-
-TEST_CASE("comparison_fast_v2") {
-    uint64_t x = 1;
-    ankerl::nanobench::Bench()
-        .run("x += x",
-             [&]() {
-                 x += x;
-             })
-        .doNotOptimizeAway(x);
-}
-
-TEST_CASE("comparison_fast") {
-    uint64_t x = 1;
-    ankerl::nanobench::Bench()
-        .title("framework comparison")
-        .run("x += x",
-             [&]() {
-                 x += x;
-             })
-        .doNotOptimizeAway(x);
-}
 
 TEST_CASE("comparison_slow") {
     ankerl::nanobench::Bench().title("framework comparison").run("sleep 10ms", [&] {
@@ -62,3 +35,5 @@ TEST_CASE("comparison_fluctuating_v2") {
         }
     });
 }
+
+#endif

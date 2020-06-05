@@ -1,3 +1,2 @@
-//#define ANKERL_NANOBENCH_LOG_ENABLED
 #define ANKERL_NANOBENCH_IMPLEMENT
 #include <nanobench.h>
