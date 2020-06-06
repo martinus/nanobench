@@ -10,17 +10,17 @@ This is a test, is it not?
 
 .. toctree::
    :maxdepth: 2
-   :caption: Contents:
+   :caption: Table of Contents
+   :name: mastertoc
 
    tutorial
    comparison
    reference
 
+
 Indices and tables
 ==================
 
-* :ref:`genindex`
-* :ref:`modindex`
 * :ref:`search`
 
 Docs

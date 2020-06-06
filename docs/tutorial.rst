@@ -2,6 +2,7 @@
 Tutorial
 ========
 
+
 Installation
 ============
 
@@ -39,6 +40,9 @@ Full Example
       :language: c++
       :linenos:
       :caption: full_example.cpp
+
+   The most important entry point is :cpp:class:`ankerl::nanobench::Bench`. It creates a benchmarking object,
+   optionally configures it, and then runs the code to benchmark with :cpp:func:`run() <ankerl::nanobench::Bench::run()>`.
 
 #. Compile & link with ``g++ -O3 -DNDEBUG -I../include nanobench.o full_example.cpp -o full_example``. This takes just 0.5 seconds on my machine.
 
@@ -183,6 +187,9 @@ The fluctuations are much better:
 
 
 The results are  more stable, with only 0.7% error.
+
+.. _Tutorial Comparing Results:
+
 
 Comparing Results
 =================

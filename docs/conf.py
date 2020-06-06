@@ -18,19 +18,16 @@
 # -- Project information -----------------------------------------------------
 
 project = 'nanobench'
-copyright = '2020, Martin Ankerl'
+copyright = '2019-2020 Martin Ankerl <martin.ankerl@gmail.com>'
 author = 'Martin Ankerl'
-
-# The full version, including alpha/beta/rc tags
-release = '4.0.0'
-
+version = '4.0.0'
 
 # -- General configuration ---------------------------------------------------
 
 # Add any Sphinx extension module names here, as strings. They can be
 # extensions coming with Sphinx (named 'sphinx.ext.*') or your custom
 # ones.
-extensions = [ "breathe" ]
+extensions = [ "breathe", "sphinx.ext.mathjax" ]
 breathe_projects = { "nanobench": "./_build/doxygen/xml" }
 breathe_default_project = "nanobench"
 
@@ -49,6 +46,14 @@ exclude_patterns = ['_build', 'Thumbs.db', '.DS_Store']
 # a list of builtin themes.
 #
 html_theme = 'sphinx_rtd_theme'
+
+# see https://sphinx-rtd-theme.readthedocs.io/en/stable/configuring.html
+html_theme_options = {
+    'display_version': True,
+    'sticky_navigation': True,
+        'collapse_navigation': False,
+        'navigation_depth': 4,
+}
 
 # Add any paths that contain custom static files (such as style sheets) here,
 # relative to this directory. They are copied after the builtin static files,

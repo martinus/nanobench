@@ -423,6 +423,7 @@ Results
     10.0188 sec sleep 10ms
     0.000936755 sec random fluctuations
 
+
 ------
 Celero
 ------

@@ -1,16 +1,51 @@
-=========
-Reference
-=========
+=============
+API Reference
+=============
 
-Classes
--------
+.. How to link: https://breathe.readthedocs.io/en/latest/domains.html
+   E.g. :cpp:class:`ankerl::nanobench::Bench`
 
-Internal links, like `example asdf`_. Let's link to `cpp ankerl::nanobench::Bench`_.
+.. doxygenfunction:: ankerl::nanobench::doNotOptimizeAway()
 
-.. _`example asdf`:
+.. doxygenfunction:: ankerl::nanobench::doNotOptimizeAway2()
 
-This is the link.
 
+----------------------------------------------------------------
+:cpp:class:`Bench <ankerl::nanobench::Bench>` - Main Entry Point
+----------------------------------------------------------------
 
 .. doxygenclass:: ankerl::nanobench::Bench
     :members:
+
+
+------------------------------------------------------------
+:cpp:class:`Rng <ankerl::nanobench::Rng>` - Wicked Fast PRNG
+------------------------------------------------------------
+
+.. doxygenclass:: ankerl::nanobench::Rng
+    :members:
+
+
+
+.. doxygenclass:: ankerl::nanobench::Result
+    :members:
+
+
+--------------------------------
+``templates`` - Output Templates
+--------------------------------
+
+
+.. doxygenfunction:: ankerl::nanobench::templates::csv
+
+.. doxygenfunction:: ankerl::nanobench::templates::htmlBoxplot
+
+.. doxygenfunction:: ankerl::nanobench::templates::json
+
+
+---------------
+Generated Index
+---------------
+
+Index for the nanobench API: :ref:`genindex`. 
+
