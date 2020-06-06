@@ -7,8 +7,6 @@ API Reference
 
 .. doxygenfunction:: ankerl::nanobench::doNotOptimizeAway()
 
-.. doxygenfunction:: ankerl::nanobench::doNotOptimizeAway2()
-
 
 ----------------------------------------------------------------
 :cpp:class:`Bench <ankerl::nanobench::Bench>` - Main Entry Point
