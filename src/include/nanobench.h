@@ -283,8 +283,37 @@ public:
     Bench& operator=(Bench&& other);
     Bench(Bench const& other);
     Bench& operator=(Bench const& other);
-
     ~Bench() noexcept;
+
+    /*!
+      @brief Repeatedly calls `op()` based on the configuration, and performs measurements.
+
+      This call is marked with `noinline` to prevent the compiler to optimize beyond different benchmarks. This can have quite a big
+      effect on benchmark accuracy.
+
+      @verbatim embed:rst
+      .. note::
+
+        Each call to your lambda must have a side effect that the compiler can't possibly optimize it away. E.g. add a result to an
+        externally defined number (like `x` in the above example), and finally call `doNotOptimizeAway` on the variables the compiler
+        must not remove. You can also use :cpp:func:`ankerl::nanobench::doNotOptimizeAway` directly in the lambda, but be aware that
+        this has a small overhead.
+
+      @endverbatim
+
+      @tparam Op The code to benchmark.
+     */
+    template <typename Op>
+    ANKERL_NANOBENCH(NOINLINE)
+    Bench& run(std::string const& benchmarkName, Op op);
+
+    /**
+     * @brief Same as run(std::string const& benchmarkName, Op op), but instead uses the previously set name.
+     * @tparam Op The code to benchmark.
+     */
+    template <typename Op>
+    ANKERL_NANOBENCH(NOINLINE)
+    Bench& run(Op op);
 
     /**
      * @brief Title of the benchmark, will be shown in the table header. Changing the title will start a new markdown table.
@@ -444,39 +473,26 @@ public:
     Bench& relative(bool isRelativeEnabled) noexcept;
     ANKERL_NANOBENCH(NODISCARD) bool relative() const noexcept;
 
+    /**
+     * @brief Enables/disables performance counters.
+     *
+     * On Linux nanobench has a powerful feature to use performance counters. This enables counting of retired instructions, count
+     * number of branches, missed branches, etc. On default this is enabled, but you can disable it if you don't need that feature.
+     *
+     * @param showPerformanceCounters True to enable, false to disable.
+     */
     Bench& performanceCounters(bool showPerformanceCounters) noexcept;
     ANKERL_NANOBENCH(NODISCARD) bool performanceCounters() const noexcept;
 
-    /// Gets all benchmark results
-    ANKERL_NANOBENCH(NODISCARD) std::vector<Result> const& results() const noexcept;
-
-    /*!
-      @brief Repeatedly calls `op()` based on the configuration, and performs measurements.
-
-      This call is marked with `noinline` to prevent the compiler to optimize beyond different benchmarks. This can have quite a big
-      effect on benchmark accuracy.
-
-      @verbatim embed:rst
-      .. note::
-
-        Each call to your lambda must have a side effect that the compiler can't possibly optimize it away. E.g. add a result to an
-        externally defined number (like `x` in the above example), and finally call `doNotOptimizeAway` on the variables the compiler
-        must not remove. You can also use :cpp:func:`ankerl::nanobench::doNotOptimizeAway` directly in the lambda, but be aware that
-        this has a small overhead.
-
-      @endverbatim
-
-      @tparam Op The code to benchmark.
+    /**
+     * @brief Retrieves all benchmark results collected by the bench object so far.
+     *
+     * Each call to run() generates a Result that is stored within the Bench instance. This is mostly for advanced users who want to
+     * see all the nitty gritty detials.
+     *
+     * @return All results collected so far.
      */
-    template <typename Op>
-    ANKERL_NANOBENCH(NOINLINE)
-    Bench& run(std::string const& benchmarkName, Op op);
-
-    /// Repeatedly calls op() based on the configuration, and performs measurements. Uses previously set name.
-    /// Make sure this is noinline to prevent the compiler to optimize beyond different benchmarks. This can have quite a big effect
-    template <typename Op>
-    ANKERL_NANOBENCH(NOINLINE)
-    Bench& run(Op op);
+    ANKERL_NANOBENCH(NODISCARD) std::vector<Result> const& results() const noexcept;
 
     /// Convenience: makes sure none of the given arguments are optimized away by the compiler.
     template <typename Arg>

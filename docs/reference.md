@@ -1,19 +1,6 @@
 <a id="top"></a>
 # Reference
 
-## Running Benchmarks
-
-After you've done the configuration, you `run` one or more benchmarks with these settings. E.g:
-
-```cpp
-uint64_t x = 1;
-ankerl::nanobench::Bench().run("x += x", [&] {
-    x += x;
-}).doNotOptimizeAway(x);
-```
-
-> **_NOTE:_** 
-
 ## Processing Results
 
 The `Config` class comes with a powerful [mustache](https://mustache.github.io/)-like template mechanism to process the benchmark results into all kinds of formats. After all benchmarks have been run, you can e.g. create a nice boxplot of all results with:
