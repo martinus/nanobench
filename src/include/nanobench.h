@@ -494,22 +494,98 @@ public:
      */
     ANKERL_NANOBENCH(NODISCARD) std::vector<Result> const& results() const noexcept;
 
-    /// Convenience: makes sure none of the given arguments are optimized away by the compiler.
+    /*!
+      @verbatim embed:rst
+
+      Convenience shortcut to :cpp:func:`ankerl::nanobench::doNotOptimizeAway`.
+
+      @endverbatim
+     */
     template <typename Arg>
     Bench& doNotOptimizeAway(Arg&& arg);
 
-    /// Parses the mustache-like template and renders the output into os.
+    /**
+     * @brief Parses mustache-like templates and renders the output into the output stream `os`.
+     *
+     * @param templateContent
+     * @param os Output stream, e.g. `std::cout`.
+     */
     Bench& render(char const* templateContent, std::ostream& os);
 
-    /// Set the length of N for the next benchmark run, so it is possible to calculate bigO.
+    /*!
+      @verbatim embed:rst
+
+      Sets N for asymptotic complexity calculation, so it becomes possible to calculate `Big O
+      <https://en.wikipedia.org/wiki/Big_O_notation>`_ from multiple benchmark evaluations.
+
+      Use :cpp:func:`ankerl::nanobench::Bench::complexityBigO` when the evalation has finished. See the tutorial
+      :ref:`asymptotic-complexity` for details.
+
+      @endverbatim
+
+      @tparam T Any type is cast to `double`.
+      @param b Length of N for the next benchmark run, so it is possible to calculate `bigO`.
+     */
     template <typename T>
     Bench& complexityN(T b) noexcept;
     ANKERL_NANOBENCH(NODISCARD) double complexityN() const noexcept;
 
-    /// calculates bigO of the results with all preconfigured complexity functions
+    /*!
+      Calculates [Big O](https://en.wikipedia.org/wiki/Big_O_notation>) of the results with all preconfigured complexity functions.
+      Currently these complexity functions are fitted into the benchmark results:
+
+       @f$ \mathcal{O}(1) @f$,
+       @f$ \mathcal{O}(n) @f$,
+       @f$ \mathcal{O}(\log{}n) @f$,
+       @f$ \mathcal{O}(n\log{}n) @f$,
+       @f$ \mathcal{O}(n^2) @f$,
+       @f$ \mathcal{O}(n^3) @f$.
+
+      If we e.g. evaluate the complexity of `std::sort`, this is the result of `std::cout << bench.complexityBigO()`:
+
+      ```
+      |   coefficient |   err% | complexity
+      |--------------:|-------:|------------
+      |   5.08935e-09 |   2.6% | O(n log n)
+      |   6.10608e-08 |   8.0% | O(n)
+      |   1.29307e-11 |  47.2% | O(n^2)
+      |   2.48677e-15 |  69.6% | O(n^3)
+      |   9.88133e-06 | 132.3% | O(log n)
+      |   5.98793e-05 | 162.5% | O(1)
+      ```
+
+      So in this case @f$ \mathcal{O}(n\log{}n) @f$ provides the best approximation.
+
+      @verbatim embed:rst
+      See the tutorial :ref:`asymptotic-complexity` for details.
+      @endverbatim
+      @return Evaluation results, which can be printed or otherwise inspected.
+     */
     std::vector<BigO> complexityBigO() const;
 
-    /// calculates bigO for a custom function
+    /**
+     * @brief Calculates bigO for a custom function.
+     *
+     * E.g. to calculate the mean squared error for @f$ \mathcal{O}(\log{}\log{}n) @f$, which is not part of the default set of
+     * complexityBigO(), you can do this:
+     *
+     * ```
+     * auto logLogN = bench.complexityBigO("O(log log n)", [](double n) {
+     *     return std::log2(std::log2(n));
+     * });
+     * ```
+     * 
+     * The resulting mean squared error can be printed with `std::cout << logLogN`. E.g. it prints something like this:
+     * 
+     * ```text
+     * 2.46985e-05 * O(log log n), rms=1.48121
+     * ```
+     *
+     * @tparam Op
+     * @param name
+     * @param op
+     * @return BigO
+     */
     template <typename Op>
     BigO complexityBigO(std::string const& name, Op op) const;
 

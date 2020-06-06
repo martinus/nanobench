@@ -21,8 +21,8 @@ Installation
    ``ankerl::nanobench``.
 
 
-Full Example
-============
+Quick Start
+===========
 
 #. Create `nanobench.cpp`:
 
@@ -71,8 +71,12 @@ Full Example
 In the remaining examples, I'm using `doctest <https://github.com/onqtam/doctest>`_ as a unit test framework, which is like `Catch2 <https://github.com/catchorg/Catch2>`_ - but
 compiles much faster. It pairs well with nanobench.
 
-Benchmarking Something Fast
-===========================
+Benchmarking
+============
+
+
+Something Fast
+--------------
 
 Let’s benchmarks how fast we can do ``x += x`` for ``uint64_t``:
 
@@ -110,8 +114,8 @@ It's a very stable result. One run the op/s is 3,192 million/sec, the next time 
 1.00 instructions per operation on my machine, and can do this in ~1 cycle.
 
 
-Benchmarking Something Slow
-===========================
+Something Slow
+--------------
 
 Let's benchmark if sleeping for 100ms really takes 100ms.
 
@@ -147,8 +151,8 @@ If the extremely slow 1.1 second is too much for you, you can manually configure
 This time it took only 0.3 seconds, but with only 3 evaluations instead of 11. The err% will be less meaningfull, but since the benchmark is so stable it doesn't really matter.
 
 
-Benchmarking Something Unstable
-===============================
+Something Unstable
+------------------
 
 Lets create an extreme artifical test that's hard to benchmark, because runtime fluctuates randomly: Each iteration
 randomly skip between 0-254 random numbers:
@@ -240,4 +244,10 @@ seconds are possible. To the left we show relative performance compared to ``std
    to their advantage: they immediately return an old state, and while user code can
    already use that value, the next value is calculated in parallel. See the excellent paper
    at `romu-random <http://www.romu-random.org>`_ for details.
+
+
+.. _asymptotic-complexity:
+
+Asymptotic Complexity
+=====================
 

@@ -15,6 +15,7 @@ This is a test, is it not?
 
    tutorial
    comparison
+   templates
    reference
 
 
