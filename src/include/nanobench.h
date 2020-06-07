@@ -246,7 +246,7 @@ public:
     /**
      * As a safety precausion, we don't allow copying. Copying a PRNG would mean you would have two random generators that produce the
      * same sequence, which is generally not what one wants. Instead create a new rng with the default constructor Rng(), which is
-     * automatically seeded from `std::random_device`.
+     * automatically seeded from `std::random_device`. If you really need a copy, use copy().
      */
     Rng(Rng const&) = delete;
 
@@ -261,35 +261,83 @@ public:
     ~Rng() noexcept = default;
 
     /**
-     * @brief Construct a new Rng object
+     * @brief Creates a new Random generator with random seed.
      *
+     * Instead of a default seed (as the random generators from the STD), this properly seeds the random generator from
+     * `std::random_device`. It guarantees correct seeding. Note that seeding can be relatively slow, depending on the source of
+     * randomness used. So it is best to create a Rng once and use it for all your randomness purposes.
      */
     Rng();
+
+    /*!
+      Creates a new Rng that is seeded with a specific seed. Each Rng created from the same seed will produce the same randomness
+      sequence. This can be useful for deterministic behavior.
+
+      @verbatim embed:rst
+      .. note::
+
+         The random algorithm might change between nanobench releases. Whenever a faster and/or better random
+         generator becomes available, I will switch the implementation.
+      @endverbatim
+
+      As per the Romu paper, this seeds the Rng with splitMix64 algorithm and performs 10 initial rounds for further mixing up of the
+      internal state.
+
+      @param seed  The 64bit seed. All values are allowed, even 0.
+     */
     explicit Rng(uint64_t seed) noexcept;
     Rng(uint64_t x, uint64_t y, uint64_t z) noexcept;
 
+    /**
+     * Creates a copy of the Rng, thus the copy provides exactly the same random sequence as the original.
+     */
     ANKERL_NANOBENCH(NODISCARD) Rng copy() const noexcept;
-    void assign(Rng const& other) noexcept;
 
-    // that one's inline so it is fast
-
-    // RomuTrio http://www.romu-random.org/
-    //
-    // Great for general purpose work, including huge jobs
-    // Est. capacity = 2^75 bytes. Register pressure = 6. State size = 192 bits.
-    //
-    // Mark this as no_sanitize, otherwise UBSAN will say we got an unsigned integer overflow. Which is not a undefined behavior, but
-    // often a bug. Not here though.
+    /**
+     * @brief Produces a 64bit random value. This should be very fast, thus it is marked as inline. In my benchmark, this is ~36 times
+     * faster than `std::default_random_engine` for producing 64bit random values. It seems that the fastest std contendor is
+     * `std::mt19937_64`. Still, this RNG is more than twice as fast.
+     *
+     * @return uint64_t The next 64 bit random value.
+     */
     inline uint64_t operator()() noexcept;
 
-    // This is slightly biased. See https://lemire.me/blog/2016/06/30/fast-random-shuffling/
+    // This is slightly biased. See
+
+    /**
+     * Generates a random number between 0 and range (excluding range).
+     *
+     * The algorithm only produces 32bit numbers, and is slightly biased. The effect is quite small unless your range is close to the
+     * maximum value of an integer. It is possible to correct the bias with rejection sampling (see
+     * [here](https://lemire.me/blog/2016/06/30/fast-random-shuffling/), but this is most likely irrelevant in practices for the
+     * purposes of this Rng.
+     *
+     * See Daniel Lemire's blog post [A fast alternative to the modulo
+     * reduction](https://lemire.me/blog/2016/06/27/a-fast-alternative-to-the-modulo-reduction/)
+     *
+     * @param range Upper exlusive range. E.g a value of 3 will generate random numbers 0, 1, 2.
+     * @return uint32_t Generated random values in range [0, range(.
+     */
     inline uint32_t bounded(uint32_t range) noexcept;
 
     // random double in range [0, 1(
     // see http://prng.di.unimi.it/
+
+    /**
+     * Provides a random uniform double value between 0 and 1. This uses the method described in [Generating uniform doubles in the
+     * unit interval](http://prng.di.unimi.it/), and is extremely fast.
+     *
+     * @return double Uniformly distributed double value in range [0,1(, excluding 1.
+     */
     inline double uniform01() noexcept;
 
-    // see https://lemire.me/blog/2016/06/30/fast-random-shuffling/
+    /**
+     * Shuffles all entries in the given container. Although this has a slight bias due to the implementation of bounded(), this is
+     * preferable to `std::shuffle` because it is about 4-5 times faster. See Daniel Lemire's blog post [Fast random
+     * shuffling](https://lemire.me/blog/2016/06/30/fast-random-shuffling/).
+     *
+     * @param container The whole container will be shuffled.
+     */
     template <typename Container>
     void shuffle(Container& container) noexcept;
 
@@ -2727,6 +2775,7 @@ Rng::Rng(uint64_t seed) noexcept
     }
 }
 
+// only internally used to copy the RNG.
 Rng::Rng(uint64_t x, uint64_t y, uint64_t z) noexcept
     : mX(x)
     , mY(y)
@@ -2734,12 +2783,6 @@ Rng::Rng(uint64_t x, uint64_t y, uint64_t z) noexcept
 
 Rng Rng::copy() const noexcept {
     return Rng{mX, mY, mZ};
-}
-
-void Rng::assign(Rng const& other) noexcept {
-    mX = other.mX;
-    mY = other.mY;
-    mZ = other.mZ;
 }
 
 BigO::RangeMeasure BigO::collectRangeMeasure(std::vector<Result> const& results) {

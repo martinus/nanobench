@@ -24,9 +24,9 @@ API Reference
 
 
 
-----------------------------------------------------------------
-:cpp:class:`Rng <ankerl::nanobench::Result>` - Benchmark Results
-----------------------------------------------------------------
+-------------------------------------------------------------------
+:cpp:class:`Result <ankerl::nanobench::Result>` - Benchmark Results
+-------------------------------------------------------------------
 
 .. doxygenclass:: ankerl::nanobench::Result
     :members:
