@@ -53,9 +53,6 @@ In short:
 
 ## Asymptotic Complexity
 
-It is possible to calculate asymptotic complexity (Big O) from multiple runs of a benchmark. Run the benchmark with different complexity N, then nanobench can calculate the best fitting curve. 
-
-For example, let's find out the complexity of an algorithm that finds the closest distance of two values in a vector.
 
 ```cpp
 TEST_CASE("example_complexity_quadratic") {

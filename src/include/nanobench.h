@@ -246,8 +246,13 @@ public:
     // that one's inline so it is fast
     inline uint64_t operator()() noexcept;
 
+    inline uint32_t bounded(uint32_t range) noexcept;
+
     // random double in range [0, 1(
     inline double uniform01() noexcept;
+
+    template <typename Container>
+    void shuffle(Container& container) noexcept;
 
 private:
     static constexpr uint64_t rotl(uint64_t x, unsigned k) noexcept;
@@ -574,9 +579,9 @@ public:
      *     return std::log2(std::log2(n));
      * });
      * ```
-     * 
+     *
      * The resulting mean squared error can be printed with `std::cout << logLogN`. E.g. it prints something like this:
-     * 
+     *
      * ```text
      * 2.46985e-05 * O(log log n), rms=1.48121
      * ```
@@ -766,6 +771,14 @@ uint64_t Rng::operator()() noexcept {
     return x;
 }
 
+// This is slightly biased. See https://lemire.me/blog/2016/06/30/fast-random-shuffling/
+ANKERL_NANOBENCH_NO_SANITIZE("integer")
+uint32_t Rng::bounded(uint32_t range) noexcept {
+    uint64_t random32bit = static_cast<uint32_t>(operator()());
+    auto multiresult = random32bit * range;
+    return static_cast<uint32_t>(multiresult >> 32U);
+}
+
 // see http://prng.di.unimi.it/
 double Rng::uniform01() noexcept {
     auto i = (UINT64_C(0x3ff) << 52U) | (operator()() >> 12U);
@@ -774,6 +787,17 @@ double Rng::uniform01() noexcept {
     double d;
     std::memcpy(&d, &i, sizeof(double));
     return d - 1.0;
+}
+
+// see https://lemire.me/blog/2016/06/30/fast-random-shuffling/
+template <typename Container>
+void Rng::shuffle(Container& container) noexcept {
+    auto size = static_cast<uint32_t>(container.size());
+    for (auto i = size; i > 1U; --i) {
+        using std::swap;
+        auto p = bounded(i); // number in [0, i)
+        swap(container[i - 1], container[p]);
+    }
 }
 
 constexpr uint64_t Rng::rotl(uint64_t x, unsigned k) noexcept {
