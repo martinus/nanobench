@@ -10,7 +10,12 @@ TEST_CASE("always_the_same") {
 
     ankerl::nanobench::Rng rng;
     for (int i = 0; i < 40; ++i) {
-        bench.run("rng() " + std::to_string(i), [&] { rng(); }).doNotOptimizeAway(rng());
+        bench
+            .run("rng() " + std::to_string(i),
+                 [&] {
+                     rng();
+                 })
+            .doNotOptimizeAway(rng());
     }
 
     std::ofstream html("always_the_same.html");

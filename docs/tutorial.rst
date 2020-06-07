@@ -233,7 +233,7 @@ Runs for 60ms and prints this table:
    | 4,580.4% |                0.78 |    1,277,113,402.06 |    0.0% |            7.00 |            2.50 |  2.797 |           0.00 |    0.0% |      0.00 | `RomuDuoJr`
    | 2,291.2% |                1.57 |      638,820,992.09 |    0.0% |           11.00 |            5.00 |  2.200 |           0.00 |    0.0% |      0.00 | `ankerl::nanobench::Rng`
 
-It shows that ``ankerl::nanobench::Rng`` is one of the fastest RNG, and has the least amount of
+It shows that :cpp:class:`ankerl::nanobench::Rng` is one of the fastest RNG, and has the least amount of
 fluctuation. It takes only 1.57ns to generate a random ``uint64_t``, so ~638 million calls per
 seconds are possible. To the left we show relative performance compared to ``std::default_random_engine``. 
 
@@ -254,5 +254,38 @@ Asymptotic Complexity
 It is possible to calculate asymptotic complexity (Big O) from multiple runs of a benchmark. Run the
 benchmark with different complexity N, then nanobench can calculate the best fitting curve. 
 
-For example, let's find out the complexity of an algorithm that finds the closest distance of two
-values in a `std::vector`.
+The following example finds out the asymptotic complexity of ``std::set``'s ``find()``.
+
+.. literalinclude:: ../src/test/tutorial_complexity_set.cpp
+   :language: c++
+   :linenos:
+   :caption: tutorial_complexity_set.cpp
+
+The loop runs the benchmark 10 times, with different set sizes from 10 to 10k.
+
+.. note::
+ 
+   Each of the 10 benchmark runs automatically scales the number of iterations so results are still
+   fast and accurate. In total the whole test takes about 90ms.
+
+The :cpp:class:`Bench <ankerl::nanobench::Bench>` object holds the benchmark results of the 10 benchmark runs. Each benchmark is recorded with a
+different setting for :cpp:func:`complexityN <ankerl::nanobench::Bench::complexityN>`.
+
+After the benchmark prints the benchmark results, we calculate & print the Big O of the most important complexity functions.
+``std::cout << bench.complexityBigO() << std::endl;`` prints e.g. this markdown table:
+
+.. code-block:: text
+
+   |   coefficient |   err% | complexity
+   |--------------:|-------:|------------
+   |   6.66562e-09 |  29.1% | O(log n)
+   |   1.47588e-11 |  58.3% | O(n)
+   |   1.10742e-12 |  62.6% | O(n log n)
+   |   5.15683e-08 |  63.8% | O(1)
+   |   1.40387e-15 |  78.7% | O(n^2)
+   |   1.32792e-19 |  85.7% | O(n^3)
+
+The table is sorted, best fitting complexity function first. So
+:math:`\mathcal{O}(\log{}n)` provides the best approximation for the complexity. Interestingly, in that case error compared to
+:math:`\mathcal{O}(n)` is not very large, which can be an indication that even though the red-black tree should theoretically have
+logarithmic complexity, in practices that is not perfectly the case.

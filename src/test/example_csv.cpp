@@ -9,7 +9,8 @@
 namespace {
 
 template <typename ContainerT>
-static void testBenchSet(std::string const& label, int n, ankerl::nanobench::Bench& bench) {
+static void testBenchSet(std::string const& label, int n,
+                         ankerl::nanobench::Bench& bench) {
     bench.run(label, [&] {
         ContainerT items;
         for (int i = 0; i < n; ++i) {
@@ -31,7 +32,8 @@ void exampleCsv(bool useCsv) {
         testBenchSet<std::deque<int>>("std::deque<int>", n, bench);
         testBenchSet<std::list<int>>("std::list<int>", n, bench);
         if (useCsv) {
-            // could also use ankerl::nanobench::templates::csv() which contains a header
+            // could also use ankerl::nanobench::templates::csv() which contains
+            // a header
             bench.render(ankerl::nanobench::templates::csv(), std::cout);
         }
     }

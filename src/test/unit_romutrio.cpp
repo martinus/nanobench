@@ -9,18 +9,19 @@ constexpr uint64_t rotl(uint64_t x, unsigned k) noexcept {
 
 // Romu generators, by Mark Overton, 2020-2-7.
 //
-// This code is not copyrighted and comes with no warranty of any kind, so it is as-is.
-// You are free to modify and/or distribute it as you wish. You are only required to give
-// credit where credit is due by:
-// (1) not renaming a generator having an unmodified algorithm and constants;
-// (2) prefixing the name of a generator having a modified algorithm or constants with "Romu";
-// (3) attributing the original invention to Mark Overton.
+// This code is not copyrighted and comes with no warranty of any kind, so it is
+// as-is. You are free to modify and/or distribute it as you wish. You are only
+// required to give credit where credit is due by: (1) not renaming a generator
+// having an unmodified algorithm and constants; (2) prefixing the name of a
+// generator having a modified algorithm or constants with "Romu"; (3)
+// attributing the original invention to Mark Overton.
 
 // Copy and paste the generator you want from those below.
 // To compile, you will need to #include <stdint.h>
 // Website: romu-random.org
 
-//===== RomuTrio ==================================================================================
+//===== RomuTrio
+//==================================================================================
 //
 // Great for general purpose work, including huge jobs.
 // Est. capacity = 2^75 bytes. Register pressure = 6. State size = 192 bits.
@@ -74,7 +75,8 @@ TEST_CASE("unit_romutrio_seed") {
             for (auto s = 0; s < skip; ++s) {
                 romuTrio_random();
             }
-            out << std::setw(16) << std::setfill('0') << std::hex << romuTrio_random() << " ";
+            out << std::setw(16) << std::setfill('0') << std::hex
+                << romuTrio_random() << " ";
         }
         out << std::endl;
     }

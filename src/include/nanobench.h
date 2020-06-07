@@ -217,18 +217,42 @@ private:
 };
 ANKERL_NANOBENCH(IGNORE_PADDED_POP)
 
-// RomuTrio, Great for general purpose work, including huge jobs.
-// Est. capacity = 2^75 bytes. Register pressure = 6. State size = 192 bits.
-// By Mark Overton, Source: http://www.romu-random.org/
+/**
+ * An extremely fast random generator. Currently, this implements *RomuTrio*, developed by Mark Overton. Source:
+ * http://www.romu-random.org/
+ *
+ * RomuTrio is extremely fast and provides excellent randomness, sufficient for huge jobs.
+ *
+ *  * Estimated capacity: @f$ 2^{75} @f$ bytes
+ *  * Register pressure: 6
+ *  * State size: 192 bits
+ *
+ * This random generator is a drop-in replacement for the generators supplied by ``<random>``. It is not
+ * cryptographically secure. It's intended purpose is to be very fast so that benchmarks that make use
+ * of randomness are not distorted too much by the random generator.
+ *
+ * It also provides a few non-standard helpers, optimized for speed.
+ */
 class Rng final {
 public:
+    /**
+     * @brief This RNG provides 64bit randomness.
+     */
     using result_type = uint64_t;
 
     static constexpr uint64_t(min)();
     static constexpr uint64_t(max)();
 
-    // don't allow copying, it's dangerous
+    /**
+     * As a safety precausion, we don't allow copying. Copying a PRNG would mean you would have two random generators that produce the
+     * same sequence, which is generally not what one wants. Instead create a new rng with the default constructor Rng(), which is
+     * automatically seeded from `std::random_device`.
+     */
     Rng(Rng const&) = delete;
+
+    /**
+     * Same as Rng(Rng const&), we don't allow assignment. If you need a new Rng create one with the default constructor Rng().
+     */
     Rng& operator=(Rng const&) = delete;
 
     // moving is ok
@@ -236,6 +260,10 @@ public:
     Rng& operator=(Rng&&) noexcept = default;
     ~Rng() noexcept = default;
 
+    /**
+     * @brief Construct a new Rng object
+     *
+     */
     Rng();
     explicit Rng(uint64_t seed) noexcept;
     Rng(uint64_t x, uint64_t y, uint64_t z) noexcept;
@@ -244,13 +272,24 @@ public:
     void assign(Rng const& other) noexcept;
 
     // that one's inline so it is fast
+
+    // RomuTrio http://www.romu-random.org/
+    //
+    // Great for general purpose work, including huge jobs
+    // Est. capacity = 2^75 bytes. Register pressure = 6. State size = 192 bits.
+    //
+    // Mark this as no_sanitize, otherwise UBSAN will say we got an unsigned integer overflow. Which is not a undefined behavior, but
+    // often a bug. Not here though.
     inline uint64_t operator()() noexcept;
 
+    // This is slightly biased. See https://lemire.me/blog/2016/06/30/fast-random-shuffling/
     inline uint32_t bounded(uint32_t range) noexcept;
 
     // random double in range [0, 1(
+    // see http://prng.di.unimi.it/
     inline double uniform01() noexcept;
 
+    // see https://lemire.me/blog/2016/06/30/fast-random-shuffling/
     template <typename Container>
     void shuffle(Container& container) noexcept;
 
@@ -509,14 +548,6 @@ public:
     template <typename Arg>
     Bench& doNotOptimizeAway(Arg&& arg);
 
-    /**
-     * @brief Parses mustache-like templates and renders the output into the output stream `os`.
-     *
-     * @param templateContent
-     * @param os Output stream, e.g. `std::cout`.
-     */
-    Bench& render(char const* templateContent, std::ostream& os);
-
     /*!
       @verbatim embed:rst
 
@@ -586,15 +617,22 @@ public:
      * 2.46985e-05 * O(log log n), rms=1.48121
      * ```
      *
-     * @tparam Op
-     * @param name
-     * @param op
-     * @return BigO
+     * @tparam Op Type of mapping operation.
+     * @param name Name for the function, e.g. "O(log log n)"
+     * @param op Op's operator() maps a `double` with the desired complexity function, e.g. `log2(log2(n))`.
+     * @return BigO Error calculation, which is streamable to std::cout.
      */
     template <typename Op>
     BigO complexityBigO(std::string const& name, Op op) const;
 
-    /// Set all the configuration.
+    /**
+     * TODO
+     */
+    Bench& render(char const* templateContent, std::ostream& os);
+
+    /**
+     * TODO
+     */
     Bench& config(Config const& benchmarkConfig);
     ANKERL_NANOBENCH(NODISCARD) Config const& config() const noexcept;
 
@@ -751,13 +789,6 @@ constexpr uint64_t(Rng::max)() {
     return (std::numeric_limits<uint64_t>::max)();
 }
 
-// RomuTrio http://www.romu-random.org/
-//
-// Great for general purpose work, including huge jobs
-// Est. capacity = 2^75 bytes. Register pressure = 6. State size = 192 bits.
-//
-// Mark this as no_sanitize, otherwise UBSAN will say we got an unsigned integer overflow. Which is not a undefined behavior, but often
-// a bug. Not here though.
 ANKERL_NANOBENCH_NO_SANITIZE("integer")
 uint64_t Rng::operator()() noexcept {
     uint64_t x = mX;
@@ -771,15 +802,13 @@ uint64_t Rng::operator()() noexcept {
     return x;
 }
 
-// This is slightly biased. See https://lemire.me/blog/2016/06/30/fast-random-shuffling/
 ANKERL_NANOBENCH_NO_SANITIZE("integer")
 uint32_t Rng::bounded(uint32_t range) noexcept {
-    uint64_t random32bit = static_cast<uint32_t>(operator()());
-    auto multiresult = random32bit * range;
+    uint64_t r32 = static_cast<uint32_t>(operator()());
+    auto multiresult = r32 * range;
     return static_cast<uint32_t>(multiresult >> 32U);
 }
 
-// see http://prng.di.unimi.it/
 double Rng::uniform01() noexcept {
     auto i = (UINT64_C(0x3ff) << 52U) | (operator()() >> 12U);
     // can't use union in c++ here for type puning, it's undefined behavior.
@@ -789,7 +818,6 @@ double Rng::uniform01() noexcept {
     return d - 1.0;
 }
 
-// see https://lemire.me/blog/2016/06/30/fast-random-shuffling/
 template <typename Container>
 void Rng::shuffle(Container& container) noexcept {
     auto size = static_cast<uint32_t>(container.size());

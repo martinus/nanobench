@@ -51,66 +51,6 @@ In short:
 * `{{#results}}` opens a section for each result (epoch) within a benchmark.
 * Within each section, you can use `{{#-last}}whatever{{/-last}}` to print `whatever` only for the last entry, `{{#-first}}` for only the first, `{{^-last}}` for anything *but* the last, `{{^-first}}` for anything *but* the first. In the JSON example, this is used to add a comma `, ` after each result except the last one.
 
-## Asymptotic Complexity
-
-
-```cpp
-TEST_CASE("example_complexity_quadratic") {
-    // create an ankerl::nanobench::Config object that is used in all the benchmarks
-    ankerl::nanobench::Bench bench;
-    ankerl::nanobench::Rng rng;
-
-    // run the same benchmark multiple times with different ranges
-    for (size_t range = 10; range <= 1000; range *= 2) {
-        // create vector with random data
-        std::vector<double> vec(range, 0.0);
-        for (auto& x : vec) {
-            x = rng.uniform01();
-        }
-
-        // each run is configured with complexityN(range) to specify the run's input N
-        bench.complexityN(range).run("minimum pair " + std::to_string(range), [&] {
-            // Actual algorithm we want to evaluate
-            double minVal = std::numeric_limits<double>::max();
-            for (size_t i = 0; i < vec.size() - 1; ++i) {
-                for (size_t j = i + 1; j < vec.size(); ++j) {
-                    auto diff = vec[i] - vec[j];
-                    minVal = std::min(minVal, diff * diff);
-                }
-            }
-            ankerl::nanobench::doNotOptimizeAway(minVal);
-        });
-    }
-
-    // after all the runs are done, calculate the BigO, and show the results
-    std::cout << bench.complexityBigO() << std::endl;
-}
-```
-
-On my machine this runs for ~60ms and prints this output:
-
-|               ns/op |                op/s |    err% |          ins/op |          cyc/op |    IPC |         bra/op |   miss% |     total | benchmark
-|--------------------:|--------------------:|--------:|----------------:|----------------:|-------:|---------------:|--------:|----------:|:----------
-|               42.92 |       23,296,888.14 |    0.0% |          448.02 |          137.26 |  3.264 |          64.00 |    0.0% |      0.00 | `minimum pair 10`
-|              218.30 |        4,580,760.80 |    0.0% |        1,698.11 |          697.94 |  2.433 |         229.00 |    0.0% |      0.00 | `minimum pair 20`
-|              970.35 |        1,030,558.29 |    0.2% |        6,598.50 |        3,099.48 |  2.129 |         859.00 |    1.3% |      0.00 | `minimum pair 40`
-|            3,959.00 |          252,589.04 |    0.0% |       25,999.83 |       12,657.17 |  2.054 |       3,319.00 |    1.6% |      0.00 | `minimum pair 80`
-|           15,950.00 |           62,695.92 |    0.0% |      103,209.00 |       50,939.00 |  2.026 |      13,039.00 |    1.0% |      0.00 | `minimum pair 160`
-|           63,890.00 |           15,651.90 |    0.0% |      411,209.00 |      204,022.00 |  2.016 |      51,679.00 |    0.6% |      0.00 | `minimum pair 320`
-|          255,767.00 |            3,909.81 |    0.0% |    1,641,609.00 |      816,487.00 |  2.011 |     205,759.00 |    0.3% |      0.00 | `minimum pair 640`
-
-So as `range` increases, its getting slower. The call `bench.complexityBigO()` calculates Big O's and returns a sorted result prints this table:
-
-|   coefficient |   err% | complexity
-|--------------:|-------:|------------
-|   6.24395e-10 |   0.1% | O(n^2)
-|   9.91384e-13 |  26.4% | O(n^3)
-|    3.8699e-08 |  44.8% | O(n log n)
-|   3.42516e-07 |  58.6% | O(n)
-|   9.95555e-06 | 153.8% | O(log n)
-|   4.86854e-05 | 179.0% | O(1)
-
-Unsurprisingly, the best fitting complexity is O(n^2), with a very small error of only 0.1%.
 
 # ankerl::nanobench::Rng
 

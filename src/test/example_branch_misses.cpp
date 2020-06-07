@@ -3,7 +3,8 @@
 
 #include <fstream>
 
-// This example should show about one branch per op, and about 50% branch misses since it is completely unpredictable.
+// This example should show about one branch per op, and about 50% branch misses
+// since it is completely unpredictable.
 TEST_CASE("example_branch_misses") {
     ankerl::nanobench::Rng rng;
 
@@ -20,7 +21,12 @@ TEST_CASE("example_branch_misses") {
              })
         .doNotOptimizeAway(rng);
 
-    bench.batch(1).run("no forced misspredictions", [&] { rng(); }).doNotOptimizeAway(rng);
+    bench.batch(1)
+        .run("no forced misspredictions",
+             [&] {
+                 rng();
+             })
+        .doNotOptimizeAway(rng);
 
     std::ofstream fout("example_branch_misses.json");
     bench.render(ankerl::nanobench::templates::json(), fout);

@@ -9,6 +9,7 @@ API Reference
 :cpp:class:`Bench <ankerl::nanobench::Bench>` - Main Entry Point
 ----------------------------------------------------------------
 
+
 .. doxygenclass:: ankerl::nanobench::Bench
     :members:
 

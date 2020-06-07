@@ -288,10 +288,14 @@ void bench(ankerl::nanobench::Bench* bench, std::string name) {
 } // namespace
 
 TEST_CASE("example_random_number_generators") {
-    // perform a few warmup calls, and since the runtime is not always stable for each
-    // generator, increase the number of epochs to get more accurate numbers.
+    // perform a few warmup calls, and since the runtime is not always stable
+    // for each generator, increase the number of epochs to get more accurate
+    // numbers.
     ankerl::nanobench::Bench b;
-    b.title("Random Number Generators").unit("uint64_t").warmup(100).relative(true);
+    b.title("Random Number Generators")
+        .unit("uint64_t")
+        .warmup(100)
+        .relative(true);
     b.performanceCounters(true);
 
     // sets the first one as the baseline
