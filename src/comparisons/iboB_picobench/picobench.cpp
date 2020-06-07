@@ -8,7 +8,7 @@
 
 
 // https://github.com/iboB/picobench
-// g++ -O2 main.cpp -Lgit/benchmark/build/src -lbenchmark -lpthread -o m
+// g++ -O2 picobench.cpp -o pb
 
 PICOBENCH_SUITE("ComparisonFast");
 static void ComparisonFast(picobench::state& state) {

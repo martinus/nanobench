@@ -1,3 +1,6 @@
+// https://github.com/catchorg/Catch2
+// g++ -O2 catch.cpp -o c
+
 #define CATCH_CONFIG_ENABLE_BENCHMARKING
 #define CATCH_CONFIG_MAIN
 #include "catch.hpp"

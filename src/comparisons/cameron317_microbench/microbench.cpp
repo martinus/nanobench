@@ -11,9 +11,16 @@
 int main(int, char**) {
     // something fast
     uint64_t x = 1;
-    std::cout << moodycamel::microbench([&]() { x += x; }, 10000000, 51) << " sec x += x (x==" << x << ")" << std::endl;
+    std::cout << moodycamel::microbench(
+                     [&]() {
+                         x += x;
+                     },
+                     10000000, 51)
+              << " sec x += x (x==" << x << ")" << std::endl;
 
-    std::cout << moodycamel::microbench([&] { std::this_thread::sleep_for(std::chrono::milliseconds(10)); }) << " sec sleep 10ms"
+    std::cout << moodycamel::microbench([&] {
+        std::this_thread::sleep_for(std::chrono::milliseconds(10));
+    }) << " sec sleep 10ms"
               << std::endl;
 
     std::random_device dev;

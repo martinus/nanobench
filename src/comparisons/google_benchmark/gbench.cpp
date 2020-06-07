@@ -5,7 +5,8 @@
 #include <thread>
 
 // Build instructions: https://github.com/google/benchmark#installation
-// curl --output benchmark.h https://raw.githubusercontent.com/google/benchmark/master/include/benchmark/benchmark.h
+// curl --output benchmark.h
+// https://raw.githubusercontent.com/google/benchmark/master/include/benchmark/benchmark.h
 // g++ -O2 main.cpp -Lgit/benchmark/build/src -lbenchmark -lpthread -o m
 void ComparisonFast(benchmark::State& state) {
     uint64_t x = 1;

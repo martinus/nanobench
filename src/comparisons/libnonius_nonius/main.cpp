@@ -1,6 +1,8 @@
 #define NONIUS_RUNNER
 #include <nonius/nonius_single.h++>
 
+// g++ -O2 main.cpp -pthread -I. -o m
+
 #include <chrono>
 #include <random>
 #include <thread>
@@ -23,10 +25,14 @@ auto volatilize(Fn&& fn) -> volatilize_fn<typename std::decay<Fn>::type> {
 
 NONIUS_BENCHMARK("x += x", [](nonius::chronometer meter) {
     auto x = meter.param<X>();
-    meter.measure(volatilize([&]() { return x += x; }));
+    meter.measure(volatilize([&]() {
+        return x += x;
+    }));
 })
 
-NONIUS_BENCHMARK("sleep 10ms", [] { std::this_thread::sleep_for(std::chrono::milliseconds(10)); })
+NONIUS_BENCHMARK("sleep 10ms", [] {
+    std::this_thread::sleep_for(std::chrono::milliseconds(10));
+})
 
 NONIUS_BENCHMARK("random fluctuations", [](nonius::chronometer meter) {
     std::random_device dev;
