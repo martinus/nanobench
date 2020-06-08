@@ -3,15 +3,18 @@
    You can adapt this file completely to your liking, but it should at least
    contain the root `toctree` directive.
 
-Welcome to nanobench's documentation!
-=====================================
+=========
+nanobench
+=========
 
-This is a test, is it not?
+.. image:: logo-nanobench.png
+
 
 .. toctree::
    :maxdepth: 2
    :caption: Table of Contents
    :name: mastertoc
+   :hidden:
 
    tutorial
    comparison
@@ -19,10 +22,72 @@ This is a test, is it not?
    reference
 
 
-Indices and tables
-==================
+.. |badge-release| image:: https://img.shields.io/github/release/martinus/nanobench.svg
+   :target: https://github.com/martinus/nanobench/releases
+   :alt: Release
+.. |badge-license| image:: https://img.shields.io/github/license/martinus/nanobench.svg
+   :target: https://raw.githubusercontent.com/martinus/nanobench/master/LICENSE
+   :alt: License
+.. |badge-travis| image:: https://travis-ci.com/martinus/nanobench.svg?branch=master
+   :target: https://travis-ci.com/martinus/nanobench
+   :alt: Travis CI Build Status
+.. |badge-appveyor| image:: https://ci.appveyor.com/api/projects/status/github/martinus/nanobench?branch=master&svg=true
+   :target: https://ci.appveyor.com/project/martinus/nanobench
+   :alt: Appveyor Build Status
+.. |badge-gitter| image:: https://badges.gitter.im/nanobench/community.svg
+   :target: https://gitter.im/nanobench/community?utm_source=badge&utm_medium=badge&utm_campaign=pr-badge&utm_content=badge
+   :alt: Join the chat at https://gitter.im/nanobench/community
 
-* :ref:`search`
 
-Docs
+|badge-release| |badge-license| |badge-travis| |badge-appveyor| |badge-gitter|
+
+
+``ankerl::nanobench`` is a platform independent microbenchmarking library for C++11/14/17/20.
+
+
+.. literalinclude:: ../scripts/full_example_simple.cpp
+    :language: c++
+    :linenos:
+
+
+The whole executable runs for ~60ms and prints
+
+
+.. code-block:: text
+
+   |               ns/op |                op/s |    err% |          ins/op |          cyc/op |    IPC |         bra/op |   miss% |     total | benchmark
+   |--------------------:|--------------------:|--------:|----------------:|----------------:|-------:|---------------:|--------:|----------:|:----------
+   |                7.52 |      132,948,239.79 |    1.1% |            6.65 |           24.07 |  0.276 |           1.00 |    8.9% |      0.00 | `some double ops`
+
+
+Which github renders like
+
+====================== ===================== ========= ================= ================= ======== ================ ========= =========== ====================
+                ns/op                  op/s      err%            ins/op            cyc/op      IPC           bra/op     miss%       total   benchmark
+====================== ===================== ========= ================= ================= ======== ================ ========= =========== ====================
+                 7.52        132,948,239.79      1.1%              6.65             24.07    0.276             1.00      8.9%        0.00  ``some double ops``
+====================== ===================== ========= ================= ================= ======== ================ ========= =========== ====================
+
+The benchmarked code takes **7.52** nanoseconds to run, so ~**133** million times per seconds. Measurements fluctuate by
+**1.1%**. On average **6.65** instructions are executed in **24.07** CPU cycles, resulting in **0.276** instructions per
+second. A **single** branch is in the code, which branch prediction missed in **8.9%** of the cases. Total runtime of
+the benchmark with the name `some double ops` is **0.00**, so just a few milliseconds.
+
+Design Goals
+============
+
+Ease of use
+   Simple but powerful API, fast compile times, easy to integrate anywhere.
+Fast
+   Get accurate results as fast as possible
+Accurate
+   Get deterministic, repeatable, and accurate results that you can make sound decisions on.
+Robust
+   Be robust against outliers, warn if results are not reliable.
+
+More
 ====
+
+* `Code of Conduct <https://github.com/martinus/nanobench/blob/master/CODE_OF_CONDUCT.md>`_ - Contributor Covenant Code of Conduct
+* I need a better logo. Currently I use a small bench. Nanobench. Ha ha.
+
