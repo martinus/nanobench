@@ -17,6 +17,7 @@ nanobench
    comparison
    formatting
    reference
+   license
 
 
 .. |badge-release| image:: https://img.shields.io/github/release/martinus/nanobench.svg
