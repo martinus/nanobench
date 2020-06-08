@@ -1,5 +1,5 @@
 // https://github.com/martinus/nanobench
-// g++ -O2 -DNDEBUG -I../../include main.cpp -o m
+// g++ -O2 -I../../include main.cpp -o m
 
 #define ANKERL_NANOBENCH_IMPLEMENT
 #include <nanobench.h>

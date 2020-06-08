@@ -7,9 +7,6 @@
 nanobench
 =========
 
-.. image:: logo-nanobench.png
-
-
 .. toctree::
    :maxdepth: 2
    :caption: Table of Contents
@@ -38,8 +35,38 @@ nanobench
    :target: https://gitter.im/nanobench/community?utm_source=badge&utm_medium=badge&utm_campaign=pr-badge&utm_content=badge
    :alt: Join the chat at https://gitter.im/nanobench/community
 
+.. |download-button| raw:: html
 
+   <div class="container">
+      <div class="row">
+         <div class="col text-center">
+            <div class="btn-group">
+               <button type="button" class="btn btn-success">Download</button>
+               <button type="button" class="btn btn-success dropdown-toggle dropdown-toggle-split" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
+                  <span class="sr-only">Toggle Dropdown</span>
+               </button>
+               <div class="dropdown-menu">
+                  <a class="dropdown-item" href="#">Action</a>
+                  <a class="dropdown-item" href="#">Another action</a>
+                  <a class="dropdown-item" href="#">Something else here</a>
+                  <div class="dropdown-divider"></div>
+                  <a class="dropdown-item" href="#">Separated link</a>
+               </div>
+            </div>
+         </div>
+      </div>
+   </div>
+
+   
 |badge-release| |badge-license| |badge-travis| |badge-appveyor| |badge-gitter|
+
+.. image:: logo-nanobench.png 
+
+.. hint::
+
+   View and download `nanobench on Github <https://github.com/martinus/nanobench>`_.
+   Get the latest :download:`release <https://github.com/martinus/nanobench/releases/latest>`.
+
 
 
 ``ankerl::nanobench`` is a platform independent microbenchmarking library for C++11/14/17/20.

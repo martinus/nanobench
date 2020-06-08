@@ -31,7 +31,7 @@ Quick Start
       :linenos:
       :caption: nanobench.cpp
 
-#. Compile with ``g++ -O3 -DNDEBUG -I../include -c nanobench.cpp``. This compiles
+#. Compile with ``g++ -O3 -I../include -c nanobench.cpp``. This compiles
    the bulk of nanobench, and took 3.37 seconds on my machine. It's done only once.
 
 #. Create the actual benchmark code, in `full_example.cpp`:
@@ -44,7 +44,7 @@ Quick Start
    The most important entry point is :cpp:class:`ankerl::nanobench::Bench`. It creates a benchmarking object,
    optionally configures it, and then runs the code to benchmark with :cpp:func:`run() <ankerl::nanobench::Bench::run()>`.
 
-#. Compile & link with ``g++ -O3 -DNDEBUG -I../include nanobench.o full_example.cpp -o full_example``. This takes just 0.5 seconds on my machine.
+#. Compile & link with ``g++ -O3 -I../include nanobench.o full_example.cpp -o full_example``. This takes just 0.5 seconds on my machine.
 
 #. Run ``./full_example``, which gives an output like this:
 

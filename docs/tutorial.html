@@ -249,7 +249,7 @@ nanobench is compiled:</p>
 </td></tr></table></div>
 </div>
 </li>
-<li><p>Compile with <code class="docutils literal notranslate"><span class="pre">g++</span> <span class="pre">-O3</span> <span class="pre">-DNDEBUG</span> <span class="pre">-I../include</span> <span class="pre">-c</span> <span class="pre">nanobench.cpp</span></code>. This compiles
+<li><p>Compile with <code class="docutils literal notranslate"><span class="pre">g++</span> <span class="pre">-O3</span> <span class="pre">-I../include</span> <span class="pre">-c</span> <span class="pre">nanobench.cpp</span></code>. This compiles
 the bulk of nanobench, and took 3.37 seconds on my machine. It’s done only once.</p></li>
 <li><p>Create the actual benchmark code, in <cite>full_example.cpp</cite>:</p>
 <div class="literal-block-wrapper docutils container" id="id3">
@@ -281,7 +281,7 @@ the bulk of nanobench, and took 3.37 seconds on my machine. It’s done only onc
 <p>The most important entry point is <a class="reference internal" href="reference.html#_CPPv4N6ankerl9nanobench5BenchE" title="ankerl::nanobench::Bench"><code class="xref cpp cpp-class docutils literal notranslate"><span class="pre">ankerl::nanobench::Bench</span></code></a>. It creates a benchmarking object,
 optionally configures it, and then runs the code to benchmark with <a class="reference internal" href="reference.html#_CPPv4I0EN6ankerl9nanobench5Bench3runER5BenchRKNSt6stringE2Op" title="ankerl::nanobench::Bench::run"><code class="xref cpp cpp-func docutils literal notranslate"><span class="pre">run()</span></code></a>.</p>
 </li>
-<li><p>Compile &amp; link with <code class="docutils literal notranslate"><span class="pre">g++</span> <span class="pre">-O3</span> <span class="pre">-DNDEBUG</span> <span class="pre">-I../include</span> <span class="pre">nanobench.o</span> <span class="pre">full_example.cpp</span> <span class="pre">-o</span> <span class="pre">full_example</span></code>. This takes just 0.5 seconds on my machine.</p></li>
+<li><p>Compile &amp; link with <code class="docutils literal notranslate"><span class="pre">g++</span> <span class="pre">-O3</span> <span class="pre">-I../include</span> <span class="pre">nanobench.o</span> <span class="pre">full_example.cpp</span> <span class="pre">-o</span> <span class="pre">full_example</span></code>. This takes just 0.5 seconds on my machine.</p></li>
 <li><p>Run <code class="docutils literal notranslate"><span class="pre">./full_example</span></code>, which gives an output like this:</p>
 <div class="highlight-text notranslate"><div class="highlight"><pre><span></span>|               ns/op |                op/s |    err% |          ins/op |          cyc/op |    IPC |         bra/op |   miss% |     total | benchmark
 |--------------------:|--------------------:|--------:|----------------:|----------------:|-------:|---------------:|--------:|----------:|:----------
