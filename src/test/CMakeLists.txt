@@ -14,6 +14,7 @@ target_sources_local(nb PRIVATE
     example_preconfigured_name.cpp
     example_random_number_generators.cpp
     example_random_uniform01.cpp
+    example_random2.cpp
     example_shuffle.cpp
     tutorial_fast_v1.cpp
     tutorial_fast_v2.cpp

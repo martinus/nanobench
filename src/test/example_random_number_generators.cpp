@@ -271,6 +271,41 @@ private:
     uint64_t mY;
 };
 
+class Orbit {
+public:
+    using result_type = uint64_t;
+
+    static constexpr uint64_t(min)() {
+        return 0;
+    }
+    static constexpr uint64_t(max)() {
+        return UINT64_C(0xffffffffffffffff);
+    }
+
+    Orbit(uint64_t seed) noexcept
+        : stateA(seed)
+        , stateB(UINT64_C(0x9E6C63D0676A9A99)) {
+        for (size_t i = 0; i < 10; ++i) {
+            operator()();
+        }
+    }
+
+    uint64_t operator()() noexcept {
+        uint64_t s = (stateA += 0xC6BC279692B5C323u);
+        uint64_t t = ((s == 0u) ? stateB : (stateB += 0x9E3779B97F4A7C15u));
+        uint64_t z = (s ^ s >> 31) * ((t ^ t >> 22) | 1u);
+        return z ^ z >> 26;
+    }
+
+private:
+    static constexpr uint64_t rotl(uint64_t x, unsigned k) noexcept {
+        return (x << k) | (x >> (64U - k));
+    }
+
+    uint64_t stateA;
+    uint64_t stateB;
+};
+
 namespace {
 
 // Benchmarks how fast we can get 64bit random values from Rng.
@@ -313,5 +348,6 @@ TEST_CASE("example_random_number_generators") {
     bench<RomuTrio>(&b, "RomuTrio");
     bench<RomuDuo>(&b, "RomuDuo");
     bench<RomuDuoJr>(&b, "RomuDuoJr");
+    bench<Orbit>(&b, "Orbit");
     bench<ankerl::nanobench::Rng>(&b, "ankerl::nanobench::Rng");
 }
