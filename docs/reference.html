@@ -594,16 +594,16 @@ this has a small overhead.</p>
 <dl class="cpp class">
 <dt id="_CPPv4N6ankerl9nanobench3RngE">
 <span id="_CPPv3N6ankerl9nanobench3RngE"></span><span id="_CPPv2N6ankerl9nanobench3RngE"></span><span id="ankerl::nanobench::Rng"></span><span class="target" id="classankerl_1_1nanobench_1_1Rng"></span><em class="property">class </em><code class="sig-prename descclassname">ankerl::nanobench<code class="sig-prename descclassname">::</code></code><code class="sig-name descname">Rng</code><a class="headerlink" href="#_CPPv4N6ankerl9nanobench3RngE" title="Permalink to this definition">¶</a><br /></dt>
-<dd><p>An extremely fast random generator. Currently, this implements <em>RomuTrio</em>, developed by Mark Overton. Source: <a class="reference external" href="http://www.romu-random.org/">http://www.romu-random.org/</a></p>
-<p>RomuTrio is extremely fast and provides excellent randomness, sufficient for huge jobs.</p>
+<dd><p>An extremely fast random generator. Currently, this implements <em>RomuDuoJr</em>, developed by Mark Overton. Source: <a class="reference external" href="http://www.romu-random.org/">http://www.romu-random.org/</a></p>
+<p>RomuDuoJr is extremely fast and provides reasonable good randomness. Not enough for large jobs, but definitely good enough for a benchmarking framework.</p>
 <p><ul class="simple">
-<li><p>Estimated capacity: <span class="math notranslate nohighlight">\( 2^{75} \)</span> bytes</p></li>
-<li><p>Register pressure: 6</p></li>
-<li><p>State size: 192 bits</p></li>
+<li><p>Estimated capacity: <span class="math notranslate nohighlight">\( 2^{51} \)</span> bytes</p></li>
+<li><p>Register pressure: 4</p></li>
+<li><p>State size: 128 bits</p></li>
 </ul>
 </p>
 <p>This random generator is a drop-in replacement for the generators supplied by <code class="docutils literal notranslate"><span class="pre">&lt;random&gt;</span></code>. It is not cryptographically secure. It’s intended purpose is to be very fast so that benchmarks that make use of randomness are not distorted too much by the random generator.</p>
-<p>It also provides a few non-standard helpers, optimized for speed. </p>
+<p><a class="reference internal" href="#classankerl_1_1nanobench_1_1Rng"><span class="std std-ref">Rng</span></a> also provides a few non-standard helpers, optimized for speed. </p>
 <div class="breathe-sectiondef docutils container">
 <p class="breathe-sectiondef-title rubric">Public Types</p>
 <dl class="cpp type">
@@ -663,7 +663,7 @@ generator becomes available, I will switch the implementation.</p>
 <dl class="cpp function">
 <dt id="_CPPv4N6ankerl9nanobench3RngclEv">
 <span id="_CPPv3N6ankerl9nanobench3RngclEv"></span><span id="_CPPv2N6ankerl9nanobench3RngclEv"></span><span id="ankerl::nanobench::Rng::call-operator"></span><span class="target" id="classankerl_1_1nanobench_1_1Rng_1a2c7b5e0d8b201e7367dc44b40910b81c"></span>uint64_t <code class="sig-name descname">operator()</code><span class="sig-paren">(</span><span class="sig-paren">)</span> <em class="property">noexcept</em><a class="headerlink" href="#_CPPv4N6ankerl9nanobench3RngclEv" title="Permalink to this definition">¶</a><br /></dt>
-<dd><p>Produces a 64bit random value. This should be very fast, thus it is marked as inline. In my benchmark, this is ~36 times faster than <code class="docutils literal notranslate"><span class="pre">std::default_random_engine</span></code> for producing 64bit random values. It seems that the fastest std contendor is <code class="docutils literal notranslate"><span class="pre">std::mt19937_64</span></code>. Still, this RNG is more than twice as fast. </p>
+<dd><p>Produces a 64bit random value. This should be very fast, thus it is marked as inline. In my benchmark, this is ~46 times faster than <code class="docutils literal notranslate"><span class="pre">std::default_random_engine</span></code> for producing 64bit random values. It seems that the fastest std contendor is <code class="docutils literal notranslate"><span class="pre">std::mt19937_64</span></code>. Still, this RNG is 2-3 times as fast. </p>
 <p><dl class="simple">
 <dt><strong>Return</strong></dt><dd><p>uint64_t The next 64 bit random value. </p>
 </dd>
@@ -702,7 +702,7 @@ generator becomes available, I will switch the implementation.</p>
 <dl class="cpp function">
 <dt id="_CPPv4I0EN6ankerl9nanobench3Rng7shuffleEvR9Container">
 <span id="_CPPv3I0EN6ankerl9nanobench3Rng7shuffleER9Container"></span><span id="_CPPv2I0EN6ankerl9nanobench3Rng7shuffleER9Container"></span>template&lt;typename <code class="sig-name descname">Container</code>&gt;<br /><span class="target" id="classankerl_1_1nanobench_1_1Rng_1a5314a16ff500c254f8431cc3a03578f9"></span>void <code class="sig-name descname">shuffle</code><span class="sig-paren">(</span><a class="reference internal" href="#_CPPv4I0EN6ankerl9nanobench3Rng7shuffleEvR9Container" title="ankerl::nanobench::Rng::shuffle::Container">Container</a> &amp;<em>container</em><span class="sig-paren">)</span> <em class="property">noexcept</em><a class="headerlink" href="#_CPPv4I0EN6ankerl9nanobench3Rng7shuffleEvR9Container" title="Permalink to this definition">¶</a><br /></dt>
-<dd><p>Shuffles all entries in the given container. Although this has a slight bias due to the implementation of <a class="reference internal" href="#classankerl_1_1nanobench_1_1Rng_1afb3219bbffe1d0f487e69a0bc9c0f00e"><span class="std std-ref">bounded()</span></a>, this is preferable to <code class="docutils literal notranslate"><span class="pre">std::shuffle</span></code> because it is about 4-5 times faster. See Daniel Lemire’s blog post <a class="reference external" href="https://lemire.me/blog/2016/06/30/fast-random-shuffling/">Fast random shuffling</a>.</p>
+<dd><p>Shuffles all entries in the given container. Although this has a slight bias due to the implementation of <a class="reference internal" href="#classankerl_1_1nanobench_1_1Rng_1afb3219bbffe1d0f487e69a0bc9c0f00e"><span class="std std-ref">bounded()</span></a>, this is preferable to <code class="docutils literal notranslate"><span class="pre">std::shuffle</span></code> because it is over 5 times faster. See Daniel Lemire’s blog post <a class="reference external" href="https://lemire.me/blog/2016/06/30/fast-random-shuffling/">Fast random shuffling</a>.</p>
 <p><dl class="simple">
 <dt><strong>Parameters</strong></dt><dd><ul class="breatheparameterlist simple">
 <li><p><code class="docutils literal notranslate"><span class="pre">container</span></code>: The whole container will be shuffled. </p></li>
