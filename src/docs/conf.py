@@ -60,7 +60,7 @@ html_theme_options = {
 # so a file named "default.css" will overwrite the builtin "default.css".
 html_static_path = ['_static']
 html_show_sourcelink = False
-html_favicon = 'favicon.png'
+html_favicon = 'favicon.ico'
 
 # hide ankerl::nanobench:: prefix, especially in index
 cpp_index_common_prefix = ['ankerl::nanobench::']
