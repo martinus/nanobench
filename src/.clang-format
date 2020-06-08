@@ -4,6 +4,7 @@ BasedOnStyle: LLVM
 Language: Cpp
 Standard: Cpp11
 
+# very limited width, so examples look good in the generated documentation
 ColumnLimit: 80
 
 AccessModifierOffset: -4
