@@ -2,4 +2,4 @@
 **/*.ppm
 **/perf.data
 **/perf.data.old
-/docs/_build
+/src/docs/_build
