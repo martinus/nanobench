@@ -51,18 +51,6 @@ void romuTrio_seed(uint64_t seed) {
 
 } // namespace
 
-TEST_CASE("unit_romutrio_correctness") {
-    xState = UINT64_C(0xbd46aa54f33bc225);
-    yState = UINT64_C(0xcc2d6b0743b14800);
-    zState = UINT64_C(0xd932cff2dd2324a7);
-
-    ankerl::nanobench::Rng rng(xState, yState, zState);
-
-    for (int i = 0; i < 1000; ++i) {
-        REQUIRE(romuTrio_random() == rng());
-    }
-}
-
 #include <iomanip>
 #include <iostream>
 #include <sstream>

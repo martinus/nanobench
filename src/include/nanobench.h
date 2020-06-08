@@ -218,20 +218,21 @@ private:
 ANKERL_NANOBENCH(IGNORE_PADDED_POP)
 
 /**
- * An extremely fast random generator. Currently, this implements *RomuTrio*, developed by Mark Overton. Source:
+ * An extremely fast random generator. Currently, this implements *RomuDuoJr*, developed by Mark Overton. Source:
  * http://www.romu-random.org/
  *
- * RomuTrio is extremely fast and provides excellent randomness, sufficient for huge jobs.
+ * RomuDuoJr is extremely fast and provides reasonable good randomness. Not enough for large jobs, but definitely
+ * good enough for a benchmarking framework.
  *
- *  * Estimated capacity: @f$ 2^{75} @f$ bytes
- *  * Register pressure: 6
- *  * State size: 192 bits
+ *  * Estimated capacity: @f$ 2^{51} @f$ bytes
+ *  * Register pressure: 4
+ *  * State size: 128 bits
  *
  * This random generator is a drop-in replacement for the generators supplied by ``<random>``. It is not
  * cryptographically secure. It's intended purpose is to be very fast so that benchmarks that make use
  * of randomness are not distorted too much by the random generator.
  *
- * It also provides a few non-standard helpers, optimized for speed.
+ * Rng also provides a few non-standard helpers, optimized for speed.
  */
 class Rng final {
 public:
@@ -286,7 +287,7 @@ public:
       @param seed  The 64bit seed. All values are allowed, even 0.
      */
     explicit Rng(uint64_t seed) noexcept;
-    Rng(uint64_t x, uint64_t y, uint64_t z) noexcept;
+    Rng(uint64_t x, uint64_t y) noexcept;
 
     /**
      * Creates a copy of the Rng, thus the copy provides exactly the same random sequence as the original.
@@ -294,9 +295,9 @@ public:
     ANKERL_NANOBENCH(NODISCARD) Rng copy() const noexcept;
 
     /**
-     * @brief Produces a 64bit random value. This should be very fast, thus it is marked as inline. In my benchmark, this is ~36 times
+     * @brief Produces a 64bit random value. This should be very fast, thus it is marked as inline. In my benchmark, this is ~46 times
      * faster than `std::default_random_engine` for producing 64bit random values. It seems that the fastest std contendor is
-     * `std::mt19937_64`. Still, this RNG is more than twice as fast.
+     * `std::mt19937_64`. Still, this RNG is 2-3 times as fast.
      *
      * @return uint64_t The next 64 bit random value.
      */
@@ -333,7 +334,7 @@ public:
 
     /**
      * Shuffles all entries in the given container. Although this has a slight bias due to the implementation of bounded(), this is
-     * preferable to `std::shuffle` because it is about 4-5 times faster. See Daniel Lemire's blog post [Fast random
+     * preferable to `std::shuffle` because it is over 5 times faster. See Daniel Lemire's blog post [Fast random
      * shuffling](https://lemire.me/blog/2016/06/30/fast-random-shuffling/).
      *
      * @param container The whole container will be shuffled.
@@ -346,7 +347,6 @@ private:
 
     uint64_t mX;
     uint64_t mY;
-    uint64_t mZ;
 };
 
 /**
@@ -839,13 +839,10 @@ constexpr uint64_t(Rng::max)() {
 
 ANKERL_NANOBENCH_NO_SANITIZE("integer")
 uint64_t Rng::operator()() noexcept {
-    uint64_t x = mX;
-    uint64_t y = mY;
-    uint64_t z = mZ;
+    auto x = mX;
 
-    mX = UINT64_C(15241094284759029579) * z;
-    mY = rotl(y - x, 12);
-    mZ = rotl(z - y, 44);
+    mX = UINT64_C(15241094284759029579) * mY;
+    mY = rotl(mY - x, 27);
 
     return x;
 }
@@ -2742,15 +2739,13 @@ std::vector<BigO> Bench::complexityBigO() const {
 
 Rng::Rng()
     : mX(0)
-    , mY(0)
-    , mZ(0) {
+    , mY(0) {
     std::random_device rd;
     std::uniform_int_distribution<uint64_t> dist;
     do {
         mX = dist(rd);
         mY = dist(rd);
-        mZ = dist(rd);
-    } while (mX == 0 && mY == 0 && mZ == 0);
+    } while (mX == 0 && mY == 0);
 }
 
 ANKERL_NANOBENCH_NO_SANITIZE("integer")
@@ -2764,21 +2759,19 @@ uint64_t splitMix64(uint64_t& state) noexcept {
 // Seeded as described in romu paper (update april 2020)
 Rng::Rng(uint64_t seed) noexcept
     : mX(splitMix64(seed))
-    , mY(splitMix64(seed))
-    , mZ(splitMix64(seed)) {
+    , mY(splitMix64(seed)) {
     for (size_t i = 0; i < 10; ++i) {
         operator()();
     }
 }
 
 // only internally used to copy the RNG.
-Rng::Rng(uint64_t x, uint64_t y, uint64_t z) noexcept
+Rng::Rng(uint64_t x, uint64_t y) noexcept
     : mX(x)
-    , mY(y)
-    , mZ(z) {}
+    , mY(y) {}
 
 Rng Rng::copy() const noexcept {
-    return Rng{mX, mY, mZ};
+    return Rng{mX, mY};
 }
 
 BigO::RangeMeasure BigO::collectRangeMeasure(std::vector<Result> const& results) {
