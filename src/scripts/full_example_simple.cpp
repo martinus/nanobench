@@ -8,5 +8,6 @@ int main() {
         if (d > 5.0) {
             d -= 5.0;
         }
-    }).doNotOptimizeAway(d);
+        ankerl::nanobench::doNotOptimizeAway(d);
+    });
 }
