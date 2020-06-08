@@ -20,22 +20,31 @@ All benchmarks are run on an i7-8700 CPU locked at 3.2GHz, using
 `pyperf system tune <https://pyperf.readthedocs.io/en/latest/system.html>`_.
 
 
--------
-Summary
--------
 
+--------
 Runtimes
-========
+--------
 
-.. image:: _static/totalruntime.svg
+I wrote a little timing tool that measures how long exactly it takes to print benchmark output to the screen. 
+With this I have measured the runtimes of major benchmarking frameworks which support automatic tuning of
+the number of iterations: :ref:`Google Benchmark <comparison-google-benchmark>`, :ref:`Catch2 <comparison-catch2>`,
+:ref:`nonius <comparison-nonius>`, and of course :ref:`nanobench <comparison-nanobench>`.
 
-======================  =====  ======   ===========
-Benchmarking Framework  Fast   Slow     Fluctuating
-======================  =====  ======   ===========
-Google Benchmark        0.365  11.274         0.828
-nonius                  0.713   1.883         0.819
-======================  =====  ======   ===========
+.. image:: _static/totalruntime.svgz
 
+======================  =====  ======   =========== ======== ========
+Benchmarking Framework  Fast   Slow     Fluctuating Overhead total
+======================  =====  ======   =========== ======== ========
+Google Benchmark        0.367  11.259    0.825       0.000    12.451
+Catch2                  1.004   2.074    0.966       1.737     5.782
+nonius                  0.741   1.815    0.740       1.715     5.010
+nanobench               0.079   0.112    0.000       0.001     0.192
+======================  =====  ======   =========== ======== ========
+
+Nanobench is clearly the fastest autotuning benchmarking framework.
+
+
+.. _`comparison-nanobench`:
 
 ---------
 nanobench
@@ -57,11 +66,14 @@ Results
     :language: text
 
 
+.. _`comparison-google-benchmark`:
+
 ----------------
 Google Benchmark
 ----------------
 
-Very feature rich, battle proven, but a bit aged. Requires google test. Get it here: `google Benchmark <https://github.com/google/benchmark>`_
+Very feature rich, battle proven, but a bit aged. Requires
+google test. Get it here: `Google Benchmark <https://github.com/google/benchmark>`_
 
 Sourcecode
 ==========
@@ -86,6 +98,9 @@ executing it gives this result:
 
 
 Running the tests individually takes 0.365s, 11.274 sec, 0.828sec.
+
+
+.. _`comparison-nonius`:
 
 ------
 nonius
@@ -114,7 +129,8 @@ The tests individually take 0.713sec, 1.883sec, 0.819sec. Plus a startup overhea
 Picobench
 ---------
 
-It took me a while to figure out that I have to configure the slow test, otherwise it would run for a looong time. The number of iterations is hardcoded, this library seems very basic. Get it here:
+It took me a while to figure out that I have to configure the slow test, otherwise it would
+run for a looong time. The number of iterations is hardcoded, this library seems very basic. Get it here:
 `picobench <https://github.com/iboB/picobench>`_
 
 Sourcecode
@@ -132,11 +148,15 @@ Results
 
 It doesn't really make sense to provide runtime numbers here, because picobench just executes the given number of iterations, and that's it. No autotuning.
 
+
+.. _`comparison-catch2`:
+
 ------
 Catch2
 ------
 
-Catch2 is mostly a unit testing framework, and has recently integrated benchmarking faciliy. It is very easy to use, but does not seem too configurable. I find the way it writes the output very confusing. Get it here:
+Catch2 is mostly a unit testing framework, and has recently integrated benchmarking faciliy. It is very easy to use,
+but does not seem too configurable. I find the way it writes the output very confusing. Get it here:
 `Catch2 <https://github.com/catchorg/Catch2>`_
 
 Sourcecode
