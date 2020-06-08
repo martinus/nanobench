@@ -1,4 +1,4 @@
 #!/bin/sh
 
 doxygen
-sphinx-build -E . ../../docs
+/usr/bin/sphinx-build -E . ../../docs
