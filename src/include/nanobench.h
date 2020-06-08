@@ -1575,10 +1575,6 @@ void gatherStabilityInformation(std::vector<std::string>& warnings, std::vector<
     recommendations.clear();
 
     bool recommendCheckFlags = false;
-#    if !defined(NDEBUG)
-    warnings.emplace_back("NDEBUG not defined, assert() macros are evaluated");
-    recommendCheckFlags = true;
-#    endif
 
 #    if defined(DEBUG)
     warnings.emplace_back("DEBUG defined");
