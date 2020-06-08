@@ -39,6 +39,10 @@ Which github renders as
 |--------------------:|--------------------:|--------:|----------------:|----------------:|-------:|---------------:|--------:|----------:|:----------
 |                7.52 |      132,948,239.79 |    1.1% |            6.65 |           24.07 |  0.276 |           1.00 |    8.9% |      0.00 | `some double ops`
 
+The benchmarked code takes 7.52 nanoseconds to run, so ~133 million times per seconds. The benchmark measurements fluctuates by 1.1%. 
+On average 6.65 instructions are executed in 24.07 CPU cycles, resulting in 0.276 instructions per second. The code has a single branch,
+which was missed in 8.9% of the cases. Total runtime of the benchmark with the name `some double ops` is 0.00.
+
 # Design Goals
 
 * **Ease of use**: Simple but powerful API, fast compile times, easy to integrate anywhere.
