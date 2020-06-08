@@ -39,6 +39,8 @@ function build() {
 #if false; then
 #fi
 
+build "clang++" "11" "ON"
+
 ## DON'T MODIFY PAST HERE! Just copy&past above this line to test it before other stuff.
 
 build "clang++" "11" "OFF"

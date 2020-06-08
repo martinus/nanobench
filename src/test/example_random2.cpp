@@ -12,7 +12,7 @@ namespace {
 
 static uint64_t xState = 1u, yState = 1u, zState = 1u;
 
-uint64_t romuTrio_random() {
+ANKERL_NANOBENCH_NO_SANITIZE("integer") uint64_t romuTrio_random() {
     uint64_t xp = xState, yp = yState, zp = zState;
     xState = 15241094284759029579u * zp;
     yState = yp - xp;
@@ -22,14 +22,14 @@ uint64_t romuTrio_random() {
     return xp;
 }
 
-uint64_t romuDuo_random() {
+ANKERL_NANOBENCH_NO_SANITIZE("integer") uint64_t romuDuo_random() {
     uint64_t xp = xState;
     xState = 15241094284759029579u * yState;
     yState = ROTL(yState, 36) + ROTL(yState, 15) - xp;
     return xp;
 }
 
-uint64_t romuDuoJr_random() {
+ANKERL_NANOBENCH_NO_SANITIZE("integer") uint64_t romuDuoJr_random() {
     uint64_t xp = xState;
     xState = 15241094284759029579u * yState;
     yState = yState - xp;
@@ -39,22 +39,21 @@ uint64_t romuDuoJr_random() {
 
 static uint64_t stateA = 1u, stateB = 1u;
 
-uint64_t tangle() {
+ANKERL_NANOBENCH_NO_SANITIZE("integer") uint64_t tangle() {
     uint64_t s = (stateA += 0xC6BC279692B5C323u);
     uint64_t t = (stateB += 0x9E3779B97F4A7C16u);
     uint64_t z = (s ^ s >> 31) * t;
     return z ^ z >> 26;
 }
 
-// why on Earth is this doing so well?
-uint64_t orbit() {
+ANKERL_NANOBENCH_NO_SANITIZE("integer") uint64_t orbit() {
     uint64_t s = (stateA += 0xC6BC279692B5C323u);
     uint64_t t = ((s == 0u) ? stateB : (stateB += 0x9E3779B97F4A7C15u));
     uint64_t z = (s ^ s >> 31) * ((t ^ t >> 22) | 1u);
     return z ^ z >> 26;
 }
 
-uint64_t splitmix64() {
+ANKERL_NANOBENCH_NO_SANITIZE("integer") uint64_t splitmix64() {
     uint64_t z = (stateA += 0x9E3779B97F4A7C15u);
     z = (z ^ z >> 30) * 0xbf58476d1ce4e5b9U;
     z = (z ^ z >> 27) * 0x94d049bb133111ebU;
@@ -63,7 +62,7 @@ uint64_t splitmix64() {
 
 static uint64_t s[4];
 
-uint64_t xoshiroStarStar() {
+ANKERL_NANOBENCH_NO_SANITIZE("integer") uint64_t xoshiroStarStar() {
     const uint64_t result = ROTL(s[1] * 5, 7) * 9;
 
     const uint64_t t = s[1] << 17;
@@ -82,7 +81,7 @@ uint64_t xoshiroStarStar() {
 
 static uint64_t sr[4];
 
-uint64_t xoroshiroPlus() {
+ANKERL_NANOBENCH_NO_SANITIZE("integer") uint64_t xoroshiroPlus() {
     const uint64_t s0 = sr[0];
     uint64_t s1 = sr[1];
     const uint64_t result = s0 + s1;
@@ -92,13 +91,6 @@ uint64_t xoroshiroPlus() {
     sr[1] = ROTL(s1, 37);                   // c
 
     return result;
-}
-
-template <typename Op>
-void benchmark(ankerl::nanobench::Bench& bench, char const* title) {
-    bench.run(title, [&] {
-        ankerl::nanobench::doNotOptimizeAway(Op());
-    });
 }
 
 } // namespace
