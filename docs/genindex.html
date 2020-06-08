@@ -1,0 +1,371 @@
+
+
+
+<!DOCTYPE html>
+<!--[if IE 8]><html class="no-js lt-ie9" lang="en" > <![endif]-->
+<!--[if gt IE 8]><!--> <html class="no-js" lang="en" > <!--<![endif]-->
+<head>
+  <meta charset="utf-8">
+  
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  
+  <title>Index &mdash; nanobench  documentation</title>
+  
+
+  
+  
+  
+  
+
+  
+  <script type="text/javascript" src="_static/js/modernizr.min.js"></script>
+  
+    
+      <script type="text/javascript" id="documentation_options" data-url_root="./" src="_static/documentation_options.js"></script>
+        <script src="_static/jquery.js"></script>
+        <script src="_static/underscore.js"></script>
+        <script src="_static/doctools.js"></script>
+        <script src="_static/language_data.js"></script>
+        <script async="async" src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.5/latest.js?config=TeX-AMS-MML_HTMLorMML"></script>
+    
+    <script type="text/javascript" src="_static/js/theme.js"></script>
+
+    
+
+  
+  <link rel="stylesheet" href="_static/css/theme.css" type="text/css" />
+  <link rel="stylesheet" href="_static/pygments.css" type="text/css" />
+    <link rel="index" title="Index" href="#" />
+    <link rel="search" title="Search" href="search.html" /> 
+</head>
+
+<body class="wy-body-for-nav">
+
+   
+  <div class="wy-grid-for-nav">
+    
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+          
+
+          
+            <a href="index.html" class="icon icon-home"> nanobench
+          
+
+          
+          </a>
+
+          
+            
+            
+              <div class="version">
+                4.0.0
+              </div>
+            
+          
+
+          
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+
+          
+        </div>
+
+        <div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="main navigation">
+          
+            
+            
+              
+            
+            
+              <p class="caption"><span class="caption-text">Table of Contents</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="tutorial.html">Tutorial</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="tutorial.html#installation">Installation</a></li>
+<li class="toctree-l2"><a class="reference internal" href="tutorial.html#quick-start">Quick Start</a></li>
+<li class="toctree-l2"><a class="reference internal" href="tutorial.html#benchmarking">Benchmarking</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="tutorial.html#something-fast">Something Fast</a></li>
+<li class="toctree-l3"><a class="reference internal" href="tutorial.html#something-slow">Something Slow</a></li>
+<li class="toctree-l3"><a class="reference internal" href="tutorial.html#something-unstable">Something Unstable</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="tutorial.html#comparing-results">Comparing Results</a></li>
+<li class="toctree-l2"><a class="reference internal" href="tutorial.html#asymptotic-complexity">Asymptotic Complexity</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="comparison.html">Comparison with Other Frameworks</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="comparison.html#runtimes">Runtimes</a></li>
+<li class="toctree-l2"><a class="reference internal" href="comparison.html#implementations-results">Implementations &amp; Results</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="comparison.html#nanobench">nanobench</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="comparison.html#sourcecode">Sourcecode</a></li>
+<li class="toctree-l4"><a class="reference internal" href="comparison.html#results">Results</a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="comparison.html#google-benchmark">Google Benchmark</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="comparison.html#id2">Sourcecode</a></li>
+<li class="toctree-l4"><a class="reference internal" href="comparison.html#id3">Results</a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="comparison.html#nonius">nonius</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="comparison.html#id5">Sourcecode</a></li>
+<li class="toctree-l4"><a class="reference internal" href="comparison.html#id6">Results</a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="comparison.html#picobench">Picobench</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="comparison.html#id8">Sourcecode</a></li>
+<li class="toctree-l4"><a class="reference internal" href="comparison.html#id9">Results</a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="comparison.html#catch2">Catch2</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="comparison.html#id11">Sourcecode</a></li>
+<li class="toctree-l4"><a class="reference internal" href="comparison.html#id12">Results</a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="comparison.html#moodycamel-microbench">moodycamel::microbench</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="comparison.html#id14">Sourcecode</a></li>
+<li class="toctree-l4"><a class="reference internal" href="comparison.html#id15">Results</a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="comparison.html#celero">Celero</a></li>
+<li class="toctree-l3"><a class="reference internal" href="comparison.html#folly-benchmark">folly Benchmark</a></li>
+</ul>
+</li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="formatting.html">Formatted Output</a></li>
+<li class="toctree-l1"><a class="reference internal" href="reference.html">API Reference</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="reference.html#bench-main-entry-point"><code class="xref cpp cpp-class docutils literal notranslate"><span class="pre">Bench</span></code> - Main Entry Point</a></li>
+<li class="toctree-l2"><a class="reference internal" href="reference.html#rng-extremely-fast-prng"><code class="xref cpp cpp-class docutils literal notranslate"><span class="pre">Rng</span></code> - Extremely fast PRNG</a></li>
+<li class="toctree-l2"><a class="reference internal" href="reference.html#result-benchmark-results"><code class="xref cpp cpp-class docutils literal notranslate"><span class="pre">Result</span></code> - Benchmark Results</a></li>
+<li class="toctree-l2"><a class="reference internal" href="reference.html#donotoptimizeaway"><code class="xref cpp cpp-func docutils literal notranslate"><span class="pre">doNotOptimizeAway</span></code></a></li>
+<li class="toctree-l2"><a class="reference internal" href="reference.html#templates-generated-output"><code class="docutils literal notranslate"><span class="pre">templates</span></code> - Generated Output</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="reference.html#templates-csv"><code class="xref cpp cpp-func docutils literal notranslate"><span class="pre">templates::csv</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="reference.html#templates-htmlboxplot"><code class="xref cpp cpp-func docutils literal notranslate"><span class="pre">templates::htmlBoxplot</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="reference.html#templates-json"><code class="xref cpp cpp-func docutils literal notranslate"><span class="pre">templates::json</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="reference.html#generated-index">Generated Index</a></li>
+</ul>
+</li>
+</ul>
+
+            
+          
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap">
+
+      
+      <nav class="wy-nav-top" aria-label="top navigation">
+        
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="index.html">nanobench</a>
+        
+      </nav>
+
+
+      <div class="wy-nav-content">
+        
+        <div class="rst-content">
+        
+          
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+<div role="navigation" aria-label="breadcrumbs navigation">
+
+  <ul class="wy-breadcrumbs">
+    
+      <li><a href="index.html">Docs</a> &raquo;</li>
+        
+      <li>Index</li>
+    
+    
+      <li class="wy-breadcrumbs-aside">
+        
+            
+        
+      </li>
+    
+  </ul>
+
+  
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+            
+
+<h1 id="index">Index</h1>
+
+<div class="genindex-jumpbox">
+ <a href="#B"><strong>B</strong></a>
+ | <a href="#D"><strong>D</strong></a>
+ | <a href="#R"><strong>R</strong></a>
+ | <a href="#T"><strong>T</strong></a>
+ 
+</div>
+<h2 id="B">B</h2>
+<table style="width: 100%" class="indextable genindextable"><tr>
+  <td style="width: 33%; vertical-align: top;"><ul>
+      <li><a href="reference.html#_CPPv4N6ankerl9nanobench5BenchE">Bench (C++ class)</a>
+</li>
+      <li><a href="reference.html#_CPPv4I0EN6ankerl9nanobench5Bench5batchER5Bench1T">Bench::batch (C++ function)</a>
+</li>
+      <li><a href="reference.html#_CPPv4N6ankerl9nanobench5Bench5BenchEv">Bench::Bench (C++ function)</a>
+</li>
+      <li><a href="reference.html#_CPPv4N6ankerl9nanobench5Bench23clockResolutionMultipleE6size_t">Bench::clockResolutionMultiple (C++ function)</a>
+</li>
+      <li><a href="reference.html#_CPPv4I0ENK6ankerl9nanobench5Bench14complexityBigOE4BigORKNSt6stringE2Op">Bench::complexityBigO (C++ function)</a>, <a href="reference.html#_CPPv4NK6ankerl9nanobench5Bench14complexityBigOEv">[1]</a>
+</li>
+      <li><a href="reference.html#_CPPv4I0EN6ankerl9nanobench5Bench11complexityNER5Bench1T">Bench::complexityN (C++ function)</a>
+</li>
+      <li><a href="reference.html#_CPPv4N6ankerl9nanobench5Bench6configERK6Config">Bench::config (C++ function)</a>
+</li>
+      <li><a href="reference.html#_CPPv4I0EN6ankerl9nanobench5Bench17doNotOptimizeAwayER5BenchRR3Arg">Bench::doNotOptimizeAway (C++ function)</a>
+</li>
+      <li><a href="reference.html#_CPPv4N6ankerl9nanobench5Bench6epochsE6size_t">Bench::epochs (C++ function)</a>
+</li>
+      <li><a href="reference.html#_CPPv4N6ankerl9nanobench5Bench12maxEpochTimeENSt6chrono11nanosecondsE">Bench::maxEpochTime (C++ function)</a>
+</li>
+      <li><a href="reference.html#_CPPv4N6ankerl9nanobench5Bench18minEpochIterationsE8uint64_t">Bench::minEpochIterations (C++ function)</a>
+</li>
+  </ul></td>
+  <td style="width: 33%; vertical-align: top;"><ul>
+      <li><a href="reference.html#_CPPv4N6ankerl9nanobench5Bench12minEpochTimeENSt6chrono11nanosecondsE">Bench::minEpochTime (C++ function)</a>
+</li>
+      <li><a href="reference.html#_CPPv4N6ankerl9nanobench5Bench4nameENSt6stringE">Bench::name (C++ function)</a>
+</li>
+      <li><a href="reference.html#_CPPv4N6ankerl9nanobench5Bench6outputEPNSt7ostreamE">Bench::output (C++ function)</a>
+</li>
+      <li><a href="reference.html#_CPPv4N6ankerl9nanobench5Bench19performanceCountersEb">Bench::performanceCounters (C++ function)</a>
+</li>
+      <li><a href="reference.html#_CPPv4N6ankerl9nanobench5Bench8relativeEb">Bench::relative (C++ function)</a>
+</li>
+      <li><a href="reference.html#_CPPv4N6ankerl9nanobench5Bench6renderEPKcRNSt7ostreamE">Bench::render (C++ function)</a>
+</li>
+      <li><a href="reference.html#_CPPv4NK6ankerl9nanobench5Bench7resultsEv">Bench::results (C++ function)</a>
+</li>
+      <li><a href="reference.html#_CPPv4I0EN6ankerl9nanobench5Bench3runER5Bench2Op">Bench::run (C++ function)</a>, <a href="reference.html#_CPPv4I0EN6ankerl9nanobench5Bench3runER5BenchRKNSt6stringE2Op">[1]</a>
+</li>
+      <li><a href="reference.html#_CPPv4N6ankerl9nanobench5Bench5titleENSt6stringE">Bench::title (C++ function)</a>
+</li>
+      <li><a href="reference.html#_CPPv4N6ankerl9nanobench5Bench4unitENSt6stringE">Bench::unit (C++ function)</a>
+</li>
+      <li><a href="reference.html#_CPPv4N6ankerl9nanobench5Bench6warmupE8uint64_t">Bench::warmup (C++ function)</a>
+</li>
+  </ul></td>
+</tr></table>
+
+<h2 id="D">D</h2>
+<table style="width: 100%" class="indextable genindextable"><tr>
+  <td style="width: 33%; vertical-align: top;"><ul>
+      <li><a href="reference.html#_CPPv4I0EN6ankerl9nanobench17doNotOptimizeAwayEvRR3Arg">doNotOptimizeAway (C++ function)</a>
+</li>
+  </ul></td>
+</tr></table>
+
+<h2 id="R">R</h2>
+<table style="width: 100%" class="indextable genindextable"><tr>
+  <td style="width: 33%; vertical-align: top;"><ul>
+      <li><a href="reference.html#_CPPv4N6ankerl9nanobench6ResultE">Result (C++ class)</a>
+</li>
+      <li><a href="reference.html#_CPPv4N6ankerl9nanobench3RngE">Rng (C++ class)</a>
+</li>
+      <li><a href="reference.html#_CPPv4N6ankerl9nanobench3Rng7boundedE8uint32_t">Rng::bounded (C++ function)</a>
+</li>
+      <li><a href="reference.html#_CPPv4NK6ankerl9nanobench3Rng4copyEv">Rng::copy (C++ function)</a>
+</li>
+      <li><a href="reference.html#_CPPv4N6ankerl9nanobench3RngclEv">Rng::operator() (C++ function)</a>
+</li>
+  </ul></td>
+  <td style="width: 33%; vertical-align: top;"><ul>
+      <li><a href="reference.html#_CPPv4N6ankerl9nanobench3RngaSERK3Rng">Rng::operator= (C++ function)</a>
+</li>
+      <li><a href="reference.html#_CPPv4N6ankerl9nanobench3Rng11result_typeE">Rng::result_type (C++ type)</a>
+</li>
+      <li><a href="reference.html#_CPPv4N6ankerl9nanobench3Rng3RngE8uint64_t">Rng::Rng (C++ function)</a>, <a href="reference.html#_CPPv4N6ankerl9nanobench3Rng3RngERK3Rng">[1]</a>, <a href="reference.html#_CPPv4N6ankerl9nanobench3Rng3RngEv">[2]</a>
+</li>
+      <li><a href="reference.html#_CPPv4I0EN6ankerl9nanobench3Rng7shuffleEvR9Container">Rng::shuffle (C++ function)</a>
+</li>
+      <li><a href="reference.html#_CPPv4N6ankerl9nanobench3Rng9uniform01Ev">Rng::uniform01 (C++ function)</a>
+</li>
+  </ul></td>
+</tr></table>
+
+<h2 id="T">T</h2>
+<table style="width: 100%" class="indextable genindextable"><tr>
+  <td style="width: 33%; vertical-align: top;"><ul>
+      <li><a href="reference.html#_CPPv4N6ankerl9nanobench9templates3csvEv">templates::csv (C++ function)</a>
+</li>
+  </ul></td>
+  <td style="width: 33%; vertical-align: top;"><ul>
+      <li><a href="reference.html#_CPPv4N6ankerl9nanobench9templates11htmlBoxplotEv">templates::htmlBoxplot (C++ function)</a>
+</li>
+      <li><a href="reference.html#_CPPv4N6ankerl9nanobench9templates4jsonEv">templates::json (C++ function)</a>
+</li>
+  </ul></td>
+</tr></table>
+
+
+
+           </div>
+           
+          </div>
+          <footer>
+  
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>
+        &copy; Copyright 2019-2020 Martin Ankerl &lt;martin.ankerl@gmail.com&gt;
+
+    </p>
+  </div>
+  Built with <a href="http://sphinx-doc.org/">Sphinx</a> using a <a href="https://github.com/rtfd/sphinx_rtd_theme">theme</a> provided by <a href="https://readthedocs.org">Read the Docs</a>. 
+
+</footer>
+
+        </div>
+      </div>
+
+    </section>
+
+  </div>
+  
+
+
+  <script type="text/javascript">
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script>
+
+  
+  
+    
+   
+
+</body>
+</html>

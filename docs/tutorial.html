@@ -1,0 +1,857 @@
+
+
+<!DOCTYPE html>
+<!--[if IE 8]><html class="no-js lt-ie9" lang="en" > <![endif]-->
+<!--[if gt IE 8]><!--> <html class="no-js" lang="en" > <!--<![endif]-->
+<head>
+  <meta charset="utf-8">
+  
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  
+  <title>Tutorial &mdash; nanobench  documentation</title>
+  
+
+  
+  
+  
+  
+
+  
+  <script type="text/javascript" src="_static/js/modernizr.min.js"></script>
+  
+    
+      <script type="text/javascript" id="documentation_options" data-url_root="./" src="_static/documentation_options.js"></script>
+        <script src="_static/jquery.js"></script>
+        <script src="_static/underscore.js"></script>
+        <script src="_static/doctools.js"></script>
+        <script src="_static/language_data.js"></script>
+        <script async="async" src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.5/latest.js?config=TeX-AMS-MML_HTMLorMML"></script>
+    
+    <script type="text/javascript" src="_static/js/theme.js"></script>
+
+    
+
+  
+  <link rel="stylesheet" href="_static/css/theme.css" type="text/css" />
+  <link rel="stylesheet" href="_static/pygments.css" type="text/css" />
+    <link rel="index" title="Index" href="genindex.html" />
+    <link rel="search" title="Search" href="search.html" />
+    <link rel="next" title="Comparison with Other Frameworks" href="comparison.html" />
+    <link rel="prev" title="Welcome to nanobench’s documentation!" href="index.html" /> 
+</head>
+
+<body class="wy-body-for-nav">
+
+   
+  <div class="wy-grid-for-nav">
+    
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+          
+
+          
+            <a href="index.html" class="icon icon-home"> nanobench
+          
+
+          
+          </a>
+
+          
+            
+            
+              <div class="version">
+                4.0.0
+              </div>
+            
+          
+
+          
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+
+          
+        </div>
+
+        <div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="main navigation">
+          
+            
+            
+              
+            
+            
+              <p class="caption"><span class="caption-text">Table of Contents</span></p>
+<ul class="current">
+<li class="toctree-l1 current"><a class="current reference internal" href="#">Tutorial</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="#installation">Installation</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#quick-start">Quick Start</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#benchmarking">Benchmarking</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="#something-fast">Something Fast</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#something-slow">Something Slow</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#something-unstable">Something Unstable</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="#comparing-results">Comparing Results</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#asymptotic-complexity">Asymptotic Complexity</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="comparison.html">Comparison with Other Frameworks</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="comparison.html#runtimes">Runtimes</a></li>
+<li class="toctree-l2"><a class="reference internal" href="comparison.html#implementations-results">Implementations &amp; Results</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="comparison.html#nanobench">nanobench</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="comparison.html#sourcecode">Sourcecode</a></li>
+<li class="toctree-l4"><a class="reference internal" href="comparison.html#results">Results</a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="comparison.html#google-benchmark">Google Benchmark</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="comparison.html#id2">Sourcecode</a></li>
+<li class="toctree-l4"><a class="reference internal" href="comparison.html#id3">Results</a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="comparison.html#nonius">nonius</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="comparison.html#id5">Sourcecode</a></li>
+<li class="toctree-l4"><a class="reference internal" href="comparison.html#id6">Results</a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="comparison.html#picobench">Picobench</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="comparison.html#id8">Sourcecode</a></li>
+<li class="toctree-l4"><a class="reference internal" href="comparison.html#id9">Results</a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="comparison.html#catch2">Catch2</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="comparison.html#id11">Sourcecode</a></li>
+<li class="toctree-l4"><a class="reference internal" href="comparison.html#id12">Results</a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="comparison.html#moodycamel-microbench">moodycamel::microbench</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="comparison.html#id14">Sourcecode</a></li>
+<li class="toctree-l4"><a class="reference internal" href="comparison.html#id15">Results</a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="comparison.html#celero">Celero</a></li>
+<li class="toctree-l3"><a class="reference internal" href="comparison.html#folly-benchmark">folly Benchmark</a></li>
+</ul>
+</li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="formatting.html">Formatted Output</a></li>
+<li class="toctree-l1"><a class="reference internal" href="reference.html">API Reference</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="reference.html#bench-main-entry-point"><code class="xref cpp cpp-class docutils literal notranslate"><span class="pre">Bench</span></code> - Main Entry Point</a></li>
+<li class="toctree-l2"><a class="reference internal" href="reference.html#rng-extremely-fast-prng"><code class="xref cpp cpp-class docutils literal notranslate"><span class="pre">Rng</span></code> - Extremely fast PRNG</a></li>
+<li class="toctree-l2"><a class="reference internal" href="reference.html#result-benchmark-results"><code class="xref cpp cpp-class docutils literal notranslate"><span class="pre">Result</span></code> - Benchmark Results</a></li>
+<li class="toctree-l2"><a class="reference internal" href="reference.html#donotoptimizeaway"><code class="xref cpp cpp-func docutils literal notranslate"><span class="pre">doNotOptimizeAway</span></code></a></li>
+<li class="toctree-l2"><a class="reference internal" href="reference.html#templates-generated-output"><code class="docutils literal notranslate"><span class="pre">templates</span></code> - Generated Output</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="reference.html#templates-csv"><code class="xref cpp cpp-func docutils literal notranslate"><span class="pre">templates::csv</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="reference.html#templates-htmlboxplot"><code class="xref cpp cpp-func docutils literal notranslate"><span class="pre">templates::htmlBoxplot</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="reference.html#templates-json"><code class="xref cpp cpp-func docutils literal notranslate"><span class="pre">templates::json</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="reference.html#generated-index">Generated Index</a></li>
+</ul>
+</li>
+</ul>
+
+            
+          
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap">
+
+      
+      <nav class="wy-nav-top" aria-label="top navigation">
+        
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="index.html">nanobench</a>
+        
+      </nav>
+
+
+      <div class="wy-nav-content">
+        
+        <div class="rst-content">
+        
+          
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+<div role="navigation" aria-label="breadcrumbs navigation">
+
+  <ul class="wy-breadcrumbs">
+    
+      <li><a href="index.html">Docs</a> &raquo;</li>
+        
+      <li>Tutorial</li>
+    
+    
+      <li class="wy-breadcrumbs-aside">
+        
+            
+            <a href="_sources/tutorial.rst.txt" rel="nofollow"> View page source</a>
+          
+        
+      </li>
+    
+  </ul>
+
+  
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+            
+  <div class="section" id="tutorial">
+<h1>Tutorial<a class="headerlink" href="#tutorial" title="Permalink to this headline">¶</a></h1>
+<div class="section" id="installation">
+<h2>Installation<a class="headerlink" href="#installation" title="Permalink to this headline">¶</a></h2>
+<ol class="arabic">
+<li><p>Download <code class="docutils literal notranslate"><span class="pre">nanobench.h</span></code> from the releases and make it available
+in your project.</p></li>
+<li><p>Create a .cpp file, e.g. <code class="docutils literal notranslate"><span class="pre">nanobench.cpp</span></code>, where the bulk of
+nanobench is compiled:</p>
+<div class="highlight-c++ notranslate"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre>1
+2</pre></div></td><td class="code"><div class="highlight"><pre><span></span><span class="cp">#define ANKERL_NANOBENCH_IMPLEMENT</span>
+<span class="cp">#include</span> <span class="cpf">&lt;nanobench.h&gt;</span><span class="cp"></span>
+</pre></div>
+</td></tr></table></div>
+</li>
+<li><p>Wherever you want to use nanobench’s functionality, simply
+<code class="docutils literal notranslate"><span class="pre">#include</span> <span class="pre">&lt;nanobench.h&gt;</span></code>. All functionality resides within namespace
+<code class="docutils literal notranslate"><span class="pre">ankerl::nanobench</span></code>.</p></li>
+</ol>
+</div>
+<div class="section" id="quick-start">
+<h2>Quick Start<a class="headerlink" href="#quick-start" title="Permalink to this headline">¶</a></h2>
+<ol class="arabic">
+<li><p>Create <cite>nanobench.cpp</cite>:</p>
+<div class="literal-block-wrapper docutils container" id="id2">
+<div class="code-block-caption"><span class="caption-text">nanobench.cpp</span><a class="headerlink" href="#id2" title="Permalink to this code">¶</a></div>
+<div class="highlight-c++ notranslate"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre>1
+2</pre></div></td><td class="code"><div class="highlight"><pre><span></span><span class="cp">#define ANKERL_NANOBENCH_IMPLEMENT</span>
+<span class="cp">#include</span> <span class="cpf">&lt;nanobench.h&gt;</span><span class="cp"></span>
+</pre></div>
+</td></tr></table></div>
+</div>
+</li>
+<li><p>Compile with <code class="docutils literal notranslate"><span class="pre">g++</span> <span class="pre">-O3</span> <span class="pre">-DNDEBUG</span> <span class="pre">-I../include</span> <span class="pre">-c</span> <span class="pre">nanobench.cpp</span></code>. This compiles
+the bulk of nanobench, and took 3.37 seconds on my machine. It’s done only once.</p></li>
+<li><p>Create the actual benchmark code, in <cite>full_example.cpp</cite>:</p>
+<div class="literal-block-wrapper docutils container" id="id3">
+<div class="code-block-caption"><span class="caption-text">full_example.cpp</span><a class="headerlink" href="#id3" title="Permalink to this code">¶</a></div>
+<div class="highlight-c++ notranslate"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre> 1
+ 2
+ 3
+ 4
+ 5
+ 6
+ 7
+ 8
+ 9
+10
+11</pre></div></td><td class="code"><div class="highlight"><pre><span></span><span class="cp">#include</span> <span class="cpf">&lt;nanobench.h&gt;</span><span class="cp"></span>
+
+<span class="cp">#include</span> <span class="cpf">&lt;atomic&gt;</span><span class="cp"></span>
+
+<span class="kt">int</span> <span class="nf">main</span><span class="p">()</span> <span class="p">{</span>
+    <span class="kt">int</span> <span class="n">y</span> <span class="o">=</span> <span class="mi">0</span><span class="p">;</span>
+    <span class="n">std</span><span class="o">::</span><span class="n">atomic</span><span class="o">&lt;</span><span class="kt">int</span><span class="o">&gt;</span> <span class="n">x</span><span class="p">(</span><span class="mi">0</span><span class="p">);</span>
+    <span class="n">ankerl</span><span class="o">::</span><span class="n">nanobench</span><span class="o">::</span><span class="n">Bench</span><span class="p">().</span><span class="n">run</span><span class="p">(</span><span class="s">&quot;compare_exchange_strong&quot;</span><span class="p">,</span> <span class="p">[</span><span class="o">&amp;</span><span class="p">]</span> <span class="p">{</span>
+        <span class="n">x</span><span class="p">.</span><span class="n">compare_exchange_strong</span><span class="p">(</span><span class="n">y</span><span class="p">,</span> <span class="mi">0</span><span class="p">);</span>
+    <span class="p">});</span>
+<span class="p">}</span>
+</pre></div>
+</td></tr></table></div>
+</div>
+<p>The most important entry point is <a class="reference internal" href="reference.html#_CPPv4N6ankerl9nanobench5BenchE" title="ankerl::nanobench::Bench"><code class="xref cpp cpp-class docutils literal notranslate"><span class="pre">ankerl::nanobench::Bench</span></code></a>. It creates a benchmarking object,
+optionally configures it, and then runs the code to benchmark with <a class="reference internal" href="reference.html#_CPPv4I0EN6ankerl9nanobench5Bench3runER5BenchRKNSt6stringE2Op" title="ankerl::nanobench::Bench::run"><code class="xref cpp cpp-func docutils literal notranslate"><span class="pre">run()</span></code></a>.</p>
+</li>
+<li><p>Compile &amp; link with <code class="docutils literal notranslate"><span class="pre">g++</span> <span class="pre">-O3</span> <span class="pre">-DNDEBUG</span> <span class="pre">-I../include</span> <span class="pre">nanobench.o</span> <span class="pre">full_example.cpp</span> <span class="pre">-o</span> <span class="pre">full_example</span></code>. This takes just 0.5 seconds on my machine.</p></li>
+<li><p>Run <code class="docutils literal notranslate"><span class="pre">./full_example</span></code>, which gives an output like this:</p>
+<div class="highlight-text notranslate"><div class="highlight"><pre><span></span>|               ns/op |                op/s |    err% |          ins/op |          cyc/op |    IPC |         bra/op |   miss% |     total | benchmark
+|--------------------:|--------------------:|--------:|----------------:|----------------:|-------:|---------------:|--------:|----------:|:----------
+|                5.63 |      177,595,338.98 |    0.0% |            3.00 |           17.98 |  0.167 |           1.00 |    0.1% |      0.00 | `compare_exchange_strong`
+</pre></div>
+</div>
+<p>Which renders as</p>
+<table class="docutils align-default">
+<colgroup>
+<col style="width: 13%" />
+<col style="width: 13%" />
+<col style="width: 6%" />
+<col style="width: 11%" />
+<col style="width: 11%" />
+<col style="width: 5%" />
+<col style="width: 10%" />
+<col style="width: 6%" />
+<col style="width: 7%" />
+<col style="width: 18%" />
+</colgroup>
+<thead>
+<tr class="row-odd"><th class="head"><p>ns/op</p></th>
+<th class="head"><p>op/s</p></th>
+<th class="head"><p>err%</p></th>
+<th class="head"><p>ins/op</p></th>
+<th class="head"><p>cyc/op</p></th>
+<th class="head"><p>IPC</p></th>
+<th class="head"><p>bra/op</p></th>
+<th class="head"><p>miss%</p></th>
+<th class="head"><p>total</p></th>
+<th class="head"><p>benchmark</p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td><p>5.63</p></td>
+<td><p>177,595,338.98</p></td>
+<td><p>0.0%</p></td>
+<td><p>3.00</p></td>
+<td><p>17.98</p></td>
+<td><p>0.167</p></td>
+<td><p>1.00</p></td>
+<td><p>0.1%</p></td>
+<td><p>0.00</p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">compare_exchange_strong</span></code></p></td>
+</tr>
+</tbody>
+</table>
+<p>Which means that one <code class="docutils literal notranslate"><span class="pre">x.compare_exchange_strong(y,</span> <span class="pre">0);</span></code> call takes
+5.63ns on my machine, or ~178 million operations per second. Runtime
+fluctuates by around 0.0%, so the results are very stable. Each call
+required 3 instructions, which took ~18 CPU cycles. There was a single branch per call,
+with only 0.1% misspredicted.</p>
+</li>
+</ol>
+<p>In the remaining examples, I’m using <a class="reference external" href="https://github.com/onqtam/doctest">doctest</a> as a unit test framework, which is like <a class="reference external" href="https://github.com/catchorg/Catch2">Catch2</a> - but
+compiles much faster. It pairs well with nanobench.</p>
+</div>
+<div class="section" id="benchmarking">
+<h2>Benchmarking<a class="headerlink" href="#benchmarking" title="Permalink to this headline">¶</a></h2>
+<div class="section" id="something-fast">
+<h3>Something Fast<a class="headerlink" href="#something-fast" title="Permalink to this headline">¶</a></h3>
+<p>Let’s benchmarks how fast we can do <code class="docutils literal notranslate"><span class="pre">x</span> <span class="pre">+=</span> <span class="pre">x</span></code> for <code class="docutils literal notranslate"><span class="pre">uint64_t</span></code>:</p>
+<div class="literal-block-wrapper docutils container" id="id4">
+<div class="code-block-caption"><span class="caption-text">tutorial_fast_v1.cpp</span><a class="headerlink" href="#id4" title="Permalink to this code">¶</a></div>
+<div class="highlight-c++ notranslate"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre>1
+2
+3
+4
+5
+6
+7
+8
+9</pre></div></td><td class="code"><div class="highlight"><pre><span></span><span class="cp">#include</span> <span class="cpf">&lt;nanobench.h&gt;</span><span class="cp"></span>
+<span class="cp">#include</span> <span class="cpf">&lt;thirdparty/doctest/doctest.h&gt;</span><span class="cp"></span>
+
+<span class="n">TEST_CASE</span><span class="p">(</span><span class="s">&quot;tutorial_fast_v1&quot;</span><span class="p">)</span> <span class="p">{</span>
+    <span class="kt">uint64_t</span> <span class="n">x</span> <span class="o">=</span> <span class="mi">1</span><span class="p">;</span>
+    <span class="n">ankerl</span><span class="o">::</span><span class="n">nanobench</span><span class="o">::</span><span class="n">Bench</span><span class="p">().</span><span class="n">run</span><span class="p">(</span><span class="s">&quot;++x&quot;</span><span class="p">,</span> <span class="p">[</span><span class="o">&amp;</span><span class="p">]()</span> <span class="p">{</span>
+        <span class="o">++</span><span class="n">x</span><span class="p">;</span>
+    <span class="p">});</span>
+<span class="p">}</span>
+</pre></div>
+</td></tr></table></div>
+</div>
+<p>After 0.2ms we get this output:</p>
+<div class="highlight-text notranslate"><div class="highlight"><pre><span></span>|               ns/op |                op/s |    err% |     total | benchmark
+|--------------------:|--------------------:|--------:|----------:|:----------
+|                   - |                   - |       - |         - | :boom: `++x` (iterations overflow. Maybe your code got optimized away?)
+</pre></div>
+</div>
+<p>No data there! we only get <code class="docutils literal notranslate"><span class="pre">:boom:</span> <span class="pre">iterations</span> <span class="pre">overflow.</span></code>.  The compiler could optimize <code class="docutils literal notranslate"><span class="pre">x</span> <span class="pre">+=</span> <span class="pre">x</span></code>
+away because we never used the output. Thanks to <code class="docutils literal notranslate"><span class="pre">doNotOptimizeAway</span></code>, this is easy to fix:</p>
+<div class="literal-block-wrapper docutils container" id="id5">
+<div class="code-block-caption"><span class="caption-text">tutorial_fast_v2.cpp</span><a class="headerlink" href="#id5" title="Permalink to this code">¶</a></div>
+<div class="highlight-c++ notranslate"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre>1
+2
+3
+4
+5
+6
+7
+8
+9</pre></div></td><td class="code"><div class="highlight"><pre><span></span><span class="cp">#include</span> <span class="cpf">&lt;nanobench.h&gt;</span><span class="cp"></span>
+<span class="cp">#include</span> <span class="cpf">&lt;thirdparty/doctest/doctest.h&gt;</span><span class="cp"></span>
+
+<span class="n">TEST_CASE</span><span class="p">(</span><span class="s">&quot;tutorial_fast_v2&quot;</span><span class="p">)</span> <span class="p">{</span>
+    <span class="kt">uint64_t</span> <span class="n">x</span> <span class="o">=</span> <span class="mi">1</span><span class="p">;</span>
+    <span class="n">ankerl</span><span class="o">::</span><span class="n">nanobench</span><span class="o">::</span><span class="n">Bench</span><span class="p">().</span><span class="n">run</span><span class="p">(</span><span class="s">&quot;++x&quot;</span><span class="p">,</span> <span class="p">[</span><span class="o">&amp;</span><span class="p">]()</span> <span class="p">{</span>
+<span class="hll">        <span class="n">ankerl</span><span class="o">::</span><span class="n">nanobench</span><span class="o">::</span><span class="n">doNotOptimizeAway</span><span class="p">(</span><span class="n">x</span> <span class="o">+=</span> <span class="mi">1</span><span class="p">);</span>
+</span>    <span class="p">});</span>
+<span class="p">}</span>
+</pre></div>
+</td></tr></table></div>
+</div>
+<p>This time the benchmark runs for 2.2ms and we actually get reasonable data:</p>
+<div class="highlight-text notranslate"><div class="highlight"><pre><span></span>|               ns/op |                op/s |    err% |          ins/op |          cyc/op |    IPC |         bra/op |   miss% |     total | benchmark
+|--------------------:|--------------------:|--------:|----------------:|----------------:|-------:|---------------:|--------:|----------:|:----------
+|                0.31 |    3,192,444,232.50 |    0.0% |            1.00 |            1.00 |  0.998 |           0.00 |    0.0% |      0.00 | `++x`
+</pre></div>
+</div>
+<p>It’s a very stable result. One run the op/s is 3,192 million/sec, the next time I execute it I get 3,168 million/sec. It always takes
+1.00 instructions per operation on my machine, and can do this in ~1 cycle.</p>
+</div>
+<div class="section" id="something-slow">
+<h3>Something Slow<a class="headerlink" href="#something-slow" title="Permalink to this headline">¶</a></h3>
+<p>Let’s benchmark if sleeping for 100ms really takes 100ms.</p>
+<div class="literal-block-wrapper docutils container" id="id6">
+<div class="code-block-caption"><span class="caption-text">tutorial_slow_v1.cpp</span><a class="headerlink" href="#id6" title="Permalink to this code">¶</a></div>
+<div class="highlight-c++ notranslate"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre> 1
+ 2
+ 3
+ 4
+ 5
+ 6
+ 7
+ 8
+ 9
+10
+11</pre></div></td><td class="code"><div class="highlight"><pre><span></span><span class="cp">#include</span> <span class="cpf">&lt;nanobench.h&gt;</span><span class="cp"></span>
+<span class="cp">#include</span> <span class="cpf">&lt;thirdparty/doctest/doctest.h&gt;</span><span class="cp"></span>
+
+<span class="cp">#include</span> <span class="cpf">&lt;chrono&gt;</span><span class="cp"></span>
+<span class="cp">#include</span> <span class="cpf">&lt;thread&gt;</span><span class="cp"></span>
+
+<span class="n">TEST_CASE</span><span class="p">(</span><span class="s">&quot;tutorial_slow_v1&quot;</span><span class="p">)</span> <span class="p">{</span>
+    <span class="n">ankerl</span><span class="o">::</span><span class="n">nanobench</span><span class="o">::</span><span class="n">Bench</span><span class="p">().</span><span class="n">run</span><span class="p">(</span><span class="s">&quot;sleep 100ms, auto&quot;</span><span class="p">,</span> <span class="p">[</span><span class="o">&amp;</span><span class="p">]</span> <span class="p">{</span>
+        <span class="n">std</span><span class="o">::</span><span class="n">this_thread</span><span class="o">::</span><span class="n">sleep_for</span><span class="p">(</span><span class="n">std</span><span class="o">::</span><span class="n">chrono</span><span class="o">::</span><span class="n">milliseconds</span><span class="p">(</span><span class="mi">100</span><span class="p">));</span>
+    <span class="p">});</span>
+<span class="p">}</span>
+</pre></div>
+</td></tr></table></div>
+</div>
+<p>After 1.1 seconds I get</p>
+<div class="highlight-text notranslate"><div class="highlight"><pre><span></span>|               ns/op |                op/s |    err% |          ins/op |          cyc/op |    IPC |         bra/op |   miss% |     total | benchmark
+|--------------------:|--------------------:|--------:|----------------:|----------------:|-------:|---------------:|--------:|----------:|:---------------------
+|      100,125,753.00 |                9.99 |    0.0% |           51.00 |        7,714.00 |  0.007 |          11.00 |   90.9% |      1.10 | `sleep 100ms, auto`
+</pre></div>
+</div>
+<p>So we actually take 100.125ms instead of 100ms. Next time I run it, I get 100.141. Also a very stable result. Interestingly, sleep takes 51 instructions but 7,714 cycles - so we only got 0.007 instructions per cycle. That’s extremely low, but expected of <code class="docutils literal notranslate"><span class="pre">sleep</span></code>. It also required 11 branches, of which 90.9% were misspredicted on average.</p>
+<p>If the extremely slow 1.1 second is too much for you, you can manually configure the number of evaluations (epochs):</p>
+<div class="literal-block-wrapper docutils container" id="id7">
+<div class="code-block-caption"><span class="caption-text">tutorial_slow_v2.cpp</span><a class="headerlink" href="#id7" title="Permalink to this code">¶</a></div>
+<div class="highlight-c++ notranslate"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre> 1
+ 2
+ 3
+ 4
+ 5
+ 6
+ 7
+ 8
+ 9
+10
+11</pre></div></td><td class="code"><div class="highlight"><pre><span></span><span class="cp">#include</span> <span class="cpf">&lt;nanobench.h&gt;</span><span class="cp"></span>
+<span class="cp">#include</span> <span class="cpf">&lt;thirdparty/doctest/doctest.h&gt;</span><span class="cp"></span>
+
+<span class="cp">#include</span> <span class="cpf">&lt;chrono&gt;</span><span class="cp"></span>
+<span class="cp">#include</span> <span class="cpf">&lt;thread&gt;</span><span class="cp"></span>
+
+<span class="n">TEST_CASE</span><span class="p">(</span><span class="s">&quot;tutorial_slow_v2&quot;</span><span class="p">)</span> <span class="p">{</span>
+    <span class="n">ankerl</span><span class="o">::</span><span class="n">nanobench</span><span class="o">::</span><span class="n">Bench</span><span class="p">().</span><span class="n">epochs</span><span class="p">(</span><span class="mi">3</span><span class="p">).</span><span class="n">run</span><span class="p">(</span><span class="s">&quot;sleep 100ms&quot;</span><span class="p">,</span> <span class="p">[</span><span class="o">&amp;</span><span class="p">]</span> <span class="p">{</span>
+        <span class="n">std</span><span class="o">::</span><span class="n">this_thread</span><span class="o">::</span><span class="n">sleep_for</span><span class="p">(</span><span class="n">std</span><span class="o">::</span><span class="n">chrono</span><span class="o">::</span><span class="n">milliseconds</span><span class="p">(</span><span class="mi">100</span><span class="p">));</span>
+    <span class="p">});</span>
+<span class="p">}</span>
+</pre></div>
+</td></tr></table></div>
+</div>
+<div class="highlight-text notranslate"><div class="highlight"><pre><span></span>|               ns/op |                op/s |    err% |          ins/op |          cyc/op |    IPC |         bra/op |   miss% |     total | benchmark
+|--------------------:|--------------------:|--------:|----------------:|----------------:|-------:|---------------:|--------:|----------:|:----------
+|      100,099,096.00 |                9.99 |    0.0% |           51.00 |        7,182.00 |  0.007 |          11.00 |   90.9% |      0.30 | `sleep 100ms`
+</pre></div>
+</div>
+<p>This time it took only 0.3 seconds, but with only 3 evaluations instead of 11. The err% will be less meaningfull, but since the benchmark is so stable it doesn’t really matter.</p>
+</div>
+<div class="section" id="something-unstable">
+<h3>Something Unstable<a class="headerlink" href="#something-unstable" title="Permalink to this headline">¶</a></h3>
+<p>Lets create an extreme artifical test that’s hard to benchmark, because runtime fluctuates randomly: Each iteration
+randomly skip between 0-254 random numbers:</p>
+<div class="literal-block-wrapper docutils container" id="id8">
+<div class="code-block-caption"><span class="caption-text">tutorial_fluctuating_v1.cpp</span><a class="headerlink" href="#id8" title="Permalink to this code">¶</a></div>
+<div class="highlight-c++ notranslate"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre> 1
+ 2
+ 3
+ 4
+ 5
+ 6
+ 7
+ 8
+ 9
+10
+11
+12
+13
+14
+15
+16</pre></div></td><td class="code"><div class="highlight"><pre><span></span><span class="cp">#include</span> <span class="cpf">&lt;nanobench.h&gt;</span><span class="cp"></span>
+<span class="cp">#include</span> <span class="cpf">&lt;thirdparty/doctest/doctest.h&gt;</span><span class="cp"></span>
+
+<span class="cp">#include</span> <span class="cpf">&lt;random&gt;</span><span class="cp"></span>
+
+<span class="n">TEST_CASE</span><span class="p">(</span><span class="s">&quot;tutorial_fluctuating_v1&quot;</span><span class="p">)</span> <span class="p">{</span>
+    <span class="n">std</span><span class="o">::</span><span class="n">random_device</span> <span class="n">dev</span><span class="p">;</span>
+    <span class="n">std</span><span class="o">::</span><span class="n">mt19937_64</span> <span class="n">rng</span><span class="p">(</span><span class="n">dev</span><span class="p">());</span>
+    <span class="n">ankerl</span><span class="o">::</span><span class="n">nanobench</span><span class="o">::</span><span class="n">Bench</span><span class="p">().</span><span class="n">run</span><span class="p">(</span><span class="s">&quot;random fluctuations&quot;</span><span class="p">,</span> <span class="p">[</span><span class="o">&amp;</span><span class="p">]</span> <span class="p">{</span>
+        <span class="c1">// each run, perform a random number of rng calls</span>
+        <span class="k">auto</span> <span class="n">iterations</span> <span class="o">=</span> <span class="n">rng</span><span class="p">()</span> <span class="o">&amp;</span> <span class="n">UINT64_C</span><span class="p">(</span><span class="mh">0xff</span><span class="p">);</span>
+        <span class="k">for</span> <span class="p">(</span><span class="kt">uint64_t</span> <span class="n">i</span> <span class="o">=</span> <span class="mi">0</span><span class="p">;</span> <span class="n">i</span> <span class="o">&lt;</span> <span class="n">iterations</span><span class="p">;</span> <span class="o">++</span><span class="n">i</span><span class="p">)</span> <span class="p">{</span>
+            <span class="n">ankerl</span><span class="o">::</span><span class="n">nanobench</span><span class="o">::</span><span class="n">doNotOptimizeAway</span><span class="p">(</span><span class="n">rng</span><span class="p">());</span>
+        <span class="p">}</span>
+    <span class="p">});</span>
+<span class="p">}</span>
+</pre></div>
+</td></tr></table></div>
+</div>
+<p>After 2.3ms, I get this result:</p>
+<div class="highlight-text notranslate"><div class="highlight"><pre><span></span>|               ns/op |                op/s |    err% |          ins/op |          cyc/op |    IPC |         bra/op |   miss% |     total | benchmark
+|--------------------:|--------------------:|--------:|----------------:|----------------:|-------:|---------------:|--------:|----------:|:----------
+|              334.12 |        2,992,911.53 |    6.3% |        3,486.44 |        1,068.67 |  3.262 |         287.86 |    0.7% |      0.00 | :wavy_dash: `random fluctuations` (Unstable with ~56.7 iters. Increase `minEpochIterations` to e.g. 567)
+</pre></div>
+</div>
+<p>So on average each loop takes about 334.12ns, but we get a warning that the results are unstable. The median percentage error is 6.3% which is quite high,</p>
+<p>Let’s use the suggestion and set the minimum number of iterations to 5000, and try again:</p>
+<div class="literal-block-wrapper docutils container" id="id9">
+<div class="code-block-caption"><span class="caption-text">tutorial_fluctuating_v2.cpp</span><a class="headerlink" href="#id9" title="Permalink to this code">¶</a></div>
+<div class="highlight-c++ notranslate"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre> 1
+ 2
+ 3
+ 4
+ 5
+ 6
+ 7
+ 8
+ 9
+10
+11
+12
+13
+14
+15
+16
+17</pre></div></td><td class="code"><div class="highlight"><pre><span></span><span class="cp">#include</span> <span class="cpf">&lt;nanobench.h&gt;</span><span class="cp"></span>
+<span class="cp">#include</span> <span class="cpf">&lt;thirdparty/doctest/doctest.h&gt;</span><span class="cp"></span>
+
+<span class="cp">#include</span> <span class="cpf">&lt;random&gt;</span><span class="cp"></span>
+
+<span class="n">TEST_CASE</span><span class="p">(</span><span class="s">&quot;tutorial_fluctuating_v2&quot;</span><span class="p">)</span> <span class="p">{</span>
+    <span class="n">std</span><span class="o">::</span><span class="n">random_device</span> <span class="n">dev</span><span class="p">;</span>
+    <span class="n">std</span><span class="o">::</span><span class="n">mt19937_64</span> <span class="n">rng</span><span class="p">(</span><span class="n">dev</span><span class="p">());</span>
+<span class="hll">    <span class="n">ankerl</span><span class="o">::</span><span class="n">nanobench</span><span class="o">::</span><span class="n">Bench</span><span class="p">().</span><span class="n">minEpochIterations</span><span class="p">(</span><span class="mi">5000</span><span class="p">).</span><span class="n">run</span><span class="p">(</span>
+</span>        <span class="s">&quot;random fluctuations&quot;</span><span class="p">,</span> <span class="p">[</span><span class="o">&amp;</span><span class="p">]</span> <span class="p">{</span>
+            <span class="c1">// each run, perform a random number of rng calls</span>
+            <span class="k">auto</span> <span class="n">iterations</span> <span class="o">=</span> <span class="n">rng</span><span class="p">()</span> <span class="o">&amp;</span> <span class="n">UINT64_C</span><span class="p">(</span><span class="mh">0xff</span><span class="p">);</span>
+            <span class="k">for</span> <span class="p">(</span><span class="kt">uint64_t</span> <span class="n">i</span> <span class="o">=</span> <span class="mi">0</span><span class="p">;</span> <span class="n">i</span> <span class="o">&lt;</span> <span class="n">iterations</span><span class="p">;</span> <span class="o">++</span><span class="n">i</span><span class="p">)</span> <span class="p">{</span>
+                <span class="n">ankerl</span><span class="o">::</span><span class="n">nanobench</span><span class="o">::</span><span class="n">doNotOptimizeAway</span><span class="p">(</span><span class="n">rng</span><span class="p">());</span>
+            <span class="p">}</span>
+        <span class="p">});</span>
+<span class="p">}</span>
+</pre></div>
+</td></tr></table></div>
+</div>
+<p>The fluctuations are much better:</p>
+<div class="highlight-text notranslate"><div class="highlight"><pre><span></span>|               ns/op |                op/s |    err% |          ins/op |          cyc/op |    IPC |         bra/op |   miss% |     total | benchmark
+|--------------------:|--------------------:|--------:|----------------:|----------------:|-------:|---------------:|--------:|----------:|:----------
+|              277.31 |        3,606,106.48 |    0.7% |        3,531.75 |          885.18 |  3.990 |         291.59 |    0.7% |      0.00 | `random fluctuations`
+</pre></div>
+</div>
+<p>The results are  more stable, with only 0.7% error.</p>
+</div>
+</div>
+<div class="section" id="comparing-results">
+<span id="tutorial-comparing-results"></span><h2>Comparing Results<a class="headerlink" href="#comparing-results" title="Permalink to this headline">¶</a></h2>
+<p>I have implemented a comparison of multiple random number generators.
+Here several RNGs are compared to a baseline calculated from <cite>std::default_random_engine</cite>.
+I factored out the general benchmarking code so it’s easy to use for each of the random number generators:</p>
+<div class="literal-block-wrapper docutils container" id="id10">
+<div class="code-block-caption"><span class="caption-text">example_random_number_generators.cpp (excerpt)</span><a class="headerlink" href="#id10" title="Permalink to this code">¶</a></div>
+<div class="highlight-c++ notranslate"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre> 1
+ 2
+ 3
+ 4
+ 5
+ 6
+ 7
+ 8
+ 9
+10
+11
+12
+13
+14
+15
+16
+17
+18
+19
+20
+21
+22
+23
+24
+25
+26
+27
+28
+29
+30
+31
+32
+33
+34
+35
+36
+37
+38
+39
+40
+41
+42
+43
+44</pre></div></td><td class="code"><div class="highlight"><pre><span></span><span class="k">namespace</span> <span class="p">{</span>
+
+<span class="c1">// Benchmarks how fast we can get 64bit random values from Rng.</span>
+<span class="k">template</span> <span class="o">&lt;</span><span class="k">typename</span> <span class="n">Rng</span><span class="o">&gt;</span>
+<span class="kt">void</span> <span class="n">bench</span><span class="p">(</span><span class="n">ankerl</span><span class="o">::</span><span class="n">nanobench</span><span class="o">::</span><span class="n">Bench</span><span class="o">*</span> <span class="n">bench</span><span class="p">,</span> <span class="n">std</span><span class="o">::</span><span class="n">string</span> <span class="n">name</span><span class="p">)</span> <span class="p">{</span>
+    <span class="n">std</span><span class="o">::</span><span class="n">random_device</span> <span class="n">dev</span><span class="p">;</span>
+    <span class="n">Rng</span> <span class="nf">rng</span><span class="p">(</span><span class="n">dev</span><span class="p">());</span>
+
+    <span class="n">bench</span><span class="o">-&gt;</span><span class="n">run</span><span class="p">(</span><span class="n">name</span><span class="p">,</span> <span class="p">[</span><span class="o">&amp;</span><span class="p">]()</span> <span class="p">{</span>
+        <span class="k">auto</span> <span class="n">r</span> <span class="o">=</span> <span class="n">std</span><span class="o">::</span><span class="n">uniform_int_distribution</span><span class="o">&lt;</span><span class="kt">uint64_t</span><span class="o">&gt;</span><span class="p">{}(</span><span class="n">rng</span><span class="p">);</span>
+        <span class="n">ankerl</span><span class="o">::</span><span class="n">nanobench</span><span class="o">::</span><span class="n">doNotOptimizeAway</span><span class="p">(</span><span class="n">r</span><span class="p">);</span>
+    <span class="p">});</span>
+<span class="p">}</span>
+
+<span class="p">}</span> <span class="c1">// namespace</span>
+
+<span class="n">TEST_CASE</span><span class="p">(</span><span class="s">&quot;example_random_number_generators&quot;</span><span class="p">)</span> <span class="p">{</span>
+    <span class="c1">// perform a few warmup calls, and since the runtime is not always stable</span>
+    <span class="c1">// for each generator, increase the number of epochs to get more accurate</span>
+    <span class="c1">// numbers.</span>
+    <span class="n">ankerl</span><span class="o">::</span><span class="n">nanobench</span><span class="o">::</span><span class="n">Bench</span> <span class="n">b</span><span class="p">;</span>
+    <span class="n">b</span><span class="p">.</span><span class="n">title</span><span class="p">(</span><span class="s">&quot;Random Number Generators&quot;</span><span class="p">)</span>
+        <span class="p">.</span><span class="n">unit</span><span class="p">(</span><span class="s">&quot;uint64_t&quot;</span><span class="p">)</span>
+        <span class="p">.</span><span class="n">warmup</span><span class="p">(</span><span class="mi">100</span><span class="p">)</span>
+        <span class="p">.</span><span class="n">relative</span><span class="p">(</span><span class="nb">true</span><span class="p">);</span>
+    <span class="n">b</span><span class="p">.</span><span class="n">performanceCounters</span><span class="p">(</span><span class="nb">true</span><span class="p">);</span>
+
+    <span class="c1">// sets the first one as the baseline</span>
+    <span class="n">bench</span><span class="o">&lt;</span><span class="n">std</span><span class="o">::</span><span class="n">default_random_engine</span><span class="o">&gt;</span><span class="p">(</span><span class="o">&amp;</span><span class="n">b</span><span class="p">,</span> <span class="s">&quot;std::default_random_engine&quot;</span><span class="p">);</span>
+    <span class="n">bench</span><span class="o">&lt;</span><span class="n">std</span><span class="o">::</span><span class="n">mt19937</span><span class="o">&gt;</span><span class="p">(</span><span class="o">&amp;</span><span class="n">b</span><span class="p">,</span> <span class="s">&quot;std::mt19937&quot;</span><span class="p">);</span>
+    <span class="n">bench</span><span class="o">&lt;</span><span class="n">std</span><span class="o">::</span><span class="n">mt19937_64</span><span class="o">&gt;</span><span class="p">(</span><span class="o">&amp;</span><span class="n">b</span><span class="p">,</span> <span class="s">&quot;std::mt19937_64&quot;</span><span class="p">);</span>
+    <span class="n">bench</span><span class="o">&lt;</span><span class="n">std</span><span class="o">::</span><span class="n">ranlux24_base</span><span class="o">&gt;</span><span class="p">(</span><span class="o">&amp;</span><span class="n">b</span><span class="p">,</span> <span class="s">&quot;std::ranlux24_base&quot;</span><span class="p">);</span>
+    <span class="n">bench</span><span class="o">&lt;</span><span class="n">std</span><span class="o">::</span><span class="n">ranlux48_base</span><span class="o">&gt;</span><span class="p">(</span><span class="o">&amp;</span><span class="n">b</span><span class="p">,</span> <span class="s">&quot;std::ranlux48_base&quot;</span><span class="p">);</span>
+    <span class="n">bench</span><span class="o">&lt;</span><span class="n">std</span><span class="o">::</span><span class="n">ranlux24</span><span class="o">&gt;</span><span class="p">(</span><span class="o">&amp;</span><span class="n">b</span><span class="p">,</span> <span class="s">&quot;std::ranlux24_base&quot;</span><span class="p">);</span>
+    <span class="n">bench</span><span class="o">&lt;</span><span class="n">std</span><span class="o">::</span><span class="n">ranlux48</span><span class="o">&gt;</span><span class="p">(</span><span class="o">&amp;</span><span class="n">b</span><span class="p">,</span> <span class="s">&quot;std::ranlux48&quot;</span><span class="p">);</span>
+    <span class="n">bench</span><span class="o">&lt;</span><span class="n">std</span><span class="o">::</span><span class="n">knuth_b</span><span class="o">&gt;</span><span class="p">(</span><span class="o">&amp;</span><span class="n">b</span><span class="p">,</span> <span class="s">&quot;std::knuth_b&quot;</span><span class="p">);</span>
+    <span class="n">bench</span><span class="o">&lt;</span><span class="n">WyRng</span><span class="o">&gt;</span><span class="p">(</span><span class="o">&amp;</span><span class="n">b</span><span class="p">,</span> <span class="s">&quot;WyRng&quot;</span><span class="p">);</span>
+    <span class="n">bench</span><span class="o">&lt;</span><span class="n">NasamRng</span><span class="o">&gt;</span><span class="p">(</span><span class="o">&amp;</span><span class="n">b</span><span class="p">,</span> <span class="s">&quot;NasamRng&quot;</span><span class="p">);</span>
+    <span class="n">bench</span><span class="o">&lt;</span><span class="n">Sfc4</span><span class="o">&gt;</span><span class="p">(</span><span class="o">&amp;</span><span class="n">b</span><span class="p">,</span> <span class="s">&quot;Sfc4&quot;</span><span class="p">);</span>
+    <span class="n">bench</span><span class="o">&lt;</span><span class="n">RomuTrio</span><span class="o">&gt;</span><span class="p">(</span><span class="o">&amp;</span><span class="n">b</span><span class="p">,</span> <span class="s">&quot;RomuTrio&quot;</span><span class="p">);</span>
+    <span class="n">bench</span><span class="o">&lt;</span><span class="n">RomuDuo</span><span class="o">&gt;</span><span class="p">(</span><span class="o">&amp;</span><span class="n">b</span><span class="p">,</span> <span class="s">&quot;RomuDuo&quot;</span><span class="p">);</span>
+    <span class="n">bench</span><span class="o">&lt;</span><span class="n">RomuDuoJr</span><span class="o">&gt;</span><span class="p">(</span><span class="o">&amp;</span><span class="n">b</span><span class="p">,</span> <span class="s">&quot;RomuDuoJr&quot;</span><span class="p">);</span>
+    <span class="n">bench</span><span class="o">&lt;</span><span class="n">ankerl</span><span class="o">::</span><span class="n">nanobench</span><span class="o">::</span><span class="n">Rng</span><span class="o">&gt;</span><span class="p">(</span><span class="o">&amp;</span><span class="n">b</span><span class="p">,</span> <span class="s">&quot;ankerl::nanobench::Rng&quot;</span><span class="p">);</span>
+<span class="p">}</span>
+</pre></div>
+</td></tr></table></div>
+</div>
+<p>Runs for 60ms and prints this table:</p>
+<div class="highlight-text notranslate"><div class="highlight"><pre><span></span>| relative |         ns/uint64_t |          uint64_t/s |    err% |    ins/uint64_t |    cyc/uint64_t |    IPC |   bra/uint64_t |   miss% |     total | Random Number Generators
+|---------:|--------------------:|--------------------:|--------:|----------------:|----------------:|-------:|---------------:|--------:|----------:|:-------------------------
+|   100.0% |               35.87 |       27,881,924.28 |    2.3% |          127.80 |          114.61 |  1.115 |           9.77 |    3.7% |      0.00 | `std::default_random_engine`
+|   490.3% |                7.32 |      136,699,693.21 |    0.6% |           89.55 |           23.49 |  3.812 |           9.51 |    0.1% |      0.00 | `std::mt19937`
+| 1,767.4% |                2.03 |      492,786,582.33 |    0.6% |           24.38 |            6.48 |  3.761 |           1.26 |    0.6% |      0.00 | `std::mt19937_64`
+|    85.2% |               42.08 |       23,764,853.03 |    0.7% |          157.07 |          134.62 |  1.167 |          19.51 |    7.6% |      0.00 | `std::ranlux24_base`
+|   121.3% |               29.56 |       33,824,759.51 |    0.5% |           91.03 |           94.35 |  0.965 |          10.00 |    8.1% |      0.00 | `std::ranlux48_base`
+|    17.4% |              205.67 |        4,862,080.59 |    1.2% |          709.83 |          657.10 |  1.080 |         101.79 |   16.1% |      0.00 | `std::ranlux24_base`
+|     8.7% |              412.46 |        2,424,497.97 |    1.8% |        1,514.70 |        1,318.43 |  1.149 |         219.09 |   16.7% |      0.00 | `std::ranlux48`
+|    59.2% |               60.60 |       16,502,276.18 |    1.9% |          253.77 |          193.39 |  1.312 |          24.93 |    1.5% |      0.00 | `std::knuth_b`
+| 5,187.1% |                0.69 |    1,446,254,071.66 |    0.1% |            6.00 |            2.21 |  2.714 |           0.00 |    0.0% |      0.00 | `WyRng`
+| 1,431.7% |                2.51 |      399,177,833.54 |    0.0% |           21.00 |            8.01 |  2.621 |           0.00 |    0.0% |      0.00 | `NasamRng`
+| 2,629.9% |                1.36 |      733,279,957.30 |    0.1% |           13.00 |            4.36 |  2.982 |           0.00 |    0.0% |      0.00 | `Sfc4`
+| 3,815.7% |                0.94 |    1,063,889,655.17 |    0.0% |           11.00 |            3.01 |  3.661 |           0.00 |    0.0% |      0.00 | `RomuTrio`
+| 3,529.5% |                1.02 |      984,102,081.37 |    0.3% |            9.00 |            3.25 |  2.768 |           0.00 |    0.0% |      0.00 | `RomuDuo`
+| 4,580.4% |                0.78 |    1,277,113,402.06 |    0.0% |            7.00 |            2.50 |  2.797 |           0.00 |    0.0% |      0.00 | `RomuDuoJr`
+| 2,291.2% |                1.57 |      638,820,992.09 |    0.0% |           11.00 |            5.00 |  2.200 |           0.00 |    0.0% |      0.00 | `ankerl::nanobench::Rng`
+</pre></div>
+</div>
+<p>It shows that <a class="reference internal" href="reference.html#_CPPv4N6ankerl9nanobench3RngE" title="ankerl::nanobench::Rng"><code class="xref cpp cpp-class docutils literal notranslate"><span class="pre">ankerl::nanobench::Rng</span></code></a> is one of the fastest RNG, and has the least amount of
+fluctuation. It takes only 1.57ns to generate a random <code class="docutils literal notranslate"><span class="pre">uint64_t</span></code>, so ~638 million calls per
+seconds are possible. To the left we show relative performance compared to <code class="docutils literal notranslate"><span class="pre">std::default_random_engine</span></code>.</p>
+<div class="admonition note">
+<p class="admonition-title">Note</p>
+<p>Here pure runtime performance is not necessarily the best benchmark.
+Especially the fastest RNG’s can be inlined and use instruction level parallelism
+to their advantage: they immediately return an old state, and while user code can
+already use that value, the next value is calculated in parallel. See the excellent paper
+at <a class="reference external" href="http://www.romu-random.org">romu-random</a> for details.</p>
+</div>
+</div>
+<div class="section" id="asymptotic-complexity">
+<span id="id1"></span><h2>Asymptotic Complexity<a class="headerlink" href="#asymptotic-complexity" title="Permalink to this headline">¶</a></h2>
+<p>It is possible to calculate asymptotic complexity (Big O) from multiple runs of a benchmark. Run the
+benchmark with different complexity N, then nanobench can calculate the best fitting curve.</p>
+<p>The following example finds out the asymptotic complexity of <code class="docutils literal notranslate"><span class="pre">std::set</span></code>’s <code class="docutils literal notranslate"><span class="pre">find()</span></code>.</p>
+<div class="literal-block-wrapper docutils container" id="id11">
+<div class="code-block-caption"><span class="caption-text">tutorial_complexity_set.cpp</span><a class="headerlink" href="#id11" title="Permalink to this code">¶</a></div>
+<div class="highlight-c++ notranslate"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre> 1
+ 2
+ 3
+ 4
+ 5
+ 6
+ 7
+ 8
+ 9
+10
+11
+12
+13
+14
+15
+16
+17
+18
+19
+20
+21
+22
+23
+24
+25
+26
+27
+28
+29
+30
+31
+32
+33
+34</pre></div></td><td class="code"><div class="highlight"><pre><span></span><span class="cp">#include</span> <span class="cpf">&lt;nanobench.h&gt;</span><span class="cp"></span>
+<span class="cp">#include</span> <span class="cpf">&lt;thirdparty/doctest/doctest.h&gt;</span><span class="cp"></span>
+
+<span class="cp">#include</span> <span class="cpf">&lt;iostream&gt;</span><span class="cp"></span>
+<span class="cp">#include</span> <span class="cpf">&lt;set&gt;</span><span class="cp"></span>
+
+<span class="n">TEST_CASE</span><span class="p">(</span><span class="s">&quot;tutorial_complexity_set_find&quot;</span><span class="p">)</span> <span class="p">{</span>
+    <span class="c1">// Create a single benchmark instance that is used in multiple benchmark</span>
+    <span class="c1">// runs, with different settings for complexityN.</span>
+    <span class="n">ankerl</span><span class="o">::</span><span class="n">nanobench</span><span class="o">::</span><span class="n">Bench</span> <span class="n">bench</span><span class="p">;</span>
+
+    <span class="c1">// a RNG to generate input data</span>
+    <span class="n">ankerl</span><span class="o">::</span><span class="n">nanobench</span><span class="o">::</span><span class="n">Rng</span> <span class="n">rng</span><span class="p">;</span>
+
+    <span class="n">std</span><span class="o">::</span><span class="n">set</span><span class="o">&lt;</span><span class="kt">uint64_t</span><span class="o">&gt;</span> <span class="n">set</span><span class="p">;</span>
+
+    <span class="c1">// Running the benchmark multiple times, with different number of elements</span>
+    <span class="k">for</span> <span class="p">(</span><span class="k">auto</span> <span class="nl">setSize</span> <span class="p">:</span>
+         <span class="p">{</span><span class="mi">10U</span><span class="p">,</span> <span class="mi">20U</span><span class="p">,</span> <span class="mi">50U</span><span class="p">,</span> <span class="mi">100U</span><span class="p">,</span> <span class="mi">200U</span><span class="p">,</span> <span class="mi">500U</span><span class="p">,</span> <span class="mi">1000U</span><span class="p">,</span> <span class="mi">2000U</span><span class="p">,</span> <span class="mi">5000U</span><span class="p">,</span> <span class="mi">10000U</span><span class="p">})</span> <span class="p">{</span>
+
+        <span class="c1">// fill up the set with random data</span>
+        <span class="k">while</span> <span class="p">(</span><span class="n">set</span><span class="p">.</span><span class="n">size</span><span class="p">()</span> <span class="o">&lt;</span> <span class="n">setSize</span><span class="p">)</span> <span class="p">{</span>
+            <span class="n">set</span><span class="p">.</span><span class="n">insert</span><span class="p">(</span><span class="n">rng</span><span class="p">());</span>
+        <span class="p">}</span>
+
+        <span class="c1">// Run the benchmark, provide setSize as the scaling variable.</span>
+        <span class="n">bench</span><span class="p">.</span><span class="n">complexityN</span><span class="p">(</span><span class="n">set</span><span class="p">.</span><span class="n">size</span><span class="p">()).</span><span class="n">run</span><span class="p">(</span><span class="s">&quot;std::set find&quot;</span><span class="p">,</span> <span class="p">[</span><span class="o">&amp;</span><span class="p">]</span> <span class="p">{</span>
+            <span class="n">ankerl</span><span class="o">::</span><span class="n">nanobench</span><span class="o">::</span><span class="n">doNotOptimizeAway</span><span class="p">(</span><span class="n">set</span><span class="p">.</span><span class="n">find</span><span class="p">(</span><span class="n">rng</span><span class="p">()));</span>
+        <span class="p">});</span>
+    <span class="p">}</span>
+
+    <span class="c1">// calculate BigO complexy best fit and print the results</span>
+    <span class="n">std</span><span class="o">::</span><span class="n">cout</span> <span class="o">&lt;&lt;</span> <span class="n">bench</span><span class="p">.</span><span class="n">complexityBigO</span><span class="p">()</span> <span class="o">&lt;&lt;</span> <span class="n">std</span><span class="o">::</span><span class="n">endl</span><span class="p">;</span>
+<span class="p">}</span>
+</pre></div>
+</td></tr></table></div>
+</div>
+<p>The loop runs the benchmark 10 times, with different set sizes from 10 to 10k.</p>
+<div class="admonition note">
+<p class="admonition-title">Note</p>
+<p>Each of the 10 benchmark runs automatically scales the number of iterations so results are still
+fast and accurate. In total the whole test takes about 90ms.</p>
+</div>
+<p>The <a class="reference internal" href="reference.html#_CPPv4N6ankerl9nanobench5BenchE" title="ankerl::nanobench::Bench"><code class="xref cpp cpp-class docutils literal notranslate"><span class="pre">Bench</span></code></a> object holds the benchmark results of the 10 benchmark runs. Each benchmark is recorded with a
+different setting for <a class="reference internal" href="reference.html#_CPPv4I0EN6ankerl9nanobench5Bench11complexityNER5Bench1T" title="ankerl::nanobench::Bench::complexityN"><code class="xref cpp cpp-func docutils literal notranslate"><span class="pre">complexityN</span></code></a>.</p>
+<p>After the benchmark prints the benchmark results, we calculate &amp; print the Big O of the most important complexity functions.
+<code class="docutils literal notranslate"><span class="pre">std::cout</span> <span class="pre">&lt;&lt;</span> <span class="pre">bench.complexityBigO()</span> <span class="pre">&lt;&lt;</span> <span class="pre">std::endl;</span></code> prints e.g. this markdown table:</p>
+<div class="highlight-text notranslate"><div class="highlight"><pre><span></span>|   coefficient |   err% | complexity
+|--------------:|-------:|------------
+|   6.66562e-09 |  29.1% | O(log n)
+|   1.47588e-11 |  58.3% | O(n)
+|   1.10742e-12 |  62.6% | O(n log n)
+|   5.15683e-08 |  63.8% | O(1)
+|   1.40387e-15 |  78.7% | O(n^2)
+|   1.32792e-19 |  85.7% | O(n^3)
+</pre></div>
+</div>
+<p>The table is sorted, best fitting complexity function first. So
+<span class="math notranslate nohighlight">\(\mathcal{O}(\log{}n)\)</span> provides the best approximation for the complexity. Interestingly, in that case error compared to
+<span class="math notranslate nohighlight">\(\mathcal{O}(n)\)</span> is not very large, which can be an indication that even though the red-black tree should theoretically have
+logarithmic complexity, in practices that is not perfectly the case.</p>
+</div>
+</div>
+
+
+           </div>
+           
+          </div>
+          <footer>
+  
+    <div class="rst-footer-buttons" role="navigation" aria-label="footer navigation">
+      
+        <a href="comparison.html" class="btn btn-neutral float-right" title="Comparison with Other Frameworks" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right"></span></a>
+      
+      
+        <a href="index.html" class="btn btn-neutral float-left" title="Welcome to nanobench’s documentation!" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left"></span> Previous</a>
+      
+    </div>
+  
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>
+        &copy; Copyright 2019-2020 Martin Ankerl &lt;martin.ankerl@gmail.com&gt;
+
+    </p>
+  </div>
+  Built with <a href="http://sphinx-doc.org/">Sphinx</a> using a <a href="https://github.com/rtfd/sphinx_rtd_theme">theme</a> provided by <a href="https://readthedocs.org">Read the Docs</a>. 
+
+</footer>
+
+        </div>
+      </div>
+
+    </section>
+
+  </div>
+  
+
+
+  <script type="text/javascript">
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script>
+
+  
+  
+    
+   
+
+</body>
+</html>

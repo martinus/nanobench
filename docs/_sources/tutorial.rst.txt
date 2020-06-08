@@ -12,7 +12,7 @@ Installation
 2. Create a .cpp file, e.g. ``nanobench.cpp``, where the bulk of
    nanobench is compiled:
 
-   .. literalinclude:: ../src/test/app/nanobench.cpp
+   .. literalinclude:: ../test/app/nanobench.cpp
       :language: c++
       :linenos:
 
@@ -26,7 +26,7 @@ Quick Start
 
 #. Create `nanobench.cpp`:
 
-   .. literalinclude:: ../src/test/app/nanobench.cpp
+   .. literalinclude:: ../test/app/nanobench.cpp
       :language: c++
       :linenos:
       :caption: nanobench.cpp
@@ -36,7 +36,7 @@ Quick Start
 
 #. Create the actual benchmark code, in `full_example.cpp`:
 
-   .. literalinclude:: ../src/scripts/full_example.cpp
+   .. literalinclude:: ../scripts/full_example.cpp
       :language: c++
       :linenos:
       :caption: full_example.cpp
@@ -80,7 +80,7 @@ Something Fast
 
 Let’s benchmarks how fast we can do ``x += x`` for ``uint64_t``:
 
-.. literalinclude:: ../src/test/tutorial_fast_v1.cpp
+.. literalinclude:: ../test/tutorial_fast_v1.cpp
    :language: c++
    :linenos:
    :caption: tutorial_fast_v1.cpp
@@ -96,7 +96,7 @@ After 0.2ms we get this output:
 No data there! we only get ``:boom: iterations overflow.``.  The compiler could optimize ``x += x``
 away because we never used the output. Thanks to ``doNotOptimizeAway``, this is easy to fix:
 
-.. literalinclude:: ../src/test/tutorial_fast_v2.cpp
+.. literalinclude:: ../test/tutorial_fast_v2.cpp
    :language: c++
    :linenos:
    :caption: tutorial_fast_v2.cpp
@@ -119,7 +119,7 @@ Something Slow
 
 Let's benchmark if sleeping for 100ms really takes 100ms.
 
-.. literalinclude:: ../src/test/tutorial_slow_v1.cpp
+.. literalinclude:: ../test/tutorial_slow_v1.cpp
    :language: c++
    :linenos:
    :caption: tutorial_slow_v1.cpp
@@ -137,7 +137,7 @@ So we actually take 100.125ms instead of 100ms. Next time I run it, I get 100.14
 
 If the extremely slow 1.1 second is too much for you, you can manually configure the number of evaluations (epochs):
 
-.. literalinclude:: ../src/test/tutorial_slow_v2.cpp
+.. literalinclude:: ../test/tutorial_slow_v2.cpp
    :language: c++
    :linenos:
    :caption: tutorial_slow_v2.cpp
@@ -157,7 +157,7 @@ Something Unstable
 Lets create an extreme artifical test that's hard to benchmark, because runtime fluctuates randomly: Each iteration
 randomly skip between 0-254 random numbers:
 
-.. literalinclude:: ../src/test/tutorial_fluctuating_v1.cpp
+.. literalinclude:: ../test/tutorial_fluctuating_v1.cpp
    :language: c++
    :linenos:
    :caption: tutorial_fluctuating_v1.cpp
@@ -174,7 +174,7 @@ So on average each loop takes about 334.12ns, but we get a warning that the resu
 
 Let's use the suggestion and set the minimum number of iterations to 5000, and try again:
 
-.. literalinclude:: ../src/test/tutorial_fluctuating_v2.cpp
+.. literalinclude:: ../test/tutorial_fluctuating_v2.cpp
    :language: c++
    :linenos:
    :caption: tutorial_fluctuating_v2.cpp
@@ -203,7 +203,7 @@ Here several RNGs are compared to a baseline calculated from `std::default_rando
 I factored out the general benchmarking code so it's easy to use for each of the random number generators:
 
 
-.. literalinclude:: ../src/test/example_random_number_generators.cpp
+.. literalinclude:: ../test/example_random_number_generators.cpp
    :language: c++
    :linenos:
    :caption: example_random_number_generators.cpp (excerpt)
@@ -256,7 +256,7 @@ benchmark with different complexity N, then nanobench can calculate the best fit
 
 The following example finds out the asymptotic complexity of ``std::set``'s ``find()``.
 
-.. literalinclude:: ../src/test/tutorial_complexity_set.cpp
+.. literalinclude:: ../test/tutorial_complexity_set.cpp
    :language: c++
    :linenos:
    :caption: tutorial_complexity_set.cpp
