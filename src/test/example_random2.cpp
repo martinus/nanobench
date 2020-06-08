@@ -1,6 +1,7 @@
 #include <nanobench.h>
-
 #include <thirdparty/doctest/doctest.h>
+
+#include <random>
 
 // Source: http://quick-bench.com/2dBt6SOQTSlztlqmlo0w7pv6iNM
 // https://www.reddit.com/r/prng/comments/fchmfd/romu_fast_nonlinear_pseudorandom_number_generators/fl6lfw9/
@@ -103,7 +104,12 @@ void benchmark(ankerl::nanobench::Bench& bench, char const* title) {
 } // namespace
 
 TEST_CASE("example_random2") {
-    ankerl::nanobench::Bench bench;
+    auto bench = ankerl::nanobench::Bench().relative(true);
+
+    std::mt19937_64 mt{};
+    bench.run("std::mt19937_64", [&] {
+        ankerl::nanobench::doNotOptimizeAway(mt());
+    });
 
     bench.run("RomuTrio", [] {
         ankerl::nanobench::doNotOptimizeAway(romuTrio_random());
