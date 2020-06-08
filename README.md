@@ -51,11 +51,11 @@ the benchmark with the name `some double ops` is **0.00**, so just a few millise
 * **Accurate**: Get deterministic, repeatable, and accurate results that you can make sound decisions on.
 * **Robust**: Be robust against outliers, warn if results are not reliable.
 
-# How to Use it
+# How to Use
 
-* [Tutorial](docs/tutorial.md#top) - getting started
-* [Reference](docs/reference.md#top) - all the details
-* [Comparison](docs/comparison.md#top) - comparison with other microbenchmark frameworks
+* [Tutorial](https://martin.ankerl.com/nanobench/tutorial.html) - getting started
+* [Comparison](https://martin.ankerl.com/nanobench/comparison.html) - comparison with other microbenchmark frameworks
+* [Reference](https://martin.ankerl.com/nanobench/reference.html) - all the details
 
 # More
 
