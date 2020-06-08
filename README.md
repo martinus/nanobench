@@ -1,5 +1,7 @@
 <a id="top"></a>
-![ankerl::nanobench logo](src/docs/logo-nanobench.png)
+# ankerl::nanobench
+
+![ankerl::nanobench logo](src/docs/nanobench-logo-small.svg)
 
 [![Release](https://img.shields.io/github/release/martinus/nanobench.svg)](https://github.com/martinus/nanobench/releases)
 [![GitHub license](https://img.shields.io/github/license/martinus/nanobench.svg)](https://raw.githubusercontent.com/martinus/nanobench/master/LICENSE)
