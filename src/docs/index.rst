@@ -60,7 +60,8 @@ nanobench
    
 |badge-release| |badge-license| |badge-travis| |badge-appveyor| |badge-gitter|
 
-.. image:: logo-nanobench.png 
+.. image:: nanobench-logo-small.svg
+
 
 .. hint::
 

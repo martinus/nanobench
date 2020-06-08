@@ -30,7 +30,7 @@ With this I have measured the runtimes of major benchmarking frameworks which su
 the number of iterations: :ref:`Google Benchmark <comparison-google-benchmark>`, :ref:`Catch2 <comparison-catch2>`,
 :ref:`nonius <comparison-nonius>`, and of course :ref:`nanobench <comparison-nanobench>`.
 
-.. figure:: _static/totalruntime.svg
+.. figure:: totalruntime.svg
    :alt: Total Runtimes
 
 ======================  =====  ======   =========== ======== ========
