@@ -1,6 +1,7 @@
 #include <nanobench.h>
 #include <thirdparty/doctest/doctest.h>
 
+#include <iostream>
 #include <random>
 
 // Source: http://quick-bench.com/2dBt6SOQTSlztlqmlo0w7pv6iNM
@@ -134,4 +135,37 @@ TEST_CASE("example_random2") {
     bench.run("XoroshiroPlus", [] {
         ankerl::nanobench::doNotOptimizeAway(xoroshiroPlus());
     });
+}
+
+class RomuMono32 {
+public:
+    RomuMono32(uint32_t seed)
+        : mState{(seed & UINT32_C(0x1fffffff)) + UINT32_C(1156979152)} {}
+
+    uint16_t operator()() noexcept {
+        uint16_t result = static_cast<uint16_t>(mState >> 16U);
+        mState *= UINT32_C(3611795771);
+        mState = ROTL(mState, 12);
+        return result;
+    }
+
+    uint32_t state() const noexcept {
+        return mState;
+    }
+
+private:
+    uint32_t mState;
+};
+
+TEST_CASE("romumono32") {
+
+    uint32_t n = 0;
+    RomuMono32 rm(123);
+    auto initialState = rm.state();
+    do {
+        rm();
+        ++n;
+    } while (rm.state() != initialState);
+
+    std::cout << n << std::endl;
 }

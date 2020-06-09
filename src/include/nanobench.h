@@ -183,6 +183,13 @@ struct Config {
     std::ostream* mOut = nullptr;
     bool mShowPerformanceCounters = true;
     bool mIsRelative = false;
+
+    Config();
+    ~Config();
+    Config& operator=(Config const&);
+    Config& operator=(Config&&);
+    Config(Config const&);
+    Config(Config&&);
 };
 ANKERL_NANOBENCH(IGNORE_PADDED_POP)
 
@@ -191,6 +198,12 @@ ANKERL_NANOBENCH(IGNORE_PADDED_PUSH)
 class Result {
 public:
     explicit Result(Config const& benchmarkConfig);
+
+    ~Result();
+    Result& operator=(Result const&);
+    Result& operator=(Result&&);
+    Result(Result const&);
+    Result(Result&&);
 
     // adds new measurement results
     // all values are scaled by iters (except iters...)
@@ -737,7 +750,7 @@ public:
 
     ANKERL_NANOBENCH(NODISCARD) uint64_t numIters() const noexcept;
     void add(std::chrono::nanoseconds elapsed, PerformanceCounters const& pc) noexcept;
-    ANKERL_NANOBENCH(NODISCARD) Result& result();
+    void moveResultTo(std::vector<Result>& results);
 
 private:
     enum class State { warmup, upscaling_runtime, measuring, endless };
@@ -895,7 +908,7 @@ Bench& Bench::run(Op op) {
         pc.updateResults(iterationLogic.numIters());
         iterationLogic.add(after - before, pc);
     }
-    mResults.emplace_back(std::move(iterationLogic.result()));
+    iterationLogic.moveResultTo(mResults);
     return *this;
 }
 
@@ -1814,8 +1827,8 @@ void IterationLogic::add(std::chrono::nanoseconds elapsed, PerformanceCounters c
                                << ", mState=" << static_cast<int>(mState));
 }
 
-Result& IterationLogic::result() {
-    return mResult;
+void IterationLogic::moveResultTo(std::vector<Result>& results) {
+    results.emplace_back(std::move(mResult));
 }
 
 void IterationLogic::showResult(std::string const& errorMessage) const {
@@ -2388,6 +2401,21 @@ std::ostream& operator<<(std::ostream& os, MarkDownCode const& mdCode) {
 }
 } // namespace fmt
 } // namespace detail
+
+// provide implementation here so it's only generated once
+Config::Config() = default;
+Config::~Config() = default;
+Config& Config::operator=(Config const&) = default;
+Config& Config::operator=(Config&&) = default;
+Config::Config(Config const&) = default;
+Config::Config(Config&&) = default;
+
+// provide implementation here so it's only generated once
+Result::~Result() = default;
+Result& Result::operator=(Result const&) = default;
+Result& Result::operator=(Result&&) = default;
+Result::Result(Result const&) = default;
+Result::Result(Result&&) = default;
 
 // Result returned after a benchmark has finished. Can be used as a baseline for relative().
 Result::Result(Config const& benchmarkConfig)

@@ -289,3 +289,16 @@ The table is sorted, best fitting complexity function first. So
 :math:`\mathcal{O}(\log{}n)` provides the best approximation for the complexity. Interestingly, in that case error compared to
 :math:`\mathcal{O}(n)` is not very large, which can be an indication that even though the red-black tree should theoretically have
 logarithmic complexity, in practices that is not perfectly the case.
+
+
+.. _templating:
+
+Templating
+==========
+
+Nanobench comes with a powerful `Mustache <https://mustache.github.io/>`_-like template mechanism to process the benchmark
+results into all kinds of formats. Several preconfigured format exist in the namespace ``ankerl::nanobench::templates``:
+
+.. doxygennamespace:: ankerl::nanobench::templates
+   :no-link:
+   :content-only:
