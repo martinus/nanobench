@@ -432,26 +432,32 @@ public:
      */
     template <typename Op>
     ANKERL_NANOBENCH(NOINLINE)
-    Bench& run(std::string const& benchmarkName, Op op);
+    Bench& run(char const* benchmarkName, Op&& op);
+
+    template <typename Op>
+    ANKERL_NANOBENCH(NOINLINE)
+    Bench& run(std::string const& benchmarkName, Op&& op);
 
     /**
-     * @brief Same as run(std::string const& benchmarkName, Op op), but instead uses the previously set name.
+     * @brief Same as run(char const* benchmarkName, Op op), but instead uses the previously set name.
      * @tparam Op The code to benchmark.
      */
     template <typename Op>
     ANKERL_NANOBENCH(NOINLINE)
-    Bench& run(Op op);
+    Bench& run(Op&& op);
 
     /**
      * @brief Title of the benchmark, will be shown in the table header. Changing the title will start a new markdown table.
      *
      * @param benchmarkTitle The title of the benchmark.
      */
-    Bench& title(std::string benchmarkTitle);
+    Bench& title(char const* benchmarkTitle);
+    Bench& title(std::string const& benchmarkTitle);
     ANKERL_NANOBENCH(NODISCARD) std::string const& title() const noexcept;
 
     /// Name of the benchmark, will be shown in the table row.
-    Bench& name(std::string benchmarkName);
+    Bench& name(char const* benchmarkName);
+    Bench& name(std::string const& benchmarkName);
     ANKERL_NANOBENCH(NODISCARD) std::string const& name() const noexcept;
 
     /**
@@ -475,7 +481,8 @@ public:
      *
      * @param unit The unit name.
      */
-    Bench& unit(std::string unit);
+    Bench& unit(char const* unit);
+    Bench& unit(std::string const& unit);
     ANKERL_NANOBENCH(NODISCARD) std::string const& unit() const noexcept;
 
     /**
@@ -706,6 +713,9 @@ public:
      * @return BigO Error calculation, which is streamable to std::cout.
      */
     template <typename Op>
+    BigO complexityBigO(char const* name, Op op) const;
+
+    template <typename Op>
     BigO complexityBigO(std::string const& name, Op op) const;
 
     /**
@@ -828,9 +838,14 @@ public:
     static RangeMeasure collectRangeMeasure(std::vector<Result> const& results);
 
     template <typename Op>
+    BigO(char const* bigOName, RangeMeasure const& rangeMeasure, Op rangeToN)
+        : BigO(bigOName, mapRangeMeasure(rangeMeasure, rangeToN)) {}
+
+    template <typename Op>
     BigO(std::string const& bigOName, RangeMeasure const& rangeMeasure, Op rangeToN)
         : BigO(bigOName, mapRangeMeasure(rangeMeasure, rangeToN)) {}
 
+    BigO(char const* bigOName, RangeMeasure const& scaledRangeMeasure);
     BigO(std::string const& bigOName, RangeMeasure const& scaledRangeMeasure);
     ANKERL_NANOBENCH(NODISCARD) std::string const& name() const noexcept;
     ANKERL_NANOBENCH(NODISCARD) double constant() const noexcept;
@@ -903,7 +918,7 @@ constexpr uint64_t Rng::rotl(uint64_t x, unsigned k) noexcept {
 
 template <typename Op>
 ANKERL_NANOBENCH_NO_SANITIZE("integer")
-Bench& Bench::run(Op op) {
+Bench& Bench::run(Op&& op) {
     // It is important that this method is kept short so the compiler can do better optimizations/ inlining of op()
     detail::IterationLogic iterationLogic(*this);
     auto& pc = detail::performanceCounters();
@@ -925,9 +940,20 @@ Bench& Bench::run(Op op) {
 
 // Performs all evaluations.
 template <typename Op>
-Bench& Bench::run(std::string const& benchmarkName, Op op) {
+Bench& Bench::run(char const* benchmarkName, Op&& op) {
     name(benchmarkName);
-    return run(std::move(op));
+    return run(std::forward<Op>(op));
+}
+
+template <typename Op>
+Bench& Bench::run(std::string const& benchmarkName, Op&& op) {
+    name(benchmarkName);
+    return run(std::forward<Op>(op));
+}
+
+template <typename Op>
+BigO Bench::complexityBigO(char const* benchmarkName, Op op) const {
+    return BigO(benchmarkName, BigO::collectRangeMeasure(mResults), op);
 }
 
 template <typename Op>
@@ -2709,33 +2735,48 @@ bool Bench::performanceCounters() const noexcept {
 // Operation unit. Defaults to "op", could be e.g. "byte" for string processing.
 // If u differs from currently set unit, the stored results will be cleared.
 // Use singular (byte, not bytes).
-Bench& Bench::unit(std::string u) {
+Bench& Bench::unit(char const* u) {
     if (u != mConfig.mUnit) {
         mResults.clear();
     }
-    mConfig.mUnit = std::move(u);
+    mConfig.mUnit = u;
     return *this;
 }
+
+Bench& Bench::unit(std::string const& u) {
+    return unit(u.c_str());
+}
+
 std::string const& Bench::unit() const noexcept {
     return mConfig.mUnit;
 }
 
 // If benchmarkTitle differs from currently set title, the stored results will be cleared.
-Bench& Bench::title(std::string benchmarkTitle) {
+Bench& Bench::title(const char* benchmarkTitle) {
     if (benchmarkTitle != mConfig.mBenchmarkTitle) {
         mResults.clear();
     }
-    mConfig.mBenchmarkTitle = std::move(benchmarkTitle);
+    mConfig.mBenchmarkTitle = benchmarkTitle;
     return *this;
 }
+Bench& Bench::title(std::string const& benchmarkTitle) {
+    return title(benchmarkTitle.c_str());
+}
+
 std::string const& Bench::title() const noexcept {
     return mConfig.mBenchmarkTitle;
 }
 
-Bench& Bench::name(std::string benchmarkName) {
-    mConfig.mBenchmarkName = std::move(benchmarkName);
+Bench& Bench::name(const char* benchmarkName) {
+    mConfig.mBenchmarkName = benchmarkName;
     return *this;
 }
+
+Bench& Bench::name(std::string const& benchmarkName) {
+    mConfig.mBenchmarkName = benchmarkName;
+    return *this;
+}
+
 std::string const& Bench::name() const noexcept {
     return mConfig.mBenchmarkName;
 }
@@ -2917,6 +2958,9 @@ BigO::BigO(std::string const& bigOName, RangeMeasure const& rangeMeasure)
     auto mean = sumMeasure / n;
     mNormalizedRootMeanSquare = std::sqrt(err / n) / mean;
 }
+
+BigO::BigO(const char* bigOName, RangeMeasure const& rangeMeasure)
+    : BigO(std::string(bigOName), rangeMeasure) {}
 
 std::string const& BigO::name() const noexcept {
     return mName;

@@ -9,7 +9,7 @@
 namespace {
 
 template <typename ContainerT>
-static void testBenchSet(std::string const& label, int n,
+static void testBenchSet(char const* label, int n,
                          ankerl::nanobench::Bench& bench) {
     bench.run(label, [&] {
         ContainerT items;

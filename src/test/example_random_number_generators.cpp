@@ -310,7 +310,7 @@ namespace {
 
 // Benchmarks how fast we can get 64bit random values from Rng.
 template <typename Rng>
-void bench(ankerl::nanobench::Bench* bench, std::string name) {
+void bench(ankerl::nanobench::Bench* bench, char const* name) {
     std::random_device dev;
     Rng rng(dev());
 
