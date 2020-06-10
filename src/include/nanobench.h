@@ -68,6 +68,15 @@
 #    define ANKERL_NANOBENCH_PRIVATE_IGNORE_PADDED_POP()
 #endif
 
+#if defined(__GNUC__)
+#    define ANKERL_NANOBENCH_PRIVATE_IGNORE_EFFCPP_PUSH() \
+        _Pragma("GCC diagnostic push") _Pragma("GCC diagnostic ignored \"-Weffc++\"")
+#    define ANKERL_NANOBENCH_PRIVATE_IGNORE_EFFCPP_POP() _Pragma("GCC diagnostic pop")
+#else
+#    define ANKERL_NANOBENCH_PRIVATE_IGNORE_EFFCPP_PUSH()
+#    define ANKERL_NANOBENCH_PRIVATE_IGNORE_EFFCPP_POP()
+#endif
+
 #if defined(ANKERL_NANOBENCH_LOG_ENABLED)
 #    include <iostream>
 #    define ANKERL_NANOBENCH_LOG(x) std::cout << __FUNCTION__ << "@" << __LINE__ << ": " << x << std::endl
@@ -756,35 +765,24 @@ typename std::enable_if<doNotOptimizeNeedsIndirect<T>()>::type doNotOptimizeAway
 }
 #endif
 
-// internally used, but visible because run() is templated
-ANKERL_NANOBENCH(IGNORE_PADDED_PUSH)
+// internally used, but visible because run() is templated.
+// Not movable/copyable, so we simply use a pointer instead of unique_ptr. This saves us from
+// having to include <memory>, and the template instantation overhead of unique_ptr which is unfortunately quite significant.
+ANKERL_NANOBENCH(IGNORE_EFFCPP_PUSH)
 class IterationLogic {
 public:
     explicit IterationLogic(Bench const& config) noexcept;
+    ~IterationLogic();
 
     ANKERL_NANOBENCH(NODISCARD) uint64_t numIters() const noexcept;
     void add(std::chrono::nanoseconds elapsed, PerformanceCounters const& pc) noexcept;
     void moveResultTo(std::vector<Result>& results);
 
 private:
-    enum class State { warmup, upscaling_runtime, measuring, endless };
-
-    void showResult(std::string const& errorMessage) const;
-    ANKERL_NANOBENCH(NODISCARD) bool isCloseEnoughForMeasurements(std::chrono::nanoseconds elapsed) const noexcept;
-    ANKERL_NANOBENCH(NODISCARD) uint64_t calcBestNumIters(std::chrono::nanoseconds elapsed, uint64_t iters) noexcept;
-    void upscale(std::chrono::nanoseconds elapsed);
-
-    uint64_t mNumIters = 1;
-    Bench const& mBench;
-    std::chrono::nanoseconds mTargetRuntimePerEpoch{};
-    Result mResult;
-    Rng mRng{123};
-    std::chrono::nanoseconds mTotalElapsed{};
-    uint64_t mTotalNumIters = 0;
-
-    State mState = State::upscaling_runtime;
+    struct Impl;
+    Impl* mPimpl;
 };
-ANKERL_NANOBENCH(IGNORE_PADDED_POP)
+ANKERL_NANOBENCH(IGNORE_EFFCPP_POP)
 
 ANKERL_NANOBENCH(IGNORE_PADDED_PUSH)
 class PerformanceCounters {
@@ -1731,237 +1729,266 @@ Clock::duration clockResolution() noexcept {
     return sResolution;
 }
 
-IterationLogic::IterationLogic(Bench const& bench) noexcept
-    : mBench(bench)
-    , mResult(bench.config()) {
-    printStabilityInformationOnce(mBench.output());
+ANKERL_NANOBENCH(IGNORE_PADDED_PUSH)
+struct IterationLogic::Impl {
+    enum class State { warmup, upscaling_runtime, measuring, endless };
 
-    // determine target runtime per epoch
-    mTargetRuntimePerEpoch = detail::clockResolution() * mBench.clockResolutionMultiple();
-    if (mTargetRuntimePerEpoch > mBench.maxEpochTime()) {
-        mTargetRuntimePerEpoch = mBench.maxEpochTime();
-    }
-    if (mTargetRuntimePerEpoch < mBench.minEpochTime()) {
-        mTargetRuntimePerEpoch = mBench.minEpochTime();
-    }
+    Impl(Bench const& bench)
+        : mBench(bench)
+        , mResult(bench.config()) {
+        printStabilityInformationOnce(mBench.output());
 
-    if (isEndlessRunning(mBench.name())) {
-        std::cerr << "NANOBENCH_ENDLESS set: running '" << mBench.name() << "' endlessly" << std::endl;
-        mNumIters = (std::numeric_limits<uint64_t>::max)();
-        mState = State::endless;
-    } else if (0 != mBench.warmup()) {
-        mNumIters = mBench.warmup();
-        mState = State::warmup;
-    } else {
-        mNumIters = mBench.minEpochIterations();
-        mState = State::upscaling_runtime;
-    }
-}
-
-uint64_t IterationLogic::numIters() const noexcept {
-    ANKERL_NANOBENCH_LOG(mBench.name() << ": mNumIters=" << mNumIters);
-    return mNumIters;
-}
-
-bool IterationLogic::isCloseEnoughForMeasurements(std::chrono::nanoseconds elapsed) const noexcept {
-    return elapsed * 3 >= mTargetRuntimePerEpoch * 2;
-}
-
-// directly calculates new iters based on elapsed&iters, and adds a 10% noise. Makes sure we don't underflow.
-uint64_t IterationLogic::calcBestNumIters(std::chrono::nanoseconds elapsed, uint64_t iters) noexcept {
-    auto doubleElapsed = d(elapsed);
-    auto doubleTargetRuntimePerEpoch = d(mTargetRuntimePerEpoch);
-    auto doubleNewIters = doubleTargetRuntimePerEpoch / doubleElapsed * d(iters);
-
-    auto doubleMinEpochIters = d(mBench.minEpochIterations());
-    if (doubleNewIters < doubleMinEpochIters) {
-        doubleNewIters = doubleMinEpochIters;
-    }
-    doubleNewIters *= 1.0 + 0.2 * mRng.uniform01();
-
-    // +0.5 for correct rounding when casting
-    // NOLINTNEXTLINE(bugprone-incorrect-roundings)
-    return static_cast<uint64_t>(doubleNewIters + 0.5);
-}
-
-ANKERL_NANOBENCH_NO_SANITIZE("integer") void IterationLogic::upscale(std::chrono::nanoseconds elapsed) {
-    if (elapsed * 10 < mTargetRuntimePerEpoch) {
-        // we are far below the target runtime. Multiply iterations by 10 (with overflow check)
-        if (mNumIters * 10 < mNumIters) {
-            // overflow :-(
-            showResult("iterations overflow. Maybe your code got optimized away?");
-            mNumIters = 0;
-            return;
+        // determine target runtime per epoch
+        mTargetRuntimePerEpoch = detail::clockResolution() * mBench.clockResolutionMultiple();
+        if (mTargetRuntimePerEpoch > mBench.maxEpochTime()) {
+            mTargetRuntimePerEpoch = mBench.maxEpochTime();
         }
-        mNumIters *= 10;
-    } else {
-        mNumIters = calcBestNumIters(elapsed, mNumIters);
-    }
-}
+        if (mTargetRuntimePerEpoch < mBench.minEpochTime()) {
+            mTargetRuntimePerEpoch = mBench.minEpochTime();
+        }
 
-void IterationLogic::add(std::chrono::nanoseconds elapsed, PerformanceCounters const& pc) noexcept {
+        if (isEndlessRunning(mBench.name())) {
+            std::cerr << "NANOBENCH_ENDLESS set: running '" << mBench.name() << "' endlessly" << std::endl;
+            mNumIters = (std::numeric_limits<uint64_t>::max)();
+            mState = State::endless;
+        } else if (0 != mBench.warmup()) {
+            mNumIters = mBench.warmup();
+            mState = State::warmup;
+        } else {
+            mNumIters = mBench.minEpochIterations();
+            mState = State::upscaling_runtime;
+        }
+    }
+
+    // directly calculates new iters based on elapsed&iters, and adds a 10% noise. Makes sure we don't underflow.
+    ANKERL_NANOBENCH(NODISCARD) uint64_t calcBestNumIters(std::chrono::nanoseconds elapsed, uint64_t iters) noexcept {
+        auto doubleElapsed = d(elapsed);
+        auto doubleTargetRuntimePerEpoch = d(mTargetRuntimePerEpoch);
+        auto doubleNewIters = doubleTargetRuntimePerEpoch / doubleElapsed * d(iters);
+
+        auto doubleMinEpochIters = d(mBench.minEpochIterations());
+        if (doubleNewIters < doubleMinEpochIters) {
+            doubleNewIters = doubleMinEpochIters;
+        }
+        doubleNewIters *= 1.0 + 0.2 * mRng.uniform01();
+
+        // +0.5 for correct rounding when casting
+        // NOLINTNEXTLINE(bugprone-incorrect-roundings)
+        return static_cast<uint64_t>(doubleNewIters + 0.5);
+    }
+
+    ANKERL_NANOBENCH_NO_SANITIZE("integer") void upscale(std::chrono::nanoseconds elapsed) {
+        if (elapsed * 10 < mTargetRuntimePerEpoch) {
+            // we are far below the target runtime. Multiply iterations by 10 (with overflow check)
+            if (mNumIters * 10 < mNumIters) {
+                // overflow :-(
+                showResult("iterations overflow. Maybe your code got optimized away?");
+                mNumIters = 0;
+                return;
+            }
+            mNumIters *= 10;
+        } else {
+            mNumIters = calcBestNumIters(elapsed, mNumIters);
+        }
+    }
+
+    void add(std::chrono::nanoseconds elapsed, PerformanceCounters const& pc) noexcept {
 #    if defined(ANKERL_NANOBENCH_LOG_ENABLED)
-    auto oldIters = mNumIters;
+        auto oldIters = mNumIters;
 #    endif
 
-    switch (mState) {
-    case State::warmup:
-        if (isCloseEnoughForMeasurements(elapsed)) {
-            // if elapsed is close enough, we can skip upscaling and go right to measurements
-            // still, we don't add the result to the measurements.
-            mState = State::measuring;
-            mNumIters = calcBestNumIters(elapsed, mNumIters);
-        } else {
-            // not close enough: switch to upscaling
-            mState = State::upscaling_runtime;
-            upscale(elapsed);
-        }
-        break;
+        switch (mState) {
+        case State::warmup:
+            if (isCloseEnoughForMeasurements(elapsed)) {
+                // if elapsed is close enough, we can skip upscaling and go right to measurements
+                // still, we don't add the result to the measurements.
+                mState = State::measuring;
+                mNumIters = calcBestNumIters(elapsed, mNumIters);
+            } else {
+                // not close enough: switch to upscaling
+                mState = State::upscaling_runtime;
+                upscale(elapsed);
+            }
+            break;
 
-    case State::upscaling_runtime:
-        if (isCloseEnoughForMeasurements(elapsed)) {
-            // if we are close enough, add measurement and switch to always measuring
-            mState = State::measuring;
+        case State::upscaling_runtime:
+            if (isCloseEnoughForMeasurements(elapsed)) {
+                // if we are close enough, add measurement and switch to always measuring
+                mState = State::measuring;
+                mTotalElapsed += elapsed;
+                mTotalNumIters += mNumIters;
+                mResult.add(elapsed, mNumIters, pc);
+                mNumIters = calcBestNumIters(mTotalElapsed, mTotalNumIters);
+            } else {
+                upscale(elapsed);
+            }
+            break;
+
+        case State::measuring:
+            // just add measurements - no questions asked. Even when runtime is low. But we can't ignore
+            // that fluctuation, or else we would bias the result
             mTotalElapsed += elapsed;
             mTotalNumIters += mNumIters;
             mResult.add(elapsed, mNumIters, pc);
             mNumIters = calcBestNumIters(mTotalElapsed, mTotalNumIters);
-        } else {
-            upscale(elapsed);
+            break;
+
+        case State::endless:
+            mNumIters = (std::numeric_limits<uint64_t>::max)();
+            break;
         }
-        break;
 
-    case State::measuring:
-        // just add measurements - no questions asked. Even when runtime is low. But we can't ignore
-        // that fluctuation, or else we would bias the result
-        mTotalElapsed += elapsed;
-        mTotalNumIters += mNumIters;
-        mResult.add(elapsed, mNumIters, pc);
-        mNumIters = calcBestNumIters(mTotalElapsed, mTotalNumIters);
-        break;
+        if (static_cast<uint64_t>(mResult.size()) == mBench.epochs()) {
+            // we got all the results that we need, finish it
+            showResult("");
+            mNumIters = 0;
+        }
 
-    case State::endless:
-        mNumIters = (std::numeric_limits<uint64_t>::max)();
-        break;
+        ANKERL_NANOBENCH_LOG(mName << ": " << detail::fmt::Number(20, 3, static_cast<double>(elapsed.count())) << " elapsed, "
+                                   << detail::fmt::Number(20, 3, static_cast<double>(mTargetRuntimePerEpoch.count()))
+                                   << " target. oldIters=" << oldIters << ", mNumIters=" << mNumIters
+                                   << ", mState=" << static_cast<int>(mState));
     }
 
-    if (static_cast<uint64_t>(mResult.size()) == mBench.epochs()) {
-        // we got all the results that we need, finish it
-        showResult("");
-        mNumIters = 0;
+    void showResult(std::string const& errorMessage) const {
+        ANKERL_NANOBENCH_LOG("mMeasurements.size()=" << mMeasurements.size());
+
+        if (mBench.output() != nullptr) {
+            // prepare column data ///////
+            std::vector<fmt::MarkDownColumn> columns;
+
+            auto rMedian = mResult.median(Result::Measure::elapsed);
+
+            if (mBench.relative()) {
+                double d = 100.0;
+                if (!mBench.results().empty()) {
+                    d = rMedian <= 0.0 ? 0.0 : mBench.results().front().median(Result::Measure::elapsed) / rMedian * 100.0;
+                }
+                columns.emplace_back(11, 1, "relative", "%", d);
+            }
+
+            if (mBench.complexityN() > 0) {
+                columns.emplace_back(14, 0, "complexityN", "", mBench.complexityN());
+            }
+
+            columns.emplace_back(22, 2, "ns/" + mBench.unit(), "", 1e9 * rMedian / mBench.batch());
+            columns.emplace_back(22, 2, mBench.unit() + "/s", "", rMedian <= 0.0 ? 0.0 : mBench.batch() / rMedian);
+
+            double rErrorMedian = mResult.medianAbsolutePercentError(Result::Measure::elapsed);
+            columns.emplace_back(10, 1, "err%", "%", rErrorMedian * 100.0);
+
+            double rInsMedian = -1.0;
+            if (mResult.has(Result::Measure::instructions)) {
+                rInsMedian = mResult.median(Result::Measure::instructions);
+                columns.emplace_back(18, 2, "ins/" + mBench.unit(), "", rInsMedian / mBench.batch());
+            }
+
+            double rCycMedian = -1.0;
+            if (mResult.has(Result::Measure::cpucycles)) {
+                rCycMedian = mResult.median(Result::Measure::cpucycles);
+                columns.emplace_back(18, 2, "cyc/" + mBench.unit(), "", rCycMedian / mBench.batch());
+            }
+            if (rInsMedian > 0.0 && rCycMedian > 0.0) {
+                columns.emplace_back(9, 3, "IPC", "", rCycMedian <= 0.0 ? 0.0 : rInsMedian / rCycMedian);
+            }
+            if (mResult.has(Result::Measure::branchinstructions)) {
+                double rBraMedian = mResult.median(Result::Measure::branchinstructions);
+                columns.emplace_back(17, 2, "bra/" + mBench.unit(), "", rBraMedian / mBench.batch());
+                if (mResult.has(Result::Measure::branchmisses)) {
+                    double p = 0.0;
+                    if (rBraMedian >= 1e-9) {
+                        p = 100.0 * mResult.median(Result::Measure::branchmisses) / rBraMedian;
+                    }
+                    columns.emplace_back(10, 1, "miss%", "%", p);
+                }
+            }
+
+            columns.emplace_back(12, 2, "total", "", mResult.sum(Result::Measure::elapsed));
+
+            // write everything
+            auto& os = *mBench.output();
+
+            auto hash = hash_combine(fnv1a(mBench.unit()), fnv1a(mBench.title()));
+            if (hash != singletonHeaderHash()) {
+                singletonHeaderHash() = hash;
+
+                // no result yet, print header
+                os << std::endl;
+                for (auto const& col : columns) {
+                    os << col.title();
+                }
+                os << "| " << mBench.title() << std::endl;
+
+                for (auto const& col : columns) {
+                    os << col.separator();
+                }
+                os << "|:" << std::string(mBench.title().size() + 1U, '-') << std::endl;
+            }
+
+            if (!errorMessage.empty()) {
+                for (auto const& col : columns) {
+                    os << col.invalid();
+                }
+                os << "| :boom: " << fmt::MarkDownCode(mBench.name()) << " (" << errorMessage << ')' << std::endl;
+            } else {
+                for (auto const& col : columns) {
+                    os << col.value();
+                }
+                os << "| ";
+                auto showUnstable = rErrorMedian >= 0.05;
+                if (showUnstable) {
+                    os << ":wavy_dash: ";
+                }
+                os << fmt::MarkDownCode(mBench.name());
+                if (showUnstable) {
+                    auto avgIters = static_cast<double>(mTotalNumIters) / static_cast<double>(mBench.epochs());
+                    // NOLINTNEXTLINE(bugprone-incorrect-roundings)
+                    auto suggestedIters = static_cast<uint64_t>(avgIters * 10 + 0.5);
+
+                    os << " (Unstable with ~" << detail::fmt::Number(1, 1, avgIters)
+                       << " iters. Increase `minEpochIterations` to e.g. " << suggestedIters << ")";
+                }
+                os << std::endl;
+            }
+        }
     }
 
-    ANKERL_NANOBENCH_LOG(mName << ": " << detail::fmt::Number(20, 3, static_cast<double>(elapsed.count())) << " elapsed, "
-                               << detail::fmt::Number(20, 3, static_cast<double>(mTargetRuntimePerEpoch.count()))
-                               << " target. oldIters=" << oldIters << ", mNumIters=" << mNumIters
-                               << ", mState=" << static_cast<int>(mState));
+    ANKERL_NANOBENCH(NODISCARD) bool isCloseEnoughForMeasurements(std::chrono::nanoseconds elapsed) const noexcept {
+        return elapsed * 3 >= mTargetRuntimePerEpoch * 2;
+    }
+
+    uint64_t mNumIters = 1;
+    Bench const& mBench;
+    std::chrono::nanoseconds mTargetRuntimePerEpoch{};
+    Result mResult;
+    Rng mRng{123};
+    std::chrono::nanoseconds mTotalElapsed{};
+    uint64_t mTotalNumIters = 0;
+
+    State mState = State::upscaling_runtime;
+};
+ANKERL_NANOBENCH(IGNORE_PADDED_POP)
+
+IterationLogic::IterationLogic(Bench const& bench) noexcept
+    : mPimpl(new Impl(bench)) {}
+
+IterationLogic::~IterationLogic() {
+    if (mPimpl) {
+        delete mPimpl;
+    }
+}
+
+uint64_t IterationLogic::numIters() const noexcept {
+    ANKERL_NANOBENCH_LOG(mPimpl->mBench.name() << ": mNumIters=" << mPimpl->mNumIters);
+    return mPimpl->mNumIters;
+}
+
+void IterationLogic::add(std::chrono::nanoseconds elapsed, PerformanceCounters const& pc) noexcept {
+    mPimpl->add(elapsed, pc);
 }
 
 void IterationLogic::moveResultTo(std::vector<Result>& results) {
-    results.emplace_back(std::move(mResult));
-}
-
-void IterationLogic::showResult(std::string const& errorMessage) const {
-    ANKERL_NANOBENCH_LOG("mMeasurements.size()=" << mMeasurements.size());
-
-    if (mBench.output() != nullptr) {
-        // prepare column data ///////
-        std::vector<fmt::MarkDownColumn> columns;
-
-        auto rMedian = mResult.median(Result::Measure::elapsed);
-
-        if (mBench.relative()) {
-            double d = 100.0;
-            if (!mBench.results().empty()) {
-                d = rMedian <= 0.0 ? 0.0 : mBench.results().front().median(Result::Measure::elapsed) / rMedian * 100.0;
-            }
-            columns.emplace_back(11, 1, "relative", "%", d);
-        }
-
-        if (mBench.complexityN() > 0) {
-            columns.emplace_back(14, 0, "complexityN", "", mBench.complexityN());
-        }
-
-        columns.emplace_back(22, 2, "ns/" + mBench.unit(), "", 1e9 * rMedian / mBench.batch());
-        columns.emplace_back(22, 2, mBench.unit() + "/s", "", rMedian <= 0.0 ? 0.0 : mBench.batch() / rMedian);
-
-        double rErrorMedian = mResult.medianAbsolutePercentError(Result::Measure::elapsed);
-        columns.emplace_back(10, 1, "err%", "%", rErrorMedian * 100.0);
-
-        double rInsMedian = -1.0;
-        if (mResult.has(Result::Measure::instructions)) {
-            rInsMedian = mResult.median(Result::Measure::instructions);
-            columns.emplace_back(18, 2, "ins/" + mBench.unit(), "", rInsMedian / mBench.batch());
-        }
-
-        double rCycMedian = -1.0;
-        if (mResult.has(Result::Measure::cpucycles)) {
-            rCycMedian = mResult.median(Result::Measure::cpucycles);
-            columns.emplace_back(18, 2, "cyc/" + mBench.unit(), "", rCycMedian / mBench.batch());
-        }
-        if (rInsMedian > 0.0 && rCycMedian > 0.0) {
-            columns.emplace_back(9, 3, "IPC", "", rCycMedian <= 0.0 ? 0.0 : rInsMedian / rCycMedian);
-        }
-        if (mResult.has(Result::Measure::branchinstructions)) {
-            double rBraMedian = mResult.median(Result::Measure::branchinstructions);
-            columns.emplace_back(17, 2, "bra/" + mBench.unit(), "", rBraMedian / mBench.batch());
-            if (mResult.has(Result::Measure::branchmisses)) {
-                double p = 0.0;
-                if (rBraMedian >= 1e-9) {
-                    p = 100.0 * mResult.median(Result::Measure::branchmisses) / rBraMedian;
-                }
-                columns.emplace_back(10, 1, "miss%", "%", p);
-            }
-        }
-
-        columns.emplace_back(12, 2, "total", "", mResult.sum(Result::Measure::elapsed));
-
-        // write everything
-        auto& os = *mBench.output();
-
-        auto hash = hash_combine(fnv1a(mBench.unit()), fnv1a(mBench.title()));
-        if (hash != singletonHeaderHash()) {
-            singletonHeaderHash() = hash;
-
-            // no result yet, print header
-            os << std::endl;
-            for (auto const& col : columns) {
-                os << col.title();
-            }
-            os << "| " << mBench.title() << std::endl;
-
-            for (auto const& col : columns) {
-                os << col.separator();
-            }
-            os << "|:" << std::string(mBench.title().size() + 1U, '-') << std::endl;
-        }
-
-        if (!errorMessage.empty()) {
-            for (auto const& col : columns) {
-                os << col.invalid();
-            }
-            os << "| :boom: " << fmt::MarkDownCode(mBench.name()) << " (" << errorMessage << ')' << std::endl;
-        } else {
-            for (auto const& col : columns) {
-                os << col.value();
-            }
-            os << "| ";
-            auto showUnstable = rErrorMedian >= 0.05;
-            if (showUnstable) {
-                os << ":wavy_dash: ";
-            }
-            os << fmt::MarkDownCode(mBench.name());
-            if (showUnstable) {
-                auto avgIters = static_cast<double>(mTotalNumIters) / static_cast<double>(mBench.epochs());
-                // NOLINTNEXTLINE(bugprone-incorrect-roundings)
-                auto suggestedIters = static_cast<uint64_t>(avgIters * 10 + 0.5);
-
-                os << " (Unstable with ~" << detail::fmt::Number(1, 1, avgIters) << " iters. Increase `minEpochIterations` to e.g. "
-                   << suggestedIters << ")";
-            }
-            os << std::endl;
-        }
-    }
+    results.emplace_back(std::move(mPimpl->mResult));
 }
 
 #    if ANKERL_NANOBENCH(PERF_COUNTERS)
