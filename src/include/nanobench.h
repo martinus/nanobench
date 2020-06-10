@@ -1907,7 +1907,12 @@ struct IterationLogic::Impl {
             // write everything
             auto& os = *mBench.output();
 
-            auto hash = hash_combine(fnv1a(mBench.unit()), fnv1a(mBench.title()));
+            uint64_t hash = 0;
+            hash = hash_combine(fnv1a(mBench.unit()), hash);
+            hash = hash_combine(fnv1a(mBench.title()), hash);
+            hash = hash_combine(mBench.relative(), hash);
+            hash = hash_combine(mBench.performanceCounters(), hash);
+
             if (hash != singletonHeaderHash()) {
                 singletonHeaderHash() = hash;
 
@@ -2934,9 +2939,10 @@ std::ostream& operator<<(std::ostream& os, BigO const& bigO) {
 }
 
 std::ostream& operator<<(std::ostream& os, std::vector<ankerl::nanobench::BigO> const& bigOs) {
+    detail::fmt::StreamStateRestorer restorer(os);
     os << std::endl << "|   coefficient |   err% | complexity" << std::endl << "|--------------:|-------:|------------" << std::endl;
     for (auto const& bigO : bigOs) {
-        os << "|" << std::setw(14) << bigO.constant() << " ";
+        os << "|" << std::setw(14) << std::setprecision(7) << std::scientific << bigO.constant() << " ";
         os << "|" << detail::fmt::Number(6, 1, bigO.normalizedRootMeanSquare() * 100.0) << "% ";
         os << "| " << bigO.name();
         os << std::endl;
