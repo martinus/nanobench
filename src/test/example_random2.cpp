@@ -157,7 +157,7 @@ private:
     uint32_t mState;
 };
 
-TEST_CASE("romumono32") {
+TEST_CASE("romumono32_all_states"  * doctest::skip()) {
 
     uint32_t n = 0;
     RomuMono32 rm(123);
