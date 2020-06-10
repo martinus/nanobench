@@ -69,8 +69,7 @@
 #endif
 
 #if defined(__GNUC__)
-#    define ANKERL_NANOBENCH_PRIVATE_IGNORE_EFFCPP_PUSH() \
-        _Pragma("GCC diagnostic push") _Pragma("GCC diagnostic ignored \"-Weffc++\"")
+#    define ANKERL_NANOBENCH_PRIVATE_IGNORE_EFFCPP_PUSH() _Pragma("GCC diagnostic push") _Pragma("GCC diagnostic ignored \"-Weffc++\"")
 #    define ANKERL_NANOBENCH_PRIVATE_IGNORE_EFFCPP_POP() _Pragma("GCC diagnostic pop")
 #else
 #    define ANKERL_NANOBENCH_PRIVATE_IGNORE_EFFCPP_PUSH()
@@ -195,9 +194,9 @@ struct Config {
     Config();
     ~Config();
     Config& operator=(Config const&);
-    Config& operator=(Config&&);
+    Config& operator=(Config&&) noexcept;
     Config(Config const&);
-    Config(Config&&);
+    Config(Config&&) noexcept;
 };
 ANKERL_NANOBENCH(IGNORE_PADDED_POP)
 
@@ -221,9 +220,9 @@ public:
 
     ~Result();
     Result& operator=(Result const&);
-    Result& operator=(Result&&);
+    Result& operator=(Result&&) noexcept;
     Result(Result const&);
-    Result(Result&&);
+    Result(Result&&) noexcept;
 
     // adds new measurement results
     // all values are scaled by iters (except iters...)
@@ -776,7 +775,7 @@ public:
 
     ANKERL_NANOBENCH(NODISCARD) uint64_t numIters() const noexcept;
     void add(std::chrono::nanoseconds elapsed, PerformanceCounters const& pc) noexcept;
-    void moveResultTo(std::vector<Result>& results);
+    void moveResultTo(std::vector<Result>& results) noexcept;
 
 private:
     struct Impl;
@@ -1987,7 +1986,7 @@ void IterationLogic::add(std::chrono::nanoseconds elapsed, PerformanceCounters c
     mPimpl->add(elapsed, pc);
 }
 
-void IterationLogic::moveResultTo(std::vector<Result>& results) {
+void IterationLogic::moveResultTo(std::vector<Result>& results) noexcept {
     results.emplace_back(std::move(mPimpl->mResult));
 }
 
@@ -2463,16 +2462,16 @@ std::ostream& operator<<(std::ostream& os, MarkDownCode const& mdCode) {
 Config::Config() = default;
 Config::~Config() = default;
 Config& Config::operator=(Config const&) = default;
-Config& Config::operator=(Config&&) = default;
+Config& Config::operator=(Config&&) noexcept = default;
 Config::Config(Config const&) = default;
-Config::Config(Config&&) = default;
+Config::Config(Config&&) noexcept = default;
 
 // provide implementation here so it's only generated once
 Result::~Result() = default;
 Result& Result::operator=(Result const&) = default;
-Result& Result::operator=(Result&&) = default;
+Result& Result::operator=(Result&&) noexcept = default;
 Result::Result(Result const&) = default;
-Result::Result(Result&&) = default;
+Result::Result(Result&&) noexcept = default;
 
 namespace detail {
 template <typename T>
