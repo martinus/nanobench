@@ -39,12 +39,11 @@
 // public facing api - as minimal as possible
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 
-#include <chrono>        // high_resolution_clock
-#include <cstring>       // memcpy
-#include <iosfwd>        // for std::ostream* custom output target in Config
-#include <string>        // all names
-#include <unordered_map> // used by Result
-#include <vector>        // holds all results
+#include <chrono>  // high_resolution_clock
+#include <cstring> // memcpy
+#include <iosfwd>  // for std::ostream* custom output target in Config
+#include <string>  // all names
+#include <vector>  // holds all results
 
 #define ANKERL_NANOBENCH(x) ANKERL_NANOBENCH_PRIVATE_##x()
 
@@ -197,6 +196,18 @@ ANKERL_NANOBENCH(IGNORE_PADDED_POP)
 ANKERL_NANOBENCH(IGNORE_PADDED_PUSH)
 class Result {
 public:
+    enum class Measure : size_t {
+        elapsed,
+        iterations,
+        pagefaults,
+        cpucycles,
+        contextswitches,
+        instructions,
+        branchinstructions,
+        branchmisses,
+        _size
+    };
+
     explicit Result(Config const& benchmarkConfig);
 
     ~Result();
@@ -211,22 +222,25 @@ public:
 
     ANKERL_NANOBENCH(NODISCARD) Config const& config() const noexcept;
 
-    ANKERL_NANOBENCH(NODISCARD) double median(std::string const& query) const;
-    ANKERL_NANOBENCH(NODISCARD) double medianAbsolutePercentError(std::string const& query) const;
-    ANKERL_NANOBENCH(NODISCARD) double average(std::string const& query) const;
-    ANKERL_NANOBENCH(NODISCARD) double sum(std::string const& query) const noexcept;
-    ANKERL_NANOBENCH(NODISCARD) double sumProduct(std::string const& query1, std::string const& query2) const noexcept;
-    ANKERL_NANOBENCH(NODISCARD) double minimum(std::string const& query) const noexcept;
-    ANKERL_NANOBENCH(NODISCARD) double maximum(std::string const& query) const noexcept;
+    ANKERL_NANOBENCH(NODISCARD) double median(Measure m) const;
+    ANKERL_NANOBENCH(NODISCARD) double medianAbsolutePercentError(Measure m) const;
+    ANKERL_NANOBENCH(NODISCARD) double average(Measure m) const;
+    ANKERL_NANOBENCH(NODISCARD) double sum(Measure m) const noexcept;
+    ANKERL_NANOBENCH(NODISCARD) double sumProduct(Measure m1, Measure m2) const noexcept;
+    ANKERL_NANOBENCH(NODISCARD) double minimum(Measure m) const noexcept;
+    ANKERL_NANOBENCH(NODISCARD) double maximum(Measure m) const noexcept;
 
-    ANKERL_NANOBENCH(NODISCARD) bool has(std::string const& query) const noexcept;
-    ANKERL_NANOBENCH(NODISCARD) double get(size_t idx, std::string const& query) const;
+    ANKERL_NANOBENCH(NODISCARD) bool has(Measure m) const noexcept;
+    ANKERL_NANOBENCH(NODISCARD) double get(size_t idx, Measure m) const;
     ANKERL_NANOBENCH(NODISCARD) bool empty() const noexcept;
     ANKERL_NANOBENCH(NODISCARD) size_t size() const noexcept;
 
+    // Finds string, if not found, returns _size.
+    static Measure fromString(std::string const& str);
+
 private:
     Config mConfig{};
-    std::unordered_map<std::string, std::vector<double>> mNameToMeasurements{};
+    std::vector<std::vector<double>> mNameToMeasurements{};
 };
 ANKERL_NANOBENCH(IGNORE_PADDED_POP)
 
@@ -1291,27 +1305,38 @@ static std::ostream& generateResultTag(Node const& n, Result const& r, std::ostr
     std::vector<std::string> matchResult;
     if (matchCmdArgs(std::string(n.begin, n.end), matchResult)) {
         if (matchResult.size() == 2) {
+            auto m = Result::fromString(matchResult[1]);
+            if (m == Result::Measure::_size) {
+                return out << 0.0;
+            }
+
             if (matchResult[0] == "median") {
-                return out << r.median(matchResult[1]);
+                return out << r.median(m);
             }
             if (matchResult[0] == "average") {
-                return out << r.average(matchResult[1]);
+                return out << r.average(m);
             }
             if (matchResult[0] == "medianAbsolutePercentError") {
-                return out << r.medianAbsolutePercentError(matchResult[1]);
+                return out << r.medianAbsolutePercentError(m);
             }
             if (matchResult[0] == "sum") {
-                return out << r.sum(matchResult[1]);
+                return out << r.sum(m);
             }
             if (matchResult[0] == "minimum") {
-                return out << r.minimum(matchResult[1]);
+                return out << r.minimum(m);
             }
             if (matchResult[0] == "maximum") {
-                return out << r.maximum(matchResult[1]);
+                return out << r.maximum(m);
             }
         } else if (matchResult.size() == 3) {
+            auto m1 = Result::fromString(matchResult[1]);
+            auto m2 = Result::fromString(matchResult[2]);
+            if (m1 == Result::Measure::_size || m2 == Result::Measure::_size) {
+                return out << 0.0;
+            }
+
             if (matchResult[0] == "sumProduct") {
-                return out << r.sumProduct(matchResult[1], matchResult[2]);
+                return out << r.sumProduct(m1, m2);
             }
         }
     }
@@ -1338,7 +1363,12 @@ static void generateResultMeasurement(std::vector<Node> const& nodes, size_t idx
                 throw std::runtime_error("got a section inside measurement");
 
             case Node::Type::tag: {
-                out << r.get(idx, std::string(n.begin, n.end));
+                auto m = Result::fromString(std::string(n.begin, n.end));
+                if (m == Result::Measure::_size) {
+                    out << 0.0;
+                } else {
+                    out << r.get(idx, m);
+                }
                 break;
             }
             }
@@ -1838,12 +1868,12 @@ void IterationLogic::showResult(std::string const& errorMessage) const {
         // prepare column data ///////
         std::vector<fmt::MarkDownColumn> columns;
 
-        auto rMedian = mResult.median("elapsed");
+        auto rMedian = mResult.median(Result::Measure::elapsed);
 
         if (mBench.relative()) {
             double d = 100.0;
             if (!mBench.results().empty()) {
-                d = rMedian <= 0.0 ? 0.0 : mBench.results().front().median("elapsed") / rMedian * 100.0;
+                d = rMedian <= 0.0 ? 0.0 : mBench.results().front().median(Result::Measure::elapsed) / rMedian * 100.0;
             }
             columns.emplace_back(11, 1, "relative", "%", d);
         }
@@ -1855,36 +1885,36 @@ void IterationLogic::showResult(std::string const& errorMessage) const {
         columns.emplace_back(22, 2, "ns/" + mBench.unit(), "", 1e9 * rMedian / mBench.batch());
         columns.emplace_back(22, 2, mBench.unit() + "/s", "", rMedian <= 0.0 ? 0.0 : mBench.batch() / rMedian);
 
-        double rErrorMedian = mResult.medianAbsolutePercentError("elapsed");
+        double rErrorMedian = mResult.medianAbsolutePercentError(Result::Measure::elapsed);
         columns.emplace_back(10, 1, "err%", "%", rErrorMedian * 100.0);
 
         double rInsMedian = -1.0;
-        if (mResult.has("instructions")) {
-            rInsMedian = mResult.median("instructions");
+        if (mResult.has(Result::Measure::instructions)) {
+            rInsMedian = mResult.median(Result::Measure::instructions);
             columns.emplace_back(18, 2, "ins/" + mBench.unit(), "", rInsMedian / mBench.batch());
         }
 
         double rCycMedian = -1.0;
-        if (mResult.has("cpucycles")) {
-            rCycMedian = mResult.median("cpucycles");
+        if (mResult.has(Result::Measure::cpucycles)) {
+            rCycMedian = mResult.median(Result::Measure::cpucycles);
             columns.emplace_back(18, 2, "cyc/" + mBench.unit(), "", rCycMedian / mBench.batch());
         }
         if (rInsMedian > 0.0 && rCycMedian > 0.0) {
             columns.emplace_back(9, 3, "IPC", "", rCycMedian <= 0.0 ? 0.0 : rInsMedian / rCycMedian);
         }
-        if (mResult.has("branchinstructions")) {
-            double rBraMedian = mResult.median("branchinstructions");
+        if (mResult.has(Result::Measure::branchinstructions)) {
+            double rBraMedian = mResult.median(Result::Measure::branchinstructions);
             columns.emplace_back(17, 2, "bra/" + mBench.unit(), "", rBraMedian / mBench.batch());
-            if (mResult.has("branchmisses")) {
+            if (mResult.has(Result::Measure::branchmisses)) {
                 double p = 0.0;
                 if (rBraMedian >= 1e-9) {
-                    p = 100.0 * mResult.median("branchmisses") / rBraMedian;
+                    p = 100.0 * mResult.median(Result::Measure::branchmisses) / rBraMedian;
                 }
                 columns.emplace_back(10, 1, "miss%", "%", p);
             }
         }
 
-        columns.emplace_back(12, 2, "total", "", mResult.sum("elapsed"));
+        columns.emplace_back(12, 2, "total", "", mResult.sum(Result::Measure::elapsed));
 
         // write everything
         auto& os = *mBench.output();
@@ -2417,28 +2447,37 @@ Result& Result::operator=(Result&&) = default;
 Result::Result(Result const&) = default;
 Result::Result(Result&&) = default;
 
+namespace detail {
+template <typename T>
+inline constexpr typename std::underlying_type<T>::type u(T val) noexcept {
+    return static_cast<typename std::underlying_type<T>::type>(val);
+}
+} // namespace detail
+
 // Result returned after a benchmark has finished. Can be used as a baseline for relative().
 Result::Result(Config const& benchmarkConfig)
-    : mConfig(benchmarkConfig) {}
+    : mConfig(benchmarkConfig)
+    , mNameToMeasurements{detail::u(Result::Measure::_size)} {}
 
 void Result::add(Clock::duration totalElapsed, uint64_t iters, detail::PerformanceCounters const& pc) {
     using detail::d;
+    using detail::u;
 
     double dIters = d(iters);
-    mNameToMeasurements["iterations"].push_back(dIters);
+    mNameToMeasurements[u(Result::Measure::iterations)].push_back(dIters);
 
-    mNameToMeasurements["elapsed"].push_back(d(totalElapsed) / dIters);
+    mNameToMeasurements[u(Result::Measure::elapsed)].push_back(d(totalElapsed) / dIters);
     if (pc.has().pageFaults) {
-        mNameToMeasurements["pagefaults"].push_back(d(pc.val().pageFaults) / dIters);
+        mNameToMeasurements[u(Result::Measure::pagefaults)].push_back(d(pc.val().pageFaults) / dIters);
     }
     if (pc.has().cpuCycles) {
-        mNameToMeasurements["cpucycles"].push_back(d(pc.val().cpuCycles) / dIters);
+        mNameToMeasurements[u(Result::Measure::cpucycles)].push_back(d(pc.val().cpuCycles) / dIters);
     }
     if (pc.has().contextSwitches) {
-        mNameToMeasurements["contextswitches"].push_back(d(pc.val().contextSwitches) / dIters);
+        mNameToMeasurements[u(Result::Measure::contextswitches)].push_back(d(pc.val().contextSwitches) / dIters);
     }
     if (pc.has().instructions) {
-        mNameToMeasurements["instructions"].push_back(d(pc.val().instructions) / dIters);
+        mNameToMeasurements[u(Result::Measure::instructions)].push_back(d(pc.val().instructions) / dIters);
     }
     if (pc.has().branchInstructions) {
         double branchInstructions = 0.0;
@@ -2446,7 +2485,7 @@ void Result::add(Clock::duration totalElapsed, uint64_t iters, detail::Performan
         if (pc.val().branchInstructions > iters + 1U) {
             branchInstructions = d(pc.val().branchInstructions - (iters + 1U));
         }
-        mNameToMeasurements["branchinstructions"].push_back(branchInstructions / dIters);
+        mNameToMeasurements[u(Result::Measure::branchinstructions)].push_back(branchInstructions / dIters);
 
         if (pc.has().branchMisses) {
             // correcting branch misses
@@ -2461,7 +2500,7 @@ void Result::add(Clock::duration totalElapsed, uint64_t iters, detail::Performan
             if (branchMisses < 1.0) {
                 branchMisses = 1.0;
             }
-            mNameToMeasurements["branchmisses"].push_back(branchMisses / dIters);
+            mNameToMeasurements[u(Result::Measure::branchmisses)].push_back(branchMisses / dIters);
         }
     }
 }
@@ -2471,6 +2510,9 @@ Config const& Result::config() const noexcept {
 }
 
 inline double calcMedian(std::vector<double>& data) {
+    if (data.empty()) {
+        return 0.0;
+    }
     std::sort(data.begin(), data.end());
 
     auto midIdx = data.size() / 2U;
@@ -2480,35 +2522,26 @@ inline double calcMedian(std::vector<double>& data) {
     return (data[midIdx - 1U] + data[midIdx]) / 2U;
 }
 
-double Result::median(std::string const& query) const {
-    auto it = mNameToMeasurements.find(query);
-    if (it == mNameToMeasurements.end()) {
-        return 0.0;
-    }
-
+double Result::median(Measure m) const {
     // create a copy so we can sort
-    auto data = it->second;
+    auto data = mNameToMeasurements[detail::u(m)];
     return calcMedian(data);
 }
 
-double Result::average(std::string const& query) const {
+double Result::average(Measure m) const {
     using detail::d;
-    auto it = mNameToMeasurements.find(query);
-    if (it == mNameToMeasurements.end() || it->second.empty()) {
+    auto const& data = mNameToMeasurements[detail::u(m)];
+    if (data.empty()) {
         return 0.0;
     }
 
     // create a copy so we can sort
-    return sum(query) / d(it->second.size());
+    return sum(m) / d(data.size());
 }
 
-double Result::medianAbsolutePercentError(std::string const& query) const {
-    auto it = mNameToMeasurements.find(query);
-    if (it == mNameToMeasurements.end()) {
-        return 0.0;
-    }
-
-    auto data = it->second;
+double Result::medianAbsolutePercentError(Measure m) const {
+    // create copy
+    auto data = mNameToMeasurements[detail::u(m)];
 
     // calculates MdAPE which is the median of percentage error
     // see https://www.spiderfinancial.com/support/documentation/numxl/reference-manual/forecasting-performance/mdape
@@ -2524,39 +2557,33 @@ double Result::medianAbsolutePercentError(std::string const& query) const {
     return calcMedian(data);
 }
 
-double Result::sum(std::string const& query) const noexcept {
-    auto it = mNameToMeasurements.find(query);
-    if (it == mNameToMeasurements.end()) {
-        return 0.0;
-    }
-    return std::accumulate(it->second.begin(), it->second.end(), 0.0);
+double Result::sum(Measure m) const noexcept {
+    auto const& data = mNameToMeasurements[detail::u(m)];
+    return std::accumulate(data.begin(), data.end(), 0.0);
 }
 
-double Result::sumProduct(std::string const& query1, std::string const& query2) const noexcept {
-    auto it1 = mNameToMeasurements.find(query1);
-    auto it2 = mNameToMeasurements.find(query2);
+double Result::sumProduct(Measure m1, Measure m2) const noexcept {
+    auto const& data1 = mNameToMeasurements[detail::u(m1)];
+    auto const& data2 = mNameToMeasurements[detail::u(m2)];
 
-    if (it1 == mNameToMeasurements.end() || it2 == mNameToMeasurements.end() || it1->second.size() != it2->second.size()) {
+    if (data1.size() != data2.size()) {
         return 0.0;
     }
 
     double result = 0.0;
-    for (size_t i = 0, s = it1->second.size(); i != s; ++i) {
-        result += it1->second[i] * it2->second[i];
+    for (size_t i = 0, s = data1.size(); i != s; ++i) {
+        result += data1[i] * data2[i];
     }
     return result;
 }
 
-bool Result::has(std::string const& query) const noexcept {
-    return mNameToMeasurements.end() != mNameToMeasurements.find(query);
+bool Result::has(Measure m) const noexcept {
+    return !mNameToMeasurements[detail::u(m)].empty();
 }
 
-double Result::get(size_t idx, std::string const& query) const {
-    auto it = mNameToMeasurements.find(query);
-    if (it == mNameToMeasurements.end()) {
-        return 0.0;
-    }
-    return it->second.at(idx);
+double Result::get(size_t idx, Measure m) const {
+    auto const& data = mNameToMeasurements[detail::u(m)];
+    return data.at(idx);
 }
 
 bool Result::empty() const noexcept {
@@ -2564,31 +2591,51 @@ bool Result::empty() const noexcept {
 }
 
 size_t Result::size() const noexcept {
-    auto it = mNameToMeasurements.find("elapsed");
-    if (it == mNameToMeasurements.end()) {
-        return 0U;
-    }
-    return it->second.size();
+    auto const& data = mNameToMeasurements[detail::u(Measure::elapsed)];
+    return data.size();
 }
 
-double Result::minimum(std::string const& query) const noexcept {
-    auto it = mNameToMeasurements.find(query);
-    if (it == mNameToMeasurements.end()) {
+double Result::minimum(Measure m) const noexcept {
+    auto const& data = mNameToMeasurements[detail::u(m)];
+    if (data.empty()) {
         return 0.0;
     }
 
     // here its save to assume that at least one element is there
-    return *std::min_element(it->second.begin(), it->second.end());
+    return *std::min_element(data.begin(), data.end());
 }
 
-double Result::maximum(std::string const& query) const noexcept {
-    auto it = mNameToMeasurements.find(query);
-    if (it == mNameToMeasurements.end()) {
+double Result::maximum(Measure m) const noexcept {
+    auto const& data = mNameToMeasurements[detail::u(m)];
+    if (data.empty()) {
         return 0.0;
     }
 
     // here its save to assume that at least one element is there
-    return *std::max_element(it->second.begin(), it->second.end());
+    return *std::max_element(data.begin(), data.end());
+}
+
+Result::Measure Result::fromString(std::string const& str) {
+    if (str == "elapsed") {
+        return Measure::elapsed;
+    } else if (str == "iterations") {
+        return Measure::iterations;
+    } else if (str == "pagefaults") {
+        return Measure::pagefaults;
+    } else if (str == "cpucycles") {
+        return Measure::cpucycles;
+    } else if (str == "contextswitches") {
+        return Measure::contextswitches;
+    } else if (str == "instructions") {
+        return Measure::instructions;
+    } else if (str == "branchinstructions") {
+        return Measure::branchinstructions;
+    } else if (str == "branchmisses") {
+        return Measure::branchmisses;
+    } else {
+        // not found, return _size
+        return Measure::_size;
+    }
 }
 
 // Configuration of a microbenchmark.
@@ -2806,7 +2853,7 @@ BigO::RangeMeasure BigO::collectRangeMeasure(std::vector<Result> const& results)
     BigO::RangeMeasure rangeMeasure;
     for (auto const& result : results) {
         if (result.config().mComplexityN > 0.0) {
-            rangeMeasure.emplace_back(result.config().mComplexityN, result.median("elapsed"));
+            rangeMeasure.emplace_back(result.config().mComplexityN, result.median(Result::Measure::elapsed));
         }
     }
     return rangeMeasure;

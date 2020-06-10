@@ -25,6 +25,8 @@ TEST_CASE("example_atomic") {
         x.compare_exchange_strong(y, 0);
     });
     auto const& r = bench.results().front();
-    std::cout << "result: " << r.median("elapsed") / r.config().mBatch << "s/"
-              << r.config().mUnit << std::endl;
+    std::cout << "result: "
+              << r.median(ankerl::nanobench::Result::Measure::elapsed) /
+                     r.config().mBatch
+              << "s/" << r.config().mUnit << std::endl;
 }
