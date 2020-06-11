@@ -83,7 +83,7 @@
 #    define ANKERL_NANOBENCH_LOG(x)
 #endif
 
-#if defined(__linux__)
+#if defined(__linux__) && !defined(ANKERL_NANOBENCH_DISABLE_PERF_COUNTERS)
 #    define ANKERL_NANOBENCH_PRIVATE_PERF_COUNTERS() 1
 #else
 #    define ANKERL_NANOBENCH_PRIVATE_PERF_COUNTERS() 0
@@ -813,8 +813,8 @@ private:
 #if ANKERL_NANOBENCH(PERF_COUNTERS)
     LinuxPerformanceCounters* mPc = nullptr;
 #endif
-    PerfCountSet<uint64_t> mVal;
-    PerfCountSet<bool> mHas;
+    PerfCountSet<uint64_t> mVal{};
+    PerfCountSet<bool> mHas{};
 };
 ANKERL_NANOBENCH(IGNORE_PADDED_POP)
 
@@ -1374,6 +1374,7 @@ static std::ostream& generateResultTag(Node const& n, Result const& r, std::ostr
 static void generateResultMeasurement(std::vector<Node> const& nodes, size_t idx, Result const& r, std::ostream& out) {
     for (auto const& n : nodes) {
         if (!generateFirstLast(n, idx, r.size(), out)) {
+            ANKERL_NANOBENCH_LOG("n.type=" << static_cast<int>(n.type));
             switch (n.type) {
             case Node::Type::content:
                 out.write(n.begin, std::distance(n.begin, n.end));
@@ -1387,7 +1388,7 @@ static void generateResultMeasurement(std::vector<Node> const& nodes, size_t idx
 
             case Node::Type::tag: {
                 auto m = Result::fromString(std::string(n.begin, n.end));
-                if (m == Result::Measure::_size) {
+                if (m == Result::Measure::_size || !r.has(m)) {
                     out << 0.0;
                 } else {
                     out << r.get(idx, m);
@@ -1403,6 +1404,7 @@ static void generateResult(std::vector<Node> const& nodes, size_t idx, std::vect
     auto const& r = results[idx];
     for (auto const& n : nodes) {
         if (!generateFirstLast(n, idx, results.size(), out)) {
+            ANKERL_NANOBENCH_LOG("n.type=" << static_cast<int>(n.type));
             switch (n.type) {
             case Node::Type::content:
                 out.write(n.begin, std::distance(n.begin, n.end));
@@ -1435,6 +1437,7 @@ void generate(char const* mustacheTemplate, const Bench& bench, std::ostream& ou
     auto nodes = parseMustacheTemplate(&mustacheTemplate);
 
     for (auto const& n : nodes) {
+        ANKERL_NANOBENCH_LOG("n.type=" << static_cast<int>(n.type));
         switch (n.type) {
         case Node::Type::content:
             out.write(n.begin, std::distance(n.begin, n.end));
@@ -1869,14 +1872,14 @@ struct IterationLogic::Impl {
             mNumIters = 0;
         }
 
-        ANKERL_NANOBENCH_LOG(mName << ": " << detail::fmt::Number(20, 3, static_cast<double>(elapsed.count())) << " elapsed, "
-                                   << detail::fmt::Number(20, 3, static_cast<double>(mTargetRuntimePerEpoch.count()))
-                                   << " target. oldIters=" << oldIters << ", mNumIters=" << mNumIters
-                                   << ", mState=" << static_cast<int>(mState));
+        ANKERL_NANOBENCH_LOG(mBench.name() << ": " << detail::fmt::Number(20, 3, static_cast<double>(elapsed.count())) << " elapsed, "
+                                           << detail::fmt::Number(20, 3, static_cast<double>(mTargetRuntimePerEpoch.count()))
+                                           << " target. oldIters=" << oldIters << ", mNumIters=" << mNumIters
+                                           << ", mState=" << static_cast<int>(mState));
     }
 
     void showResult(std::string const& errorMessage) const {
-        ANKERL_NANOBENCH_LOG("mMeasurements.size()=" << mMeasurements.size());
+        ANKERL_NANOBENCH_LOG(errorMessage);
 
         if (mBench.output() != nullptr) {
             // prepare column data ///////

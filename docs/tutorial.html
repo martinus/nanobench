@@ -283,7 +283,7 @@ the bulk of nanobench, and took 3.37 seconds on my machine. It’s done only onc
 </td></tr></table></div>
 </div>
 <p>The most important entry point is <a class="reference internal" href="reference.html#_CPPv4N6ankerl9nanobench5BenchE" title="ankerl::nanobench::Bench"><code class="xref cpp cpp-class docutils literal notranslate"><span class="pre">ankerl::nanobench::Bench</span></code></a>. It creates a benchmarking object,
-optionally configures it, and then runs the code to benchmark with <a class="reference internal" href="reference.html#_CPPv4I0EN6ankerl9nanobench5Bench3runER5BenchRKNSt6stringE2Op" title="ankerl::nanobench::Bench::run"><code class="xref cpp cpp-func docutils literal notranslate"><span class="pre">run()</span></code></a>.</p>
+optionally configures it, and then runs the code to benchmark with <a class="reference internal" href="reference.html#_CPPv4I0EN6ankerl9nanobench5Bench3runER5BenchPKcRR2Op" title="ankerl::nanobench::Bench::run"><code class="xref cpp cpp-func docutils literal notranslate"><span class="pre">run()</span></code></a>.</p>
 </li>
 <li><p>Compile &amp; link with <code class="docutils literal notranslate"><span class="pre">g++</span> <span class="pre">-O3</span> <span class="pre">-I../include</span> <span class="pre">nanobench.o</span> <span class="pre">full_example.cpp</span> <span class="pre">-o</span> <span class="pre">full_example</span></code>. This takes just 0.5 seconds on my machine.</p></li>
 <li><p>Run <code class="docutils literal notranslate"><span class="pre">./full_example</span></code>, which gives an output like this:</p>
@@ -699,7 +699,7 @@ I factored out the general benchmarking code so it’s easy to use for each of t
 
 <span class="c1">// Benchmarks how fast we can get 64bit random values from Rng.</span>
 <span class="k">template</span> <span class="o">&lt;</span><span class="k">typename</span> <span class="n">Rng</span><span class="o">&gt;</span>
-<span class="kt">void</span> <span class="n">bench</span><span class="p">(</span><span class="n">ankerl</span><span class="o">::</span><span class="n">nanobench</span><span class="o">::</span><span class="n">Bench</span><span class="o">*</span> <span class="n">bench</span><span class="p">,</span> <span class="n">std</span><span class="o">::</span><span class="n">string</span> <span class="n">name</span><span class="p">)</span> <span class="p">{</span>
+<span class="kt">void</span> <span class="n">bench</span><span class="p">(</span><span class="n">ankerl</span><span class="o">::</span><span class="n">nanobench</span><span class="o">::</span><span class="n">Bench</span><span class="o">*</span> <span class="n">bench</span><span class="p">,</span> <span class="kt">char</span> <span class="k">const</span><span class="o">*</span> <span class="n">name</span><span class="p">)</span> <span class="p">{</span>
     <span class="n">std</span><span class="o">::</span><span class="n">random_device</span> <span class="n">dev</span><span class="p">;</span>
     <span class="n">Rng</span> <span class="nf">rng</span><span class="p">(</span><span class="n">dev</span><span class="p">());</span>
 
