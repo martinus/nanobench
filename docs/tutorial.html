@@ -634,77 +634,7 @@ I factored out the general benchmarking code so it’s easy to use for each of t
 42
 43
 44
-45
-46
-47
-48
-49
-50
-51
-52
-53
-54
-55
-56
-57
-58
-59
-60
-61
-62
-63
-64
-65
-66
-67
-68
-69
-70
-71
-72
-73
-74
-75
-76
-77
-78
-79
-80</pre></div></td><td class="code"><div class="highlight"><pre><span></span><span class="k">class</span> <span class="nc">Orbit</span> <span class="p">{</span>
-<span class="k">public</span><span class="o">:</span>
-    <span class="k">using</span> <span class="n">result_type</span> <span class="o">=</span> <span class="kt">uint64_t</span><span class="p">;</span>
-
-    <span class="k">static</span> <span class="k">constexpr</span> <span class="nf">uint64_t</span><span class="p">(</span><span class="n">min</span><span class="p">)()</span> <span class="p">{</span>
-        <span class="k">return</span> <span class="mi">0</span><span class="p">;</span>
-    <span class="p">}</span>
-    <span class="k">static</span> <span class="k">constexpr</span> <span class="nf">uint64_t</span><span class="p">(</span><span class="n">max</span><span class="p">)()</span> <span class="p">{</span>
-        <span class="k">return</span> <span class="n">UINT64_C</span><span class="p">(</span><span class="mh">0xffffffffffffffff</span><span class="p">);</span>
-    <span class="p">}</span>
-
-    <span class="n">Orbit</span><span class="p">(</span><span class="kt">uint64_t</span> <span class="n">seed</span><span class="p">)</span> <span class="k">noexcept</span>
-        <span class="o">:</span> <span class="n">stateA</span><span class="p">(</span><span class="n">seed</span><span class="p">)</span>
-        <span class="p">,</span> <span class="n">stateB</span><span class="p">(</span><span class="n">UINT64_C</span><span class="p">(</span><span class="mh">0x9E6C63D0676A9A99</span><span class="p">))</span> <span class="p">{</span>
-        <span class="k">for</span> <span class="p">(</span><span class="kt">size_t</span> <span class="n">i</span> <span class="o">=</span> <span class="mi">0</span><span class="p">;</span> <span class="n">i</span> <span class="o">&lt;</span> <span class="mi">10</span><span class="p">;</span> <span class="o">++</span><span class="n">i</span><span class="p">)</span> <span class="p">{</span>
-            <span class="k">operator</span><span class="p">()();</span>
-        <span class="p">}</span>
-    <span class="p">}</span>
-
-    <span class="kt">uint64_t</span> <span class="k">operator</span><span class="p">()()</span> <span class="k">noexcept</span> <span class="p">{</span>
-        <span class="kt">uint64_t</span> <span class="n">s</span> <span class="o">=</span> <span class="p">(</span><span class="n">stateA</span> <span class="o">+=</span> <span class="mh">0xC6BC279692B5C323u</span><span class="p">);</span>
-        <span class="kt">uint64_t</span> <span class="n">t</span> <span class="o">=</span> <span class="p">((</span><span class="n">s</span> <span class="o">==</span> <span class="mi">0u</span><span class="p">)</span> <span class="o">?</span> <span class="nl">stateB</span> <span class="p">:</span> <span class="p">(</span><span class="n">stateB</span> <span class="o">+=</span> <span class="mh">0x9E3779B97F4A7C15u</span><span class="p">));</span>
-        <span class="kt">uint64_t</span> <span class="n">z</span> <span class="o">=</span> <span class="p">(</span><span class="n">s</span> <span class="o">^</span> <span class="n">s</span> <span class="o">&gt;&gt;</span> <span class="mi">31</span><span class="p">)</span> <span class="o">*</span> <span class="p">((</span><span class="n">t</span> <span class="o">^</span> <span class="n">t</span> <span class="o">&gt;&gt;</span> <span class="mi">22</span><span class="p">)</span> <span class="o">|</span> <span class="mi">1u</span><span class="p">);</span>
-        <span class="k">return</span> <span class="n">z</span> <span class="o">^</span> <span class="n">z</span> <span class="o">&gt;&gt;</span> <span class="mi">26</span><span class="p">;</span>
-    <span class="p">}</span>
-
-<span class="k">private</span><span class="o">:</span>
-    <span class="k">static</span> <span class="k">constexpr</span> <span class="kt">uint64_t</span> <span class="n">rotl</span><span class="p">(</span><span class="kt">uint64_t</span> <span class="n">x</span><span class="p">,</span> <span class="kt">unsigned</span> <span class="n">k</span><span class="p">)</span> <span class="k">noexcept</span> <span class="p">{</span>
-        <span class="k">return</span> <span class="p">(</span><span class="n">x</span> <span class="o">&lt;&lt;</span> <span class="n">k</span><span class="p">)</span> <span class="o">|</span> <span class="p">(</span><span class="n">x</span> <span class="o">&gt;&gt;</span> <span class="p">(</span><span class="mi">64U</span> <span class="o">-</span> <span class="n">k</span><span class="p">));</span>
-    <span class="p">}</span>
-
-    <span class="kt">uint64_t</span> <span class="n">stateA</span><span class="p">;</span>
-    <span class="kt">uint64_t</span> <span class="n">stateB</span><span class="p">;</span>
-<span class="p">};</span>
-
-<span class="k">namespace</span> <span class="p">{</span>
+45</pre></div></td><td class="code"><div class="highlight"><pre><span></span><span class="k">namespace</span> <span class="p">{</span>
 
 <span class="c1">// Benchmarks how fast we can get 64bit random values from Rng.</span>
 <span class="k">template</span> <span class="o">&lt;</span><span class="k">typename</span> <span class="n">Rng</span><span class="o">&gt;</span>

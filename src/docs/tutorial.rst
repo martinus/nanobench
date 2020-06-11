@@ -207,7 +207,7 @@ I factored out the general benchmarking code so it's easy to use for each of the
    :language: c++
    :linenos:
    :caption: example_random_number_generators.cpp (excerpt)
-   :lines: 274-
+   :lines: 309-
 
 
 

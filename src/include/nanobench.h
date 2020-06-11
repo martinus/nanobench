@@ -125,10 +125,19 @@ class BigO;
 /*!
    @brief Renders output from a mustache-like template and benchmark results.
 
+   The templating facility here is heavily inspired by [mustache - logic-less templates](https://mustache.github.io/). It adds a few
+   more features that are necessary to get all of the captured data out of nanobench. Please read the excellent [mustache
+   manual](https://mustache.github.io/mustache.5.html) to see what this is all about.
+
    @verbatim embed:rst
 
-   See :cpp:func:`templates::csv() <ankerl::nanobench::templates::csv()>`, :cpp:func:`templates::json()
-   <ankerl::nanobench::templates::json()>`, :cpp:func:`templates::htmlBoxplot() <ankerl::nanobench::templates::htmlBoxplot()>`.
+   For an overview of all the possible data you can get out of nanobench, please see the tutorial at :ref:`tutorial-template-json`.
+
+   The templates that ship with nanobench are:
+   
+   * :cpp:func:`templates::csv() <ankerl::nanobench::templates::csv()>`
+   * :cpp:func:`templates::json() <ankerl::nanobench::templates::json()>`
+   * :cpp:func:`templates::htmlBoxplot() <ankerl::nanobench::templates::htmlBoxplot()>`
 
    @endverbatim
 
