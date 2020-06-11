@@ -194,7 +194,7 @@ struct Config {
     Config();
     ~Config();
     Config& operator=(Config const&);
-    Config& operator=(Config&&) noexcept;
+    Config& operator=(Config&&);
     Config(Config const&);
     Config(Config&&) noexcept;
 };
@@ -220,7 +220,7 @@ public:
 
     ~Result();
     Result& operator=(Result const&);
-    Result& operator=(Result&&) noexcept;
+    Result& operator=(Result&&);
     Result(Result const&);
     Result(Result&&) noexcept;
 
@@ -2493,14 +2493,14 @@ std::ostream& operator<<(std::ostream& os, MarkDownCode const& mdCode) {
 Config::Config() = default;
 Config::~Config() = default;
 Config& Config::operator=(Config const&) = default;
-Config& Config::operator=(Config&&) noexcept = default;
+Config& Config::operator=(Config&&) = default;
 Config::Config(Config const&) = default;
 Config::Config(Config&&) noexcept = default;
 
 // provide implementation here so it's only generated once
 Result::~Result() = default;
 Result& Result::operator=(Result const&) = default;
-Result& Result::operator=(Result&&) noexcept = default;
+Result& Result::operator=(Result&&) = default;
 Result::Result(Result const&) = default;
 Result::Result(Result&&) noexcept = default;
 
