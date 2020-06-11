@@ -750,13 +750,10 @@ public:
     BigO complexityBigO(std::string const& name, Op op) const;
 
     /**
-     * TODO
+     * Convenience wrapper for `ankerl::nanobench::render()`.
      */
     Bench& render(char const* templateContent, std::ostream& os);
 
-    /**
-     * TODO
-     */
     Bench& config(Config const& benchmarkConfig);
     ANKERL_NANOBENCH(NODISCARD) Config const& config() const noexcept;
 
@@ -1463,40 +1460,6 @@ static void generateResult(std::vector<Node> const& nodes, size_t idx, std::vect
 
 } // namespace templates
 
-void render(char const* mustacheTemplate, const Bench& bench, std::ostream& out) {
-    // TODO(martinus) save & restore stream status
-    out.precision(std::numeric_limits<double>::digits10);
-    auto nodes = templates::parseMustacheTemplate(&mustacheTemplate);
-
-    for (auto const& n : nodes) {
-        ANKERL_NANOBENCH_LOG("n.type=" << static_cast<int>(n.type));
-        switch (n.type) {
-        case templates::Node::Type::content:
-            out.write(n.begin, std::distance(n.begin, n.end));
-            break;
-
-        case templates::Node::Type::inverted_section:
-            throw std::runtime_error("unknown list '" + std::string(n.begin, n.end) + "'");
-
-        case templates::Node::Type::section:
-            if (n == "result") {
-                const size_t nbResults = bench.results().size();
-                for (size_t i = 0; i < nbResults; ++i) {
-                    generateResult(n.children, i, bench.results(), out);
-                }
-            } else {
-                throw std::runtime_error("unknown section '" + std::string(n.begin, n.end) + "'");
-            }
-            break;
-
-        case templates::Node::Type::tag:
-            if (!generateConfigTag(n, bench.config(), out)) {
-                throw std::runtime_error("unknown tag '" + std::string(n.begin, n.end) + "'");
-            }
-            break;
-        }
-    }
-}
 
 // helper stuff that only intended to be used internally
 namespace detail {
@@ -1618,6 +1581,43 @@ std::ostream& operator<<(std::ostream& os, MarkDownCode const& mdCode);
 
 namespace ankerl {
 namespace nanobench {
+
+void render(char const* mustacheTemplate, const Bench& bench, std::ostream& out) {
+    detail::fmt::StreamStateRestorer restorer(out);
+
+    out.precision(std::numeric_limits<double>::digits10);
+    auto nodes = templates::parseMustacheTemplate(&mustacheTemplate);
+
+    for (auto const& n : nodes) {
+        ANKERL_NANOBENCH_LOG("n.type=" << static_cast<int>(n.type));
+        switch (n.type) {
+        case templates::Node::Type::content:
+            out.write(n.begin, std::distance(n.begin, n.end));
+            break;
+
+        case templates::Node::Type::inverted_section:
+            throw std::runtime_error("unknown list '" + std::string(n.begin, n.end) + "'");
+
+        case templates::Node::Type::section:
+            if (n == "result") {
+                const size_t nbResults = bench.results().size();
+                for (size_t i = 0; i < nbResults; ++i) {
+                    generateResult(n.children, i, bench.results(), out);
+                }
+            } else {
+                throw std::runtime_error("unknown section '" + std::string(n.begin, n.end) + "'");
+            }
+            break;
+
+        case templates::Node::Type::tag:
+            if (!generateConfigTag(n, bench.config(), out)) {
+                throw std::runtime_error("unknown tag '" + std::string(n.begin, n.end) + "'");
+            }
+            break;
+        }
+    }
+}
+
 namespace detail {
 
 PerformanceCounters& performanceCounters() {
