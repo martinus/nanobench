@@ -24,6 +24,7 @@ target_sources_local(nb PRIVATE
     tutorial_fluctuating_v2.cpp
     tutorial_complexity_set.cpp
     tutorial_complexity_sort.cpp
+    tutorial_mustache.cpp
     unit_api.cpp
     unit_romutrio.cpp
     unit_to_s.cpp

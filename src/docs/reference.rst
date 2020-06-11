@@ -33,35 +33,38 @@ API Reference
 
 
 
---------------------------------------------------------------------
-:cpp:func:`doNotOptimizeAway <ankerl::nanobench::doNotOptimizeAway>`
---------------------------------------------------------------------
+----------------------------------------------------------------------
+:cpp:func:`doNotOptimizeAway() <ankerl::nanobench::doNotOptimizeAway>`
+----------------------------------------------------------------------
 
 .. doxygenfunction:: ankerl::nanobench::doNotOptimizeAway()
 
 
 
---------------------------------
-``templates`` - Generated Output
---------------------------------
+--------------------------------------------------------------------------
+:cpp:func:`render() <ankerl::nanobench::render>` - Mustache-like Templates
+--------------------------------------------------------------------------
+
+
+.. doxygenfunction:: ankerl::nanobench::render
 
 
 :cpp:func:`templates::csv <ankerl::nanobench::templates::csv>`
-==============================================================
+--------------------------------------------------------------
 
 .. doxygenfunction:: ankerl::nanobench::templates::csv
 
 
 
 :cpp:func:`templates::htmlBoxplot <ankerl::nanobench::templates::htmlBoxplot>`
-==============================================================================
+------------------------------------------------------------------------------
 
 .. doxygenfunction:: ankerl::nanobench::templates::htmlBoxplot
 
 
 
 :cpp:func:`templates::json <ankerl::nanobench::templates::json>`
-================================================================
+----------------------------------------------------------------
 
 .. doxygenfunction:: ankerl::nanobench::templates::json
 
@@ -72,4 +75,3 @@ Generated Index
 ---------------
 
 Index for the nanobench API: :ref:`genindex`. 
-

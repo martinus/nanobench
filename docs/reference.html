@@ -100,7 +100,12 @@
 </li>
 <li class="toctree-l2"><a class="reference internal" href="tutorial.html#comparing-results">Comparing Results</a></li>
 <li class="toctree-l2"><a class="reference internal" href="tutorial.html#asymptotic-complexity">Asymptotic Complexity</a></li>
-<li class="toctree-l2"><a class="reference internal" href="tutorial.html#templating">Templating</a></li>
+<li class="toctree-l2"><a class="reference internal" href="tutorial.html#templating">Templating</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="tutorial.html#csv-comma-separated-values">CSV - Comma-Separated Values</a></li>
+<li class="toctree-l3"><a class="reference internal" href="tutorial.html#html-box-plots">HTML Box Plots</a></li>
+<li class="toctree-l3"><a class="reference internal" href="tutorial.html#json-javascript-object-notation">JSON - JavaScript Object Notation</a></li>
+</ul>
+</li>
 </ul>
 </li>
 <li class="toctree-l1"><a class="reference internal" href="comparison.html">Comparison with Other Frameworks</a><ul>
@@ -147,8 +152,8 @@
 <li class="toctree-l2"><a class="reference internal" href="#bench-main-entry-point"><code class="xref cpp cpp-class docutils literal notranslate"><span class="pre">Bench</span></code> - Main Entry Point</a></li>
 <li class="toctree-l2"><a class="reference internal" href="#rng-extremely-fast-prng"><code class="xref cpp cpp-class docutils literal notranslate"><span class="pre">Rng</span></code> - Extremely fast PRNG</a></li>
 <li class="toctree-l2"><a class="reference internal" href="#result-benchmark-results"><code class="xref cpp cpp-class docutils literal notranslate"><span class="pre">Result</span></code> - Benchmark Results</a></li>
-<li class="toctree-l2"><a class="reference internal" href="#donotoptimizeaway"><code class="xref cpp cpp-func docutils literal notranslate"><span class="pre">doNotOptimizeAway</span></code></a></li>
-<li class="toctree-l2"><a class="reference internal" href="#templates-generated-output"><code class="docutils literal notranslate"><span class="pre">templates</span></code> - Generated Output</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="#donotoptimizeaway"><code class="xref cpp cpp-func docutils literal notranslate"><span class="pre">doNotOptimizeAway()</span></code></a></li>
+<li class="toctree-l2"><a class="reference internal" href="#render-mustache-like-templates"><code class="xref cpp cpp-func docutils literal notranslate"><span class="pre">render()</span></code> - Mustache-like Templates</a><ul>
 <li class="toctree-l3"><a class="reference internal" href="#templates-csv"><code class="xref cpp cpp-func docutils literal notranslate"><span class="pre">templates::csv</span></code></a></li>
 <li class="toctree-l3"><a class="reference internal" href="#templates-htmlboxplot"><code class="xref cpp cpp-func docutils literal notranslate"><span class="pre">templates::htmlBoxplot</span></code></a></li>
 <li class="toctree-l3"><a class="reference internal" href="#templates-json"><code class="xref cpp cpp-func docutils literal notranslate"><span class="pre">templates::json</span></code></a></li>
@@ -267,7 +272,7 @@ this has a small overhead.</p>
 
 <dl class="cpp function">
 <dt id="_CPPv4I0EN6ankerl9nanobench5Bench3runER5BenchRR2Op">
-<span id="_CPPv3I0EN6ankerl9nanobench5Bench3runERR2Op"></span><span id="_CPPv2I0EN6ankerl9nanobench5Bench3runERR2Op"></span>template&lt;typename <code class="sig-name descname">Op</code>&gt;<br /><span class="target" id="classankerl_1_1nanobench_1_1Bench_1a08b518433ef7645995b3d5709b2bcb4a"></span><a class="reference internal" href="#_CPPv4N6ankerl9nanobench5BenchE" title="ankerl::nanobench::Bench">Bench</a> &amp;<code class="sig-name descname">run</code><span class="sig-paren">(</span><a class="reference internal" href="#_CPPv4I0EN6ankerl9nanobench5Bench3runER5BenchRR2Op" title="ankerl::nanobench::Bench::run::Op">Op</a> &amp;&amp;<em>op</em><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv4I0EN6ankerl9nanobench5Bench3runER5BenchRR2Op" title="Permalink to this definition">¶</a><br /></dt>
+<span id="_CPPv3I0EN6ankerl9nanobench5Bench3runERR2Op"></span><span id="_CPPv2I0EN6ankerl9nanobench5Bench3runERR2Op"></span>template&lt;typename <code class="sig-name descname">Op</code>&gt;<br /><span class="target" id="classankerl_1_1nanobench_1_1Bench_1a39bbb14e8cfa0ecd42ad002f73f7b7a2"></span><a class="reference internal" href="#_CPPv4N6ankerl9nanobench5BenchE" title="ankerl::nanobench::Bench">Bench</a> &amp;<code class="sig-name descname">run</code><span class="sig-paren">(</span><a class="reference internal" href="#_CPPv4I0EN6ankerl9nanobench5Bench3runER5BenchRR2Op" title="ankerl::nanobench::Bench::run::Op">Op</a> &amp;&amp;<em>op</em><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv4I0EN6ankerl9nanobench5Bench3runER5BenchRR2Op" title="Permalink to this definition">¶</a><br /></dt>
 <dd><p>Same as run(char const* benchmarkName, Op op), but instead uses the previously set name. </p>
 <p><dl class="simple">
 <dt><strong>Template Parameters</strong></dt><dd><ul class="breatheparameterlist simple">
@@ -726,7 +731,7 @@ generator becomes available, I will switch the implementation.</p>
 
 </div>
 <div class="section" id="donotoptimizeaway">
-<h2><a class="reference internal" href="#_CPPv4I0EN6ankerl9nanobench17doNotOptimizeAwayEvRR3Arg" title="ankerl::nanobench::doNotOptimizeAway"><code class="xref cpp cpp-func docutils literal notranslate"><span class="pre">doNotOptimizeAway</span></code></a><a class="headerlink" href="#donotoptimizeaway" title="Permalink to this headline">¶</a></h2>
+<h2><a class="reference internal" href="#_CPPv4I0EN6ankerl9nanobench17doNotOptimizeAwayEvRR3Arg" title="ankerl::nanobench::doNotOptimizeAway"><code class="xref cpp cpp-func docutils literal notranslate"><span class="pre">doNotOptimizeAway()</span></code></a><a class="headerlink" href="#donotoptimizeaway" title="Permalink to this headline">¶</a></h2>
 <dl class="cpp function">
 <dt id="_CPPv4I0EN6ankerl9nanobench17doNotOptimizeAwayEvRR3Arg">
 <span id="_CPPv3I0EN6ankerl9nanobench17doNotOptimizeAwayERR3Arg"></span><span id="_CPPv2I0EN6ankerl9nanobench17doNotOptimizeAwayERR3Arg"></span>template&lt;typename <code class="sig-name descname">Arg</code>&gt;<br /><span class="target" id="nanobench_8h_1afae575ef6845f3cd10a30c17a4a5fd7e"></span>void <code class="sig-prename descclassname">ankerl::nanobench<code class="sig-prename descclassname">::</code></code><code class="sig-name descname">doNotOptimizeAway</code><span class="sig-paren">(</span><a class="reference internal" href="#_CPPv4I0EN6ankerl9nanobench17doNotOptimizeAwayEvRR3Arg" title="ankerl::nanobench::doNotOptimizeAway::Arg">Arg</a> &amp;&amp;<em>arg</em><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv4I0EN6ankerl9nanobench17doNotOptimizeAwayEvRR3Arg" title="Permalink to this definition">¶</a><br /></dt>
@@ -745,14 +750,35 @@ generator becomes available, I will switch the implementation.</p>
 </dd></dl>
 
 </div>
-<div class="section" id="templates-generated-output">
-<h2><code class="docutils literal notranslate"><span class="pre">templates</span></code> - Generated Output<a class="headerlink" href="#templates-generated-output" title="Permalink to this headline">¶</a></h2>
+<div class="section" id="render-mustache-like-templates">
+<h2><a class="reference internal" href="#_CPPv4N6ankerl9nanobench6renderEPKcRK5BenchRNSt7ostreamE" title="ankerl::nanobench::render"><code class="xref cpp cpp-func docutils literal notranslate"><span class="pre">render()</span></code></a> - Mustache-like Templates<a class="headerlink" href="#render-mustache-like-templates" title="Permalink to this headline">¶</a></h2>
+<dl class="cpp function">
+<dt id="_CPPv4N6ankerl9nanobench6renderEPKcRK5BenchRNSt7ostreamE">
+<span id="_CPPv3N6ankerl9nanobench6renderEPKcRK5BenchRNSt7ostreamE"></span><span id="_CPPv2N6ankerl9nanobench6renderEPKcRK5BenchRNSt7ostreamE"></span><span id="ankerl::nanobench::render__cCP.BenchCR.osR"></span><span class="target" id="nanobench_8h_1a23321de52edde793127736a4bf9abe50"></span>void <code class="sig-prename descclassname">ankerl::nanobench<code class="sig-prename descclassname">::</code></code><code class="sig-name descname">render</code><span class="sig-paren">(</span>char <em class="property">const</em> *<em>mustacheTemplate</em>, <a class="reference internal" href="#_CPPv4N6ankerl9nanobench5BenchE" title="ankerl::nanobench::Bench">Bench</a> <em class="property">const</em> &amp;<em>bench</em>, std::ostream &amp;<em>out</em><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv4N6ankerl9nanobench6renderEPKcRK5BenchRNSt7ostreamE" title="Permalink to this definition">¶</a><br /></dt>
+<dd><p>Renders output from a mustache-like template and benchmark results. </p>
+<p><dl class="simple">
+<dt><strong>See</strong></dt><dd><p>templates::csv(), templates::json(), templates::htmlBoxplot()</p>
+</dd>
+<dt><strong>Parameters</strong></dt><dd><ul class="breatheparameterlist simple">
+<li><p><code class="docutils literal notranslate"><span class="pre">mustacheTemplate</span></code>: The template. </p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">bench</span></code>: Benchmark, containing all the results. </p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">out</span></code>: Output for the generated output. </p></li>
+</ul>
+</dd>
+</dl>
+</p>
+</dd></dl>
+
 <div class="section" id="templates-csv">
 <h3><a class="reference internal" href="#_CPPv4N6ankerl9nanobench9templates3csvEv" title="ankerl::nanobench::templates::csv"><code class="xref cpp cpp-func docutils literal notranslate"><span class="pre">templates::csv</span></code></a><a class="headerlink" href="#templates-csv" title="Permalink to this headline">¶</a></h3>
 <dl class="cpp function">
 <dt id="_CPPv4N6ankerl9nanobench9templates3csvEv">
 <span id="_CPPv3N6ankerl9nanobench9templates3csvEv"></span><span id="_CPPv2N6ankerl9nanobench9templates3csvEv"></span><span id="ankerl::nanobench::templates::csv"></span><span class="target" id="nanobench_8h_1a7370b71e3ac3f8fb69c1791ab2fb915a"></span>char <em class="property">const</em> *<code class="sig-prename descclassname">ankerl::nanobench::templates<code class="sig-prename descclassname">::</code></code><code class="sig-name descname">csv</code><span class="sig-paren">(</span><span class="sig-paren">)</span> <em class="property">noexcept</em><a class="headerlink" href="#_CPPv4N6ankerl9nanobench9templates3csvEv" title="Permalink to this definition">¶</a><br /></dt>
-<dd></dd></dl>
+<dd><p>CSV data for the benchmark results. </p>
+<p>Generates a comma-separated values dataset. First line is the header, each following line is a summary of each benchmark run.</p>
+<p><p>See the tutorial at <a class="reference internal" href="tutorial.html#tutorial-template-csv"><span class="std std-ref">CSV - Comma-Separated Values</span></a> for an example.</p>
+ </p>
+</dd></dl>
 
 </div>
 <div class="section" id="templates-htmlboxplot">
@@ -760,7 +786,10 @@ generator becomes available, I will switch the implementation.</p>
 <dl class="cpp function">
 <dt id="_CPPv4N6ankerl9nanobench9templates11htmlBoxplotEv">
 <span id="_CPPv3N6ankerl9nanobench9templates11htmlBoxplotEv"></span><span id="_CPPv2N6ankerl9nanobench9templates11htmlBoxplotEv"></span><span id="ankerl::nanobench::templates::htmlBoxplot"></span><span class="target" id="nanobench_8h_1abb9fabd0a720900e5374416d59f5f5a3"></span>char <em class="property">const</em> *<code class="sig-prename descclassname">ankerl::nanobench::templates<code class="sig-prename descclassname">::</code></code><code class="sig-name descname">htmlBoxplot</code><span class="sig-paren">(</span><span class="sig-paren">)</span> <em class="property">noexcept</em><a class="headerlink" href="#_CPPv4N6ankerl9nanobench9templates11htmlBoxplotEv" title="Permalink to this definition">¶</a><br /></dt>
-<dd></dd></dl>
+<dd><p>HTML output that uses plotly to generate an interactive boxplot chart. See the tutorial for an example output. </p>
+<p>The output uses only the elapsed time, and displays each epoch as a single dot. <p>See the tutorial at <a class="reference internal" href="tutorial.html#tutorial-template-html"><span class="std std-ref">HTML Box Plots</span></a> for an example.</p>
+ </p>
+</dd></dl>
 
 </div>
 <div class="section" id="templates-json">
@@ -768,7 +797,10 @@ generator becomes available, I will switch the implementation.</p>
 <dl class="cpp function">
 <dt id="_CPPv4N6ankerl9nanobench9templates4jsonEv">
 <span id="_CPPv3N6ankerl9nanobench9templates4jsonEv"></span><span id="_CPPv2N6ankerl9nanobench9templates4jsonEv"></span><span id="ankerl::nanobench::templates::json"></span><span class="target" id="nanobench_8h_1a020d1a3b2296fdce879c6c56a20a81eb"></span>char <em class="property">const</em> *<code class="sig-prename descclassname">ankerl::nanobench::templates<code class="sig-prename descclassname">::</code></code><code class="sig-name descname">json</code><span class="sig-paren">(</span><span class="sig-paren">)</span> <em class="property">noexcept</em><a class="headerlink" href="#_CPPv4N6ankerl9nanobench9templates4jsonEv" title="Permalink to this definition">¶</a><br /></dt>
-<dd></dd></dl>
+<dd><p>Template to generate JSON data. </p>
+<p>The generated JSON data contains <em>all</em> data that has been generated. All times are as double values, in seconds. The output can get quite large. <p>See the tutorial at <a class="reference internal" href="tutorial.html#tutorial-template-json"><span class="std std-ref">JSON - JavaScript Object Notation</span></a> for an example.</p>
+ </p>
+</dd></dl>
 
 </div>
 </div>

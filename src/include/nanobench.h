@@ -122,20 +122,51 @@ class Result;
 class Rng;
 class BigO;
 
+/*!
+  @brief Renders output from a mustache-like template and benchmark results.
+
+  @see templates::csv(), templates::json(), templates::htmlBoxplot()
+
+  @param mustacheTemplate The template.
+  @param bench Benchmark, containing all the results.
+  @param out Output for the generated output.
+ */
+void render(char const* mustacheTemplate, Bench const& bench, std::ostream& out);
+
 // Contains mustache-like templates
 namespace templates {
 
-// CSV file from the benchmark results.
+/*!
+  @brief CSV data for the benchmark results.
+
+  Generates a comma-separated values dataset. First line is the header, each following line is a summary of each benchmark run.
+
+  @verbatim embed:rst
+  See the tutorial at :ref:`tutorial-template-csv` for an example.
+  @endverbatim
+ */
 char const* csv() noexcept;
 
-// HTML graphic using plotly.js
+/*!
+  @brief HTML output that uses plotly to generate an interactive boxplot chart. See the tutorial for an example output.
+
+  The output uses only the elapsed time, and displays each epoch as a single dot.
+  @verbatim embed:rst
+  See the tutorial at :ref:`tutorial-template-html` for an example.
+  @endverbatim
+ */
 char const* htmlBoxplot() noexcept;
 
-// JSON that contains all result data
-char const* json() noexcept;
+/*!
+  @brief Template to generate JSON data.
 
-// Generates output from the template and results into the given stream
-void generate(char const* mustacheTemplate, Bench const& bench, std::ostream& out);
+  The generated JSON data contains *all* data that has been generated. All times are as double values, in seconds. The output can get
+  quite large.
+  @verbatim embed:rst
+  See the tutorial at :ref:`tutorial-template-json` for an example.
+  @endverbatim
+ */
+char const* json() noexcept;
 
 } // namespace templates
 
@@ -1085,10 +1116,9 @@ namespace templates {
 char const* csv() noexcept {
     return R"DELIM("title";"name";"unit";"batch";"elapsed";"error %";"instructions";"branches";"branch misses";"total"
 {{#result}}"{{title}}";"{{name}}";"{{unit}}";{{batch}};{{median(elapsed)}};{{medianAbsolutePercentError(elapsed)}};{{median(instructions)}};{{median(branchinstructions)}};{{median(branchmisses)}};{{sumProduct(iterations, elapsed)}}
-{{/result}}
-)DELIM";
+{{/result}})DELIM";
 }
-//
+
 char const* htmlBoxplot() noexcept {
     return R"DELIM(<html>
 
@@ -1097,7 +1127,7 @@ char const* htmlBoxplot() noexcept {
 </head>
 
 <body>
-    <div id="myDiv" style="width:1024px; height:768px"></div>
+    <div id="myDiv"></div>
     <script>
         var data = [
             {{#result}}{
@@ -1106,7 +1136,7 @@ char const* htmlBoxplot() noexcept {
             },
             {{/result}}
         ];
-        var title = 'benchmark';
+        var title = '{{title}}';
 
         data = data.map(a => Object.assign(a, { boxpoints: 'all', pointpos: 0, type: 'box' }));
         var layout = { title: { text: title }, showlegend: false, yaxis: { title: 'time per unit', rangemode: 'tozero', autorange: true } }; Plotly.newPlot('myDiv', data, layout, {responsive: true});
@@ -1431,22 +1461,24 @@ static void generateResult(std::vector<Node> const& nodes, size_t idx, std::vect
     }
 }
 
-void generate(char const* mustacheTemplate, const Bench& bench, std::ostream& out) {
+} // namespace templates
+
+void render(char const* mustacheTemplate, const Bench& bench, std::ostream& out) {
     // TODO(martinus) save & restore stream status
     out.precision(std::numeric_limits<double>::digits10);
-    auto nodes = parseMustacheTemplate(&mustacheTemplate);
+    auto nodes = templates::parseMustacheTemplate(&mustacheTemplate);
 
     for (auto const& n : nodes) {
         ANKERL_NANOBENCH_LOG("n.type=" << static_cast<int>(n.type));
         switch (n.type) {
-        case Node::Type::content:
+        case templates::Node::Type::content:
             out.write(n.begin, std::distance(n.begin, n.end));
             break;
 
-        case Node::Type::inverted_section:
+        case templates::Node::Type::inverted_section:
             throw std::runtime_error("unknown list '" + std::string(n.begin, n.end) + "'");
 
-        case Node::Type::section:
+        case templates::Node::Type::section:
             if (n == "result") {
                 const size_t nbResults = bench.results().size();
                 for (size_t i = 0; i < nbResults; ++i) {
@@ -1457,7 +1489,7 @@ void generate(char const* mustacheTemplate, const Bench& bench, std::ostream& ou
             }
             break;
 
-        case Node::Type::tag:
+        case templates::Node::Type::tag:
             if (!generateConfigTag(n, bench.config(), out)) {
                 throw std::runtime_error("unknown tag '" + std::string(n.begin, n.end) + "'");
             }
@@ -1465,8 +1497,6 @@ void generate(char const* mustacheTemplate, const Bench& bench, std::ostream& ou
         }
     }
 }
-
-} // namespace templates
 
 // helper stuff that only intended to be used internally
 namespace detail {
@@ -2862,7 +2892,7 @@ std::vector<Result> const& Bench::results() const noexcept {
 }
 
 Bench& Bench::render(char const* templateContent, std::ostream& os) {
-    templates::generate(templateContent, *this, os);
+    ::ankerl::nanobench::render(templateContent, *this, os);
     return *this;
 }
 

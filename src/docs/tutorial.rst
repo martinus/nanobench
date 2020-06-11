@@ -297,8 +297,76 @@ Templating
 ==========
 
 Nanobench comes with a powerful `Mustache <https://mustache.github.io/>`_-like template mechanism to process the benchmark
-results into all kinds of formats. Several preconfigured format exist in the namespace ``ankerl::nanobench::templates``:
+results into all kinds of formats. Several preconfigured format exist in the namespace ``ankerl::nanobench::templates``.
 
-.. doxygennamespace:: ankerl::nanobench::templates
-   :no-link:
-   :content-only:
+Here is a simple example that benchmarks two random generators, ``std::mt19937_64`` and ``std::knuth_b``, and prints output in all
+templates that already come with nanobench:
+
+.. literalinclude:: ../test/tutorial_mustache.cpp
+   :language: c++
+   :linenos:
+
+
+.. _tutorial-template-csv:
+
+CSV - Comma-Separated Values
+----------------------------
+
+The function :cpp:func:`ankerl::nanobench::templates::csv` provides this template:
+
+.. literalinclude:: mustache.template.csv
+   :language: text
+   :linenos:
+
+This generates a compact CSV file, where entries are separated by a semicolon `;`. Run with the example, I get this output:
+
+.. literalinclude:: mustache.output.csv
+   :language: text
+   :linenos:
+
+Rendered as CSV table:
+
+.. csv-table::
+   :file: mustache.output.csv
+   :header-rows: 1
+   :delim: ;
+
+Note that the CSV template doesn't provide all the data that is available.
+
+
+
+.. _tutorial-template-html:
+
+HTML Box Plots
+--------------
+
+With the template :cpp:func:`ankerl::nanobench::templates::htmlBoxplot()` you get a `plotly <https://plotly.com/javascript/>`_ based HTML output which generates
+an boxplot of the runtime. The template is rather simple.
+
+.. literalinclude:: mustache.template.html
+   :language: xml
+   :linenos:
+
+This generates a nice interactive boxplot, which gives a nice visual showcase of the runtime performance of the evaluated benchmarks. Each epoch is visualized as a dot,
+and the boxplot itself shows median, percentiles, and outliers. You'll might want to increase the default number of epochs for an even better visualization result.
+
+.. raw:: html
+   :file: mustache.output.html
+
+
+.. _tutorial-template-json:
+
+JSON - JavaScript Object Notation
+---------------------------------
+
+The :cpp:func:`ankerl::nanobench::templates::json` template gives everything, all data that is available, from all runs. The template is therefore quite complex:
+
+.. literalinclude:: mustache.template.json
+   :language: text
+   :linenos:
+
+This also gives the data from each separate :cpp:func:`ankerl::nanobench::Bench::epochs()`, not just the accumulated data as in the CSV template.
+
+.. literalinclude:: mustache.output.json
+   :language: json
+   :linenos:
