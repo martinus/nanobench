@@ -2760,7 +2760,11 @@ Bench& Bench::title(const char* benchmarkTitle) {
     return *this;
 }
 Bench& Bench::title(std::string const& benchmarkTitle) {
-    return title(benchmarkTitle.c_str());
+    if (benchmarkTitle != mConfig.mBenchmarkTitle) {
+        mResults.clear();
+    }
+    mConfig.mBenchmarkTitle = benchmarkTitle;
+    return *this;
 }
 
 std::string const& Bench::title() const noexcept {
