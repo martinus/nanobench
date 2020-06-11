@@ -123,13 +123,18 @@ class Rng;
 class BigO;
 
 /*!
-  @brief Renders output from a mustache-like template and benchmark results.
+   @brief Renders output from a mustache-like template and benchmark results.
 
-  @see templates::csv(), templates::json(), templates::htmlBoxplot()
+   @verbatim embed:rst
 
-  @param mustacheTemplate The template.
-  @param bench Benchmark, containing all the results.
-  @param out Output for the generated output.
+   See :cpp:func:`templates::csv() <ankerl::nanobench::templates::csv()>`, :cpp:func:`templates::json()
+   <ankerl::nanobench::templates::json()>`, :cpp:func:`templates::htmlBoxplot() <ankerl::nanobench::templates::htmlBoxplot()>`.
+
+   @endverbatim
+
+   @param mustacheTemplate The template.
+   @param bench Benchmark, containing all the results.
+   @param out Output for the generated output.
  */
 void render(char const* mustacheTemplate, Bench const& bench, std::ostream& out);
 
@@ -154,6 +159,8 @@ char const* csv() noexcept;
   @verbatim embed:rst
   See the tutorial at :ref:`tutorial-template-html` for an example.
   @endverbatim
+
+  @see ankerl::nanobench::render()
  */
 char const* htmlBoxplot() noexcept;
 
@@ -1459,7 +1466,6 @@ static void generateResult(std::vector<Node> const& nodes, size_t idx, std::vect
 }
 
 } // namespace templates
-
 
 // helper stuff that only intended to be used internally
 namespace detail {

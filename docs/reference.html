@@ -754,9 +754,9 @@ generator becomes available, I will switch the implementation.</p>
 <dt id="_CPPv4N6ankerl9nanobench6renderEPKcRK5BenchRNSt7ostreamE">
 <span id="_CPPv3N6ankerl9nanobench6renderEPKcRK5BenchRNSt7ostreamE"></span><span id="_CPPv2N6ankerl9nanobench6renderEPKcRK5BenchRNSt7ostreamE"></span><span id="ankerl::nanobench::render__cCP.BenchCR.osR"></span><span class="target" id="nanobench_8h_1a23321de52edde793127736a4bf9abe50"></span>void <code class="sig-prename descclassname">ankerl::nanobench<code class="sig-prename descclassname">::</code></code><code class="sig-name descname">render</code><span class="sig-paren">(</span>char <em class="property">const</em> *<em>mustacheTemplate</em>, <a class="reference internal" href="#_CPPv4N6ankerl9nanobench5BenchE" title="ankerl::nanobench::Bench">Bench</a> <em class="property">const</em> &amp;<em>bench</em>, std::ostream &amp;<em>out</em><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv4N6ankerl9nanobench6renderEPKcRK5BenchRNSt7ostreamE" title="Permalink to this definition">¶</a><br /></dt>
 <dd><p>Renders output from a mustache-like template and benchmark results. </p>
+<p><p>See <a class="reference internal" href="#_CPPv4N6ankerl9nanobench9templates3csvEv" title="ankerl::nanobench::templates::csv"><code class="xref cpp cpp-func docutils literal notranslate"><span class="pre">templates::csv()</span></code></a>, <a class="reference internal" href="#_CPPv4N6ankerl9nanobench9templates4jsonEv" title="ankerl::nanobench::templates::json"><code class="xref cpp cpp-func docutils literal notranslate"><span class="pre">templates::json()</span></code></a>, <a class="reference internal" href="#_CPPv4N6ankerl9nanobench9templates11htmlBoxplotEv" title="ankerl::nanobench::templates::htmlBoxplot"><code class="xref cpp cpp-func docutils literal notranslate"><span class="pre">templates::htmlBoxplot()</span></code></a>.</p>
+</p>
 <p><dl class="simple">
-<dt><strong>See</strong></dt><dd><p>templates::csv(), templates::json(), templates::htmlBoxplot()</p>
-</dd>
 <dt><strong>Parameters</strong></dt><dd><ul class="breatheparameterlist simple">
 <li><p><code class="docutils literal notranslate"><span class="pre">mustacheTemplate</span></code>: The template. </p></li>
 <li><p><code class="docutils literal notranslate"><span class="pre">bench</span></code>: Benchmark, containing all the results. </p></li>
@@ -786,7 +786,12 @@ generator becomes available, I will switch the implementation.</p>
 <span id="_CPPv3N6ankerl9nanobench9templates11htmlBoxplotEv"></span><span id="_CPPv2N6ankerl9nanobench9templates11htmlBoxplotEv"></span><span id="ankerl::nanobench::templates::htmlBoxplot"></span><span class="target" id="nanobench_8h_1abb9fabd0a720900e5374416d59f5f5a3"></span>char <em class="property">const</em> *<code class="sig-prename descclassname">ankerl::nanobench::templates<code class="sig-prename descclassname">::</code></code><code class="sig-name descname">htmlBoxplot</code><span class="sig-paren">(</span><span class="sig-paren">)</span> <em class="property">noexcept</em><a class="headerlink" href="#_CPPv4N6ankerl9nanobench9templates11htmlBoxplotEv" title="Permalink to this definition">¶</a><br /></dt>
 <dd><p>HTML output that uses plotly to generate an interactive boxplot chart. See the tutorial for an example output. </p>
 <p>The output uses only the elapsed time, and displays each epoch as a single dot. <p>See the tutorial at <a class="reference internal" href="tutorial.html#tutorial-template-html"><span class="std std-ref">HTML Box Plots</span></a> for an example.</p>
- </p>
+</p>
+<p><dl class="simple">
+<dt><strong>See</strong></dt><dd><p>ankerl::nanobench::render() </p>
+</dd>
+</dl>
+</p>
 </dd></dl>
 
 </div>
