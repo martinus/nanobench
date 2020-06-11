@@ -100,7 +100,7 @@
 </li>
 <li class="toctree-l2"><a class="reference internal" href="tutorial.html#comparing-results">Comparing Results</a></li>
 <li class="toctree-l2"><a class="reference internal" href="tutorial.html#asymptotic-complexity">Asymptotic Complexity</a></li>
-<li class="toctree-l2"><a class="reference internal" href="tutorial.html#templating">Templating</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="tutorial.html#rendering-mustache-like-templates">Rendering Mustache-like Templates</a><ul>
 <li class="toctree-l3"><a class="reference internal" href="tutorial.html#csv-comma-separated-values">CSV - Comma-Separated Values</a></li>
 <li class="toctree-l3"><a class="reference internal" href="tutorial.html#html-box-plots">HTML Box Plots</a></li>
 <li class="toctree-l3"><a class="reference internal" href="tutorial.html#json-javascript-object-notation">JSON - JavaScript Object Notation</a></li>
@@ -157,6 +157,10 @@
 <li class="toctree-l3"><a class="reference internal" href="#templates-csv"><code class="xref cpp cpp-func docutils literal notranslate"><span class="pre">templates::csv</span></code></a></li>
 <li class="toctree-l3"><a class="reference internal" href="#templates-htmlboxplot"><code class="xref cpp cpp-func docutils literal notranslate"><span class="pre">templates::htmlBoxplot</span></code></a></li>
 <li class="toctree-l3"><a class="reference internal" href="#templates-json"><code class="xref cpp cpp-func docutils literal notranslate"><span class="pre">templates::json</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="#environment-variables">Environment Variables</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="#nanobench-endless"><code class="docutils literal notranslate"><span class="pre">NANOBENCH_ENDLESS</span></code></a></li>
 </ul>
 </li>
 <li class="toctree-l2"><a class="reference internal" href="#generated-index">Generated Index</a></li>
@@ -802,6 +806,29 @@ generator becomes available, I will switch the implementation.</p>
  </p>
 </dd></dl>
 
+</div>
+</div>
+<div class="section" id="environment-variables">
+<h2>Environment Variables<a class="headerlink" href="#environment-variables" title="Permalink to this headline">¶</a></h2>
+<div class="section" id="nanobench-endless">
+<h3><code class="docutils literal notranslate"><span class="pre">NANOBENCH_ENDLESS</span></code><a class="headerlink" href="#nanobench-endless" title="Permalink to this headline">¶</a></h3>
+<p>Sometimes it helps to run a benchmark for a very long time, so that it’s possible to attach with a profiler like
+<a class="reference external" href="https://perf.wiki.kernel.org/index.php/Main_Page">perf</a> and get meaningful statistics. This can be done with the environment variable
+<code class="docutils literal notranslate"><span class="pre">NANOBENCH_ENDLESS</span></code>. E.g. to run the benchmark with the name <code class="docutils literal notranslate"><span class="pre">x</span> <span class="pre">+=</span> <span class="pre">x</span></code> endlessly, call the app this way:</p>
+<div class="highlight-sh notranslate"><div class="highlight"><pre><span></span><span class="nv">NANOBENCH_ENDLESS</span><span class="o">=</span><span class="s2">&quot;x += x&quot;</span> ./yourapp
+</pre></div>
+</div>
+<p>When your app runs it will run all benchmark normally, but when it encounters a benchmarked named <code class="docutils literal notranslate"><span class="pre">x</span> <span class="pre">+=</span> <span class="pre">x</span></code>, it will run this one endlessly.
+It will print in nice friendly letters</p>
+<div class="highlight-text notranslate"><div class="highlight"><pre><span></span>NANOBENCH_ENDLESS set: running &#39;x += x&#39; endlessly`` once it reaches that state.
+</pre></div>
+</div>
+<div class="admonition warning">
+<p class="admonition-title">Warning</p>
+<p>For optimal profiling with <code class="docutils literal notranslate"><span class="pre">perf</span></code>, you shouldn’t use <code class="docutils literal notranslate"><span class="pre">pyperf</span> <span class="pre">system</span> <span class="pre">tune</span></code> in the endless mode. PyPerf dramatically reduces the
+number of events that can be captured per second. This is a good to get accurate benchmark numbers from nanobench, but a bad when
+you actually want to use perf to analyze hotspots.</p>
+</div>
 </div>
 </div>
 <div class="section" id="generated-index">

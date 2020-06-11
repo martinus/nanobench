@@ -9,11 +9,11 @@ namespace {
 void gen(std::string const& typeName, char const* mustacheTemplate,
          ankerl::nanobench::Bench const& bench) {
 
-    std::ofstream fout("mustache.template." + typeName);
-    fout << mustacheTemplate;
+    std::ofstream templateOut("mustache.template." + typeName);
+    templateOut << mustacheTemplate;
 
-    fout = std::ofstream("mustache.output." + typeName);
-    ankerl::nanobench::render(mustacheTemplate, bench, fout);
+    std::ofstream renderOut("mustache.render." + typeName);
+    ankerl::nanobench::render(mustacheTemplate, bench, renderOut);
 }
 
 } // namespace

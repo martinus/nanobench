@@ -100,7 +100,7 @@
 </li>
 <li class="toctree-l2"><a class="reference internal" href="#comparing-results">Comparing Results</a></li>
 <li class="toctree-l2"><a class="reference internal" href="#asymptotic-complexity">Asymptotic Complexity</a></li>
-<li class="toctree-l2"><a class="reference internal" href="#templating">Templating</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="#rendering-mustache-like-templates">Rendering Mustache-like Templates</a><ul>
 <li class="toctree-l3"><a class="reference internal" href="#csv-comma-separated-values">CSV - Comma-Separated Values</a></li>
 <li class="toctree-l3"><a class="reference internal" href="#html-box-plots">HTML Box Plots</a></li>
 <li class="toctree-l3"><a class="reference internal" href="#json-javascript-object-notation">JSON - JavaScript Object Notation</a></li>
@@ -157,6 +157,10 @@
 <li class="toctree-l3"><a class="reference internal" href="reference.html#templates-csv"><code class="xref cpp cpp-func docutils literal notranslate"><span class="pre">templates::csv</span></code></a></li>
 <li class="toctree-l3"><a class="reference internal" href="reference.html#templates-htmlboxplot"><code class="xref cpp cpp-func docutils literal notranslate"><span class="pre">templates::htmlBoxplot</span></code></a></li>
 <li class="toctree-l3"><a class="reference internal" href="reference.html#templates-json"><code class="xref cpp cpp-func docutils literal notranslate"><span class="pre">templates::json</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="reference.html#environment-variables">Environment Variables</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="reference.html#nanobench-endless"><code class="docutils literal notranslate"><span class="pre">NANOBENCH_ENDLESS</span></code></a></li>
 </ul>
 </li>
 <li class="toctree-l2"><a class="reference internal" href="reference.html#generated-index">Generated Index</a></li>
@@ -249,8 +253,8 @@ nanobench is compiled:</p>
 <h2>Quick Start<a class="headerlink" href="#quick-start" title="Permalink to this headline">¶</a></h2>
 <ol class="arabic">
 <li><p>Create <cite>nanobench.cpp</cite>:</p>
-<div class="literal-block-wrapper docutils container" id="id3">
-<div class="code-block-caption"><span class="caption-text">nanobench.cpp</span><a class="headerlink" href="#id3" title="Permalink to this code">¶</a></div>
+<div class="literal-block-wrapper docutils container" id="id2">
+<div class="code-block-caption"><span class="caption-text">nanobench.cpp</span><a class="headerlink" href="#id2" title="Permalink to this code">¶</a></div>
 <div class="highlight-c++ notranslate"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre>1
 2</pre></div></td><td class="code"><div class="highlight"><pre><span></span><span class="cp">#define ANKERL_NANOBENCH_IMPLEMENT</span>
 <span class="cp">#include</span> <span class="cpf">&lt;nanobench.h&gt;</span><span class="cp"></span>
@@ -261,8 +265,8 @@ nanobench is compiled:</p>
 <li><p>Compile with <code class="docutils literal notranslate"><span class="pre">g++</span> <span class="pre">-O3</span> <span class="pre">-I../include</span> <span class="pre">-c</span> <span class="pre">nanobench.cpp</span></code>. This compiles
 the bulk of nanobench, and took 3.37 seconds on my machine. It’s done only once.</p></li>
 <li><p>Create the actual benchmark code, in <cite>full_example.cpp</cite>:</p>
-<div class="literal-block-wrapper docutils container" id="id4">
-<div class="code-block-caption"><span class="caption-text">full_example.cpp</span><a class="headerlink" href="#id4" title="Permalink to this code">¶</a></div>
+<div class="literal-block-wrapper docutils container" id="id3">
+<div class="code-block-caption"><span class="caption-text">full_example.cpp</span><a class="headerlink" href="#id3" title="Permalink to this code">¶</a></div>
 <div class="highlight-c++ notranslate"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre> 1
  2
  3
@@ -353,8 +357,8 @@ compiles much faster. It pairs well with nanobench.</p>
 <div class="section" id="something-fast">
 <h3>Something Fast<a class="headerlink" href="#something-fast" title="Permalink to this headline">¶</a></h3>
 <p>Let’s benchmarks how fast we can do <code class="docutils literal notranslate"><span class="pre">x</span> <span class="pre">+=</span> <span class="pre">x</span></code> for <code class="docutils literal notranslate"><span class="pre">uint64_t</span></code>:</p>
-<div class="literal-block-wrapper docutils container" id="id5">
-<div class="code-block-caption"><span class="caption-text">tutorial_fast_v1.cpp</span><a class="headerlink" href="#id5" title="Permalink to this code">¶</a></div>
+<div class="literal-block-wrapper docutils container" id="id4">
+<div class="code-block-caption"><span class="caption-text">tutorial_fast_v1.cpp</span><a class="headerlink" href="#id4" title="Permalink to this code">¶</a></div>
 <div class="highlight-c++ notranslate"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre>1
 2
 3
@@ -383,8 +387,8 @@ compiles much faster. It pairs well with nanobench.</p>
 </div>
 <p>No data there! we only get <code class="docutils literal notranslate"><span class="pre">:boom:</span> <span class="pre">iterations</span> <span class="pre">overflow.</span></code>.  The compiler could optimize <code class="docutils literal notranslate"><span class="pre">x</span> <span class="pre">+=</span> <span class="pre">x</span></code>
 away because we never used the output. Thanks to <code class="docutils literal notranslate"><span class="pre">doNotOptimizeAway</span></code>, this is easy to fix:</p>
-<div class="literal-block-wrapper docutils container" id="id6">
-<div class="code-block-caption"><span class="caption-text">tutorial_fast_v2.cpp</span><a class="headerlink" href="#id6" title="Permalink to this code">¶</a></div>
+<div class="literal-block-wrapper docutils container" id="id5">
+<div class="code-block-caption"><span class="caption-text">tutorial_fast_v2.cpp</span><a class="headerlink" href="#id5" title="Permalink to this code">¶</a></div>
 <div class="highlight-c++ notranslate"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre>1
 2
 3
@@ -417,8 +421,8 @@ away because we never used the output. Thanks to <code class="docutils literal n
 <div class="section" id="something-slow">
 <h3>Something Slow<a class="headerlink" href="#something-slow" title="Permalink to this headline">¶</a></h3>
 <p>Let’s benchmark if sleeping for 100ms really takes 100ms.</p>
-<div class="literal-block-wrapper docutils container" id="id7">
-<div class="code-block-caption"><span class="caption-text">tutorial_slow_v1.cpp</span><a class="headerlink" href="#id7" title="Permalink to this code">¶</a></div>
+<div class="literal-block-wrapper docutils container" id="id6">
+<div class="code-block-caption"><span class="caption-text">tutorial_slow_v1.cpp</span><a class="headerlink" href="#id6" title="Permalink to this code">¶</a></div>
 <div class="highlight-c++ notranslate"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre> 1
  2
  3
@@ -451,8 +455,8 @@ away because we never used the output. Thanks to <code class="docutils literal n
 </div>
 <p>So we actually take 100.125ms instead of 100ms. Next time I run it, I get 100.141. Also a very stable result. Interestingly, sleep takes 51 instructions but 7,714 cycles - so we only got 0.007 instructions per cycle. That’s extremely low, but expected of <code class="docutils literal notranslate"><span class="pre">sleep</span></code>. It also required 11 branches, of which 90.9% were misspredicted on average.</p>
 <p>If the extremely slow 1.1 second is too much for you, you can manually configure the number of evaluations (epochs):</p>
-<div class="literal-block-wrapper docutils container" id="id8">
-<div class="code-block-caption"><span class="caption-text">tutorial_slow_v2.cpp</span><a class="headerlink" href="#id8" title="Permalink to this code">¶</a></div>
+<div class="literal-block-wrapper docutils container" id="id7">
+<div class="code-block-caption"><span class="caption-text">tutorial_slow_v2.cpp</span><a class="headerlink" href="#id7" title="Permalink to this code">¶</a></div>
 <div class="highlight-c++ notranslate"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre> 1
  2
  3
@@ -488,8 +492,8 @@ away because we never used the output. Thanks to <code class="docutils literal n
 <h3>Something Unstable<a class="headerlink" href="#something-unstable" title="Permalink to this headline">¶</a></h3>
 <p>Lets create an extreme artifical test that’s hard to benchmark, because runtime fluctuates randomly: Each iteration
 randomly skip between 0-254 random numbers:</p>
-<div class="literal-block-wrapper docutils container" id="id9">
-<div class="code-block-caption"><span class="caption-text">tutorial_fluctuating_v1.cpp</span><a class="headerlink" href="#id9" title="Permalink to this code">¶</a></div>
+<div class="literal-block-wrapper docutils container" id="id8">
+<div class="code-block-caption"><span class="caption-text">tutorial_fluctuating_v1.cpp</span><a class="headerlink" href="#id8" title="Permalink to this code">¶</a></div>
 <div class="highlight-c++ notranslate"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre> 1
  2
  3
@@ -532,8 +536,8 @@ randomly skip between 0-254 random numbers:</p>
 </div>
 <p>So on average each loop takes about 334.12ns, but we get a warning that the results are unstable. The median percentage error is 6.3% which is quite high,</p>
 <p>Let’s use the suggestion and set the minimum number of iterations to 5000, and try again:</p>
-<div class="literal-block-wrapper docutils container" id="id10">
-<div class="code-block-caption"><span class="caption-text">tutorial_fluctuating_v2.cpp</span><a class="headerlink" href="#id10" title="Permalink to this code">¶</a></div>
+<div class="literal-block-wrapper docutils container" id="id9">
+<div class="code-block-caption"><span class="caption-text">tutorial_fluctuating_v2.cpp</span><a class="headerlink" href="#id9" title="Permalink to this code">¶</a></div>
 <div class="highlight-c++ notranslate"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre> 1
  2
  3
@@ -584,8 +588,8 @@ randomly skip between 0-254 random numbers:</p>
 <p>I have implemented a comparison of multiple random number generators.
 Here several RNGs are compared to a baseline calculated from <cite>std::default_random_engine</cite>.
 I factored out the general benchmarking code so it’s easy to use for each of the random number generators:</p>
-<div class="literal-block-wrapper docutils container" id="id11">
-<div class="code-block-caption"><span class="caption-text">example_random_number_generators.cpp (excerpt)</span><a class="headerlink" href="#id11" title="Permalink to this code">¶</a></div>
+<div class="literal-block-wrapper docutils container" id="id10">
+<div class="code-block-caption"><span class="caption-text">example_random_number_generators.cpp (excerpt)</span><a class="headerlink" href="#id10" title="Permalink to this code">¶</a></div>
 <div class="highlight-c++ notranslate"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre> 1
  2
  3
@@ -785,8 +789,8 @@ at <a class="reference external" href="http://www.romu-random.org">romu-random</
 <p>It is possible to calculate asymptotic complexity (Big O) from multiple runs of a benchmark. Run the
 benchmark with different complexity N, then nanobench can calculate the best fitting curve.</p>
 <p>The following example finds out the asymptotic complexity of <code class="docutils literal notranslate"><span class="pre">std::set</span></code>’s <code class="docutils literal notranslate"><span class="pre">find()</span></code>.</p>
-<div class="literal-block-wrapper docutils container" id="id12">
-<div class="code-block-caption"><span class="caption-text">tutorial_complexity_set.cpp</span><a class="headerlink" href="#id12" title="Permalink to this code">¶</a></div>
+<div class="literal-block-wrapper docutils container" id="id11">
+<div class="code-block-caption"><span class="caption-text">tutorial_complexity_set.cpp</span><a class="headerlink" href="#id11" title="Permalink to this code">¶</a></div>
 <div class="highlight-c++ notranslate"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre> 1
  2
  3
@@ -882,12 +886,60 @@ different setting for <a class="reference internal" href="reference.html#_CPPv4I
 <span class="math notranslate nohighlight">\(\mathcal{O}(n)\)</span> is not very large, which can be an indication that even though the red-black tree should theoretically have
 logarithmic complexity, in practices that is not perfectly the case.</p>
 </div>
-<div class="section" id="templating">
-<span id="id2"></span><h2>Templating<a class="headerlink" href="#templating" title="Permalink to this headline">¶</a></h2>
+<div class="section" id="rendering-mustache-like-templates">
+<span id="templating"></span><h2>Rendering Mustache-like Templates<a class="headerlink" href="#rendering-mustache-like-templates" title="Permalink to this headline">¶</a></h2>
 <p>Nanobench comes with a powerful <a class="reference external" href="https://mustache.github.io/">Mustache</a>-like template mechanism to process the benchmark
-results into all kinds of formats. Several preconfigured format exist in the namespace <code class="docutils literal notranslate"><span class="pre">ankerl::nanobench::templates</span></code>.</p>
-<p>Here is a simple example that benchmarks two random generators, <code class="docutils literal notranslate"><span class="pre">std::mt19937_64</span></code> and <code class="docutils literal notranslate"><span class="pre">std::knuth_b</span></code>, and prints output in all
-templates that already come with nanobench:</p>
+results into all kinds of formats. Several preconfigured format exist in the namespace <code class="docutils literal notranslate"><span class="pre">ankerl::nanobench::templates</span></code>. Rendering these templates can be done
+with either <a class="reference internal" href="reference.html#_CPPv4N6ankerl9nanobench6renderEPKcRK5BenchRNSt7ostreamE" title="ankerl::nanobench::render"><code class="xref cpp cpp-func docutils literal notranslate"><span class="pre">ankerl::nanobench::render()</span></code></a>, or directly with <a class="reference internal" href="reference.html#_CPPv4N6ankerl9nanobench5Bench6renderEPKcRNSt7ostreamE" title="ankerl::nanobench::Bench::render"><code class="xref cpp cpp-func docutils literal notranslate"><span class="pre">ankerl::nanobench::Bench::render()</span></code></a>.</p>
+<p>The following example shows how to use the <a class="reference internal" href="#csv-comma-separated-values">CSV - Comma-Separated Values</a> template, without writing the standard output.</p>
+<div class="literal-block-wrapper docutils container" id="id12">
+<div class="code-block-caption"><span class="caption-text">tutorial_render_simple.cpp</span><a class="headerlink" href="#id12" title="Permalink to this code">¶</a></div>
+<div class="highlight-c++ notranslate"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre> 1
+ 2
+ 3
+ 4
+ 5
+ 6
+ 7
+ 8
+ 9
+10
+11
+12
+13
+14
+15
+16
+17</pre></div></td><td class="code"><div class="highlight"><pre><span></span><span class="cp">#include</span> <span class="cpf">&lt;nanobench.h&gt;</span><span class="cp"></span>
+<span class="cp">#include</span> <span class="cpf">&lt;thirdparty/doctest/doctest.h&gt;</span><span class="cp"></span>
+
+<span class="cp">#include</span> <span class="cpf">&lt;atomic&gt;</span><span class="cp"></span>
+<span class="cp">#include</span> <span class="cpf">&lt;iostream&gt;</span><span class="cp"></span>
+
+<span class="n">TEST_CASE</span><span class="p">(</span><span class="s">&quot;tutorial_render_simple&quot;</span><span class="p">)</span> <span class="p">{</span>
+    <span class="n">std</span><span class="o">::</span><span class="n">atomic</span><span class="o">&lt;</span><span class="kt">int</span><span class="o">&gt;</span> <span class="n">x</span><span class="p">(</span><span class="mi">0</span><span class="p">);</span>
+
+    <span class="n">ankerl</span><span class="o">::</span><span class="n">nanobench</span><span class="o">::</span><span class="n">Bench</span><span class="p">()</span>
+<span class="hll">        <span class="p">.</span><span class="n">output</span><span class="p">(</span><span class="k">nullptr</span><span class="p">)</span>
+</span>        <span class="p">.</span><span class="n">run</span><span class="p">(</span><span class="s">&quot;std::vector&quot;</span><span class="p">,</span>
+             <span class="p">[</span><span class="o">&amp;</span><span class="p">]</span> <span class="p">{</span>
+                 <span class="o">++</span><span class="n">x</span><span class="p">;</span>
+             <span class="p">})</span>
+<span class="hll">        <span class="p">.</span><span class="n">render</span><span class="p">(</span><span class="n">ankerl</span><span class="o">::</span><span class="n">nanobench</span><span class="o">::</span><span class="n">templates</span><span class="o">::</span><span class="n">csv</span><span class="p">(),</span> <span class="n">std</span><span class="o">::</span><span class="n">cout</span><span class="p">);</span>
+</span><span class="p">}</span>
+</pre></div>
+</td></tr></table></div>
+</div>
+<p>In line 11 we call <a class="reference internal" href="reference.html#_CPPv4N6ankerl9nanobench5Bench6outputEPNSt7ostreamE" title="ankerl::nanobench::Bench::output"><code class="xref cpp cpp-func docutils literal notranslate"><span class="pre">Bench::output()</span></code></a> with <code class="docutils literal notranslate"><span class="pre">nullptr</span></code>, thus disabling the standard output.</p>
+<p>After the benchmark we directly call <a class="reference internal" href="reference.html#_CPPv4N6ankerl9nanobench5Bench6renderEPKcRNSt7ostreamE" title="ankerl::nanobench::Bench::render"><code class="xref cpp cpp-func docutils literal notranslate"><span class="pre">Bench::render()</span></code></a> in line 16. Here we use the
+CSV template, and write the rendered output to <code class="docutils literal notranslate"><span class="pre">std::cout</span></code>. When running, we get just the CSV output to the console which looks like this:</p>
+<div class="highlight-text notranslate"><div class="highlight"><pre><span></span>&quot;title&quot;;&quot;name&quot;;&quot;unit&quot;;&quot;batch&quot;;&quot;elapsed&quot;;&quot;error %&quot;;&quot;instructions&quot;;&quot;branches&quot;;&quot;branch misses&quot;;&quot;total&quot;
+&quot;benchmark&quot;;&quot;std::vector&quot;;&quot;op&quot;;1;6.51982200647249e-09;8.26465858909014e-05;23.0034662045061;5;0.00116867939228672;0.000171959
+</pre></div>
+</div>
+<p>Nanobench comes with a few preconfigured templates, residing in the namespace <code class="docutils literal notranslate"><span class="pre">ankerl::nanobench::templates</span></code>. To demonstrate what these templates can do,
+here is an simple example that benchmarks two random generators <code class="docutils literal notranslate"><span class="pre">std::mt19937_64</span></code> and <code class="docutils literal notranslate"><span class="pre">std::knuth_b</span></code> and prints both the template and the rendered
+output:</p>
 <div class="highlight-c++ notranslate"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre> 1
  2
  3
@@ -936,11 +988,11 @@ templates that already come with nanobench:</p>
 <span class="kt">void</span> <span class="n">gen</span><span class="p">(</span><span class="n">std</span><span class="o">::</span><span class="n">string</span> <span class="k">const</span><span class="o">&amp;</span> <span class="n">typeName</span><span class="p">,</span> <span class="kt">char</span> <span class="k">const</span><span class="o">*</span> <span class="n">mustacheTemplate</span><span class="p">,</span>
          <span class="n">ankerl</span><span class="o">::</span><span class="n">nanobench</span><span class="o">::</span><span class="n">Bench</span> <span class="k">const</span><span class="o">&amp;</span> <span class="n">bench</span><span class="p">)</span> <span class="p">{</span>
 
-    <span class="n">std</span><span class="o">::</span><span class="n">ofstream</span> <span class="n">fout</span><span class="p">(</span><span class="s">&quot;mustache.template.&quot;</span> <span class="o">+</span> <span class="n">typeName</span><span class="p">);</span>
-    <span class="n">fout</span> <span class="o">&lt;&lt;</span> <span class="n">mustacheTemplate</span><span class="p">;</span>
+    <span class="n">std</span><span class="o">::</span><span class="n">ofstream</span> <span class="n">templateOut</span><span class="p">(</span><span class="s">&quot;mustache.template.&quot;</span> <span class="o">+</span> <span class="n">typeName</span><span class="p">);</span>
+    <span class="n">templateOut</span> <span class="o">&lt;&lt;</span> <span class="n">mustacheTemplate</span><span class="p">;</span>
 
-    <span class="n">fout</span> <span class="o">=</span> <span class="n">std</span><span class="o">::</span><span class="n">ofstream</span><span class="p">(</span><span class="s">&quot;mustache.output.&quot;</span> <span class="o">+</span> <span class="n">typeName</span><span class="p">);</span>
-    <span class="n">ankerl</span><span class="o">::</span><span class="n">nanobench</span><span class="o">::</span><span class="n">render</span><span class="p">(</span><span class="n">mustacheTemplate</span><span class="p">,</span> <span class="n">bench</span><span class="p">,</span> <span class="n">fout</span><span class="p">);</span>
+    <span class="n">std</span><span class="o">::</span><span class="n">ofstream</span> <span class="n">renderOut</span><span class="p">(</span><span class="s">&quot;mustache.render.&quot;</span> <span class="o">+</span> <span class="n">typeName</span><span class="p">);</span>
+    <span class="n">ankerl</span><span class="o">::</span><span class="n">nanobench</span><span class="o">::</span><span class="n">render</span><span class="p">(</span><span class="n">mustacheTemplate</span><span class="p">,</span> <span class="n">bench</span><span class="p">,</span> <span class="n">renderOut</span><span class="p">);</span>
 <span class="p">}</span>
 
 <span class="p">}</span> <span class="c1">// namespace</span>

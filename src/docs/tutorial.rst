@@ -293,14 +293,33 @@ logarithmic complexity, in practices that is not perfectly the case.
 
 .. _templating:
 
-Templating
-==========
+Rendering Mustache-like Templates
+=================================
 
 Nanobench comes with a powerful `Mustache <https://mustache.github.io/>`_-like template mechanism to process the benchmark
-results into all kinds of formats. Several preconfigured format exist in the namespace ``ankerl::nanobench::templates``.
+results into all kinds of formats. Several preconfigured format exist in the namespace ``ankerl::nanobench::templates``. Rendering these templates can be done
+with either :cpp:func:`ankerl::nanobench::render()`, or directly with :cpp:func:`ankerl::nanobench::Bench::render()`.
 
-Here is a simple example that benchmarks two random generators, ``std::mt19937_64`` and ``std::knuth_b``, and prints output in all
-templates that already come with nanobench:
+The following example shows how to use the `CSV - Comma-Separated Values`_ template, without writing the standard output.
+
+.. literalinclude:: ../test/tutorial_render_simple.cpp
+   :language: c++
+   :linenos:
+   :emphasize-lines: 11,16
+   :caption: tutorial_render_simple.cpp
+
+
+In line 11 we call :cpp:func:`Bench::output() <ankerl::nanobench::Bench::output()>` with ``nullptr``, thus disabling the standard output.
+
+After the benchmark we directly call :cpp:func:`Bench::render() <ankerl::nanobench::Bench::render()>` in line 16. Here we use the 
+CSV template, and write the rendered output to ``std::cout``. When running, we get just the CSV output to the console which looks like this:
+
+.. literalinclude:: ../docs/tutorial_render_simple.txt
+   :language: text
+
+Nanobench comes with a few preconfigured templates, residing in the namespace ``ankerl::nanobench::templates``. To demonstrate what these templates can do,
+here is an simple example that benchmarks two random generators ``std::mt19937_64`` and ``std::knuth_b`` and prints both the template and the rendered
+output:
 
 .. literalinclude:: ../test/tutorial_mustache.cpp
    :language: c++
@@ -320,14 +339,14 @@ The function :cpp:func:`ankerl::nanobench::templates::csv` provides this templat
 
 This generates a compact CSV file, where entries are separated by a semicolon `;`. Run with the example, I get this output:
 
-.. literalinclude:: mustache.output.csv
+.. literalinclude:: mustache.render.csv
    :language: text
    :linenos:
 
 Rendered as CSV table:
 
 .. csv-table::
-   :file: mustache.output.csv
+   :file: mustache.render.csv
    :header-rows: 1
    :delim: ;
 
@@ -351,7 +370,7 @@ This generates a nice interactive boxplot, which gives a nice visual showcase of
 and the boxplot itself shows median, percentiles, and outliers. You'll might want to increase the default number of epochs for an even better visualization result.
 
 .. raw:: html
-   :file: mustache.output.html
+   :file: mustache.render.html
 
 
 .. _tutorial-template-json:
@@ -367,6 +386,6 @@ The :cpp:func:`ankerl::nanobench::templates::json` template gives everything, al
 
 This also gives the data from each separate :cpp:func:`ankerl::nanobench::Bench::epochs()`, not just the accumulated data as in the CSV template.
 
-.. literalinclude:: mustache.output.json
+.. literalinclude:: mustache.render.json
    :language: json
    :linenos:
