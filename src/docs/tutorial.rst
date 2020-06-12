@@ -297,7 +297,9 @@ Rendering Mustache-like Templates
 =================================
 
 Nanobench comes with a powerful `Mustache <https://mustache.github.io/>`_-like template mechanism to process the benchmark
-results into all kinds of formats. Several preconfigured format exist in the namespace ``ankerl::nanobench::templates``. Rendering these templates can be done
+results into all kinds of formats. You can find a full description of all possible tags at :cpp:func:`ankerl::nanobench::render()`.
+
+Several preconfigured format exist in the namespace ``ankerl::nanobench::templates``. Rendering these templates can be done
 with either :cpp:func:`ankerl::nanobench::render()`, or directly with :cpp:func:`ankerl::nanobench::Bench::render()`.
 
 The following example shows how to use the `CSV - Comma-Separated Values`_ template, without writing the standard output.

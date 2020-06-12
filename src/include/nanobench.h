@@ -122,28 +122,155 @@ class Result;
 class Rng;
 class BigO;
 
-/*!
-   @brief Renders output from a mustache-like template and benchmark results.
-
-   The templating facility here is heavily inspired by [mustache - logic-less templates](https://mustache.github.io/). It adds a few
-   more features that are necessary to get all of the captured data out of nanobench. Please read the excellent [mustache
-   manual](https://mustache.github.io/mustache.5.html) to see what this is all about.
-
+/**
+ * @brief Renders output from a mustache-like template and benchmark results.
+ *
+ * The templating facility here is heavily inspired by [mustache - logic-less templates](https://mustache.github.io/).
+ * It adds a few more features that are necessary to get all of the captured data out of nanobench. Please read the
+ * excellent [mustache manual](https://mustache.github.io/mustache.5.html) to see what this is all about.
+ *
+ * nanobench output has two nested layers, *result* and *measurement*.  Here is a hierarchy of the allowed tags:
+ *
+ * * `{{#result}}` Marks the begin of the result layer. Whatever comes after this will be instantiated as often as
+ *   a benchmark result is available. Within it, you can use these tags:
+ *
+ *    * `{{title}}` See Bench::title().
+ *
+ *    * `{{name}}` Benchmark name, usually directly provided with Bench::run(), but can also be set with Bench::name().
+ *
+ *    * `{{unit}}` Unit, e.g. `byte`. Defaults to `op`, see Bench::title().
+ *
+ *    * `{{batch}}` Batch size, see Bench::batch().
+ *
+ *    * `{{complexityN}}` Value used for asymptotic complexity calculation. See Bench::complexityN().
+ *
+ *    * `{{epochs}}` Number of epochs, see Bench::epochs().
+ *
+ *    * `{{clockResolution}}` Accuracy of the clock, i.e. what's the smallest time possible to measure with the clock.
+ *      For modern systems, this can be around 20 ns. This value is automatically determined by nanobench at the first
+ *      benchmark that is run, and used as a static variable throughout the application's runtime.
+ *
+ *    * `{{clockResolutionMultiple}}` Configuration multiplier for `clockResolution`. See Bench::clockResolutionMultiple().
+ *      This is the target runtime for each measurement (epoch). That means the more accurate your clock is, the faster
+ *      will be the benchmark. Basing the measurement's runtime on the clock resolution is the main reason why nanobench is so fast.
+ *
+ *    * `{{maxEpochTime}}` Configuration for a maximum time each measurement (epoch) is allowed to take. Note that at least
+ *      a single iteration will be performed, even when that takes longer than maxEpochTime. See Bench::maxEpochTime().
+ *
+ *    * `{{minEpochTime}}` Minimum epoch time, usually not set. See Bench::minEpochTime().
+ *
+ *    * `{{minEpochIterations}}` See Bench::minEpochIterations().
+ *
+ *    * `{{warmup}}` Number of iterations used before measuring starts. See Bench::warmup().
+ *
+ *    * `{{relative}}` True or false, depending on the setting you have used. See Bench::relative().
+ *
+ *    Apart from these tags, it is also possible to use some mathematical operations on the measurement data. The operations
+ *    are of the form `{{command(name)}}`.  Currently `name` can be one of `elapsed`, `iterations`. If performance counters
+ *    are available (currently only on current Linux systems), you also have `pagefaults`, `cpucycles`,
+ *    `contextswitches`, `instructions`, `branchinstructions`, and `branchmisses`. All the measuers (except `iterations`) are
+ *    provided for a single iteration (so `elapsed` is the time a single iteration took). The following tags are available:
+ *
+ *    * `{{median(<name>>)}}` Calculate median of a measurement data set, e.g. `{{median(elapsed)}}`.
+ *
+ *    * `{{average(<name>)}}` Average (mean) calculation.
+ *
+ *    * `{{medianAbsolutePercentError(<name>)}}` Calculates MdAPE, the Median Absolute Percentage Error. The MdAPE is an excellent
+ *      metric for the variation of measurements. It is more robust to outliers than the [Mean absolute percentage error
+ (MAPE)](https://en.wikipedia.org/wiki/Mean_absolute_percentage_error).
+ *      @f[
+ *       \mathrm{medianAbsolutePercentError}(e) = \mathrm{median}\{| \frac{e_i - \mathrm{median}\{e\}}{e_i}| \}
+ *      @f]
+ *      E.g. for *elapsed*: First, @f$ \mathrm{median}\{elapsed\} @f$ is calculated. This is used to calculate the absolute percentage
+ error to this median
+ *      for each measurement, as in  @f$ | \frac{e_i - \mathrm{median}\{e\}}{e_i}| @f$. All these results are sorted, and the middle
+ value is chosen
+ *      as the median absolute percent error.
+ *
+ *      This measurement is a bit hard to interpret, but it is very robust against outliers. E.g. a value of 5% means that half of the
+ *      measurements deviate less than 5% from the median, and the other deviate more than 5% from the median.
+ *
+ *    * `{{sum(<name>)}}` Sums of all the measurements. E.g. `{{sum(iterations)}}` will give you the total number of iterations
+ measured in this benchmark.
+ *
+ *    * `{{minimum(<name>)}}` Minimum of all measurements.
+ *
+ *    * `{{maximum(<name>)}}` Maximum of all measurements.
+ *
+ *    * `{{sumProduct(<first>, <second>)}}` Calculates the sum of the products of corresponding measures:
+ *      @f[
+ *          \mathrm{sumProduct}(a,b) = \sum_{i=1}^{n}a_i\cdot b_i
+ *      @f]
+ *      E.g. to calculate total runtime of the benchmark, you multiply iterations with elapsed time for each measurement, and sum these
+ results up:
+ *      `{{sumProduct(iterations, elapsed)}}`.
+ *
+ *    * `{{#measurement}}` To access individual measurement results, open the begin tag for measurements.
+ *
+ *       * `{{elapsed}}` Average elapsed time per iteration, in seconds.
+ *
+ *       * `{{iterations}}` Number of iterations in the measurement. The number of iterations will fluctuate due to some applied
+ randomness, to enhance
+ *         accuracy.
+ *
+ *       * `{{pagefaults}}` Average number of pagefaults per iteration.
+ *
+ *       * `{{cpucycles}}` Average number of CPU cycles processed per iteration.
+ *
+ *       * `{{contextswitches}}` Average number of context switches per iteration.
+ *
+ *       * `{{instructions}}` Average number of retired instructions per iteration.
+ *
+ *       * `{{branchinstructions}}` Average number of branches executed per iteration.
+ *
+ *       * `{{branchmisses}}` Average number of branches that were missed per iteration.
+ *
+ *    * `{{/measurement}}` Ends the measurement tag.
+ *
+ * * `{{/result}}` Marks the end of the result layer. This is the end marker for the template part that will be instantiated
+ *   for each benchmark result.
+ *
+ *
+ *  For the layer tags *result* and *measurement* you additionally can use these special markers:
+ *
+ *  * ``{{#-first}}`` - Begin marker of a template that will be instantiated *only for the first* entry in the layer. Use is only
+ *    allowed between the begin and end marker of the layer allowed. So between ``{{#result}}`` and ``{{/result}}``, or between
+ *    ``{{#measurement}}`` and ``{{/measurement}}``. Finish the template with ``{{/-first}}``.
+ *
+ *  * ``{{^-first}}`` - Begin marker of a template that will be instantiated *for each except the first* entry in the layer. This,
+ *    this is basically the inversion of ``{{#-first}}``. Use is only allowed between the begin and end marker of the layer allowed.
+ *    So between ``{{#result}}`` and ``{{/result}}``, or between ``{{#measurement}}`` and ``{{/measurement}}``.
+ *
+ *  * ``{{/-first}}`` - End marker for either ``{{#-first}}`` or ``{{^-first}}``.
+ *
+ *  * ``{{#-last}}`` - Begin marker of a template that will be instantiated *only for the last* entry in the layer. Use is only
+ *    allowed between the begin and end marker of the layer allowed. So between ``{{#result}}`` and ``{{/result}}``, or between
+ *    ``{{#measurement}}`` and ``{{/measurement}}``. Finish the template with ``{{/-last}}``.
+ *
+ *  * ``{{^-last}}`` - Begin marker of a template that will be instantiated *for each except the last* entry in the layer. This,
+ *    this is basically the inversion of ``{{#-last}}``. Use is only allowed between the begin and end marker of the layer allowed.
+ *    So between ``{{#result}}`` and ``{{/result}}``, or between ``{{#measurement}}`` and ``{{/measurement}}``.
+ *
+ *  * ``{{/-last}}`` - End marker for either ``{{#-last}}`` or ``{{^-last}}``.
+ *
+ *
+ *  Each layer can b
+ *
    @verbatim embed:rst
 
    For an overview of all the possible data you can get out of nanobench, please see the tutorial at :ref:`tutorial-template-json`.
 
    The templates that ship with nanobench are:
-   
+
    * :cpp:func:`templates::csv() <ankerl::nanobench::templates::csv()>`
    * :cpp:func:`templates::json() <ankerl::nanobench::templates::json()>`
    * :cpp:func:`templates::htmlBoxplot() <ankerl::nanobench::templates::htmlBoxplot()>`
 
    @endverbatim
-
-   @param mustacheTemplate The template.
-   @param bench Benchmark, containing all the results.
-   @param out Output for the generated output.
+ *
+ * @param mustacheTemplate The template.
+ * @param bench Benchmark, containing all the results.
+ * @param out Output for the generated output.
  */
 void render(char const* mustacheTemplate, Bench const& bench, std::ostream& out);
 
@@ -765,8 +892,12 @@ public:
     template <typename Op>
     BigO complexityBigO(std::string const& name, Op op) const;
 
-    /**
-     * Convenience wrapper for `ankerl::nanobench::render()`.
+    /*!
+      @verbatim embed:rst
+
+      Convenience shortcut to :cpp:func:`ankerl::nanobench::render`.
+
+      @endverbatim
      */
     Bench& render(char const* templateContent, std::ostream& os);
 
