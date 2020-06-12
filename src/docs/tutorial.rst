@@ -314,7 +314,7 @@ In line 11 we call :cpp:func:`Bench::output() <ankerl::nanobench::Bench::output(
 After the benchmark we directly call :cpp:func:`Bench::render() <ankerl::nanobench::Bench::render()>` in line 16. Here we use the 
 CSV template, and write the rendered output to ``std::cout``. When running, we get just the CSV output to the console which looks like this:
 
-.. literalinclude:: ../docs/tutorial_render_simple.txt
+.. literalinclude:: _generated/tutorial_render_simple.txt
    :language: text
 
 Nanobench comes with a few preconfigured templates, residing in the namespace ``ankerl::nanobench::templates``. To demonstrate what these templates can do,
@@ -333,20 +333,20 @@ CSV - Comma-Separated Values
 
 The function :cpp:func:`ankerl::nanobench::templates::csv` provides this template:
 
-.. literalinclude:: mustache.template.csv
+.. literalinclude:: _generated/mustache.template.csv
    :language: text
    :linenos:
 
 This generates a compact CSV file, where entries are separated by a semicolon `;`. Run with the example, I get this output:
 
-.. literalinclude:: mustache.render.csv
+.. literalinclude:: _generated/mustache.render.csv
    :language: text
    :linenos:
 
 Rendered as CSV table:
 
 .. csv-table::
-   :file: mustache.render.csv
+   :file: _generated/mustache.render.csv
    :header-rows: 1
    :delim: ;
 
@@ -362,7 +362,7 @@ HTML Box Plots
 With the template :cpp:func:`ankerl::nanobench::templates::htmlBoxplot()` you get a `plotly <https://plotly.com/javascript/>`_ based HTML output which generates
 an boxplot of the runtime. The template is rather simple.
 
-.. literalinclude:: mustache.template.html
+.. literalinclude:: _generated/mustache.template.html
    :language: xml
    :linenos:
 
@@ -370,7 +370,7 @@ This generates a nice interactive boxplot, which gives a nice visual showcase of
 and the boxplot itself shows median, percentiles, and outliers. You'll might want to increase the default number of epochs for an even better visualization result.
 
 .. raw:: html
-   :file: mustache.render.html
+   :file: _generated/mustache.render.html
 
 
 .. _tutorial-template-json:
@@ -380,12 +380,12 @@ JSON - JavaScript Object Notation
 
 The :cpp:func:`ankerl::nanobench::templates::json` template gives everything, all data that is available, from all runs. The template is therefore quite complex:
 
-.. literalinclude:: mustache.template.json
+.. literalinclude:: _generated/mustache.template.json
    :language: text
    :linenos:
 
 This also gives the data from each separate :cpp:func:`ankerl::nanobench::Bench::epochs()`, not just the accumulated data as in the CSV template.
 
-.. literalinclude:: mustache.render.json
+.. literalinclude:: _generated/mustache.render.json
    :language: json
    :linenos:

@@ -1,6 +1,6 @@
-=============
-API Reference
-=============
+===============================
+``ankerl::nanobench`` Reference
+===============================
 
 .. How to link: https://breathe.readthedocs.io/en/latest/domains.html
    E.g. :cpp:class:`ankerl::nanobench::Bench`
