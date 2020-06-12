@@ -15,8 +15,8 @@ nanobench
 
    tutorial
    comparison
-   formatting
    reference
+   genindex
    license
 
 

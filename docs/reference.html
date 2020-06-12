@@ -38,8 +38,8 @@
   <link rel="stylesheet" href="_static/pygments.css" type="text/css" />
     <link rel="index" title="Index" href="genindex.html" />
     <link rel="search" title="Search" href="search.html" />
-    <link rel="next" title="License" href="license.html" />
-    <link rel="prev" title="Formatted Output" href="formatting.html" /> 
+    <link rel="next" title="Index" href="genindex.html" />
+    <link rel="prev" title="Comparison with Other Frameworks" href="comparison.html" /> 
 </head>
 
 <body class="wy-body-for-nav">
@@ -147,7 +147,6 @@
 </li>
 </ul>
 </li>
-<li class="toctree-l1"><a class="reference internal" href="formatting.html">Formatted Output</a></li>
 <li class="toctree-l1 current"><a class="current reference internal" href="#"><code class="docutils literal notranslate"><span class="pre">ankerl::nanobench</span></code> Reference</a><ul>
 <li class="toctree-l2"><a class="reference internal" href="#bench-main-entry-point"><code class="xref cpp cpp-class docutils literal notranslate"><span class="pre">Bench</span></code> - Main Entry Point</a></li>
 <li class="toctree-l2"><a class="reference internal" href="#rng-extremely-fast-prng"><code class="xref cpp cpp-class docutils literal notranslate"><span class="pre">Rng</span></code> - Extremely fast PRNG</a></li>
@@ -163,9 +162,9 @@
 <li class="toctree-l3"><a class="reference internal" href="#nanobench-endless"><code class="docutils literal notranslate"><span class="pre">NANOBENCH_ENDLESS</span></code></a></li>
 </ul>
 </li>
-<li class="toctree-l2"><a class="reference internal" href="#generated-index">Generated Index</a></li>
 </ul>
 </li>
+<li class="toctree-l1"><a class="reference internal" href="genindex.html">Index</a></li>
 <li class="toctree-l1"><a class="reference internal" href="license.html">License</a></li>
 </ul>
 
@@ -826,9 +825,10 @@ generator becomes available, I will switch the implementation.</p>
 </div>
 <p>When your app runs it will run all benchmark normally, but when it encounters a benchmarked named <code class="docutils literal notranslate"><span class="pre">x</span> <span class="pre">+=</span> <span class="pre">x</span></code>, it will run this one endlessly.
 It will print in nice friendly letters</p>
-<div class="highlight-text notranslate"><div class="highlight"><pre><span></span>NANOBENCH_ENDLESS set: running &#39;x += x&#39; endlessly`` once it reaches that state.
+<div class="highlight-text notranslate"><div class="highlight"><pre><span></span>NANOBENCH_ENDLESS set: running &#39;x += x&#39; endlessly
 </pre></div>
 </div>
+<p>once it reaches that state.</p>
 <div class="admonition warning">
 <p class="admonition-title">Warning</p>
 <p>For optimal profiling with <code class="docutils literal notranslate"><span class="pre">perf</span></code>, you shouldn’t use <code class="docutils literal notranslate"><span class="pre">pyperf</span> <span class="pre">system</span> <span class="pre">tune</span></code> in the endless mode. PyPerf dramatically reduces the
@@ -836,10 +836,6 @@ number of events that can be captured per second. This is a good to get accurate
 you actually want to use perf to analyze hotspots.</p>
 </div>
 </div>
-</div>
-<div class="section" id="generated-index">
-<h2>Generated Index<a class="headerlink" href="#generated-index" title="Permalink to this headline">¶</a></h2>
-<p>Index for the nanobench API: <a class="reference internal" href="genindex.html"><span class="std std-ref">Index</span></a>.</p>
 </div>
 </div>
 
@@ -851,10 +847,10 @@ you actually want to use perf to analyze hotspots.</p>
   
     <div class="rst-footer-buttons" role="navigation" aria-label="footer navigation">
       
-        <a href="license.html" class="btn btn-neutral float-right" title="License" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right"></span></a>
+        <a href="genindex.html" class="btn btn-neutral float-right" title="Index" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right"></span></a>
       
       
-        <a href="formatting.html" class="btn btn-neutral float-left" title="Formatted Output" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left"></span> Previous</a>
+        <a href="comparison.html" class="btn btn-neutral float-left" title="Comparison with Other Frameworks" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left"></span> Previous</a>
       
     </div>
   

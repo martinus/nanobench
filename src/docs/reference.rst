@@ -89,7 +89,9 @@ It will print in nice friendly letters
 
 .. code-block:: text
 
-   NANOBENCH_ENDLESS set: running 'x += x' endlessly`` once it reaches that state.
+   NANOBENCH_ENDLESS set: running 'x += x' endlessly
+   
+once it reaches that state.
 
 
 .. warning::
@@ -98,10 +100,3 @@ It will print in nice friendly letters
     number of events that can be captured per second. This is a good to get accurate benchmark numbers from nanobench, but a bad when
     you actually want to use perf to analyze hotspots.
 
-
-
----------------
-Generated Index
----------------
-
-Index for the nanobench API: :ref:`genindex`. 
