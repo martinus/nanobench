@@ -234,7 +234,7 @@
 <dl class="simple">
 <dt>Fast</dt><dd><p>Benchmarks <code class="docutils literal notranslate"><span class="pre">x</span> <span class="pre">+=</span> <span class="pre">x</span></code>, starting from 1. This is a single instruction, and prone to be optimized away.</p>
 </dd>
-<dt>Slow</dt><dd><p>Benchmarks <code class="docutils literal notranslate"><span class="pre">std::this_thread::sleep_for(std::chrono::milliseconds(10))</span></code>. For a microbenchmark this
+<dt>Slow</dt><dd><p>Benchmarks <code class="docutils literal notranslate"><span class="pre">std::this_thread::sleep_for(10ms)</span></code>. For a microbenchmark this
 is very slow, and it is interesting how the framework’s autotuning deals with this.</p>
 </dd>
 <dt>Fluctuating</dt><dd><p>A microbenchark that is tuned so that each evaluation takes a different time. This is fluctuating runtime

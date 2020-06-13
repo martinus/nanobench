@@ -8,7 +8,7 @@ Fast
     Benchmarks ``x += x``, starting from 1. This is a single instruction, and prone to be optimized away.
 
 Slow
-    Benchmarks ``std::this_thread::sleep_for(std::chrono::milliseconds(10))``. For a microbenchmark this
+    Benchmarks ``std::this_thread::sleep_for(10ms)``. For a microbenchmark this
     is very slow, and it is interesting how the framework's autotuning deals with this.
 
 Fluctuating

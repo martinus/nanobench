@@ -181,10 +181,11 @@ class BigO;
  *      metric for the variation of measurements. It is more robust to outliers than the
  *      [Mean absolute percentage error (M-APE)](https://en.wikipedia.org/wiki/Mean_absolute_percentage_error).
  *      @f[
- *       \mathrm{medianAbsolutePercentError}(e) = \mathrm{median}\{| \frac{e_i - \mathrm{median}\{e\}}{e_i}| \}
+ *       \mathrm{MdAPE}(e) = \mathrm{med}\{| \frac{e_i - \mathrm{med}\{e\}}{e_i}| \}
  *      @f]
- *      E.g. for *elapsed*: First, @f$ \mathrm{median}\{elapsed\} @f$ is calculated. This is used to calculate the absolute percentage
- *      error to this median for each measurement, as in  @f$ | \frac{e_i - \mathrm{median}\{e\}}{e_i}| @f$. All these results
+ *      E.g. for *elapsed*: First, @f$ \mathrm{med}\{e\} @f$ calculates the median by sorting and then taking the middle element
+ *      of all *elapsed* measurements. This is used to calculate the absolute percentage
+ *      error to this median for each measurement, as in  @f$ | \frac{e_i - \mathrm{med}\{e\}}{e_i}| @f$. All these results
  *      are sorted, and the middle value is chosen as the median absolute percent error.
  *
  *      This measurement is a bit hard to interpret, but it is very robust against outliers. E.g. a value of 5% means that half of the

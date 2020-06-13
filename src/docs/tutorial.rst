@@ -44,7 +44,11 @@ Quick Start
    The most important entry point is :cpp:class:`ankerl::nanobench::Bench`. It creates a benchmarking object,
    optionally configures it, and then runs the code to benchmark with :cpp:func:`run() <ankerl::nanobench::Bench::run()>`.
 
-#. Compile & link with ``g++ -O3 -I../include nanobench.o full_example.cpp -o full_example``. This takes just 0.5 seconds on my machine.
+#. Compile & link with 
+
+   .. code:: sh
+   
+      g++ -O3 -I../include nanobench.o full_example.cpp -o full_example``. This takes just 0.5 seconds on my machine.
 
 #. Run ``./full_example``, which gives an output like this:
 
