@@ -173,7 +173,7 @@ class BigO;
  *    `contextswitches`, `instructions`, `branchinstructions`, and `branchmisses`. All the measuers (except `iterations`) are
  *    provided for a single iteration (so `elapsed` is the time a single iteration took). The following tags are available:
  *
- *    * `{{median(<name>>)}}` Calculate median of a measurement data set, e.g. `{{median(elapsed)}}`.
+ *    * `{{median(<name>)}}` Calculate median of a measurement data set, e.g. `{{median(elapsed)}}`.
  *
  *    * `{{average(<name>)}}` Average (mean) calculation.
  *
