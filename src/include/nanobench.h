@@ -179,7 +179,7 @@ class BigO;
  *
  *    * `{{medianAbsolutePercentError(<name>)}}` Calculates MdAPE, the Median Absolute Percentage Error. The MdAPE is an excellent
  *      metric for the variation of measurements. It is more robust to outliers than the
- *      [Mean absolute percentage error (MAPE)](https://en.wikipedia.org/wiki/Mean_absolute_percentage_error).
+ *      [Mean absolute percentage error (M-APE)](https://en.wikipedia.org/wiki/Mean_absolute_percentage_error).
  *      @f[
  *       \mathrm{medianAbsolutePercentError}(e) = \mathrm{median}\{| \frac{e_i - \mathrm{median}\{e\}}{e_i}| \}
  *      @f]
@@ -512,7 +512,7 @@ public:
 
     /**
      * @brief Produces a 64bit random value. This should be very fast, thus it is marked as inline. In my benchmark, this is ~46 times
-     * faster than `std::default_random_engine` for producing 64bit random values. It seems that the fastest std contendor is
+     * faster than `std::default_random_engine` for producing 64bit random values. It seems that the fastest std contender is
      * `std::mt19937_64`. Still, this RNG is 2-3 times as fast.
      *
      * @return uint64_t The next 64 bit random value.
@@ -532,7 +532,7 @@ public:
      * See Daniel Lemire's blog post [A fast alternative to the modulo
      * reduction](https://lemire.me/blog/2016/06/27/a-fast-alternative-to-the-modulo-reduction/)
      *
-     * @param range Upper exlusive range. E.g a value of 3 will generate random numbers 0, 1, 2.
+     * @param range Upper exclusive range. E.g a value of 3 will generate random numbers 0, 1, 2.
      * @return uint32_t Generated random values in range [0, range(.
      */
     inline uint32_t bounded(uint32_t range) noexcept;
@@ -568,7 +568,7 @@ private:
 /**
  * @brief Main entry point to nanobench's benchmarking facility.
  *
- * It holds configuration and results fro one or more benchmark runs. Usually it is used in a single line, where the object is
+ * It holds configuration and results from one or more benchmark runs. Usually it is used in a single line, where the object is
  * constructed, configured, and then a benchmark is run. E.g. like this:
  *
  *     ankerl::nanobench::Bench().unit("byte").batch(1000).run("random fluctuations", [&] {
@@ -671,7 +671,7 @@ public:
      *
      * The default is `&std::cout`. You can disable all output by setting `nullptr`.
      *
-     * @param outstream Pointer to output stream, cann be `nullptr`.
+     * @param outstream Pointer to output stream, can be `nullptr`.
      */
     Bench& output(std::ostream* outstream) noexcept;
     ANKERL_NANOBENCH(NODISCARD) std::ostream* output() const noexcept;
@@ -834,7 +834,7 @@ public:
       Sets N for asymptotic complexity calculation, so it becomes possible to calculate `Big O
       <https://en.wikipedia.org/wiki/Big_O_notation>`_ from multiple benchmark evaluations.
 
-      Use :cpp:func:`ankerl::nanobench::Bench::complexityBigO` when the evalation has finished. See the tutorial
+      Use :cpp:func:`ankerl::nanobench::Bench::complexityBigO` when the evaluation has finished. See the tutorial
       :ref:`asymptotic-complexity` for details.
 
       @endverbatim
@@ -930,7 +930,7 @@ ANKERL_NANOBENCH(IGNORE_PADDED_POP)
  * @brief Makes sure none of the given arguments are optimized away by the compiler.
  *
  * @tparam Arg Type of the argument that shouldn't be optimized away.
- * @param arg The input that we mark as beeing used, even though we don't do anything with it.
+ * @param arg The input that we mark as being used, even though we don't do anything with it.
  */
 template <typename Arg>
 void doNotOptimizeAway(Arg&& arg);
@@ -966,8 +966,8 @@ typename std::enable_if<doNotOptimizeNeedsIndirect<T>()>::type doNotOptimizeAway
 #endif
 
 // internally used, but visible because run() is templated.
-// Not movable/copyable, so we simply use a pointer instead of unique_ptr. This saves us from
-// having to include <memory>, and the template instantation overhead of unique_ptr which is unfortunately quite significant.
+// Not movable/copy-able, so we simply use a pointer instead of unique_ptr. This saves us from
+// having to include <memory>, and the template instantiation overhead of unique_ptr which is unfortunately quite significant.
 ANKERL_NANOBENCH(IGNORE_EFFCPP_PUSH)
 class IterationLogic {
 public:
@@ -1262,8 +1262,8 @@ template <typename T>
 inline double d(T t) noexcept {
     return static_cast<double>(t);
 }
-inline double d(Clock::duration dur) noexcept {
-    return std::chrono::duration_cast<std::chrono::duration<double>>(dur).count();
+inline double d(Clock::duration duration) noexcept {
+    return std::chrono::duration_cast<std::chrono::duration<double>>(duration).count();
 }
 
 // Calculates clock resolution once, and remembers the result
