@@ -1962,7 +1962,7 @@ ANKERL_NANOBENCH(IGNORE_PADDED_PUSH)
 struct IterationLogic::Impl {
     enum class State { warmup, upscaling_runtime, measuring, endless };
 
-    Impl(Bench const& bench)
+    explicit Impl(Bench const& bench)
         : mBench(bench)
         , mResult(bench.config()) {
         printStabilityInformationOnce(mBench.output());
