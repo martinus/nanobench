@@ -161,6 +161,8 @@ class BigO;
  *
  *    * `{{minEpochIterations}}` See Bench::minEpochIterations().
  *
+ *    * `{{epochIterations}}` See Bench::epochIterations().
+ *
  *    * `{{warmup}}` Number of iterations used before measuring starts. See Bench::warmup().
  *
  *    * `{{relative}}` True or false, depending on the setting you have used. See Bench::relative().
@@ -279,7 +281,7 @@ void render(char const* mustacheTemplate, Bench const& bench, std::ostream& out)
  * you only have results available.
  *
  * @param mustacheTemplate The template.
- * @param bench Benchmark, containing all the results.
+ * @param results All the results to be used for rendering.
  * @param out Output for the generated output.
  */
 void render(char const* mustacheTemplate, std::vector<Result> const& results, std::ostream& out);
@@ -370,6 +372,7 @@ struct Config {
     std::chrono::nanoseconds mMaxEpochTime = std::chrono::milliseconds(100);
     std::chrono::nanoseconds mMinEpochTime{};
     uint64_t mMinEpochIterations{1};
+    uint64_t mEpochIterations{0}; // If not 0, run *exactly* these number of iterations per epoch.
     uint64_t mWarmup = 0;
     std::ostream* mOut = nullptr;
     bool mShowPerformanceCounters = true;
@@ -758,6 +761,15 @@ public:
      */
     Bench& minEpochIterations(uint64_t numIters) noexcept;
     ANKERL_NANOBENCH(NODISCARD) uint64_t minEpochIterations() const noexcept;
+
+    /**
+     * Sets exactly the number of iterations for each epoch. Ignores all other epoch limits. This forces nanobench to use exactly
+     * the given number of iterations for each epoch, not more and not less. Default is 0 (disabled).
+     *
+     * @param numIters Exact number of iterations to use. Set to 0 to disable.
+     */
+    Bench& epochIterations(uint64_t numIters) noexcept;
+    ANKERL_NANOBENCH(NODISCARD) uint64_t epochIterations() const noexcept;
 
     /**
      * @brief Sets a number of iterations that are initially performed without any measurements.
@@ -1315,6 +1327,7 @@ char const* json() noexcept {
             "maxEpochTime": {{maxEpochTime}},
             "minEpochTime": {{minEpochTime}},
             "minEpochIterations": {{minEpochIterations}},
+            "epochIterations": {{epochIterations}},
             "warmup": {{warmup}},
             "relative": {{relative}},
             "median(elapsed)": {{median(elapsed)}},
@@ -1489,6 +1502,9 @@ static bool generateConfigTag(Node const& n, Config const& config, std::ostream&
         return true;
     } else if (n == "minEpochIterations") {
         out << config.mMinEpochIterations;
+        return true;
+    } else if (n == "epochIterations") {
+        out << config.mEpochIterations;
         return true;
     } else if (n == "warmup") {
         out << config.mWarmup;
@@ -1973,6 +1989,10 @@ struct IterationLogic::Impl {
         } else if (0 != mBench.warmup()) {
             mNumIters = mBench.warmup();
             mState = State::warmup;
+        } else if (0 != mBench.epochIterations()) {
+            // exact number of iterations
+            mNumIters = mBench.epochIterations();
+            mState = State::measuring;
         } else {
             mNumIters = mBench.minEpochIterations();
             mState = State::upscaling_runtime;
@@ -2049,7 +2069,11 @@ struct IterationLogic::Impl {
             mTotalElapsed += elapsed;
             mTotalNumIters += mNumIters;
             mResult.add(elapsed, mNumIters, pc);
-            mNumIters = calcBestNumIters(mTotalElapsed, mTotalNumIters);
+            if (0 != mBench.epochIterations()) {
+                mNumIters = mBench.epochIterations();
+            } else {
+                mNumIters = calcBestNumIters(mTotalElapsed, mTotalNumIters);
+            }
             break;
 
         case State::endless:
@@ -3021,6 +3045,14 @@ Bench& Bench::minEpochIterations(uint64_t numIters) noexcept {
 }
 uint64_t Bench::minEpochIterations() const noexcept {
     return mConfig.mMinEpochIterations;
+}
+
+Bench& Bench::epochIterations(uint64_t numIters) noexcept {
+    mConfig.mEpochIterations = numIters;
+    return *this;
+}
+uint64_t Bench::epochIterations() const noexcept {
+    return mConfig.mEpochIterations;
 }
 
 Bench& Bench::warmup(uint64_t numWarmupIters) noexcept {

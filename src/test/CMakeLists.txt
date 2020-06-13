@@ -27,6 +27,7 @@ target_sources_local(nb PRIVATE
     tutorial_mustache.cpp
     tutorial_render_simple.cpp    
     unit_api.cpp
+    unit_exact_iters_and_epochs.cpp
     unit_romutrio.cpp
     unit_to_s.cpp
 )
