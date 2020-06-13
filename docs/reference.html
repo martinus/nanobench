@@ -434,6 +434,19 @@ this has a small overhead.</p>
 </dd></dl>
 
 <dl class="cpp function">
+<dt id="_CPPv4N6ankerl9nanobench5Bench15epochIterationsE8uint64_t">
+<span id="_CPPv3N6ankerl9nanobench5Bench15epochIterationsE8uint64_t"></span><span id="_CPPv2N6ankerl9nanobench5Bench15epochIterationsE8uint64_t"></span><span id="ankerl::nanobench::Bench::epochIterations__uint64_t"></span><span class="target" id="classankerl_1_1nanobench_1_1Bench_1a6fe98489a292b5181f0edeec6cc6f552"></span><a class="reference internal" href="#_CPPv4N6ankerl9nanobench5BenchE" title="ankerl::nanobench::Bench">Bench</a> &amp;<code class="sig-name descname">epochIterations</code><span class="sig-paren">(</span>uint64_t <em>numIters</em><span class="sig-paren">)</span> <em class="property">noexcept</em><a class="headerlink" href="#_CPPv4N6ankerl9nanobench5Bench15epochIterationsE8uint64_t" title="Permalink to this definition">¶</a><br /></dt>
+<dd><p>Sets exactly the number of iterations for each epoch. Ignores all other epoch limits. This forces nanobench to use exactly the given number of iterations for each epoch, not more and not less. Default is 0 (disabled).</p>
+<p><dl class="simple">
+<dt><strong>Parameters</strong></dt><dd><ul class="breatheparameterlist simple">
+<li><p><code class="docutils literal notranslate"><span class="pre">numIters</span></code>: Exact number of iterations to use. Set to 0 to disable. </p></li>
+</ul>
+</dd>
+</dl>
+</p>
+</dd></dl>
+
+<dl class="cpp function">
 <dt id="_CPPv4N6ankerl9nanobench5Bench6warmupE8uint64_t">
 <span id="_CPPv3N6ankerl9nanobench5Bench6warmupE8uint64_t"></span><span id="_CPPv2N6ankerl9nanobench5Bench6warmupE8uint64_t"></span><span id="ankerl::nanobench::Bench::warmup__uint64_t"></span><span class="target" id="classankerl_1_1nanobench_1_1Bench_1accdef04b3e0e72ef4b231246fcba09cd"></span><a class="reference internal" href="#_CPPv4N6ankerl9nanobench5BenchE" title="ankerl::nanobench::Bench">Bench</a> &amp;<code class="sig-name descname">warmup</code><span class="sig-paren">(</span>uint64_t <em>numWarmupIters</em><span class="sig-paren">)</span> <em class="property">noexcept</em><a class="headerlink" href="#_CPPv4N6ankerl9nanobench5Bench6warmupE8uint64_t" title="Permalink to this definition">¶</a><br /></dt>
 <dd><p>Sets a number of iterations that are initially performed without any measurements. </p>
@@ -769,6 +782,7 @@ generator becomes available, I will switch the implementation.</p>
 <li><p><code class="docutils literal notranslate"><span class="pre">{{maxEpochTime}}</span></code> Configuration for a maximum time each measurement (epoch) is allowed to take. Note that at least a single iteration will be performed, even when that takes longer than maxEpochTime. See <a class="reference internal" href="#classankerl_1_1nanobench_1_1Bench_1ae2b5c8f02fc7cf334d6df1164c921f63"><span class="std std-ref">Bench::maxEpochTime()</span></a>.</p></li>
 <li><p><code class="docutils literal notranslate"><span class="pre">{{minEpochTime}}</span></code> Minimum epoch time, usually not set. See <a class="reference internal" href="#classankerl_1_1nanobench_1_1Bench_1a56dee1b8d68c9c4baea428e89cca14dc"><span class="std std-ref">Bench::minEpochTime()</span></a>.</p></li>
 <li><p><code class="docutils literal notranslate"><span class="pre">{{minEpochIterations}}</span></code> See <a class="reference internal" href="#classankerl_1_1nanobench_1_1Bench_1a46f034f150aa76e461fe78ad91415b0e"><span class="std std-ref">Bench::minEpochIterations()</span></a>.</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">{{epochIterations}}</span></code> See <a class="reference internal" href="#classankerl_1_1nanobench_1_1Bench_1a6fe98489a292b5181f0edeec6cc6f552"><span class="std std-ref">Bench::epochIterations()</span></a>.</p></li>
 <li><p><code class="docutils literal notranslate"><span class="pre">{{warmup}}</span></code> Number of iterations used before measuring starts. See <a class="reference internal" href="#classankerl_1_1nanobench_1_1Bench_1accdef04b3e0e72ef4b231246fcba09cd"><span class="std std-ref">Bench::warmup()</span></a>.</p></li>
 <li><p><code class="docutils literal notranslate"><span class="pre">{{relative}}</span></code> True or false, depending on the setting you have used. See <a class="reference internal" href="#classankerl_1_1nanobench_1_1Bench_1a3e60a552d7fec6f7c0eb83358db9b911"><span class="std std-ref">Bench::relative()</span></a>.</p></li>
 </ul>
@@ -812,7 +826,6 @@ generator becomes available, I will switch the implementation.</p>
 <li><p><code class="docutils literal notranslate"><span class="pre">{{/-last}}</span></code> - End marker for either <code class="docutils literal notranslate"><span class="pre">{{#-last}}</span></code> or <code class="docutils literal notranslate"><span class="pre">{{^-last}}</span></code>.</p></li>
 </ul>
 </p>
-<p>Each layer can b</p>
 </li>
 </ul>
 </p>

@@ -46,7 +46,7 @@
 --------------------------------------------------------------------------
 
 
-.. doxygenfunction:: ankerl::nanobench::render
+.. doxygenfunction:: ankerl::nanobench::render(char const *mustacheTemplate, Bench const &bench, std::ostream &out)
 
 
 :cpp:func:`templates::csv <ankerl::nanobench::templates::csv>`

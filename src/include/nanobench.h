@@ -178,22 +178,20 @@ class BigO;
  *    * `{{average(<name>)}}` Average (mean) calculation.
  *
  *    * `{{medianAbsolutePercentError(<name>)}}` Calculates MdAPE, the Median Absolute Percentage Error. The MdAPE is an excellent
- *      metric for the variation of measurements. It is more robust to outliers than the [Mean absolute percentage error
- (MAPE)](https://en.wikipedia.org/wiki/Mean_absolute_percentage_error).
+ *      metric for the variation of measurements. It is more robust to outliers than the
+ *      [Mean absolute percentage error (MAPE)](https://en.wikipedia.org/wiki/Mean_absolute_percentage_error).
  *      @f[
  *       \mathrm{medianAbsolutePercentError}(e) = \mathrm{median}\{| \frac{e_i - \mathrm{median}\{e\}}{e_i}| \}
  *      @f]
  *      E.g. for *elapsed*: First, @f$ \mathrm{median}\{elapsed\} @f$ is calculated. This is used to calculate the absolute percentage
- error to this median
- *      for each measurement, as in  @f$ | \frac{e_i - \mathrm{median}\{e\}}{e_i}| @f$. All these results are sorted, and the middle
- value is chosen
- *      as the median absolute percent error.
+ *      error to this median for each measurement, as in  @f$ | \frac{e_i - \mathrm{median}\{e\}}{e_i}| @f$. All these results
+ *      are sorted, and the middle value is chosen as the median absolute percent error.
  *
  *      This measurement is a bit hard to interpret, but it is very robust against outliers. E.g. a value of 5% means that half of the
  *      measurements deviate less than 5% from the median, and the other deviate more than 5% from the median.
  *
  *    * `{{sum(<name>)}}` Sums of all the measurements. E.g. `{{sum(iterations)}}` will give you the total number of iterations
- measured in this benchmark.
+*        measured in this benchmark.
  *
  *    * `{{minimum(<name>)}}` Minimum of all measurements.
  *
@@ -203,17 +201,16 @@ class BigO;
  *      @f[
  *          \mathrm{sumProduct}(a,b) = \sum_{i=1}^{n}a_i\cdot b_i
  *      @f]
- *      E.g. to calculate total runtime of the benchmark, you multiply iterations with elapsed time for each measurement, and sum these
- results up:
+ *      E.g. to calculate total runtime of the benchmark, you multiply iterations with elapsed time for each measurement, and
+ *      sum these results up:
  *      `{{sumProduct(iterations, elapsed)}}`.
  *
  *    * `{{#measurement}}` To access individual measurement results, open the begin tag for measurements.
  *
  *       * `{{elapsed}}` Average elapsed time per iteration, in seconds.
  *
- *       * `{{iterations}}` Number of iterations in the measurement. The number of iterations will fluctuate due to some applied
- randomness, to enhance
- *         accuracy.
+ *       * `{{iterations}}` Number of iterations in the measurement. The number of iterations will fluctuate due
+ *         to some applied randomness, to enhance accuracy.
  *
  *       * `{{pagefaults}}` Average number of pagefaults per iteration.
  *
@@ -254,9 +251,6 @@ class BigO;
  *    So between ``{{#result}}`` and ``{{/result}}``, or between ``{{#measurement}}`` and ``{{/measurement}}``.
  *
  *  * ``{{/-last}}`` - End marker for either ``{{#-last}}`` or ``{{^-last}}``.
- *
- *
- *  Each layer can b
  *
    @verbatim embed:rst
 
