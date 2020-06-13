@@ -274,6 +274,16 @@ class BigO;
  */
 void render(char const* mustacheTemplate, Bench const& bench, std::ostream& out);
 
+/**
+ * Same as render(char const* mustacheTemplate, Bench const& bench, std::ostream& out), but for when
+ * you only have results available.
+ *
+ * @param mustacheTemplate The template.
+ * @param bench Benchmark, containing all the results.
+ * @param out Output for the generated output.
+ */
+void render(char const* mustacheTemplate, std::vector<Result> const& results, std::ostream& out);
+
 // Contains mustache-like templates
 namespace templates {
 
@@ -1728,7 +1738,7 @@ std::ostream& operator<<(std::ostream& os, MarkDownCode const& mdCode);
 namespace ankerl {
 namespace nanobench {
 
-void render(char const* mustacheTemplate, const Bench& bench, std::ostream& out) {
+void render(char const* mustacheTemplate, std::vector<Result> const& results, std::ostream& out) {
     detail::fmt::StreamStateRestorer restorer(out);
 
     out.precision(std::numeric_limits<double>::digits10);
@@ -1746,9 +1756,9 @@ void render(char const* mustacheTemplate, const Bench& bench, std::ostream& out)
 
         case templates::Node::Type::section:
             if (n == "result") {
-                const size_t nbResults = bench.results().size();
+                const size_t nbResults = results.size();
                 for (size_t i = 0; i < nbResults; ++i) {
-                    generateResult(n.children, i, bench.results(), out);
+                    generateResult(n.children, i, results, out);
                 }
             } else {
                 throw std::runtime_error("unknown section '" + std::string(n.begin, n.end) + "'");
@@ -1756,12 +1766,17 @@ void render(char const* mustacheTemplate, const Bench& bench, std::ostream& out)
             break;
 
         case templates::Node::Type::tag:
-            if (!generateConfigTag(n, bench.config(), out)) {
+            // This just uses the last result's config.
+            if (!generateConfigTag(n, results.back().config(), out)) {
                 throw std::runtime_error("unknown tag '" + std::string(n.begin, n.end) + "'");
             }
             break;
         }
     }
+}
+
+void render(char const* mustacheTemplate, const Bench& bench, std::ostream& out) {
+    render(mustacheTemplate, bench.results(), out);
 }
 
 namespace detail {
