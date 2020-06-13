@@ -232,26 +232,13 @@
 <h1>Tutorial<a class="headerlink" href="#tutorial" title="Permalink to this headline">¶</a></h1>
 <div class="section" id="installation">
 <h2>Installation<a class="headerlink" href="#installation" title="Permalink to this headline">¶</a></h2>
-<ol class="arabic">
-<li><p>Download <code class="docutils literal notranslate"><span class="pre">nanobench.h</span></code> from the releases and make it available
-in your project.</p></li>
-<li><p>Create a .cpp file, e.g. <code class="docutils literal notranslate"><span class="pre">nanobench.cpp</span></code>, where the bulk of
-nanobench is compiled:</p>
-<div class="highlight-c++ notranslate"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre>1
-2</pre></div></td><td class="code"><div class="highlight"><pre><span></span><span class="cp">#define ANKERL_NANOBENCH_IMPLEMENT</span>
-<span class="cp">#include</span> <span class="cpf">&lt;nanobench.h&gt;</span><span class="cp"></span>
-</pre></div>
-</td></tr></table></div>
-</li>
-<li><p>Wherever you want to use nanobench’s functionality, simply
-<code class="docutils literal notranslate"><span class="pre">#include</span> <span class="pre">&lt;nanobench.h&gt;</span></code>. All functionality resides within namespace
-<code class="docutils literal notranslate"><span class="pre">ankerl::nanobench</span></code>.</p></li>
-</ol>
+<p>Download <code class="docutils literal notranslate"><span class="pre">nanobench.h</span></code> from the <a class="reference download external" download="" href="https://github.com/martinus/nanobench/releases/latest"><code class="xref download docutils literal notranslate"><span class="pre">release</span></code></a>
+and make it available in your project.</p>
 </div>
 <div class="section" id="quick-start">
 <h2>Quick Start<a class="headerlink" href="#quick-start" title="Permalink to this headline">¶</a></h2>
 <ol class="arabic">
-<li><p>Create <cite>nanobench.cpp</cite>:</p>
+<li><p>Create a .cpp file, e.g. <code class="docutils literal notranslate"><span class="pre">nanobench.cpp</span></code>, where the bulk of nanobench is compiled.</p>
 <div class="literal-block-wrapper docutils container" id="id2">
 <div class="code-block-caption"><span class="caption-text">nanobench.cpp</span><a class="headerlink" href="#id2" title="Permalink to this code">¶</a></div>
 <div class="highlight-c++ notranslate"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre>1
@@ -261,9 +248,9 @@ nanobench is compiled:</p>
 </td></tr></table></div>
 </div>
 </li>
-<li><p>Compile with <code class="docutils literal notranslate"><span class="pre">g++</span> <span class="pre">-O3</span> <span class="pre">-I../include</span> <span class="pre">-c</span> <span class="pre">nanobench.cpp</span></code>. This compiles
-the bulk of nanobench, and took 3.37 seconds on my machine. It’s done only once.</p></li>
-<li><p>Create the actual benchmark code, in <cite>full_example.cpp</cite>:</p>
+<li><p>Compile e.g. with <code class="docutils literal notranslate"><span class="pre">g++</span> <span class="pre">-O3</span> <span class="pre">-I../include</span> <span class="pre">-c</span> <span class="pre">nanobench.cpp</span></code>. This compiles
+the bulk of nanobench, and took 2.4 seconds on my machine. It needs to be compiled only once whenever you upgrade nanobench.</p></li>
+<li><p>Create the actual benchmark code, in <code class="docutils literal notranslate"><span class="pre">full_example.cpp</span></code>:</p>
 <div class="literal-block-wrapper docutils container" id="id3">
 <div class="code-block-caption"><span class="caption-text">full_example.cpp</span><a class="headerlink" href="#id3" title="Permalink to this code">¶</a></div>
 <div class="highlight-c++ notranslate"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre> 1
@@ -290,13 +277,14 @@ the bulk of nanobench, and took 3.37 seconds on my machine. It’s done only onc
 </pre></div>
 </td></tr></table></div>
 </div>
-<p>The most important entry point is <a class="reference internal" href="reference.html#_CPPv4N6ankerl9nanobench5BenchE" title="ankerl::nanobench::Bench"><code class="xref cpp cpp-class docutils literal notranslate"><span class="pre">ankerl::nanobench::Bench</span></code></a>. It creates a benchmarking object,
+<p>The most important entry entry point is <a class="reference internal" href="reference.html#_CPPv4N6ankerl9nanobench5BenchE" title="ankerl::nanobench::Bench"><code class="xref cpp cpp-class docutils literal notranslate"><span class="pre">ankerl::nanobench::Bench</span></code></a>. It creates a benchmarking object,
 optionally configures it, and then runs the code to benchmark with <a class="reference internal" href="reference.html#_CPPv4I0EN6ankerl9nanobench5Bench3runER5BenchPKcRR2Op" title="ankerl::nanobench::Bench::run"><code class="xref cpp cpp-func docutils literal notranslate"><span class="pre">run()</span></code></a>.</p>
 </li>
-<li><p>Compile &amp; link with</p>
-<div class="highlight-sh notranslate"><div class="highlight"><pre><span></span>g++ -O3 -I../include nanobench.o full_example.cpp -o full_example<span class="sb">``</span>. This takes just <span class="m">0</span>.5 seconds on my machine.
+<li><p>Compile and link the example with</p>
+<div class="highlight-sh notranslate"><div class="highlight"><pre><span></span>g++ -O3 -I../include nanobench.o full_example.cpp -o full_example
 </pre></div>
 </div>
+<p>This takes just 0.28 seconds on my machine.</p>
 </li>
 <li><p>Run <code class="docutils literal notranslate"><span class="pre">./full_example</span></code>, which gives an output like this:</p>
 <div class="highlight-text notranslate"><div class="highlight"><pre><span></span>|               ns/op |                op/s |    err% |          ins/op |          cyc/op |    IPC |         bra/op |   miss% |     total | benchmark

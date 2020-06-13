@@ -6,49 +6,40 @@ Tutorial
 Installation
 ============
 
-1. Download ``nanobench.h`` from the releases and make it available
-   in your project.
-
-2. Create a .cpp file, e.g. ``nanobench.cpp``, where the bulk of
-   nanobench is compiled:
-
-   .. literalinclude:: ../test/app/nanobench.cpp
-      :language: c++
-      :linenos:
-
-3. Wherever you want to use nanobench’s functionality, simply
-   ``#include <nanobench.h>``. All functionality resides within namespace
-   ``ankerl::nanobench``.
+Download ``nanobench.h`` from the :download:`release <https://github.com/martinus/nanobench/releases/latest>`
+and make it available in your project.
 
 
 Quick Start
 ===========
 
-#. Create `nanobench.cpp`:
+#. Create a .cpp file, e.g. ``nanobench.cpp``, where the bulk of nanobench is compiled.
 
    .. literalinclude:: ../test/app/nanobench.cpp
       :language: c++
       :linenos:
       :caption: nanobench.cpp
 
-#. Compile with ``g++ -O3 -I../include -c nanobench.cpp``. This compiles
-   the bulk of nanobench, and took 3.37 seconds on my machine. It's done only once.
+#. Compile e.g. with ``g++ -O3 -I../include -c nanobench.cpp``. This compiles
+   the bulk of nanobench, and took 2.4 seconds on my machine. It needs to be compiled only once whenever you upgrade nanobench.
 
-#. Create the actual benchmark code, in `full_example.cpp`:
+#. Create the actual benchmark code, in ``full_example.cpp``:
 
    .. literalinclude:: ../scripts/full_example.cpp
       :language: c++
       :linenos:
       :caption: full_example.cpp
 
-   The most important entry point is :cpp:class:`ankerl::nanobench::Bench`. It creates a benchmarking object,
+   The most important entry entry point is :cpp:class:`ankerl::nanobench::Bench`. It creates a benchmarking object,
    optionally configures it, and then runs the code to benchmark with :cpp:func:`run() <ankerl::nanobench::Bench::run()>`.
 
-#. Compile & link with 
+#. Compile and link the example with 
 
    .. code:: sh
    
-      g++ -O3 -I../include nanobench.o full_example.cpp -o full_example``. This takes just 0.5 seconds on my machine.
+      g++ -O3 -I../include nanobench.o full_example.cpp -o full_example
+      
+   This takes just 0.28 seconds on my machine.
 
 #. Run ``./full_example``, which gives an output like this:
 
