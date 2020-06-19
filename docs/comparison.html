@@ -141,6 +141,11 @@
 <li class="toctree-l4"><a class="reference internal" href="#id15">Results</a></li>
 </ul>
 </li>
+<li class="toctree-l3"><a class="reference internal" href="#sltbench">sltbench</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="#id17">Sourcecode</a></li>
+<li class="toctree-l4"><a class="reference internal" href="#id18">Results</a></li>
+</ul>
+</li>
 <li class="toctree-l3"><a class="reference internal" href="#celero">Celero</a></li>
 <li class="toctree-l3"><a class="reference internal" href="#folly-benchmark">folly Benchmark</a></li>
 </ul>
@@ -248,16 +253,16 @@ is achieved by randomly producing 0-255 random numbers with <cite>std::mt19937_6
 <p>I wrote a little timing tool that measures how long exactly it takes to print benchmark output to the screen.
 With this I have measured the runtimes of major benchmarking frameworks which support automatic tuning of
 the number of iterations: <a class="reference internal" href="#comparison-google-benchmark"><span class="std std-ref">Google Benchmark</span></a>, <a class="reference internal" href="#comparison-catch2"><span class="std std-ref">Catch2</span></a>,
-<a class="reference internal" href="#comparison-nonius"><span class="std std-ref">nonius</span></a>, and of course <a class="reference internal" href="#comparison-nanobench"><span class="std std-ref">nanobench</span></a>.</p>
+<a class="reference internal" href="#comparison-nonius"><span class="std std-ref">nonius</span></a>, <a class="reference internal" href="#comparison-sltbench"><span class="std std-ref">sltbench</span></a>, and of course <a class="reference internal" href="#comparison-nanobench"><span class="std std-ref">nanobench</span></a>.</p>
 <div class="figure align-default">
 <img alt="Total Runtimes" src="_images/totalruntime.svg" /></div>
 <table class="docutils align-default">
 <colgroup>
-<col style="width: 37%" />
-<col style="width: 8%" />
-<col style="width: 10%" />
-<col style="width: 18%" />
+<col style="width: 31%" />
 <col style="width: 13%" />
+<col style="width: 13%" />
+<col style="width: 16%" />
+<col style="width: 14%" />
 <col style="width: 13%" />
 </colgroup>
 <thead>
@@ -291,12 +296,19 @@ the number of iterations: <a class="reference internal" href="#comparison-google
 <td><p>1.715</p></td>
 <td><p>5.010</p></td>
 </tr>
-<tr class="row-odd"><td><p>nanobench</p></td>
-<td><p>0.079</p></td>
-<td><p>0.112</p></td>
-<td><p>0.000</p></td>
-<td><p>0.001</p></td>
-<td><p>0.192</p></td>
+<tr class="row-odd"><td><p>sltbench</p></td>
+<td><p>0.202</p></td>
+<td><p>0.204</p></td>
+<td><p>0.203</p></td>
+<td><p>3.001</p></td>
+<td><p>3.610</p></td>
+</tr>
+<tr class="row-even"><td><p><strong>nanobench</strong></p></td>
+<td><p><strong>0.079</strong></p></td>
+<td><p><strong>0.112</strong></p></td>
+<td><p><strong>0.000</strong></p></td>
+<td><p><strong>0.001</strong></p></td>
+<td><p><strong>0.192</strong></p></td>
 </tr>
 </tbody>
 </table>
@@ -993,6 +1005,101 @@ no doNotOptimize, no output formatting. Get it here: <a class="reference externa
 0.000661384 sec random fluctuations
 </pre></div>
 </div>
+</div>
+</div>
+<div class="section" id="sltbench">
+<span id="comparison-sltbench"></span><h3>sltbench<a class="headerlink" href="#sltbench" title="Permalink to this headline">¶</a></h3>
+<p>C++ benchmark which seems to have similar intentions to nanonbech. It claims to be 4.7 times faster than googlebench.
+It requires to be compiled and linked. I initially got a compile error because of missing <code class="docutils literal notranslate"><span class="pre">&lt;cstdint&gt;</span></code> include.
+After that it compiled fine, and I created an example. I didn’t like that I had to use global variables for the state
+that I needed in my <code class="docutils literal notranslate"><span class="pre">ComparisonFast</span></code> and <code class="docutils literal notranslate"><span class="pre">ComparisonSlow</span></code> benchmark.</p>
+<p>Get it here: <a class="reference external" href="https://github.com/ivafanas/sltbench">sltbench</a></p>
+<p>Other</p>
+<div class="section" id="id17">
+<h4>Sourcecode<a class="headerlink" href="#id17" title="Permalink to this headline">¶</a></h4>
+<div class="highlight-c++ notranslate"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre> 1
+ 2
+ 3
+ 4
+ 5
+ 6
+ 7
+ 8
+ 9
+10
+11
+12
+13
+14
+15
+16
+17
+18
+19
+20
+21
+22
+23
+24
+25
+26
+27
+28
+29
+30
+31
+32
+33
+34
+35
+36</pre></div></td><td class="code"><div class="highlight"><pre><span></span><span class="cp">#include</span> <span class="cpf">&lt;sltbench/Bench.h&gt; // https://github.com/ivafanas/sltbench</span><span class="cp"></span>
+
+<span class="cp">#include</span> <span class="cpf">&lt;chrono&gt;</span><span class="cp"></span>
+<span class="cp">#include</span> <span class="cpf">&lt;random&gt;</span><span class="cp"></span>
+<span class="cp">#include</span> <span class="cpf">&lt;thread&gt;</span><span class="cp"></span>
+
+<span class="c1">// cmake build as online instructions describes</span>
+<span class="c1">//</span>
+<span class="c1">// g++ -O3 -I/home/martinus/git/sltbench/install/include -c main.cpp</span>
+<span class="c1">// g++ -o m -L/home/martinus/git/sltbench/install/lib main.o -lsltbench</span>
+
+<span class="kt">uint64_t</span> <span class="n">x</span> <span class="o">=</span> <span class="mi">1</span><span class="p">;</span>
+<span class="kt">void</span> <span class="nf">ComparisonFast</span><span class="p">()</span> <span class="p">{</span>
+    <span class="n">sltbench</span><span class="o">::</span><span class="n">DoNotOptimize</span><span class="p">(</span><span class="n">x</span> <span class="o">+=</span> <span class="n">x</span><span class="p">);</span>
+<span class="p">}</span>
+
+<span class="n">SLTBENCH_FUNCTION</span><span class="p">(</span><span class="n">ComparisonFast</span><span class="p">);</span>
+
+<span class="kt">void</span> <span class="nf">ComparisonSlow</span><span class="p">()</span> <span class="p">{</span>
+    <span class="n">std</span><span class="o">::</span><span class="n">this_thread</span><span class="o">::</span><span class="n">sleep_for</span><span class="p">(</span><span class="n">std</span><span class="o">::</span><span class="n">chrono</span><span class="o">::</span><span class="n">milliseconds</span><span class="p">(</span><span class="mi">10</span><span class="p">));</span>
+<span class="p">}</span>
+<span class="n">SLTBENCH_FUNCTION</span><span class="p">(</span><span class="n">ComparisonSlow</span><span class="p">);</span>
+
+<span class="n">std</span><span class="o">::</span><span class="n">random_device</span> <span class="n">dev</span><span class="p">;</span>
+<span class="n">std</span><span class="o">::</span><span class="n">mt19937_64</span> <span class="n">rng</span><span class="p">(</span><span class="n">dev</span><span class="p">());</span>
+
+<span class="kt">void</span> <span class="nf">ComparisonFluctuating</span><span class="p">()</span> <span class="p">{</span>
+    <span class="c1">// each run, perform a random number of rng calls</span>
+    <span class="k">auto</span> <span class="n">iterations</span> <span class="o">=</span> <span class="n">rng</span><span class="p">()</span> <span class="o">&amp;</span> <span class="n">UINT64_C</span><span class="p">(</span><span class="mh">0xff</span><span class="p">);</span>
+    <span class="k">for</span> <span class="p">(</span><span class="kt">uint64_t</span> <span class="n">i</span> <span class="o">=</span> <span class="mi">0</span><span class="p">;</span> <span class="n">i</span> <span class="o">&lt;</span> <span class="n">iterations</span><span class="p">;</span> <span class="o">++</span><span class="n">i</span><span class="p">)</span> <span class="p">{</span>
+        <span class="p">(</span><span class="kt">void</span><span class="p">)</span><span class="n">rng</span><span class="p">();</span>
+    <span class="p">}</span>
+<span class="p">}</span>
+<span class="n">SLTBENCH_FUNCTION</span><span class="p">(</span><span class="n">ComparisonFluctuating</span><span class="p">);</span>
+
+<span class="n">SLTBENCH_MAIN</span><span class="p">();</span>
+</pre></div>
+</td></tr></table></div>
+</div>
+<div class="section" id="id18">
+<h4>Results<a class="headerlink" href="#id18" title="Permalink to this headline">¶</a></h4>
+<div class="highlight-text notranslate"><div class="highlight"><pre><span></span>benchmark                                                   arg                      status               time(ns)
+ComparisonFast                                                                       ok                          1
+ComparisonFluctuating                                                                ok                         20
+ComparisonSlow                                                                       ok                   10055943
+</pre></div>
+</div>
+<p>Interestingly, the executable takes exactly 3 seconds startup time, then each benchmark runs for about 0.2 seconds.</p>
 </div>
 </div>
 <div class="section" id="celero">

@@ -28,19 +28,20 @@ Runtimes
 I wrote a little timing tool that measures how long exactly it takes to print benchmark output to the screen. 
 With this I have measured the runtimes of major benchmarking frameworks which support automatic tuning of
 the number of iterations: :ref:`Google Benchmark <comparison-google-benchmark>`, :ref:`Catch2 <comparison-catch2>`,
-:ref:`nonius <comparison-nonius>`, and of course :ref:`nanobench <comparison-nanobench>`.
+:ref:`nonius <comparison-nonius>`, :ref:`sltbench <comparison-sltbench>`, and of course :ref:`nanobench <comparison-nanobench>`.
 
 .. figure:: totalruntime.svg
    :alt: Total Runtimes
 
-======================  =====  ======   =========== ======== ========
-Benchmarking Framework  Fast   Slow     Fluctuating Overhead total
-======================  =====  ======   =========== ======== ========
-Google Benchmark        0.367  11.259    0.825       0.000    12.451
-Catch2                  1.004   2.074    0.966       1.737     5.782
-nonius                  0.741   1.815    0.740       1.715     5.010
-nanobench               0.079   0.112    0.000       0.001     0.192
-======================  =====  ======   =========== ======== ========
+======================  =========  =========  =========== ========== =========
+Benchmarking Framework  Fast       Slow       Fluctuating Overhead   total
+======================  =========  =========  =========== ========== =========
+Google Benchmark          0.367      11.259     0.825       0.000     12.451
+Catch2                    1.004       2.074     0.966       1.737      5.782
+nonius                    0.741       1.815     0.740       1.715      5.010
+sltbench                  0.202       0.204     0.203       3.001      3.610
+**nanobench**           **0.079**  **0.112**  **0.000**   **0.001**  **0.192**
+======================  =========  =========  =========== ========== =========
 
 Nanobench is clearly the fastest autotuning benchmarking framework, by an enormous margin.
 
@@ -200,6 +201,36 @@ Results
 .. literalinclude:: ../comparisons/cameron314_microbench/out.txt
     :language: text
 
+
+.. _`comparison-sltbench`:
+
+
+sltbench
+========
+
+C++ benchmark which seems to have similar intentions to nanonbech. It claims to be 4.7 times faster than googlebench.
+It requires to be compiled and linked. I initially got a compile error because of missing ``<cstdint>`` include.
+After that it compiled fine, and I created an example. I didn't like that I had to use global variables for the state
+that I needed in my ``ComparisonFast`` and ``ComparisonSlow`` benchmark.
+
+Get it here: `sltbench <https://github.com/ivafanas/sltbench>`_
+
+Other 
+
+Sourcecode
+----------
+
+.. literalinclude:: ../comparisons/ivafanas_sltbench/main.cpp
+    :language: c++
+    :linenos:
+
+Results
+-------
+
+.. literalinclude:: ../comparisons/ivafanas_sltbench/out.txt
+    :language: text
+
+Interestingly, the executable takes exactly 3 seconds startup time, then each benchmark runs for about 0.2 seconds.
 
 
 Celero
