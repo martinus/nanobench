@@ -11,8 +11,6 @@ To disable buffering in the input program, do e.g. this:
 struct InitCout { InitCout() { std::cout.setf(std::ios::unitbuf); } };
 InitCout initCout;
 
-
-
 */
 
 int main(int, char**) {
@@ -28,12 +26,11 @@ int main(int, char**) {
     while (std::getline(std::cin, line)) {
         auto now = Clock::now();
         auto t = std::chrono::duration<double>(now - begin).count();
-        std::cout << std::right << std::setw(12) << t << " | " << line
-                  << std::endl;
+        std::cout << std::right << std::setw(12) << t << " | " << line << "\n";
     }
 
     auto now = Clock::now();
     auto t = std::chrono::duration<double>(now - begin).count();
-    std::cout << "----------------+--------------\n"
+    std::cout << "-------------|\n"
               << std::right << std::setw(12) << t << " | total" << std::endl;
 }

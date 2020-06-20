@@ -211,11 +211,8 @@ sltbench
 C++ benchmark which seems to have similar intentions to nanonbech. It claims to be 4.7 times faster than googlebench.
 It requires to be compiled and linked. I initially got a compile error because of missing ``<cstdint>`` include.
 After that it compiled fine, and I created an example. I didn't like that I had to use global variables for the state
-that I needed in my ``ComparisonFast`` and ``ComparisonSlow`` benchmark.
-
-Get it here: `sltbench <https://github.com/ivafanas/sltbench>`_
-
-Other 
+that I needed in my ``ComparisonFast`` and ``ComparisonSlow`` benchmark. Get it
+here: `sltbench <https://github.com/ivafanas/sltbench>`_
 
 Sourcecode
 ----------
