@@ -12,7 +12,7 @@ Slow
 
 Fluctuating
     A microbenchark that is tuned so that each evaluation takes a different time. This is fluctuating runtime
-    is achieved by randomly producing 0-255 random numbers with `std::mt19937_64`.
+    is achieved by randomly producing 0-255 random numbers with ``std::mt19937_64``.
 
 
 All benchmarks are run on an i7-8700 CPU locked at 3.2GHz, using
