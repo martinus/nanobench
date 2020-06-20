@@ -11,7 +11,7 @@ Slow
     is very slow, and it is interesting how the framework's autotuning deals with this.
 
 Fluctuating
-    A microbenchark that is tuned so that each evaluation takes a different time. This is fluctuating runtime
+    A microbenchmark where each evaluation takes a different time. This randomly fluctuating runtime
     is achieved by randomly producing 0-255 random numbers with ``std::mt19937_64``.
 
 
