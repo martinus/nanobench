@@ -55,12 +55,10 @@ the benchmark with the name `some double ops` is **0.00**, so just a few millise
 
 # Documentation
 
-* [Tutorial](https://nanobench.ankerl.com/tutorial.html) - getting started
-* [Comparison](https://nanobench.ankerl.com/comparison.html) - comparison with other microbenchmark frameworks
-* [Reference](https://nanobench.ankerl.com/reference.html) - all the details
+[Extensive documentation is available](https://nanobench.ankerl.com).
 
 # More
 
-* [Code of Conduct](CODE_OF_CONDUCT.md) - Contributor Covenant Code of Conduct
+* [Code of Conduct](src/docs/CODE_OF_CONDUCT.md) - Contributor Covenant Code of Conduct
 * I need a better logo. Currently I use a small bench. Nanobench. Ha ha.
 

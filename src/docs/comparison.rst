@@ -1,7 +1,6 @@
-================================
-Comparison with Other Frameworks
-================================
-
+--------
+Test Set
+--------
 I've implemented the three different benchmarks: Fast, Slow, Fluctuating in several frameworks for comparison.
 
 Fast
@@ -18,7 +17,6 @@ Fluctuating
 
 All benchmarks are run on an i7-8700 CPU locked at 3.2GHz, using
 `pyperf system tune <https://pyperf.readthedocs.io/en/latest/system.html>`_.
-
 
 
 -------
@@ -45,9 +43,9 @@ sltbench                  0.202       0.204     0.203       3.001      3.610
 
 Nanobench is clearly the fastest autotuning benchmarking framework, by an enormous margin.
 
--------------------------
-Implementations & Results
--------------------------
+------------------------
+Implementations & Output
+------------------------
 
 .. _`comparison-nanobench`:
 

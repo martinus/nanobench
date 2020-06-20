@@ -8,7 +8,7 @@
   
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   
-  <title>Tutorial &mdash; nanobench  documentation</title>
+  <title>Installation &mdash; nanobench  documentation</title>
   
 
   
@@ -38,7 +38,7 @@
   <link rel="stylesheet" href="_static/pygments.css" type="text/css" />
     <link rel="index" title="Index" href="genindex.html" />
     <link rel="search" title="Search" href="search.html" />
-    <link rel="next" title="Comparison with Other Frameworks" href="comparison.html" />
+    <link rel="next" title="Test Set" href="comparison.html" />
     <link rel="prev" title="nanobench" href="index.html" /> 
 </head>
 
@@ -90,71 +90,72 @@
               
             
             
-              <p class="caption"><span class="caption-text">Table of Contents</span></p>
+              <p class="caption"><span class="caption-text">Getting Started</span></p>
 <ul class="current">
-<li class="toctree-l1 current"><a class="current reference internal" href="#">Tutorial</a><ul>
-<li class="toctree-l2"><a class="reference internal" href="#installation">Installation</a></li>
-<li class="toctree-l2"><a class="reference internal" href="#quick-start">Quick Start</a></li>
-<li class="toctree-l2"><a class="reference internal" href="#benchmarking">Benchmarking</a><ul>
-<li class="toctree-l3"><a class="reference internal" href="#something-fast">Something Fast</a></li>
-<li class="toctree-l3"><a class="reference internal" href="#something-slow">Something Slow</a></li>
-<li class="toctree-l3"><a class="reference internal" href="#something-unstable">Something Unstable</a></li>
+<li class="toctree-l1 current"><a class="current reference internal" href="#">Installation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="#quick-start">Quick Start</a></li>
+<li class="toctree-l1"><a class="reference internal" href="#examples">Examples</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="#something-fast">Something Fast</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#something-slow">Something Slow</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#something-unstable">Something Unstable</a></li>
 </ul>
 </li>
-<li class="toctree-l2"><a class="reference internal" href="#comparing-results">Comparing Results</a></li>
-<li class="toctree-l2"><a class="reference internal" href="#asymptotic-complexity">Asymptotic Complexity</a></li>
-<li class="toctree-l2"><a class="reference internal" href="#rendering-mustache-like-templates">Rendering Mustache-like Templates</a><ul>
-<li class="toctree-l3"><a class="reference internal" href="#csv-comma-separated-values">CSV - Comma-Separated Values</a></li>
-<li class="toctree-l3"><a class="reference internal" href="#html-box-plots">HTML Box Plots</a></li>
-<li class="toctree-l3"><a class="reference internal" href="#json-javascript-object-notation">JSON - JavaScript Object Notation</a></li>
-</ul>
-</li>
-</ul>
-</li>
-<li class="toctree-l1"><a class="reference internal" href="comparison.html">Comparison with Other Frameworks</a><ul>
-<li class="toctree-l2"><a class="reference internal" href="comparison.html#runtime">Runtime</a></li>
-<li class="toctree-l2"><a class="reference internal" href="comparison.html#implementations-results">Implementations &amp; Results</a><ul>
-<li class="toctree-l3"><a class="reference internal" href="comparison.html#nanobench">nanobench</a><ul>
-<li class="toctree-l4"><a class="reference internal" href="comparison.html#sourcecode">Sourcecode</a></li>
-<li class="toctree-l4"><a class="reference internal" href="comparison.html#results">Results</a></li>
-</ul>
-</li>
-<li class="toctree-l3"><a class="reference internal" href="comparison.html#google-benchmark">Google Benchmark</a><ul>
-<li class="toctree-l4"><a class="reference internal" href="comparison.html#id2">Sourcecode</a></li>
-<li class="toctree-l4"><a class="reference internal" href="comparison.html#id3">Results</a></li>
-</ul>
-</li>
-<li class="toctree-l3"><a class="reference internal" href="comparison.html#nonius">nonius</a><ul>
-<li class="toctree-l4"><a class="reference internal" href="comparison.html#id5">Sourcecode</a></li>
-<li class="toctree-l4"><a class="reference internal" href="comparison.html#id6">Results</a></li>
-</ul>
-</li>
-<li class="toctree-l3"><a class="reference internal" href="comparison.html#picobench">Picobench</a><ul>
-<li class="toctree-l4"><a class="reference internal" href="comparison.html#id8">Sourcecode</a></li>
-<li class="toctree-l4"><a class="reference internal" href="comparison.html#id9">Results</a></li>
-</ul>
-</li>
-<li class="toctree-l3"><a class="reference internal" href="comparison.html#catch2">Catch2</a><ul>
-<li class="toctree-l4"><a class="reference internal" href="comparison.html#id11">Sourcecode</a></li>
-<li class="toctree-l4"><a class="reference internal" href="comparison.html#id12">Results</a></li>
-</ul>
-</li>
-<li class="toctree-l3"><a class="reference internal" href="comparison.html#moodycamel-microbench">moodycamel::microbench</a><ul>
-<li class="toctree-l4"><a class="reference internal" href="comparison.html#id14">Sourcecode</a></li>
-<li class="toctree-l4"><a class="reference internal" href="comparison.html#id15">Results</a></li>
-</ul>
-</li>
-<li class="toctree-l3"><a class="reference internal" href="comparison.html#sltbench">sltbench</a><ul>
-<li class="toctree-l4"><a class="reference internal" href="comparison.html#id17">Sourcecode</a></li>
-<li class="toctree-l4"><a class="reference internal" href="comparison.html#id18">Results</a></li>
-</ul>
-</li>
-<li class="toctree-l3"><a class="reference internal" href="comparison.html#celero">Celero</a></li>
-<li class="toctree-l3"><a class="reference internal" href="comparison.html#folly-benchmark">folly Benchmark</a></li>
+<li class="toctree-l1"><a class="reference internal" href="#comparing-results">Comparing Results</a></li>
+<li class="toctree-l1"><a class="reference internal" href="#asymptotic-complexity">Asymptotic Complexity</a></li>
+<li class="toctree-l1"><a class="reference internal" href="#rendering-mustache-like-templates">Rendering Mustache-like Templates</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="#csv-comma-separated-values">CSV - Comma-Separated Values</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#html-box-plots">HTML Box Plots</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#json-javascript-object-notation">JSON - JavaScript Object Notation</a></li>
 </ul>
 </li>
 </ul>
+<p class="caption"><span class="caption-text">Comparison</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="comparison.html">Test Set</a></li>
+<li class="toctree-l1"><a class="reference internal" href="comparison.html#runtime">Runtime</a></li>
+<li class="toctree-l1"><a class="reference internal" href="comparison.html#implementations-output">Implementations &amp; Output</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="comparison.html#nanobench">nanobench</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="comparison.html#sourcecode">Sourcecode</a></li>
+<li class="toctree-l3"><a class="reference internal" href="comparison.html#results">Results</a></li>
+</ul>
 </li>
+<li class="toctree-l2"><a class="reference internal" href="comparison.html#google-benchmark">Google Benchmark</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="comparison.html#id2">Sourcecode</a></li>
+<li class="toctree-l3"><a class="reference internal" href="comparison.html#id3">Results</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="comparison.html#nonius">nonius</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="comparison.html#id5">Sourcecode</a></li>
+<li class="toctree-l3"><a class="reference internal" href="comparison.html#id6">Results</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="comparison.html#picobench">Picobench</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="comparison.html#id8">Sourcecode</a></li>
+<li class="toctree-l3"><a class="reference internal" href="comparison.html#id9">Results</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="comparison.html#catch2">Catch2</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="comparison.html#id11">Sourcecode</a></li>
+<li class="toctree-l3"><a class="reference internal" href="comparison.html#id12">Results</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="comparison.html#moodycamel-microbench">moodycamel::microbench</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="comparison.html#id14">Sourcecode</a></li>
+<li class="toctree-l3"><a class="reference internal" href="comparison.html#id15">Results</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="comparison.html#sltbench">sltbench</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="comparison.html#id17">Sourcecode</a></li>
+<li class="toctree-l3"><a class="reference internal" href="comparison.html#id18">Results</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="comparison.html#celero">Celero</a></li>
+<li class="toctree-l2"><a class="reference internal" href="comparison.html#folly-benchmark">folly Benchmark</a></li>
+</ul>
+</li>
+</ul>
+<p class="caption"><span class="caption-text">Reference</span></p>
+<ul>
 <li class="toctree-l1"><a class="reference internal" href="reference.html"><code class="docutils literal notranslate"><span class="pre">ankerl::nanobench</span></code> Reference</a><ul>
 <li class="toctree-l2"><a class="reference internal" href="reference.html#bench-main-entry-point"><code class="xref cpp cpp-class docutils literal notranslate"><span class="pre">Bench</span></code> - Main Entry Point</a></li>
 <li class="toctree-l2"><a class="reference internal" href="reference.html#rng-extremely-fast-prng"><code class="xref cpp cpp-class docutils literal notranslate"><span class="pre">Rng</span></code> - Extremely fast PRNG</a></li>
@@ -173,7 +174,26 @@
 </ul>
 </li>
 <li class="toctree-l1"><a class="reference internal" href="genindex.html">Index</a></li>
-<li class="toctree-l1"><a class="reference internal" href="license.html">License</a></li>
+</ul>
+<p class="caption"><span class="caption-text">About</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="license.html">MIT License</a></li>
+<li class="toctree-l1"><a class="reference internal" href="CODE_OF_CONDUCT.html">Contributor Covenant Code of Conduct</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="CODE_OF_CONDUCT.html#our-pledge">Our Pledge</a></li>
+<li class="toctree-l2"><a class="reference internal" href="CODE_OF_CONDUCT.html#our-standards">Our Standards</a></li>
+<li class="toctree-l2"><a class="reference internal" href="CODE_OF_CONDUCT.html#enforcement-responsibilities">Enforcement Responsibilities</a></li>
+<li class="toctree-l2"><a class="reference internal" href="CODE_OF_CONDUCT.html#scope">Scope</a></li>
+<li class="toctree-l2"><a class="reference internal" href="CODE_OF_CONDUCT.html#enforcement">Enforcement</a></li>
+<li class="toctree-l2"><a class="reference internal" href="CODE_OF_CONDUCT.html#enforcement-guidelines">Enforcement Guidelines</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="CODE_OF_CONDUCT.html#correction">1. Correction</a></li>
+<li class="toctree-l3"><a class="reference internal" href="CODE_OF_CONDUCT.html#warning">2. Warning</a></li>
+<li class="toctree-l3"><a class="reference internal" href="CODE_OF_CONDUCT.html#temporary-ban">3. Temporary Ban</a></li>
+<li class="toctree-l3"><a class="reference internal" href="CODE_OF_CONDUCT.html#permanent-ban">4. Permanent Ban</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="CODE_OF_CONDUCT.html#attribution">Attribution</a></li>
+</ul>
+</li>
 </ul>
 
             
@@ -219,7 +239,7 @@
     
       <li><a href="index.html">Docs</a> &raquo;</li>
         
-      <li>Tutorial</li>
+      <li>Installation</li>
     
     
       <li class="wy-breadcrumbs-aside">
@@ -240,15 +260,13 @@
           <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
            <div itemprop="articleBody">
             
-  <div class="section" id="tutorial">
-<h1>Tutorial<a class="headerlink" href="#tutorial" title="Permalink to this headline">¶</a></h1>
-<div class="section" id="installation">
-<h2>Installation<a class="headerlink" href="#installation" title="Permalink to this headline">¶</a></h2>
+  <div class="section" id="installation">
+<h1>Installation<a class="headerlink" href="#installation" title="Permalink to this headline">¶</a></h1>
 <p>Download <code class="docutils literal notranslate"><span class="pre">nanobench.h</span></code> from the <a class="reference download external" download="" href="https://github.com/martinus/nanobench/releases/latest"><code class="xref download docutils literal notranslate"><span class="pre">release</span></code></a>
 and make it available in your project.</p>
 </div>
 <div class="section" id="quick-start">
-<h2>Quick Start<a class="headerlink" href="#quick-start" title="Permalink to this headline">¶</a></h2>
+<h1>Quick Start<a class="headerlink" href="#quick-start" title="Permalink to this headline">¶</a></h1>
 <ol class="arabic">
 <li><p>Create a .cpp file, e.g. <code class="docutils literal notranslate"><span class="pre">nanobench.cpp</span></code>, where the bulk of nanobench is compiled.</p>
 <div class="literal-block-wrapper docutils container" id="id2">
@@ -355,10 +373,10 @@ with only 0.1% misspredicted.</p>
 <p>In the remaining examples, I’m using <a class="reference external" href="https://github.com/onqtam/doctest">doctest</a> as a unit test framework, which is like <a class="reference external" href="https://github.com/catchorg/Catch2">Catch2</a> - but
 compiles much faster. It pairs well with nanobench.</p>
 </div>
-<div class="section" id="benchmarking">
-<h2>Benchmarking<a class="headerlink" href="#benchmarking" title="Permalink to this headline">¶</a></h2>
+<div class="section" id="examples">
+<h1>Examples<a class="headerlink" href="#examples" title="Permalink to this headline">¶</a></h1>
 <div class="section" id="something-fast">
-<h3>Something Fast<a class="headerlink" href="#something-fast" title="Permalink to this headline">¶</a></h3>
+<h2>Something Fast<a class="headerlink" href="#something-fast" title="Permalink to this headline">¶</a></h2>
 <p>Let’s benchmarks how fast we can do <code class="docutils literal notranslate"><span class="pre">x</span> <span class="pre">+=</span> <span class="pre">x</span></code> for <code class="docutils literal notranslate"><span class="pre">uint64_t</span></code>:</p>
 <div class="literal-block-wrapper docutils container" id="id4">
 <div class="code-block-caption"><span class="caption-text">tutorial_fast_v1.cpp</span><a class="headerlink" href="#id4" title="Permalink to this code">¶</a></div>
@@ -422,7 +440,7 @@ away because we never used the output. Thanks to <code class="docutils literal n
 1.00 instructions per operation on my machine, and can do this in ~1 cycle.</p>
 </div>
 <div class="section" id="something-slow">
-<h3>Something Slow<a class="headerlink" href="#something-slow" title="Permalink to this headline">¶</a></h3>
+<h2>Something Slow<a class="headerlink" href="#something-slow" title="Permalink to this headline">¶</a></h2>
 <p>Let’s benchmark if sleeping for 100ms really takes 100ms.</p>
 <div class="literal-block-wrapper docutils container" id="id6">
 <div class="code-block-caption"><span class="caption-text">tutorial_slow_v1.cpp</span><a class="headerlink" href="#id6" title="Permalink to this code">¶</a></div>
@@ -492,7 +510,7 @@ away because we never used the output. Thanks to <code class="docutils literal n
 <p>This time it took only 0.3 seconds, but with only 3 evaluations instead of 11. The err% will be less meaningfull, but since the benchmark is so stable it doesn’t really matter.</p>
 </div>
 <div class="section" id="something-unstable">
-<h3>Something Unstable<a class="headerlink" href="#something-unstable" title="Permalink to this headline">¶</a></h3>
+<h2>Something Unstable<a class="headerlink" href="#something-unstable" title="Permalink to this headline">¶</a></h2>
 <p>Lets create an extreme artifical test that’s hard to benchmark, because runtime fluctuates randomly: Each iteration
 randomly skip between 0-254 random numbers:</p>
 <div class="literal-block-wrapper docutils container" id="id8">
@@ -587,7 +605,7 @@ randomly skip between 0-254 random numbers:</p>
 </div>
 </div>
 <div class="section" id="comparing-results">
-<span id="tutorial-comparing-results"></span><h2>Comparing Results<a class="headerlink" href="#comparing-results" title="Permalink to this headline">¶</a></h2>
+<span id="tutorial-comparing-results"></span><h1>Comparing Results<a class="headerlink" href="#comparing-results" title="Permalink to this headline">¶</a></h1>
 <p>I have implemented a comparison of multiple random number generators.
 Here several RNGs are compared to a baseline calculated from <cite>std::default_random_engine</cite>.
 I factored out the general benchmarking code so it’s easy to use for each of the random number generators:</p>
@@ -718,7 +736,7 @@ at <a class="reference external" href="http://www.romu-random.org">romu-random</
 </div>
 </div>
 <div class="section" id="asymptotic-complexity">
-<span id="id1"></span><h2>Asymptotic Complexity<a class="headerlink" href="#asymptotic-complexity" title="Permalink to this headline">¶</a></h2>
+<span id="id1"></span><h1>Asymptotic Complexity<a class="headerlink" href="#asymptotic-complexity" title="Permalink to this headline">¶</a></h1>
 <p>It is possible to calculate asymptotic complexity (Big O) from multiple runs of a benchmark. Run the
 benchmark with different complexity N, then nanobench can calculate the best fitting curve.</p>
 <p>The following example finds out the asymptotic complexity of <code class="docutils literal notranslate"><span class="pre">std::set</span></code>’s <code class="docutils literal notranslate"><span class="pre">find()</span></code>.</p>
@@ -820,7 +838,7 @@ different setting for <a class="reference internal" href="reference.html#_CPPv4I
 logarithmic complexity, in practices that is not perfectly the case.</p>
 </div>
 <div class="section" id="rendering-mustache-like-templates">
-<span id="templating"></span><h2>Rendering Mustache-like Templates<a class="headerlink" href="#rendering-mustache-like-templates" title="Permalink to this headline">¶</a></h2>
+<span id="templating"></span><h1>Rendering Mustache-like Templates<a class="headerlink" href="#rendering-mustache-like-templates" title="Permalink to this headline">¶</a></h1>
 <p>Nanobench comes with a powerful <a class="reference external" href="https://mustache.github.io/">Mustache</a>-like template mechanism to process the benchmark
 results into all kinds of formats. You can find a full description of all possible tags at <a class="reference internal" href="reference.html#_CPPv4N6ankerl9nanobench6renderEPKcRK5BenchRNSt7ostreamE" title="ankerl::nanobench::render"><code class="xref cpp cpp-func docutils literal notranslate"><span class="pre">ankerl::nanobench::render()</span></code></a>.</p>
 <p>Several preconfigured format exist in the namespace <code class="docutils literal notranslate"><span class="pre">ankerl::nanobench::templates</span></code>. Rendering these templates can be done
@@ -952,7 +970,7 @@ output:</p>
 </pre></div>
 </td></tr></table></div>
 <div class="section" id="csv-comma-separated-values">
-<span id="tutorial-template-csv"></span><h3>CSV - Comma-Separated Values<a class="headerlink" href="#csv-comma-separated-values" title="Permalink to this headline">¶</a></h3>
+<span id="tutorial-template-csv"></span><h2>CSV - Comma-Separated Values<a class="headerlink" href="#csv-comma-separated-values" title="Permalink to this headline">¶</a></h2>
 <p>The function <a class="reference internal" href="reference.html#_CPPv4N6ankerl9nanobench9templates3csvEv" title="ankerl::nanobench::templates::csv"><code class="xref cpp cpp-func docutils literal notranslate"><span class="pre">ankerl::nanobench::templates::csv()</span></code></a> provides this template:</p>
 <div class="highlight-text notranslate"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre>1
 2
@@ -1024,7 +1042,7 @@ output:</p>
 <p>Note that the CSV template doesn’t provide all the data that is available.</p>
 </div>
 <div class="section" id="html-box-plots">
-<span id="tutorial-template-html"></span><h3>HTML Box Plots<a class="headerlink" href="#html-box-plots" title="Permalink to this headline">¶</a></h3>
+<span id="tutorial-template-html"></span><h2>HTML Box Plots<a class="headerlink" href="#html-box-plots" title="Permalink to this headline">¶</a></h2>
 <p>With the template <a class="reference internal" href="reference.html#_CPPv4N6ankerl9nanobench9templates11htmlBoxplotEv" title="ankerl::nanobench::templates::htmlBoxplot"><code class="xref cpp cpp-func docutils literal notranslate"><span class="pre">ankerl::nanobench::templates::htmlBoxplot()</span></code></a> you get a <a class="reference external" href="https://plotly.com/javascript/">plotly</a> based HTML output which generates
 an boxplot of the runtime. The template is rather simple.</p>
 <div class="highlight-xml notranslate"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre> 1
@@ -1107,7 +1125,7 @@ and the boxplot itself shows median, percentiles, and outliers. You’ll might w
 
 </html></div>
 <div class="section" id="json-javascript-object-notation">
-<span id="tutorial-template-json"></span><h3>JSON - JavaScript Object Notation<a class="headerlink" href="#json-javascript-object-notation" title="Permalink to this headline">¶</a></h3>
+<span id="tutorial-template-json"></span><h2>JSON - JavaScript Object Notation<a class="headerlink" href="#json-javascript-object-notation" title="Permalink to this headline">¶</a></h2>
 <p>The <a class="reference internal" href="reference.html#_CPPv4N6ankerl9nanobench9templates4jsonEv" title="ankerl::nanobench::templates::json"><code class="xref cpp cpp-func docutils literal notranslate"><span class="pre">ankerl::nanobench::templates::json()</span></code></a> template gives everything, all data that is available, from all runs. The template is therefore quite complex:</p>
 <div class="highlight-text notranslate"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre> 1
  2
@@ -1752,7 +1770,6 @@ and the boxplot itself shows median, percentiles, and outliers. You’ll might w
 </td></tr></table></div>
 </div>
 </div>
-</div>
 
 
            </div>
@@ -1762,7 +1779,7 @@ and the boxplot itself shows median, percentiles, and outliers. You’ll might w
   
     <div class="rst-footer-buttons" role="navigation" aria-label="footer navigation">
       
-        <a href="comparison.html" class="btn btn-neutral float-right" title="Comparison with Other Frameworks" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right"></span></a>
+        <a href="comparison.html" class="btn btn-neutral float-right" title="Test Set" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right"></span></a>
       
       
         <a href="index.html" class="btn btn-neutral float-left" title="nanobench" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left"></span> Previous</a>

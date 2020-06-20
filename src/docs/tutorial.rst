@@ -1,8 +1,3 @@
-========
-Tutorial
-========
-
-
 Installation
 ============
 
@@ -66,8 +61,8 @@ Quick Start
 In the remaining examples, I'm using `doctest <https://github.com/onqtam/doctest>`_ as a unit test framework, which is like `Catch2 <https://github.com/catchorg/Catch2>`_ - but
 compiles much faster. It pairs well with nanobench.
 
-Benchmarking
-============
+Examples
+========
 
 
 Something Fast

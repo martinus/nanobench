@@ -9,15 +9,35 @@ nanobench
 
 .. toctree::
    :maxdepth: 2
-   :caption: Table of Contents
-   :name: mastertoc
    :hidden:
+   :caption: Getting Started
 
    tutorial
+
+
+.. toctree::
+   :maxdepth: 2
+   :hidden:
+   :caption: Comparison
+
    comparison
+
+
+.. toctree::
+   :maxdepth: 2
+   :hidden:
+   :caption: Reference
+
    reference
    genindex
+
+.. toctree::
+   :maxdepth: 2
+   :hidden:
+   :caption: About
+
    license
+   CODE_OF_CONDUCT.md
 
 
 .. |badge-release| image:: https://img.shields.io/github/release/martinus/nanobench.svg
@@ -113,10 +133,4 @@ Accurate
    Get deterministic, repeatable, and accurate results that you can make sound decisions on.
 Robust
    Be robust against outliers, warn if results are not reliable.
-
-More
-====
-
-* `Code of Conduct <https://github.com/martinus/nanobench/blob/master/CODE_OF_CONDUCT.md>`_ - Contributor Covenant Code of Conduct
-* I need a better logo. Currently I use a small bench. Nanobench. Ha ha.
 
