@@ -49,6 +49,7 @@ html_theme = 'sphinx_rtd_theme'
 
 # see https://sphinx-rtd-theme.readthedocs.io/en/stable/configuring.html
 html_theme_options = {
+    'analytics_id': 'UA-36863101-2',
     'display_version': True,
     'sticky_navigation': True,
     'collapse_navigation': False,
@@ -61,6 +62,7 @@ html_theme_options = {
 html_static_path = ['_static']
 html_show_sourcelink = False
 html_favicon = 'favicon.ico'
+html_logo = 'nanobench-logo.svg'
 
 # hide ankerl::nanobench:: prefix, especially in index
 cpp_index_common_prefix = ['ankerl::nanobench::']
