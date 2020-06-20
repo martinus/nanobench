@@ -48,7 +48,7 @@ the benchmark with the name `some double ops` is **0.00**, so just a few millise
 
 # Design Goals
 
-* **Ease of use**: Simple & powerful API, fast compile times, [easy to integrate anywhere](https://nanobench.ankerl.com/tutorial.html#installation).
+* **Ease of use**: Simple & [powerful API](https://nanobench.ankerl.com/reference.html), fast compile times, [easy to integrate anywhere](https://nanobench.ankerl.com/tutorial.html#installation).
 * **Fast**: Get accurate results as fast as possible. nanobench is [~80 times faster than google benchmark](https://nanobench.ankerl.com/comparison.html#runtime).
 * **Accurate**: Get deterministic, repeatable, and accurate results that you can make sound decisions on.
 * **Robust**: Be robust against outliers, warn if results are not reliable.
