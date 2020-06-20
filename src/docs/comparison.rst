@@ -21,9 +21,9 @@ All benchmarks are run on an i7-8700 CPU locked at 3.2GHz, using
 
 
 
---------
-Runtimes
---------
+-------
+Runtime
+-------
 
 I wrote a little timing tool that measures how long exactly it takes to print benchmark output to the screen. 
 With this I have measured the runtimes of major benchmarking frameworks which support automatic tuning of
