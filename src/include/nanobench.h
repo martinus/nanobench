@@ -33,7 +33,7 @@
 // see https://semver.org/
 #define ANKERL_NANOBENCH_VERSION_MAJOR 4 // incompatible API changes
 #define ANKERL_NANOBENCH_VERSION_MINOR 0 // backwards-compatible changes
-#define ANKERL_NANOBENCH_VERSION_PATCH 0 // backwards-compatible bug fixes
+#define ANKERL_NANOBENCH_VERSION_PATCH 1 // backwards-compatible bug fixes
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 // public facing api - as minimal as possible
@@ -946,23 +946,24 @@ void doNotOptimizeAway(T const& val);
 
 #else
 
-// see folly's Benchmark.h
+// These assembly magic is directly from what Google Benchmark is doing. I have previously used what facebook's folly was doing, but
+// this seemd to have compilation problems in some cases. Google Benchmark seemed to be the most well tested anyways.
+// see https://github.com/google/benchmark/blob/master/include/benchmark/benchmark.h#L307
 template <typename T>
-constexpr bool doNotOptimizeNeedsIndirect() {
-    using Decayed = typename std::decay<T>::type;
-    return !ANKERL_NANOBENCH_IS_TRIVIALLY_COPYABLE(Decayed) || sizeof(Decayed) > sizeof(long) || std::is_pointer<Decayed>::value;
+void doNotOptimizeAway(T const& val) {
+    // NOLINTNEXTLINE(hicpp-no-assembler)
+    asm volatile("" : : "r,m"(val) : "memory");
 }
 
 template <typename T>
-typename std::enable_if<!doNotOptimizeNeedsIndirect<T>()>::type doNotOptimizeAway(T const& val) {
+void doNotOptimizeAway(T& val) {
+#    if defined(__clang__)
     // NOLINTNEXTLINE(hicpp-no-assembler)
-    asm volatile("" ::"r"(val));
-}
-
-template <typename T>
-typename std::enable_if<doNotOptimizeNeedsIndirect<T>()>::type doNotOptimizeAway(T const& val) {
+    asm volatile("" : "+r,m"(val) : : "memory");
+#    else
     // NOLINTNEXTLINE(hicpp-no-assembler)
-    asm volatile("" ::"m"(val) : "memory");
+    asm volatile("" : "+m,r"(val) : : "memory");
+#    endif
 }
 #endif
 
