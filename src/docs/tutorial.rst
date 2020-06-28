@@ -4,6 +4,13 @@ Installation
 Download ``nanobench.h`` from the :download:`release <https://github.com/martinus/nanobench/releases/latest>`
 and make it available in your project.
 
+.. note::
+
+   CPU statistics like instructions, cycles, branches, branch misses are only available on Linux, through
+   `perf events <http://web.eece.maine.edu/~vweaver/projects/perf_events/>`_. On some systems you might need to 
+   `change permissions through perf_event_paranoid <https://www.kernel.org/doc/html/latest/admin-guide/perf-security.html#unprivileged-users>`_
+   or use ACL.
+
 
 Quick Start
 ===========

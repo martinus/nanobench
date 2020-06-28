@@ -264,6 +264,13 @@
 <h1>Installation<a class="headerlink" href="#installation" title="Permalink to this headline">¶</a></h1>
 <p>Download <code class="docutils literal notranslate"><span class="pre">nanobench.h</span></code> from the <a class="reference download external" download="" href="https://github.com/martinus/nanobench/releases/latest"><code class="xref download docutils literal notranslate"><span class="pre">release</span></code></a>
 and make it available in your project.</p>
+<div class="admonition note">
+<p class="admonition-title">Note</p>
+<p>CPU statistics like instructions, cycles, branches, branch misses are only available on Linux, through
+<a class="reference external" href="http://web.eece.maine.edu/~vweaver/projects/perf_events/">perf events</a>. On some systems you might need to
+<a class="reference external" href="https://www.kernel.org/doc/html/latest/admin-guide/perf-security.html#unprivileged-users">change permissions through perf_event_paranoid</a>
+or use ACL.</p>
+</div>
 </div>
 <div class="section" id="quick-start">
 <h1>Quick Start<a class="headerlink" href="#quick-start" title="Permalink to this headline">¶</a></h1>
