@@ -8,8 +8,8 @@ and make it available in your project.
 
    CPU statistics like instructions, cycles, branches, branch misses are only available on Linux, through
    `perf events <http://web.eece.maine.edu/~vweaver/projects/perf_events/>`_. On some systems you might need to 
-   `change permissions through perf_event_paranoid <https://www.kernel.org/doc/html/latest/admin-guide/perf-security.html#unprivileged-users>`_
-   or use ACL.
+   `change permissions <https://www.kernel.org/doc/html/latest/admin-guide/perf-security.html#unprivileged-users>`_
+   through ``perf_event_paranoid`` or use ACL.
 
 
 Quick Start
