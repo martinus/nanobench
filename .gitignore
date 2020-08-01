@@ -1,4 +1,5 @@
 .vscode/
+.clangd/
 **/*.ppm
 **/perf.data
 **/perf.data.old
