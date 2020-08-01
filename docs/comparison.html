@@ -27,7 +27,7 @@
         <script src="_static/underscore.js"></script>
         <script src="_static/doctools.js"></script>
         <script src="_static/language_data.js"></script>
-        <script async="async" src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.5/latest.js?config=TeX-AMS-MML_HTMLorMML"></script>
+        <script async="async" src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.7/latest.js?config=TeX-AMS-MML_HTMLorMML"></script>
     
     <script type="text/javascript" src="_static/js/theme.js"></script>
 
@@ -66,7 +66,7 @@
             
             
               <div class="version">
-                4.0.0
+                4.0.2
               </div>
             
           
@@ -984,7 +984,8 @@ no doNotOptimize, no output formatting. Get it here: <a class="reference externa
 36
 37
 38
-39</pre></div></td><td class="code"><div class="highlight"><pre><span></span><span class="cp">#include</span> <span class="cpf">&quot;microbench.h&quot;</span><span class="cp"></span>
+39
+40</pre></div></td><td class="code"><div class="highlight"><pre><span></span><span class="cp">#include</span> <span class="cpf">&quot;microbench.h&quot;</span><span class="cp"></span>
 
 <span class="cp">#include</span> <span class="cpf">&lt;chrono&gt;</span><span class="cp"></span>
 <span class="cp">#include</span> <span class="cpf">&lt;iostream&gt;</span><span class="cp"></span>
@@ -996,32 +997,33 @@ no doNotOptimize, no output formatting. Get it here: <a class="reference externa
 <span class="c1">// g++ microbench.o systemtime.o -o mb</span>
 
 <span class="kt">int</span> <span class="nf">main</span><span class="p">(</span><span class="kt">int</span><span class="p">,</span> <span class="kt">char</span><span class="o">**</span><span class="p">)</span> <span class="p">{</span>
-    <span class="c1">// something fast</span>
-    <span class="kt">uint64_t</span> <span class="n">x</span> <span class="o">=</span> <span class="mi">1</span><span class="p">;</span>
-    <span class="n">std</span><span class="o">::</span><span class="n">cout</span> <span class="o">&lt;&lt;</span> <span class="n">moodycamel</span><span class="o">::</span><span class="n">microbench</span><span class="p">(</span>
-                     <span class="p">[</span><span class="o">&amp;</span><span class="p">]()</span> <span class="p">{</span>
-                         <span class="n">x</span> <span class="o">+=</span> <span class="n">x</span><span class="p">;</span>
-                     <span class="p">},</span>
-                     <span class="mi">10000000</span><span class="p">,</span> <span class="mi">51</span><span class="p">)</span>
-              <span class="o">&lt;&lt;</span> <span class="s">&quot; sec x += x (x==&quot;</span> <span class="o">&lt;&lt;</span> <span class="n">x</span> <span class="o">&lt;&lt;</span> <span class="s">&quot;)&quot;</span> <span class="o">&lt;&lt;</span> <span class="n">std</span><span class="o">::</span><span class="n">endl</span><span class="p">;</span>
+  <span class="c1">// something fast</span>
+  <span class="kt">uint64_t</span> <span class="n">x</span> <span class="o">=</span> <span class="mi">1</span><span class="p">;</span>
+  <span class="n">std</span><span class="o">::</span><span class="n">cout</span> <span class="o">&lt;&lt;</span> <span class="n">moodycamel</span><span class="o">::</span><span class="n">microbench</span><span class="p">(</span>
+                 <span class="p">[</span><span class="o">&amp;</span><span class="p">]()</span> <span class="p">{</span>
+                   <span class="n">x</span> <span class="o">+=</span> <span class="n">x</span><span class="p">;</span>
+                 <span class="p">},</span>
+                 <span class="mi">10000000</span><span class="p">,</span> <span class="mi">51</span><span class="p">)</span>
+            <span class="o">&lt;&lt;</span> <span class="s">&quot; sec x += x (x==&quot;</span> <span class="o">&lt;&lt;</span> <span class="n">x</span> <span class="o">&lt;&lt;</span> <span class="s">&quot;)&quot;</span> <span class="o">&lt;&lt;</span> <span class="n">std</span><span class="o">::</span><span class="n">endl</span><span class="p">;</span>
 
-    <span class="n">std</span><span class="o">::</span><span class="n">cout</span> <span class="o">&lt;&lt;</span> <span class="n">moodycamel</span><span class="o">::</span><span class="n">microbench</span><span class="p">([</span><span class="o">&amp;</span><span class="p">]</span> <span class="p">{</span>
-        <span class="n">std</span><span class="o">::</span><span class="n">this_thread</span><span class="o">::</span><span class="n">sleep_for</span><span class="p">(</span><span class="n">std</span><span class="o">::</span><span class="n">chrono</span><span class="o">::</span><span class="n">milliseconds</span><span class="p">(</span><span class="mi">10</span><span class="p">));</span>
-    <span class="p">})</span> <span class="o">&lt;&lt;</span> <span class="s">&quot; sec sleep 10ms&quot;</span>
-              <span class="o">&lt;&lt;</span> <span class="n">std</span><span class="o">::</span><span class="n">endl</span><span class="p">;</span>
+  <span class="n">std</span><span class="o">::</span><span class="n">cout</span> <span class="o">&lt;&lt;</span> <span class="n">moodycamel</span><span class="o">::</span><span class="n">microbench</span><span class="p">([</span><span class="o">&amp;</span><span class="p">]</span> <span class="p">{</span>
+    <span class="n">std</span><span class="o">::</span><span class="n">this_thread</span><span class="o">::</span><span class="n">sleep_for</span><span class="p">(</span><span class="n">std</span><span class="o">::</span><span class="n">chrono</span><span class="o">::</span><span class="n">milliseconds</span><span class="p">(</span><span class="mi">10</span><span class="p">));</span>
+  <span class="p">})</span> <span class="o">&lt;&lt;</span> <span class="s">&quot; sec sleep 10ms&quot;</span>
+            <span class="o">&lt;&lt;</span> <span class="n">std</span><span class="o">::</span><span class="n">endl</span><span class="p">;</span>
 
-    <span class="n">std</span><span class="o">::</span><span class="n">random_device</span> <span class="n">dev</span><span class="p">;</span>
-    <span class="n">std</span><span class="o">::</span><span class="n">mt19937_64</span> <span class="n">rng</span><span class="p">(</span><span class="n">dev</span><span class="p">());</span>
-    <span class="n">std</span><span class="o">::</span><span class="n">cout</span> <span class="o">&lt;&lt;</span> <span class="n">moodycamel</span><span class="o">::</span><span class="n">microbench</span><span class="p">(</span>
-                     <span class="p">[</span><span class="o">&amp;</span><span class="p">]</span> <span class="p">{</span>
-                         <span class="c1">// each run, perform a random number of rng calls</span>
-                         <span class="k">auto</span> <span class="n">iterations</span> <span class="o">=</span> <span class="n">rng</span><span class="p">()</span> <span class="o">&amp;</span> <span class="n">UINT64_C</span><span class="p">(</span><span class="mh">0xff</span><span class="p">);</span>
-                         <span class="k">for</span> <span class="p">(</span><span class="kt">uint64_t</span> <span class="n">i</span> <span class="o">=</span> <span class="mi">0</span><span class="p">;</span> <span class="n">i</span> <span class="o">&lt;</span> <span class="n">iterations</span><span class="p">;</span> <span class="o">++</span><span class="n">i</span><span class="p">)</span> <span class="p">{</span>
-                             <span class="p">(</span><span class="kt">void</span><span class="p">)</span><span class="n">rng</span><span class="p">();</span>
-                         <span class="p">}</span>
-                     <span class="p">},</span>
-                     <span class="mi">1000</span><span class="p">,</span> <span class="mi">51</span><span class="p">)</span>
-              <span class="o">&lt;&lt;</span> <span class="s">&quot; sec random fluctuations&quot;</span> <span class="o">&lt;&lt;</span> <span class="n">std</span><span class="o">::</span><span class="n">endl</span><span class="p">;</span>
+  <span class="n">std</span><span class="o">::</span><span class="n">random_device</span> <span class="n">dev</span><span class="p">;</span>
+  <span class="n">std</span><span class="o">::</span><span class="n">mt19937_64</span> <span class="n">rng</span><span class="p">(</span><span class="n">dev</span><span class="p">());</span>
+  <span class="n">std</span><span class="o">::</span><span class="n">cout</span> <span class="o">&lt;&lt;</span> <span class="n">moodycamel</span><span class="o">::</span><span class="n">microbench</span><span class="p">(</span>
+                 <span class="p">[</span><span class="o">&amp;</span><span class="p">]</span> <span class="p">{</span>
+                   <span class="c1">// each run, perform a random number of</span>
+                   <span class="c1">// rng calls</span>
+                   <span class="k">auto</span> <span class="n">iterations</span> <span class="o">=</span> <span class="n">rng</span><span class="p">()</span> <span class="o">&amp;</span> <span class="n">UINT64_C</span><span class="p">(</span><span class="mh">0xff</span><span class="p">);</span>
+                   <span class="k">for</span> <span class="p">(</span><span class="kt">uint64_t</span> <span class="n">i</span> <span class="o">=</span> <span class="mi">0</span><span class="p">;</span> <span class="n">i</span> <span class="o">&lt;</span> <span class="n">iterations</span><span class="p">;</span> <span class="o">++</span><span class="n">i</span><span class="p">)</span> <span class="p">{</span>
+                     <span class="p">(</span><span class="kt">void</span><span class="p">)</span><span class="n">rng</span><span class="p">();</span>
+                   <span class="p">}</span>
+                 <span class="p">},</span>
+                 <span class="mi">1000</span><span class="p">,</span> <span class="mi">51</span><span class="p">)</span>
+            <span class="o">&lt;&lt;</span> <span class="s">&quot; sec random fluctuations&quot;</span> <span class="o">&lt;&lt;</span> <span class="n">std</span><span class="o">::</span><span class="n">endl</span><span class="p">;</span>
 <span class="p">}</span>
 </pre></div>
 </td></tr></table></div>
