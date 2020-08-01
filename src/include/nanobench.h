@@ -33,7 +33,7 @@
 // see https://semver.org/
 #define ANKERL_NANOBENCH_VERSION_MAJOR 4 // incompatible API changes
 #define ANKERL_NANOBENCH_VERSION_MINOR 0 // backwards-compatible changes
-#define ANKERL_NANOBENCH_VERSION_PATCH 1 // backwards-compatible bug fixes
+#define ANKERL_NANOBENCH_VERSION_PATCH 2 // backwards-compatible bug fixes
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 // public facing api - as minimal as possible
@@ -2142,7 +2142,7 @@ struct IterationLogic::Impl {
                 }
             }
 
-            columns.emplace_back(12, 2, "total", "", mResult.sum(Result::Measure::elapsed));
+            columns.emplace_back(12, 2, "total", "", mResult.sumProduct(Result::Measure::iterations, Result::Measure::elapsed));
 
             // write everything
             auto& os = *mBench.output();
