@@ -33,7 +33,7 @@
 // see https://semver.org/
 #define ANKERL_NANOBENCH_VERSION_MAJOR 4 // incompatible API changes
 #define ANKERL_NANOBENCH_VERSION_MINOR 0 // backwards-compatible changes
-#define ANKERL_NANOBENCH_VERSION_PATCH 2 // backwards-compatible bug fixes
+#define ANKERL_NANOBENCH_VERSION_PATCH 3 // backwards-compatible bug fixes
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 // public facing api - as minimal as possible
@@ -1891,7 +1891,7 @@ void gatherStabilityInformation(std::vector<std::string>& warnings, std::vector<
         recommendations.emplace_back("Make sure you compile for Release");
     }
     if (recommendPyPerf) {
-        recommendations.emplace_back("Use 'pyperf system tune' before benchmarking. See https://github.com/vstinner/pyperf");
+        recommendations.emplace_back("Use 'pyperf system tune' before benchmarking. See https://github.com/psf/pyperf");
     }
 }
 
