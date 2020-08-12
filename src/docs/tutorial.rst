@@ -65,8 +65,8 @@ Quick Start
    required 3 instructions, which took ~18 CPU cycles. There was a single branch per call,
    with only 0.1% misspredicted. 
 
-In the remaining examples, I'm using `doctest <https://github.com/onqtam/doctest>`_ as a unit test framework, which is like `Catch2 <https://github.com/catchorg/Catch2>`_ - but
-compiles much faster. It pairs well with nanobench.
+Nanobench does not come with a test runner, so you can easily use it with any framework you like.  In the remaining examples, I'm
+using `doctest <https://github.com/onqtam/doctest>`_ as a unit test framework.
 
 Examples
 ========
