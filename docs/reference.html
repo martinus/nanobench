@@ -168,7 +168,8 @@
 </ul>
 </li>
 <li class="toctree-l2"><a class="reference internal" href="#environment-variables">Environment Variables</a><ul>
-<li class="toctree-l3"><a class="reference internal" href="#nanobench-endless"><code class="docutils literal notranslate"><span class="pre">NANOBENCH_ENDLESS</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#nanobench-endless-run-a-specific-test-endlessly"><code class="docutils literal notranslate"><span class="pre">NANOBENCH_ENDLESS</span></code> - Run a Specific Test Endlessly</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#nanobench-suppress-warnings-no-stability-warnings"><code class="docutils literal notranslate"><span class="pre">NANOBENCH_SUPPRESS_WARNINGS</span></code> - No Stability Warnings</a></li>
 </ul>
 </li>
 </ul>
@@ -371,13 +372,13 @@ this has a small overhead.</p>
 
 <dl class="cpp function">
 <dt id="_CPPv4N6ankerl9nanobench5Bench8timeUnitERKNSt6chrono8durationIdEERKNSt6stringE">
-<span id="_CPPv3N6ankerl9nanobench5Bench8timeUnitERKNSt6chrono8durationIdEERKNSt6stringE"></span><span id="_CPPv2N6ankerl9nanobench5Bench8timeUnitERKNSt6chrono8durationIdEERKNSt6stringE"></span><span id="ankerl::nanobench::Bench::timeUnit__std::chrono::duration:double:CR.ssCR"></span><span class="target" id="classankerl_1_1nanobench_1_1Bench_1a523a9d2dc62843453fa5c4a5a2abfdd1"></span><a class="reference internal" href="#_CPPv4N6ankerl9nanobench5BenchE" title="ankerl::nanobench::Bench">Bench</a> &amp;<code class="sig-name descname">timeUnit</code><span class="sig-paren">(</span>std::chrono::duration&lt;double&gt; <em class="property">const</em> &amp;<em>timeUnit</em>, std::string <em class="property">const</em> &amp;<em>timeUnitName</em><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv4N6ankerl9nanobench5Bench8timeUnitERKNSt6chrono8durationIdEERKNSt6stringE" title="Permalink to this definition">¶</a><br /></dt>
+<span id="_CPPv3N6ankerl9nanobench5Bench8timeUnitERKNSt6chrono8durationIdEERKNSt6stringE"></span><span id="_CPPv2N6ankerl9nanobench5Bench8timeUnitERKNSt6chrono8durationIdEERKNSt6stringE"></span><span id="ankerl::nanobench::Bench::timeUnit__std::chrono::duration:double:CR.ssCR"></span><span class="target" id="classankerl_1_1nanobench_1_1Bench_1a3421348ad821902126014139aed11828"></span><a class="reference internal" href="#_CPPv4N6ankerl9nanobench5BenchE" title="ankerl::nanobench::Bench">Bench</a> &amp;<code class="sig-name descname">timeUnit</code><span class="sig-paren">(</span>std::chrono::duration&lt;double&gt; <em class="property">const</em> &amp;<em>tu</em>, std::string <em class="property">const</em> &amp;<em>tuName</em><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv4N6ankerl9nanobench5Bench8timeUnitERKNSt6chrono8durationIdEERKNSt6stringE" title="Permalink to this definition">¶</a><br /></dt>
 <dd><p>Sets the time unit to be used for the default output. </p>
 <p>Nanobench defaults to using ns (nanoseconds) as output in the markdown. For some benchmarks this is too coarse, so it is possible to configure this. E.g. use <code class="docutils literal notranslate"><span class="pre">timeUnit(1ms,</span> <span class="pre">&quot;ms&quot;)</span></code> to show <code class="docutils literal notranslate"><span class="pre">ms/op</span></code> instead of <code class="docutils literal notranslate"><span class="pre">ns/op</span></code>.</p>
 <p><dl class="simple">
 <dt><strong>Parameters</strong></dt><dd><ul class="breatheparameterlist simple">
-<li><p><code class="docutils literal notranslate"><span class="pre">timeUnit</span></code>: Time unit to display the results in, default is 1ns. </p></li>
-<li><p><code class="docutils literal notranslate"><span class="pre">timeUnitName</span></code>: Name for the time unit, default is “ns” </p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">tu</span></code>: Time unit to display the results in, default is 1ns. </p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">tuName</span></code>: Name for the time unit, default is “ns” </p></li>
 </ul>
 </dd>
 </dl>
@@ -937,8 +938,8 @@ generator becomes available, I will switch the implementation.</p>
 </div>
 <div class="section" id="environment-variables">
 <h2>Environment Variables<a class="headerlink" href="#environment-variables" title="Permalink to this headline">¶</a></h2>
-<div class="section" id="nanobench-endless">
-<h3><code class="docutils literal notranslate"><span class="pre">NANOBENCH_ENDLESS</span></code><a class="headerlink" href="#nanobench-endless" title="Permalink to this headline">¶</a></h3>
+<div class="section" id="nanobench-endless-run-a-specific-test-endlessly">
+<h3><code class="docutils literal notranslate"><span class="pre">NANOBENCH_ENDLESS</span></code> - Run a Specific Test Endlessly<a class="headerlink" href="#nanobench-endless-run-a-specific-test-endlessly" title="Permalink to this headline">¶</a></h3>
 <p>Sometimes it helps to run a benchmark for a very long time, so that it’s possible to attach with a profiler like
 <a class="reference external" href="https://perf.wiki.kernel.org/index.php/Main_Page">perf</a> and get meaningful statistics. This can be done with the environment variable
 <code class="docutils literal notranslate"><span class="pre">NANOBENCH_ENDLESS</span></code>. E.g. to run the benchmark with the name <code class="docutils literal notranslate"><span class="pre">x</span> <span class="pre">+=</span> <span class="pre">x</span></code> endlessly, call the app this way:</p>
@@ -956,6 +957,16 @@ It will print in nice friendly letters</p>
 <p>For optimal profiling with <code class="docutils literal notranslate"><span class="pre">perf</span></code>, you shouldn’t use <code class="docutils literal notranslate"><span class="pre">pyperf</span> <span class="pre">system</span> <span class="pre">tune</span></code> in the endless mode. PyPerf dramatically reduces the
 number of events that can be captured per second. This is a good to get accurate benchmark numbers from nanobench, but a bad when
 you actually want to use perf to analyze hotspots.</p>
+</div>
+</div>
+<div class="section" id="nanobench-suppress-warnings-no-stability-warnings">
+<h3><code class="docutils literal notranslate"><span class="pre">NANOBENCH_SUPPRESS_WARNINGS</span></code> - No Stability Warnings<a class="headerlink" href="#nanobench-suppress-warnings-no-stability-warnings" title="Permalink to this headline">¶</a></h3>
+<p>In environmens where it is clear that the results will not be stable, e.g. in CI where benchmarks are merely run to check if they don’t cause a crash,
+the environment variable <code class="docutils literal notranslate"><span class="pre">NANOBENCH_SUPPRESS_WARNINGS</span></code> can be used to suppress any warnings. This includes the header warnings like for frequency scaling,
+and the <code class="docutils literal notranslate"><span class="pre">:wavy_dash:</span></code> warnings for the individual tests.</p>
+<p>Set <code class="docutils literal notranslate"><span class="pre">NANOBENCH_SUPPRESS_WARNINGS=1</span></code> to disable all warnings, or set it to 0 to enable warnings (the default mode).</p>
+<div class="highlight-sh notranslate"><div class="highlight"><pre><span></span><span class="nv">NANOBENCH_SUPPRESS_WARNINGS</span><span class="o">=</span><span class="m">1</span> ./yourapp
+</pre></div>
 </div>
 </div>
 </div>

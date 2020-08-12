@@ -675,10 +675,10 @@ public:
      * Nanobench defaults to using ns (nanoseconds) as output in the markdown. For some benchmarks this is too coarse, so it is
      * possible to configure this. E.g. use `timeUnit(1ms, "ms")` to show `ms/op` instead of `ns/op`.
      *
-     * @param timeUnit Time unit to display the results in, default is 1ns.
-     * @param timeUnitName Name for the time unit, default is "ns"
+     * @param tu Time unit to display the results in, default is 1ns.
+     * @param tuName Name for the time unit, default is "ns"
      */
-    Bench& timeUnit(std::chrono::duration<double> const& timeUnit, std::string const& timeUnitName);
+    Bench& timeUnit(std::chrono::duration<double> const& tu, std::string const& tuName);
     ANKERL_NANOBENCH(NODISCARD) std::string const& timeUnitName() const noexcept;
     ANKERL_NANOBENCH(NODISCARD) std::chrono::duration<double> const& timeUnit() const noexcept;
 
@@ -1649,6 +1649,7 @@ namespace detail {
 
 char const* getEnv(char const* name);
 bool isEndlessRunning(std::string const& name);
+bool isWarningsEnabled();
 
 template <typename T>
 T parseFile(std::string const& filename);
@@ -1854,6 +1855,12 @@ bool isEndlessRunning(std::string const& name) {
     return nullptr != endless && endless == name;
 }
 
+// True when environment variable NANOBENCH_SUPPRESS_WARNINGS is either not set at all, or set to "0"
+bool isWarningsEnabled() {
+    auto suppression = getEnv("NANOBENCH_SUPPRESS_WARNINGS");
+    return nullptr == suppression || suppression == std::string("0");
+}
+
 void gatherStabilityInformation(std::vector<std::string>& warnings, std::vector<std::string>& recommendations) {
     warnings.clear();
     recommendations.clear();
@@ -1912,7 +1919,7 @@ void gatherStabilityInformation(std::vector<std::string>& warnings, std::vector<
 
 void printStabilityInformationOnce(std::ostream* outStream) {
     static bool shouldPrint = true;
-    if (shouldPrint && outStream) {
+    if (shouldPrint && outStream && isWarningsEnabled()) {
         auto& os = *outStream;
         shouldPrint = false;
         std::vector<std::string> warnings;
@@ -2189,7 +2196,7 @@ struct IterationLogic::Impl {
                     os << col.value();
                 }
                 os << "| ";
-                auto showUnstable = rErrorMedian >= 0.05;
+                auto showUnstable = isWarningsEnabled() && rErrorMedian >= 0.05;
                 if (showUnstable) {
                     os << ":wavy_dash: ";
                 }
@@ -2975,9 +2982,9 @@ std::string const& Bench::unit() const noexcept {
     return mConfig.mUnit;
 }
 
-Bench& Bench::timeUnit(std::chrono::duration<double> const& timeUnit, std::string const& timeUnitName) {
-    mConfig.mTimeUnit = timeUnit;
-    mConfig.mTimeUnitName = timeUnitName;
+Bench& Bench::timeUnit(std::chrono::duration<double> const& tu, std::string const& tuName) {
+    mConfig.mTimeUnit = tu;
+    mConfig.mTimeUnitName = tuName;
     return *this;
 }
 
