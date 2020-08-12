@@ -30,5 +30,6 @@ target_sources_local(nb PRIVATE
     unit_cold.cpp
     unit_exact_iters_and_epochs.cpp
     unit_romutrio.cpp
+    unit_timeunit.cpp
     unit_to_s.cpp
 )

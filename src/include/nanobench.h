@@ -32,8 +32,8 @@
 
 // see https://semver.org/
 #define ANKERL_NANOBENCH_VERSION_MAJOR 4 // incompatible API changes
-#define ANKERL_NANOBENCH_VERSION_MINOR 0 // backwards-compatible changes
-#define ANKERL_NANOBENCH_VERSION_PATCH 3 // backwards-compatible bug fixes
+#define ANKERL_NANOBENCH_VERSION_MINOR 1 // backwards-compatible changes
+#define ANKERL_NANOBENCH_VERSION_PATCH 0 // backwards-compatible bug fixes
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 // public facing api - as minimal as possible
@@ -370,6 +370,8 @@ struct Config {
     uint64_t mEpochIterations{0}; // If not 0, run *exactly* these number of iterations per epoch.
     uint64_t mWarmup = 0;
     std::ostream* mOut = nullptr;
+    std::chrono::duration<double> mTimeUnit = std::chrono::nanoseconds{1};
+    std::string mTimeUnitName = "ns";
     bool mShowPerformanceCounters = true;
     bool mIsRelative = false;
 
@@ -666,6 +668,19 @@ public:
     Bench& unit(char const* unit);
     Bench& unit(std::string const& unit);
     ANKERL_NANOBENCH(NODISCARD) std::string const& unit() const noexcept;
+
+    /**
+     * @brief Sets the time unit to be used for the default output.
+     *
+     * Nanobench defaults to using ns (nanoseconds) as output in the markdown. For some benchmarks this is too coarse, so it is
+     * possible to configure this. E.g. use `timeUnit(1ms, "ms")` to show `ms/op` instead of `ns/op`.
+     *
+     * @param timeUnit Time unit to display the results in, default is 1ns.
+     * @param timeUnitName Name for the time unit, default is "ns"
+     */
+    Bench& timeUnit(std::chrono::duration<double> const& timeUnit, std::string const& timeUnitName);
+    ANKERL_NANOBENCH(NODISCARD) std::string const& timeUnitName() const noexcept;
+    ANKERL_NANOBENCH(NODISCARD) std::chrono::duration<double> const& timeUnit() const noexcept;
 
     /**
      * @brief Set the output stream where the resulting markdown table will be printed to.
@@ -1926,15 +1941,6 @@ uint64_t& singletonHeaderHash() noexcept {
 }
 
 ANKERL_NANOBENCH_NO_SANITIZE("integer")
-inline uint64_t fnv1a(std::string const& str) noexcept {
-    auto val = UINT64_C(14695981039346656037);
-    for (auto c : str) {
-        val = (val ^ static_cast<uint8_t>(c)) * UINT64_C(1099511628211);
-    }
-    return val;
-}
-
-ANKERL_NANOBENCH_NO_SANITIZE("integer")
 inline uint64_t hash_combine(uint64_t seed, uint64_t val) {
     return seed ^ (val + UINT64_C(0x9e3779b9) + (seed << 6U) + (seed >> 2U));
 }
@@ -2110,7 +2116,8 @@ struct IterationLogic::Impl {
                 columns.emplace_back(14, 0, "complexityN", "", mBench.complexityN());
             }
 
-            columns.emplace_back(22, 2, "ns/" + mBench.unit(), "", 1e9 * rMedian / mBench.batch());
+            columns.emplace_back(22, 2, mBench.timeUnitName() + "/" + mBench.unit(), "",
+                                 rMedian / (mBench.timeUnit().count() * mBench.batch()));
             columns.emplace_back(22, 2, mBench.unit() + "/s", "", rMedian <= 0.0 ? 0.0 : mBench.batch() / rMedian);
 
             double rErrorMedian = mResult.medianAbsolutePercentError(Result::Measure::elapsed);
@@ -2147,9 +2154,12 @@ struct IterationLogic::Impl {
             // write everything
             auto& os = *mBench.output();
 
+            // combine all elements that are relevant for printing the header
             uint64_t hash = 0;
-            hash = hash_combine(fnv1a(mBench.unit()), hash);
-            hash = hash_combine(fnv1a(mBench.title()), hash);
+            hash = hash_combine(std::hash<std::string>{}(mBench.unit()), hash);
+            hash = hash_combine(std::hash<std::string>{}(mBench.title()), hash);
+            hash = hash_combine(std::hash<std::string>{}(mBench.timeUnitName()), hash);
+            hash = hash_combine(std::hash<double>{}(mBench.timeUnit().count()), hash);
             hash = hash_combine(mBench.relative(), hash);
             hash = hash_combine(mBench.performanceCounters(), hash);
 
@@ -2963,6 +2973,20 @@ Bench& Bench::unit(std::string const& u) {
 
 std::string const& Bench::unit() const noexcept {
     return mConfig.mUnit;
+}
+
+Bench& Bench::timeUnit(std::chrono::duration<double> const& timeUnit, std::string const& timeUnitName) {
+    mConfig.mTimeUnit = timeUnit;
+    mConfig.mTimeUnitName = timeUnitName;
+    return *this;
+}
+
+std::string const& Bench::timeUnitName() const noexcept {
+    return mConfig.mTimeUnitName;
+}
+
+std::chrono::duration<double> const& Bench::timeUnit() const noexcept {
+    return mConfig.mTimeUnit;
 }
 
 // If benchmarkTitle differs from currently set title, the stored results will be cleared.

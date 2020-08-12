@@ -66,7 +66,7 @@
             
             
               <div class="version">
-                4.0.2
+                4.1.0
               </div>
             
           
@@ -363,6 +363,21 @@ this has a small overhead.</p>
 <p><dl class="simple">
 <dt><strong>Parameters</strong></dt><dd><ul class="breatheparameterlist simple">
 <li><p><code class="docutils literal notranslate"><span class="pre">unit</span></code>: The unit name. </p></li>
+</ul>
+</dd>
+</dl>
+</p>
+</dd></dl>
+
+<dl class="cpp function">
+<dt id="_CPPv4N6ankerl9nanobench5Bench8timeUnitERKNSt6chrono8durationIdEERKNSt6stringE">
+<span id="_CPPv3N6ankerl9nanobench5Bench8timeUnitERKNSt6chrono8durationIdEERKNSt6stringE"></span><span id="_CPPv2N6ankerl9nanobench5Bench8timeUnitERKNSt6chrono8durationIdEERKNSt6stringE"></span><span id="ankerl::nanobench::Bench::timeUnit__std::chrono::duration:double:CR.ssCR"></span><span class="target" id="classankerl_1_1nanobench_1_1Bench_1a523a9d2dc62843453fa5c4a5a2abfdd1"></span><a class="reference internal" href="#_CPPv4N6ankerl9nanobench5BenchE" title="ankerl::nanobench::Bench">Bench</a> &amp;<code class="sig-name descname">timeUnit</code><span class="sig-paren">(</span>std::chrono::duration&lt;double&gt; <em class="property">const</em> &amp;<em>timeUnit</em>, std::string <em class="property">const</em> &amp;<em>timeUnitName</em><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv4N6ankerl9nanobench5Bench8timeUnitERKNSt6chrono8durationIdEERKNSt6stringE" title="Permalink to this definition">¶</a><br /></dt>
+<dd><p>Sets the time unit to be used for the default output. </p>
+<p>Nanobench defaults to using ns (nanoseconds) as output in the markdown. For some benchmarks this is too coarse, so it is possible to configure this. E.g. use <code class="docutils literal notranslate"><span class="pre">timeUnit(1ms,</span> <span class="pre">&quot;ms&quot;)</span></code> to show <code class="docutils literal notranslate"><span class="pre">ms/op</span></code> instead of <code class="docutils literal notranslate"><span class="pre">ns/op</span></code>.</p>
+<p><dl class="simple">
+<dt><strong>Parameters</strong></dt><dd><ul class="breatheparameterlist simple">
+<li><p><code class="docutils literal notranslate"><span class="pre">timeUnit</span></code>: Time unit to display the results in, default is 1ns. </p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">timeUnitName</span></code>: Name for the time unit, default is “ns” </p></li>
 </ul>
 </dd>
 </dl>
