@@ -5,6 +5,13 @@ dist: xenial
 matrix:
   include:
 
+  - os: osx
+    osx_image: xcode11.4
+    compiler: clang
+    env:
+    - COMPILER=clang++
+    - CMAKE_OPTIONS="-DNB_cxx_standard=17"
+
   # g++-8
   - os: linux
     compiler: gcc
