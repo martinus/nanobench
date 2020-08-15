@@ -80,9 +80,5 @@ if (NANOBENCH_STANDALONE_PROJECT)
     target_sources_local(nb PUBLIC .clang-tidy)
 else()
     add_library(nanobench STATIC ${PROJECT_SOURCE_DIR}/src/test/app/nanobench.cpp)
-    #set_target_properties(nanobench PROPERTIES CXX_STANDARD 11 CXX_STANDARD_REQUIRED ON)
-    target_include_directories(nanobench INTERFACE
-        $<BUILD_INTERFACE:${PROJECT_SOURCE_DIR}/src/include>
-        $<INSTALL_INTERFACE:src/include>
-    )
+    target_include_directories(nanobench INTERFACE ${PROJECT_SOURCE_DIR}/src/include)
 endif()
