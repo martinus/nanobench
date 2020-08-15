@@ -31,7 +31,7 @@ matrix:
     compiler: gcc
     env:
     - COMPILER=g++
-    - CMAKE_OPTIONS="-DNB_sanitizer=ON -DNB_cxx_standard=11"
+    - CMAKE_OPTIONS="-DNB_sanitizer=OFF -DNB_cxx_standard=11"
 
   # g++-8
   - os: linux
