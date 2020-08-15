@@ -12,6 +12,18 @@ matrix:
     - COMPILER=clang++
     - CMAKE_OPTIONS="-DNB_cxx_standard=17"
 
+  # compile on ARM
+  - os: linux
+    arch: arm64
+    compiler: gcc
+    env:
+    - COMPILER=g++-8
+    - CMAKE_OPTIONS="-DNB_sanitizer=ON -DNB_cxx_standard=11"
+    addons:
+      apt:
+        sources: ['ubuntu-toolchain-r-test']
+        packages: ['g++-8']
+
   # g++-8
   - os: linux
     compiler: gcc
