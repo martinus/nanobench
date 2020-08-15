@@ -1,19 +1,11 @@
 Installation
 ============
 
-Download ``nanobench.h`` from the :download:`release <https://github.com/martinus/nanobench/releases/latest>`
-and make it available in your project.
+Direct Inclusion
+----------------
 
-.. note::
-
-   CPU statistics like instructions, cycles, branches, branch misses are only available on Linux, through
-   `perf events <http://web.eece.maine.edu/~vweaver/projects/perf_events/>`_. On some systems you might need to 
-   `change permissions <https://www.kernel.org/doc/html/latest/admin-guide/perf-security.html#unprivileged-users>`_
-   through ``perf_event_paranoid`` or use ACL.
-
-
-Quick Start
-===========
+#. Download ``nanobench.h`` from the :download:`release <https://github.com/martinus/nanobench/releases/latest>`
+   and make it available in your project. 
 
 #. Create a .cpp file, e.g. ``nanobench.cpp``, where the bulk of nanobench is compiled.
 
@@ -25,9 +17,25 @@ Quick Start
 #. Compile e.g. with ``g++ -O3 -I../include -c nanobench.cpp``. This compiles
    the bulk of nanobench, and took 2.4 seconds on my machine. It needs to be compiled only once whenever you upgrade nanobench.
 
+
+CMake Integration
+-----------------
+
+``nanobench`` can be integrated with CMake's `FetchContent <https://cmake.org/cmake/help/latest/module/FetchContent.html>`_ or as
+a `git submodule <https://git-scm.com/book/en/v2/Git-Tools-Submodules>`_. Here is a full example how to this can be done:
+
+.. literalinclude:: code/CMakeLists.txt
+   :language: CMake
+   :linenos:
+   :caption: CMakeLists.txt
+
+Usage
+=====
+
+
 #. Create the actual benchmark code, in ``full_example.cpp``:
 
-   .. literalinclude:: ../scripts/full_example.cpp
+   .. literalinclude:: code/full_example.cpp
       :language: c++
       :linenos:
       :caption: full_example.cpp
@@ -67,6 +75,14 @@ Quick Start
 
 Nanobench does not come with a test runner, so you can easily use it with any framework you like.  In the remaining examples, I'm
 using `doctest <https://github.com/onqtam/doctest>`_ as a unit test framework.
+
+.. note::
+
+   CPU statistics like instructions, cycles, branches, branch misses are only available on Linux, through
+   `perf events <http://web.eece.maine.edu/~vweaver/projects/perf_events/>`_. On some systems you might need to 
+   `change permissions <https://www.kernel.org/doc/html/latest/admin-guide/perf-security.html#unprivileged-users>`_
+   through ``perf_event_paranoid`` or use ACL.
+
 
 Examples
 ========

@@ -66,7 +66,7 @@
             
             
               <div class="version">
-                4.1.0
+                v4.1.0
               </div>
             
           
@@ -92,8 +92,12 @@
             
               <p class="caption"><span class="caption-text">Getting Started</span></p>
 <ul class="current">
-<li class="toctree-l1 current"><a class="current reference internal" href="#">Installation</a></li>
-<li class="toctree-l1"><a class="reference internal" href="#quick-start">Quick Start</a></li>
+<li class="toctree-l1 current"><a class="current reference internal" href="#">Installation</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="#direct-inclusion">Direct Inclusion</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#cmake-integration">CMake Integration</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="#usage">Usage</a></li>
 <li class="toctree-l1"><a class="reference internal" href="#examples">Examples</a><ul>
 <li class="toctree-l2"><a class="reference internal" href="#something-fast">Something Fast</a></li>
 <li class="toctree-l2"><a class="reference internal" href="#something-slow">Something Slow</a></li>
@@ -263,19 +267,11 @@
             
   <div class="section" id="installation">
 <h1>Installation<a class="headerlink" href="#installation" title="Permalink to this headline">¶</a></h1>
-<p>Download <code class="docutils literal notranslate"><span class="pre">nanobench.h</span></code> from the <a class="reference download external" download="" href="https://github.com/martinus/nanobench/releases/latest"><code class="xref download docutils literal notranslate"><span class="pre">release</span></code></a>
-and make it available in your project.</p>
-<div class="admonition note">
-<p class="admonition-title">Note</p>
-<p>CPU statistics like instructions, cycles, branches, branch misses are only available on Linux, through
-<a class="reference external" href="http://web.eece.maine.edu/~vweaver/projects/perf_events/">perf events</a>. On some systems you might need to
-<a class="reference external" href="https://www.kernel.org/doc/html/latest/admin-guide/perf-security.html#unprivileged-users">change permissions</a>
-through <code class="docutils literal notranslate"><span class="pre">perf_event_paranoid</span></code> or use ACL.</p>
-</div>
-</div>
-<div class="section" id="quick-start">
-<h1>Quick Start<a class="headerlink" href="#quick-start" title="Permalink to this headline">¶</a></h1>
+<div class="section" id="direct-inclusion">
+<h2>Direct Inclusion<a class="headerlink" href="#direct-inclusion" title="Permalink to this headline">¶</a></h2>
 <ol class="arabic">
+<li><p>Download <code class="docutils literal notranslate"><span class="pre">nanobench.h</span></code> from the <a class="reference download external" download="" href="https://github.com/martinus/nanobench/releases/latest"><code class="xref download docutils literal notranslate"><span class="pre">release</span></code></a>
+and make it available in your project.</p></li>
 <li><p>Create a .cpp file, e.g. <code class="docutils literal notranslate"><span class="pre">nanobench.cpp</span></code>, where the bulk of nanobench is compiled.</p>
 <div class="literal-block-wrapper docutils container" id="id2">
 <div class="code-block-caption"><span class="caption-text">nanobench.cpp</span><a class="headerlink" href="#id2" title="Permalink to this code">¶</a></div>
@@ -288,9 +284,64 @@ through <code class="docutils literal notranslate"><span class="pre">perf_event_
 </li>
 <li><p>Compile e.g. with <code class="docutils literal notranslate"><span class="pre">g++</span> <span class="pre">-O3</span> <span class="pre">-I../include</span> <span class="pre">-c</span> <span class="pre">nanobench.cpp</span></code>. This compiles
 the bulk of nanobench, and took 2.4 seconds on my machine. It needs to be compiled only once whenever you upgrade nanobench.</p></li>
-<li><p>Create the actual benchmark code, in <code class="docutils literal notranslate"><span class="pre">full_example.cpp</span></code>:</p>
+</ol>
+</div>
+<div class="section" id="cmake-integration">
+<h2>CMake Integration<a class="headerlink" href="#cmake-integration" title="Permalink to this headline">¶</a></h2>
+<p><code class="docutils literal notranslate"><span class="pre">nanobench</span></code> can be integrated with CMake’s <a class="reference external" href="https://cmake.org/cmake/help/latest/module/FetchContent.html">FetchContent</a> or as
+a <a class="reference external" href="https://git-scm.com/book/en/v2/Git-Tools-Submodules">git submodule</a>. Here is a full example how to this can be done:</p>
 <div class="literal-block-wrapper docutils container" id="id3">
-<div class="code-block-caption"><span class="caption-text">full_example.cpp</span><a class="headerlink" href="#id3" title="Permalink to this code">¶</a></div>
+<div class="code-block-caption"><span class="caption-text">CMakeLists.txt</span><a class="headerlink" href="#id3" title="Permalink to this code">¶</a></div>
+<div class="highlight-CMake notranslate"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre> 1
+ 2
+ 3
+ 4
+ 5
+ 6
+ 7
+ 8
+ 9
+10
+11
+12
+13
+14
+15
+16
+17
+18
+19
+20</pre></div></td><td class="code"><div class="highlight"><pre><span></span><span class="nb">cmake_minimum_required</span><span class="p">(</span><span class="s">VERSION</span> <span class="s">3.14</span><span class="p">)</span>
+<span class="nb">set</span><span class="p">(</span><span class="s">CMAKE_CXX_STANDARD</span> <span class="s">17</span><span class="p">)</span>
+
+<span class="nb">project</span><span class="p">(</span>
+    <span class="s">CMakeNanobenchExample</span>
+    <span class="s">VERSION</span> <span class="s">1.0</span>
+    <span class="s">LANGUAGES</span> <span class="s">CXX</span><span class="p">)</span>
+
+<span class="nb">include</span><span class="p">(</span><span class="s">FetchContent</span><span class="p">)</span>
+
+<span class="nb">FetchContent_Declare</span><span class="p">(</span>
+    <span class="s">nanobench</span>
+    <span class="s">GIT_REPOSITORY</span> <span class="s">https://github.com/martinus/nanobench.git</span>
+    <span class="s">GIT_TAG</span> <span class="s">v4.1.0</span>
+    <span class="s">GIT_SHALLOW</span> <span class="s">TRUE</span><span class="p">)</span>
+
+<span class="nb">FetchContent_MakeAvailable</span><span class="p">(</span><span class="s">nanobench</span><span class="p">)</span>
+
+<span class="nb">add_executable</span><span class="p">(</span><span class="s">MyExample</span> <span class="s">my_example.cpp</span><span class="p">)</span>
+<span class="nb">target_link_libraries</span><span class="p">(</span><span class="s">MyExample</span> <span class="s">PRIVATE</span> <span class="s">nanobench</span><span class="p">)</span>
+</pre></div>
+</td></tr></table></div>
+</div>
+</div>
+</div>
+<div class="section" id="usage">
+<h1>Usage<a class="headerlink" href="#usage" title="Permalink to this headline">¶</a></h1>
+<ol class="arabic">
+<li><p>Create the actual benchmark code, in <code class="docutils literal notranslate"><span class="pre">full_example.cpp</span></code>:</p>
+<div class="literal-block-wrapper docutils container" id="id4">
+<div class="code-block-caption"><span class="caption-text">full_example.cpp</span><a class="headerlink" href="#id4" title="Permalink to this code">¶</a></div>
 <div class="highlight-c++ notranslate"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre> 1
  2
  3
@@ -380,14 +431,21 @@ with only 0.1% misspredicted.</p>
 </ol>
 <p>Nanobench does not come with a test runner, so you can easily use it with any framework you like.  In the remaining examples, I’m
 using <a class="reference external" href="https://github.com/onqtam/doctest">doctest</a> as a unit test framework.</p>
+<div class="admonition note">
+<p class="admonition-title">Note</p>
+<p>CPU statistics like instructions, cycles, branches, branch misses are only available on Linux, through
+<a class="reference external" href="http://web.eece.maine.edu/~vweaver/projects/perf_events/">perf events</a>. On some systems you might need to
+<a class="reference external" href="https://www.kernel.org/doc/html/latest/admin-guide/perf-security.html#unprivileged-users">change permissions</a>
+through <code class="docutils literal notranslate"><span class="pre">perf_event_paranoid</span></code> or use ACL.</p>
+</div>
 </div>
 <div class="section" id="examples">
 <h1>Examples<a class="headerlink" href="#examples" title="Permalink to this headline">¶</a></h1>
 <div class="section" id="something-fast">
 <h2>Something Fast<a class="headerlink" href="#something-fast" title="Permalink to this headline">¶</a></h2>
 <p>Let’s benchmarks how fast we can do <code class="docutils literal notranslate"><span class="pre">x</span> <span class="pre">+=</span> <span class="pre">x</span></code> for <code class="docutils literal notranslate"><span class="pre">uint64_t</span></code>:</p>
-<div class="literal-block-wrapper docutils container" id="id4">
-<div class="code-block-caption"><span class="caption-text">tutorial_fast_v1.cpp</span><a class="headerlink" href="#id4" title="Permalink to this code">¶</a></div>
+<div class="literal-block-wrapper docutils container" id="id5">
+<div class="code-block-caption"><span class="caption-text">tutorial_fast_v1.cpp</span><a class="headerlink" href="#id5" title="Permalink to this code">¶</a></div>
 <div class="highlight-c++ notranslate"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre>1
 2
 3
@@ -416,8 +474,8 @@ using <a class="reference external" href="https://github.com/onqtam/doctest">doc
 </div>
 <p>No data there! we only get <code class="docutils literal notranslate"><span class="pre">:boom:</span> <span class="pre">iterations</span> <span class="pre">overflow.</span></code>.  The compiler could optimize <code class="docutils literal notranslate"><span class="pre">x</span> <span class="pre">+=</span> <span class="pre">x</span></code>
 away because we never used the output. Thanks to <code class="docutils literal notranslate"><span class="pre">doNotOptimizeAway</span></code>, this is easy to fix:</p>
-<div class="literal-block-wrapper docutils container" id="id5">
-<div class="code-block-caption"><span class="caption-text">tutorial_fast_v2.cpp</span><a class="headerlink" href="#id5" title="Permalink to this code">¶</a></div>
+<div class="literal-block-wrapper docutils container" id="id6">
+<div class="code-block-caption"><span class="caption-text">tutorial_fast_v2.cpp</span><a class="headerlink" href="#id6" title="Permalink to this code">¶</a></div>
 <div class="highlight-c++ notranslate"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre>1
 2
 3
@@ -450,8 +508,8 @@ away because we never used the output. Thanks to <code class="docutils literal n
 <div class="section" id="something-slow">
 <h2>Something Slow<a class="headerlink" href="#something-slow" title="Permalink to this headline">¶</a></h2>
 <p>Let’s benchmark if sleeping for 100ms really takes 100ms.</p>
-<div class="literal-block-wrapper docutils container" id="id6">
-<div class="code-block-caption"><span class="caption-text">tutorial_slow_v1.cpp</span><a class="headerlink" href="#id6" title="Permalink to this code">¶</a></div>
+<div class="literal-block-wrapper docutils container" id="id7">
+<div class="code-block-caption"><span class="caption-text">tutorial_slow_v1.cpp</span><a class="headerlink" href="#id7" title="Permalink to this code">¶</a></div>
 <div class="highlight-c++ notranslate"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre> 1
  2
  3
@@ -484,8 +542,8 @@ away because we never used the output. Thanks to <code class="docutils literal n
 </div>
 <p>So we actually take 100.125ms instead of 100ms. Next time I run it, I get 100.141. Also a very stable result. Interestingly, sleep takes 51 instructions but 7,714 cycles - so we only got 0.007 instructions per cycle. That’s extremely low, but expected of <code class="docutils literal notranslate"><span class="pre">sleep</span></code>. It also required 11 branches, of which 90.9% were misspredicted on average.</p>
 <p>If the extremely slow 1.1 second is too much for you, you can manually configure the number of evaluations (epochs):</p>
-<div class="literal-block-wrapper docutils container" id="id7">
-<div class="code-block-caption"><span class="caption-text">tutorial_slow_v2.cpp</span><a class="headerlink" href="#id7" title="Permalink to this code">¶</a></div>
+<div class="literal-block-wrapper docutils container" id="id8">
+<div class="code-block-caption"><span class="caption-text">tutorial_slow_v2.cpp</span><a class="headerlink" href="#id8" title="Permalink to this code">¶</a></div>
 <div class="highlight-c++ notranslate"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre> 1
  2
  3
@@ -521,8 +579,8 @@ away because we never used the output. Thanks to <code class="docutils literal n
 <h2>Something Unstable<a class="headerlink" href="#something-unstable" title="Permalink to this headline">¶</a></h2>
 <p>Lets create an extreme artifical test that’s hard to benchmark, because runtime fluctuates randomly: Each iteration
 randomly skip between 0-254 random numbers:</p>
-<div class="literal-block-wrapper docutils container" id="id8">
-<div class="code-block-caption"><span class="caption-text">tutorial_fluctuating_v1.cpp</span><a class="headerlink" href="#id8" title="Permalink to this code">¶</a></div>
+<div class="literal-block-wrapper docutils container" id="id9">
+<div class="code-block-caption"><span class="caption-text">tutorial_fluctuating_v1.cpp</span><a class="headerlink" href="#id9" title="Permalink to this code">¶</a></div>
 <div class="highlight-c++ notranslate"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre> 1
  2
  3
@@ -565,8 +623,8 @@ randomly skip between 0-254 random numbers:</p>
 </div>
 <p>So on average each loop takes about 334.12ns, but we get a warning that the results are unstable. The median percentage error is 6.3% which is quite high,</p>
 <p>Let’s use the suggestion and set the minimum number of iterations to 5000, and try again:</p>
-<div class="literal-block-wrapper docutils container" id="id9">
-<div class="code-block-caption"><span class="caption-text">tutorial_fluctuating_v2.cpp</span><a class="headerlink" href="#id9" title="Permalink to this code">¶</a></div>
+<div class="literal-block-wrapper docutils container" id="id10">
+<div class="code-block-caption"><span class="caption-text">tutorial_fluctuating_v2.cpp</span><a class="headerlink" href="#id10" title="Permalink to this code">¶</a></div>
 <div class="highlight-c++ notranslate"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre> 1
  2
  3
@@ -617,8 +675,8 @@ randomly skip between 0-254 random numbers:</p>
 <p>I have implemented a comparison of multiple random number generators.
 Here several RNGs are compared to a baseline calculated from <cite>std::default_random_engine</cite>.
 I factored out the general benchmarking code so it’s easy to use for each of the random number generators:</p>
-<div class="literal-block-wrapper docutils container" id="id10">
-<div class="code-block-caption"><span class="caption-text">example_random_number_generators.cpp (excerpt)</span><a class="headerlink" href="#id10" title="Permalink to this code">¶</a></div>
+<div class="literal-block-wrapper docutils container" id="id11">
+<div class="code-block-caption"><span class="caption-text">example_random_number_generators.cpp (excerpt)</span><a class="headerlink" href="#id11" title="Permalink to this code">¶</a></div>
 <div class="highlight-c++ notranslate"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre> 1
  2
  3
@@ -748,8 +806,8 @@ at <a class="reference external" href="http://www.romu-random.org">romu-random</
 <p>It is possible to calculate asymptotic complexity (Big O) from multiple runs of a benchmark. Run the
 benchmark with different complexity N, then nanobench can calculate the best fitting curve.</p>
 <p>The following example finds out the asymptotic complexity of <code class="docutils literal notranslate"><span class="pre">std::set</span></code>’s <code class="docutils literal notranslate"><span class="pre">find()</span></code>.</p>
-<div class="literal-block-wrapper docutils container" id="id11">
-<div class="code-block-caption"><span class="caption-text">tutorial_complexity_set.cpp</span><a class="headerlink" href="#id11" title="Permalink to this code">¶</a></div>
+<div class="literal-block-wrapper docutils container" id="id12">
+<div class="code-block-caption"><span class="caption-text">tutorial_complexity_set.cpp</span><a class="headerlink" href="#id12" title="Permalink to this code">¶</a></div>
 <div class="highlight-c++ notranslate"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre> 1
  2
  3
@@ -852,8 +910,8 @@ results into all kinds of formats. You can find a full description of all possib
 <p>Several preconfigured format exist in the namespace <code class="docutils literal notranslate"><span class="pre">ankerl::nanobench::templates</span></code>. Rendering these templates can be done
 with either <a class="reference internal" href="reference.html#_CPPv4N6ankerl9nanobench6renderEPKcRK5BenchRNSt7ostreamE" title="ankerl::nanobench::render"><code class="xref cpp cpp-func docutils literal notranslate"><span class="pre">ankerl::nanobench::render()</span></code></a>, or directly with <a class="reference internal" href="reference.html#_CPPv4N6ankerl9nanobench5Bench6renderEPKcRNSt7ostreamE" title="ankerl::nanobench::Bench::render"><code class="xref cpp cpp-func docutils literal notranslate"><span class="pre">ankerl::nanobench::Bench::render()</span></code></a>.</p>
 <p>The following example shows how to use the <a class="reference internal" href="#csv-comma-separated-values">CSV - Comma-Separated Values</a> template, without writing the standard output.</p>
-<div class="literal-block-wrapper docutils container" id="id12">
-<div class="code-block-caption"><span class="caption-text">tutorial_render_simple.cpp</span><a class="headerlink" href="#id12" title="Permalink to this code">¶</a></div>
+<div class="literal-block-wrapper docutils container" id="id13">
+<div class="code-block-caption"><span class="caption-text">tutorial_render_simple.cpp</span><a class="headerlink" href="#id13" title="Permalink to this code">¶</a></div>
 <div class="highlight-c++ notranslate"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre> 1
  2
  3
