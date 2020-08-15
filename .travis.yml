@@ -24,6 +24,19 @@ matrix:
         sources: ['ubuntu-toolchain-r-test']
         packages: ['g++-8']
 
+
+  # compile on S390x
+  - os: linux
+    arch: s390x
+    compiler: gcc
+    env:
+    - COMPILER=g++-8
+    - CMAKE_OPTIONS="-DNB_sanitizer=ON -DNB_cxx_standard=11"
+    addons:
+      apt:
+        sources: ['ubuntu-toolchain-r-test']
+        packages: ['g++-8']
+
   # g++-8
   - os: linux
     compiler: gcc
