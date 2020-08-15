@@ -33,7 +33,6 @@ MESSAGE(STATUS "${CMAKE_CXX_COMPILER_ID} ${CMAKE_CXX_COMPILER_VERSION}, C++${CMA
 
 function(add_compile_flags_target target)
     if(CMAKE_CXX_COMPILER_ID MATCHES "GNU|Clang")
-        target_compile_options(${target} PRIVATE -march=native)
         if(NOT CMAKE_CXX_COMPILER_VERSION VERSION_LESS 5.0)
             target_compile_options(${target} PRIVATE -fdiagnostics-color)
             target_compile_options(${target} PRIVATE -Wno-zero-as-null-pointer-constant) # doesn't work with spaceship operator
