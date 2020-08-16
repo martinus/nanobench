@@ -78,7 +78,10 @@
 
 #if defined(ANKERL_NANOBENCH_LOG_ENABLED)
 #    include <iostream>
-#    define ANKERL_NANOBENCH_LOG(x) std::cout << __FUNCTION__ << "@" << __LINE__ << ": " << x << std::endl
+#    define ANKERL_NANOBENCH_LOG(x)                                                 \
+        do {                                                                        \
+            std::cout << __FUNCTION__ << "@" << __LINE__ << ": " << x << std::endl; \
+        } while (0)
 #else
 #    define ANKERL_NANOBENCH_LOG(x)
 #endif
@@ -262,6 +265,7 @@ class BigO;
    * :cpp:func:`templates::csv() <ankerl::nanobench::templates::csv()>`
    * :cpp:func:`templates::json() <ankerl::nanobench::templates::json()>`
    * :cpp:func:`templates::htmlBoxplot() <ankerl::nanobench::templates::htmlBoxplot()>`
+   * :cpp:func:`templates::pyperf() <ankerl::nanobench::templates::pyperf()>`
 
    @endverbatim
  *
@@ -306,6 +310,14 @@ char const* csv() noexcept;
   @see ankerl::nanobench::render()
  */
 char const* htmlBoxplot() noexcept;
+
+/*!
+ @brief Output in pyperf  compatible JSON format, which can be used for more analyzations.
+ @verbatim embed:rst
+ See the tutorial at :ref:`tutorial-template-pyperf` for an example how to further analyze the output.
+ @endverbatim
+ */
+char const* pyperf() noexcept;
 
 /*!
   @brief Template to generate JSON data.
@@ -1323,6 +1335,30 @@ char const* htmlBoxplot() noexcept {
 </html>)DELIM";
 }
 
+char const* pyperf() noexcept {
+    return R"DELIM({
+    "benchmarks": [
+        {
+            "runs": [
+                {
+                    "values": [
+{{#measurement}}                        {{elapsed}}{{^-last}},
+{{/last}}{{/measurement}}
+                    ]
+                }
+            ]
+        }
+    ],
+    "metadata": {
+        "loops": {{sum(iterations)}},
+        "inner_loops": {{batch}},
+        "name": "{{title}}",
+        "unit": "second"
+    },
+    "version": "1.0"
+})DELIM";
+}
+
 char const* json() noexcept {
     return R"DELIM({
     "results": [
@@ -1427,6 +1463,7 @@ static std::vector<Node> parseMustacheTemplate(char const** tpl) {
 }
 
 static bool generateFirstLast(Node const& n, size_t idx, size_t size, std::ostream& out) {
+    ANKERL_NANOBENCH_LOG("n.type=" << static_cast<int>(n.type));
     bool matchFirst = n == "-first";
     bool matchLast = n == "-last";
     if (!matchFirst && !matchLast) {
@@ -1585,7 +1622,7 @@ static std::ostream& generateResultTag(Node const& n, Result const& r, std::ostr
 static void generateResultMeasurement(std::vector<Node> const& nodes, size_t idx, Result const& r, std::ostream& out) {
     for (auto const& n : nodes) {
         if (!generateFirstLast(n, idx, r.size(), out)) {
-            ANKERL_NANOBENCH_LOG("n.type=" << static_cast<int>(n.type))
+            ANKERL_NANOBENCH_LOG("n.type=" << static_cast<int>(n.type));
             switch (n.type) {
             case Node::Type::content:
                 out.write(n.begin, std::distance(n.begin, n.end));
@@ -1615,7 +1652,7 @@ static void generateResult(std::vector<Node> const& nodes, size_t idx, std::vect
     auto const& r = results[idx];
     for (auto const& n : nodes) {
         if (!generateFirstLast(n, idx, results.size(), out)) {
-            ANKERL_NANOBENCH_LOG("n.type=" << static_cast<int>(n.type))
+            ANKERL_NANOBENCH_LOG("n.type=" << static_cast<int>(n.type));
             switch (n.type) {
             case Node::Type::content:
                 out.write(n.begin, std::distance(n.begin, n.end));
@@ -1773,7 +1810,7 @@ void render(char const* mustacheTemplate, std::vector<Result> const& results, st
     auto nodes = templates::parseMustacheTemplate(&mustacheTemplate);
 
     for (auto const& n : nodes) {
-        ANKERL_NANOBENCH_LOG("n.type=" << static_cast<int>(n.type))
+        ANKERL_NANOBENCH_LOG("n.type=" << static_cast<int>(n.type));
         switch (n.type) {
         case templates::Node::Type::content:
             out.write(n.begin, std::distance(n.begin, n.end));
@@ -1788,15 +1825,31 @@ void render(char const* mustacheTemplate, std::vector<Result> const& results, st
                 for (size_t i = 0; i < nbResults; ++i) {
                     generateResult(n.children, i, results, out);
                 }
+            } else if (n == "measurement") {
+                if (results.size() != 1) {
+                    throw std::runtime_error(
+                        "render: can only use section 'measurement' here if there is a single result, but there are " +
+                        detail::fmt::to_s(results.size()));
+                }
+                // when we only have a single result, we can immediately go into its measurement.
+                auto const& r = results.front();
+                for (size_t i = 0; i < r.size(); ++i) {
+                    generateResultMeasurement(n.children, i, r, out);
+                }
             } else {
-                throw std::runtime_error("unknown section '" + std::string(n.begin, n.end) + "'");
+                throw std::runtime_error("render: unknown section '" + std::string(n.begin, n.end) + "'");
             }
             break;
 
         case templates::Node::Type::tag:
-            // This just uses the last result's config.
-            if (!generateConfigTag(n, results.back().config(), out)) {
-                throw std::runtime_error("unknown tag '" + std::string(n.begin, n.end) + "'");
+            if (results.size() == 1) {
+                // result & config are both supported there
+                generateResultTag(n, results.front(), out);
+            } else {
+                // This just uses the last result's config.
+                if (!generateConfigTag(n, results.back().config(), out)) {
+                    throw std::runtime_error("unknown tag '" + std::string(n.begin, n.end) + "'");
+                }
             }
             break;
         }
@@ -2099,11 +2152,11 @@ struct IterationLogic::Impl {
         ANKERL_NANOBENCH_LOG(mBench.name() << ": " << detail::fmt::Number(20, 3, static_cast<double>(elapsed.count())) << " elapsed, "
                                            << detail::fmt::Number(20, 3, static_cast<double>(mTargetRuntimePerEpoch.count()))
                                            << " target. oldIters=" << oldIters << ", mNumIters=" << mNumIters
-                                           << ", mState=" << static_cast<int>(mState))
+                                           << ", mState=" << static_cast<int>(mState));
     }
 
     void showResult(std::string const& errorMessage) const {
-        ANKERL_NANOBENCH_LOG(errorMessage)
+        ANKERL_NANOBENCH_LOG(errorMessage);
 
         if (mBench.output() != nullptr) {
             // prepare column data ///////
@@ -2240,7 +2293,7 @@ IterationLogic::~IterationLogic() {
 }
 
 uint64_t IterationLogic::numIters() const noexcept {
-    ANKERL_NANOBENCH_LOG(mPimpl->mBench.name() << ": mNumIters=" << mPimpl->mNumIters)
+    ANKERL_NANOBENCH_LOG(mPimpl->mBench.name() << ": mNumIters=" << mPimpl->mNumIters);
     return mPimpl->mNumIters;
 }
 
