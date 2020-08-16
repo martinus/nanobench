@@ -110,6 +110,12 @@
 <li class="toctree-l2"><a class="reference internal" href="tutorial.html#csv-comma-separated-values">CSV - Comma-Separated Values</a></li>
 <li class="toctree-l2"><a class="reference internal" href="tutorial.html#html-box-plots">HTML Box Plots</a></li>
 <li class="toctree-l2"><a class="reference internal" href="tutorial.html#json-javascript-object-notation">JSON - JavaScript Object Notation</a></li>
+<li class="toctree-l2"><a class="reference internal" href="tutorial.html#pyperf-python-pyperf-module-output">pyperf - Python pyperf module Output</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="tutorial.html#show-benchmark-statistics">Show Benchmark Statistics</a></li>
+<li class="toctree-l3"><a class="reference internal" href="tutorial.html#show-a-histogram">Show a Histogram</a></li>
+<li class="toctree-l3"><a class="reference internal" href="tutorial.html#compare-results">Compare Results</a></li>
+</ul>
+</li>
 </ul>
 </li>
 </ul>
@@ -169,6 +175,7 @@
 <li class="toctree-l3"><a class="reference internal" href="#templates-csv"><code class="xref cpp cpp-func docutils literal notranslate"><span class="pre">templates::csv</span></code></a></li>
 <li class="toctree-l3"><a class="reference internal" href="#templates-htmlboxplot"><code class="xref cpp cpp-func docutils literal notranslate"><span class="pre">templates::htmlBoxplot</span></code></a></li>
 <li class="toctree-l3"><a class="reference internal" href="#templates-json"><code class="xref cpp cpp-func docutils literal notranslate"><span class="pre">templates::json</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#templates-pyperf"><code class="xref cpp cpp-func docutils literal notranslate"><span class="pre">templates::pyperf</span></code></a></li>
 </ul>
 </li>
 <li class="toctree-l2"><a class="reference internal" href="#environment-variables">Environment Variables</a><ul>
@@ -887,6 +894,7 @@ generator becomes available, I will switch the implementation.</p>
 <li><p><a class="reference internal" href="#_CPPv4N6ankerl9nanobench9templates3csvEv" title="ankerl::nanobench::templates::csv"><code class="xref cpp cpp-func docutils literal notranslate"><span class="pre">templates::csv()</span></code></a></p></li>
 <li><p><a class="reference internal" href="#_CPPv4N6ankerl9nanobench9templates4jsonEv" title="ankerl::nanobench::templates::json"><code class="xref cpp cpp-func docutils literal notranslate"><span class="pre">templates::json()</span></code></a></p></li>
 <li><p><a class="reference internal" href="#_CPPv4N6ankerl9nanobench9templates11htmlBoxplotEv" title="ankerl::nanobench::templates::htmlBoxplot"><code class="xref cpp cpp-func docutils literal notranslate"><span class="pre">templates::htmlBoxplot()</span></code></a></p></li>
+<li><p><a class="reference internal" href="#_CPPv4N6ankerl9nanobench9templates6pyperfEv" title="ankerl::nanobench::templates::pyperf"><code class="xref cpp cpp-func docutils literal notranslate"><span class="pre">templates::pyperf()</span></code></a></p></li>
 </ul>
 </p>
 <p><dl class="simple">
@@ -935,6 +943,17 @@ generator becomes available, I will switch the implementation.</p>
 <span id="_CPPv3N6ankerl9nanobench9templates4jsonEv"></span><span id="_CPPv2N6ankerl9nanobench9templates4jsonEv"></span><span id="ankerl::nanobench::templates::json"></span><span class="target" id="nanobench_8h_1a020d1a3b2296fdce879c6c56a20a81eb"></span>char <em class="property">const</em> *<code class="sig-prename descclassname">ankerl::nanobench::templates<code class="sig-prename descclassname">::</code></code><code class="sig-name descname">json</code><span class="sig-paren">(</span><span class="sig-paren">)</span> <em class="property">noexcept</em><a class="headerlink" href="#_CPPv4N6ankerl9nanobench9templates4jsonEv" title="Permalink to this definition">¶</a><br /></dt>
 <dd><p>Template to generate JSON data. </p>
 <p>The generated JSON data contains <em>all</em> data that has been generated. All times are as double values, in seconds. The output can get quite large. <p>See the tutorial at <a class="reference internal" href="tutorial.html#tutorial-template-json"><span class="std std-ref">JSON - JavaScript Object Notation</span></a> for an example.</p>
+ </p>
+</dd></dl>
+
+</div>
+<div class="section" id="templates-pyperf">
+<h3><a class="reference internal" href="#_CPPv4N6ankerl9nanobench9templates6pyperfEv" title="ankerl::nanobench::templates::pyperf"><code class="xref cpp cpp-func docutils literal notranslate"><span class="pre">templates::pyperf</span></code></a><a class="headerlink" href="#templates-pyperf" title="Permalink to this headline">¶</a></h3>
+<dl class="cpp function">
+<dt id="_CPPv4N6ankerl9nanobench9templates6pyperfEv">
+<span id="_CPPv3N6ankerl9nanobench9templates6pyperfEv"></span><span id="_CPPv2N6ankerl9nanobench9templates6pyperfEv"></span><span id="ankerl::nanobench::templates::pyperf"></span><span class="target" id="nanobench_8h_1a5a1305c12820f2b7b521648ee2a055df"></span>char <em class="property">const</em> *<code class="sig-prename descclassname">ankerl::nanobench::templates<code class="sig-prename descclassname">::</code></code><code class="sig-name descname">pyperf</code><span class="sig-paren">(</span><span class="sig-paren">)</span> <em class="property">noexcept</em><a class="headerlink" href="#_CPPv4N6ankerl9nanobench9templates6pyperfEv" title="Permalink to this definition">¶</a><br /></dt>
+<dd><p>Output in pyperf compatible JSON format, which can be used for more analyzations. </p>
+<p><p>See the tutorial at <a class="reference internal" href="tutorial.html#tutorial-template-pyperf"><span class="std std-ref">pyperf - Python pyperf module Output</span></a> for an example how to further analyze the output.</p>
  </p>
 </dd></dl>
 

@@ -404,3 +404,54 @@ This also gives the data from each separate :cpp:func:`ankerl::nanobench::Bench:
 .. literalinclude:: _generated/mustache.render.json
    :language: json
    :linenos:
+
+.. _tutorial-template-pyperf:
+
+pyperf - Python pyperf module Output
+------------------------------------
+
+`Pyperf <https://pyperf.readthedocs.io/en/latest/>`_ is a powerful tool for benchmarking and system tuning, and it can also analyze 
+benchmark results. This template allows generation of output so it can be used for further analysis with pyperf.
+
+.. note::
+
+   Pyperf supports only a single benchmark result per generated output, so it is best to create a new
+   ``Bench`` object for each benchmark.
+
+Here is an example that generates pyperf compatible output for a benchmark that shuffles an vector:
+
+.. literalinclude:: ../test/example_pyperf.cpp
+   :language: cpp
+   :linenos:
+   :caption: example_pyperf.cpp
+
+This benchmark run creates the two files ``pyperf_shuffle_std.json`` and ``pyperf_shuffle_nanobench.json``.
+Here are some of the analysis you can do:
+
+Show Benchmark Statistics
+~~~~~~~~~~~~~~~~~~~~~~~~~
+
+Output from ``python3 -m pyperf stats pyperf_shuffle_std.json``:
+
+.. literalinclude:: code/pyperf_stats.txt
+   :language: text
+
+Show a Histogram
+~~~~~~~~~~~~~~~~
+
+It's often interesting to see a histogram, especially to visually find out if there are outliers involved. 
+Run ``python3 -m pyperf hist pyperf_shuffle_std.json`` produces this output
+
+.. literalinclude:: code/pyperf_hist.txt
+   :language: text
+
+
+Compare Results
+~~~~~~~~~~~~~~~
+
+We have generated two results in the above examples, and we can compare them easily with ``python3 -m pyperf compare_to pyperf_shuffle_std.json``:
+
+.. literalinclude:: code/pyperf_compare_to.txt
+   :language: text
+
+For more information of pyperfs analysis capability, please see `pyperf - Analyze benchmark results <https://pyperf.readthedocs.io/en/latest/analyze.html>`_.

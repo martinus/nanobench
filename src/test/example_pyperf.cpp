@@ -6,8 +6,7 @@
 #include <random>
 
 TEST_CASE("shuffle_pyperf") {
-    // input data for shuffling
-    std::vector<uint64_t> data(500, 0);
+    std::vector<uint64_t> data(500, 0); // input data for shuffling
 
     std::default_random_engine defaultRng(123);
     auto fout = std::ofstream("pyperf_shuffle_std.json");

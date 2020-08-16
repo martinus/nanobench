@@ -110,6 +110,12 @@
 <li class="toctree-l2"><a class="reference internal" href="#csv-comma-separated-values">CSV - Comma-Separated Values</a></li>
 <li class="toctree-l2"><a class="reference internal" href="#html-box-plots">HTML Box Plots</a></li>
 <li class="toctree-l2"><a class="reference internal" href="#json-javascript-object-notation">JSON - JavaScript Object Notation</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#pyperf-python-pyperf-module-output">pyperf - Python pyperf module Output</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="#show-benchmark-statistics">Show Benchmark Statistics</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#show-a-histogram">Show a Histogram</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#compare-results">Compare Results</a></li>
+</ul>
+</li>
 </ul>
 </li>
 </ul>
@@ -169,6 +175,7 @@
 <li class="toctree-l3"><a class="reference internal" href="reference.html#templates-csv"><code class="xref cpp cpp-func docutils literal notranslate"><span class="pre">templates::csv</span></code></a></li>
 <li class="toctree-l3"><a class="reference internal" href="reference.html#templates-htmlboxplot"><code class="xref cpp cpp-func docutils literal notranslate"><span class="pre">templates::htmlBoxplot</span></code></a></li>
 <li class="toctree-l3"><a class="reference internal" href="reference.html#templates-json"><code class="xref cpp cpp-func docutils literal notranslate"><span class="pre">templates::json</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="reference.html#templates-pyperf"><code class="xref cpp cpp-func docutils literal notranslate"><span class="pre">templates::pyperf</span></code></a></li>
 </ul>
 </li>
 <li class="toctree-l2"><a class="reference internal" href="reference.html#environment-variables">Environment Variables</a><ul>
@@ -1834,6 +1841,157 @@ and the boxplot itself shows median, percentiles, and outliers. You’ll might w
 <span class="p">}</span>
 </pre></div>
 </td></tr></table></div>
+</div>
+<div class="section" id="pyperf-python-pyperf-module-output">
+<span id="tutorial-template-pyperf"></span><h2>pyperf - Python pyperf module Output<a class="headerlink" href="#pyperf-python-pyperf-module-output" title="Permalink to this headline">¶</a></h2>
+<p><a class="reference external" href="https://pyperf.readthedocs.io/en/latest/">Pyperf</a> is a powerful tool for benchmarking and system tuning, and it can also analyze
+benchmark results. This template allows generation of output so it can be used for further analysis with pyperf.</p>
+<div class="admonition note">
+<p class="admonition-title">Note</p>
+<p>Pyperf supports only a single benchmark result per generated output, so it is best to create a new
+<code class="docutils literal notranslate"><span class="pre">Bench</span></code> object for each benchmark.</p>
+</div>
+<p>Here is an example that generates pyperf compatible output for a benchmark that shuffles an vector:</p>
+<div class="literal-block-wrapper docutils container" id="id14">
+<div class="code-block-caption"><span class="caption-text">example_pyperf.cpp</span><a class="headerlink" href="#id14" title="Permalink to this code">¶</a></div>
+<div class="highlight-cpp notranslate"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre> 1
+ 2
+ 3
+ 4
+ 5
+ 6
+ 7
+ 8
+ 9
+10
+11
+12
+13
+14
+15
+16
+17
+18
+19
+20
+21
+22
+23
+24
+25
+26
+27
+28
+29
+30</pre></div></td><td class="code"><div class="highlight"><pre><span></span><span class="cp">#include</span> <span class="cpf">&lt;nanobench.h&gt;</span><span class="cp"></span>
+<span class="cp">#include</span> <span class="cpf">&lt;thirdparty/doctest/doctest.h&gt;</span><span class="cp"></span>
+
+<span class="cp">#include</span> <span class="cpf">&lt;algorithm&gt;</span><span class="cp"></span>
+<span class="cp">#include</span> <span class="cpf">&lt;fstream&gt;</span><span class="cp"></span>
+<span class="cp">#include</span> <span class="cpf">&lt;random&gt;</span><span class="cp"></span>
+
+<span class="n">TEST_CASE</span><span class="p">(</span><span class="s">&quot;shuffle_pyperf&quot;</span><span class="p">)</span> <span class="p">{</span>
+    <span class="n">std</span><span class="o">::</span><span class="n">vector</span><span class="o">&lt;</span><span class="kt">uint64_t</span><span class="o">&gt;</span> <span class="n">data</span><span class="p">(</span><span class="mi">500</span><span class="p">,</span> <span class="mi">0</span><span class="p">);</span> <span class="c1">// input data for shuffling</span>
+
+    <span class="n">std</span><span class="o">::</span><span class="n">default_random_engine</span> <span class="n">defaultRng</span><span class="p">(</span><span class="mi">123</span><span class="p">);</span>
+    <span class="k">auto</span> <span class="n">fout</span> <span class="o">=</span> <span class="n">std</span><span class="o">::</span><span class="n">ofstream</span><span class="p">(</span><span class="s">&quot;pyperf_shuffle_std.json&quot;</span><span class="p">);</span>
+    <span class="n">ankerl</span><span class="o">::</span><span class="n">nanobench</span><span class="o">::</span><span class="n">Bench</span><span class="p">()</span>
+        <span class="p">.</span><span class="n">epochs</span><span class="p">(</span><span class="mi">100</span><span class="p">)</span>
+        <span class="p">.</span><span class="n">run</span><span class="p">(</span><span class="s">&quot;std::shuffle with std::default_random_engine&quot;</span><span class="p">,</span>
+             <span class="p">[</span><span class="o">&amp;</span><span class="p">]()</span> <span class="p">{</span>
+                 <span class="n">std</span><span class="o">::</span><span class="n">shuffle</span><span class="p">(</span><span class="n">data</span><span class="p">.</span><span class="n">begin</span><span class="p">(),</span> <span class="n">data</span><span class="p">.</span><span class="n">end</span><span class="p">(),</span> <span class="n">defaultRng</span><span class="p">);</span>
+             <span class="p">})</span>
+        <span class="p">.</span><span class="n">render</span><span class="p">(</span><span class="n">ankerl</span><span class="o">::</span><span class="n">nanobench</span><span class="o">::</span><span class="n">templates</span><span class="o">::</span><span class="n">pyperf</span><span class="p">(),</span> <span class="n">fout</span><span class="p">);</span>
+
+    <span class="n">fout</span> <span class="o">=</span> <span class="n">std</span><span class="o">::</span><span class="n">ofstream</span><span class="p">(</span><span class="s">&quot;pyperf_shuffle_nanobench.json&quot;</span><span class="p">);</span>
+    <span class="n">ankerl</span><span class="o">::</span><span class="n">nanobench</span><span class="o">::</span><span class="n">Rng</span> <span class="n">rng</span><span class="p">(</span><span class="mi">123</span><span class="p">);</span>
+    <span class="n">ankerl</span><span class="o">::</span><span class="n">nanobench</span><span class="o">::</span><span class="n">Bench</span><span class="p">()</span>
+        <span class="p">.</span><span class="n">epochs</span><span class="p">(</span><span class="mi">100</span><span class="p">)</span>
+        <span class="p">.</span><span class="n">run</span><span class="p">(</span><span class="s">&quot;ankerl::nanobench::Rng::shuffle&quot;</span><span class="p">,</span>
+             <span class="p">[</span><span class="o">&amp;</span><span class="p">]()</span> <span class="p">{</span>
+                 <span class="n">rng</span><span class="p">.</span><span class="n">shuffle</span><span class="p">(</span><span class="n">data</span><span class="p">);</span>
+             <span class="p">})</span>
+        <span class="p">.</span><span class="n">render</span><span class="p">(</span><span class="n">ankerl</span><span class="o">::</span><span class="n">nanobench</span><span class="o">::</span><span class="n">templates</span><span class="o">::</span><span class="n">pyperf</span><span class="p">(),</span> <span class="n">fout</span><span class="p">);</span>
+<span class="p">}</span>
+</pre></div>
+</td></tr></table></div>
+</div>
+<p>This benchmark run creates the two files <code class="docutils literal notranslate"><span class="pre">pyperf_shuffle_std.json</span></code> and <code class="docutils literal notranslate"><span class="pre">pyperf_shuffle_nanobench.json</span></code>.
+Here are some of the analysis you can do:</p>
+<div class="section" id="show-benchmark-statistics">
+<h3>Show Benchmark Statistics<a class="headerlink" href="#show-benchmark-statistics" title="Permalink to this headline">¶</a></h3>
+<p>Output from <code class="docutils literal notranslate"><span class="pre">python3</span> <span class="pre">-m</span> <span class="pre">pyperf</span> <span class="pre">stats</span> <span class="pre">pyperf_shuffle_std.json</span></code>:</p>
+<div class="highlight-text notranslate"><div class="highlight"><pre><span></span>Total duration: 364 ms
+Raw value minimum: 3.57 ms
+Raw value maximum: 4.21 ms
+
+Number of calibration run: 0
+Number of run with values: 1
+Total number of run: 1
+
+Number of warmup per run: 0
+Number of value per run: 100
+Loop iterations per value: 100
+Total number of values: 100
+
+Minimum:         35.7 us
+Median +- MAD:   36.2 us +- 0.2 us
+Mean +- std dev: 36.4 us +- 0.9 us
+Maximum:         42.1 us
+
+  0th percentile: 35.7 us (-2% of the mean) -- minimum
+  5th percentile: 35.8 us (-2% of the mean)
+ 25th percentile: 36.1 us (-1% of the mean) -- Q1
+ 50th percentile: 36.2 us (-0% of the mean) -- median
+ 75th percentile: 36.4 us (+0% of the mean) -- Q3
+ 95th percentile: 36.7 us (+1% of the mean)
+100th percentile: 42.1 us (+16% of the mean) -- maximum
+
+Number of outlier (out of 35.6 us..36.9 us): 4
+</pre></div>
+</div>
+</div>
+<div class="section" id="show-a-histogram">
+<h3>Show a Histogram<a class="headerlink" href="#show-a-histogram" title="Permalink to this headline">¶</a></h3>
+<p>It’s often interesting to see a histogram, especially to visually find out if there are outliers involved.
+Run <code class="docutils literal notranslate"><span class="pre">python3</span> <span class="pre">-m</span> <span class="pre">pyperf</span> <span class="pre">hist</span> <span class="pre">pyperf_shuffle_std.json</span></code> produces this output</p>
+<div class="highlight-text notranslate"><div class="highlight"><pre><span></span>35.7 us: 21 ######################################
+36.0 us: 33 ############################################################
+36.3 us: 37 ###################################################################
+36.6 us:  5 #########
+36.9 us:  0 |
+37.2 us:  1 ##
+37.5 us:  0 |
+37.8 us:  0 |
+38.1 us:  0 |
+38.4 us:  0 |
+38.7 us:  0 |
+39.0 us:  0 |
+39.3 us:  0 |
+39.6 us:  1 ##
+39.9 us:  0 |
+40.2 us:  0 |
+40.5 us:  1 ##
+40.8 us:  0 |
+41.1 us:  0 |
+41.5 us:  0 |
+41.8 us:  0 |
+42.1 us:  1 ##
+</pre></div>
+</div>
+</div>
+<div class="section" id="compare-results">
+<h3>Compare Results<a class="headerlink" href="#compare-results" title="Permalink to this headline">¶</a></h3>
+<p>We have generated two results in the above examples, and we can compare them easily with <code class="docutils literal notranslate"><span class="pre">python3</span> <span class="pre">-m</span> <span class="pre">pyperf</span> <span class="pre">compare_to</span> <span class="pre">pyperf_shuffle_std.json</span></code>:</p>
+<div class="highlight-text notranslate"><div class="highlight"><pre><span></span>+-----------+--------------------+------------------------------+
+| Benchmark | pyperf_shuffle_std | pyperf_shuffle_nanobench     |
++===========+====================+==============================+
+| benchmark | 36.4 us            | 11.2 us: 3.24x faster (-69%) |
++-----------+--------------------+------------------------------+
+</pre></div>
+</div>
+<p>For more information of pyperfs analysis capability, please see <a class="reference external" href="https://pyperf.readthedocs.io/en/latest/analyze.html">pyperf - Analyze benchmark results</a>.</p>
+</div>
 </div>
 </div>
 

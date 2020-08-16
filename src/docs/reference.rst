@@ -69,6 +69,12 @@
 .. doxygenfunction:: ankerl::nanobench::templates::json
 
 
+:cpp:func:`templates::pyperf <ankerl::nanobench::templates::pyperf>`
+------------------------------------------------------------------------------
+
+.. doxygenfunction:: ankerl::nanobench::templates::pyperf
+
+
 ---------------------
 Environment Variables
 ---------------------
