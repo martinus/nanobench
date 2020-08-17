@@ -17,35 +17,35 @@ std::string tplPath() {
     // not using std::filesystem becase we have to be compatible to c++11 :-/
     auto path = std::string{__FILE__};
     auto idx = path.find("unit_templates.cpp");
-    return path.substr(0, idx) + "../docs/code/";
+    return path.substr(0, idx) + "../docs/_generated/";
 }
 
 } // namespace
 
 TEST_CASE("unit_templates_generate" * doctest::skip()) {
-    auto fout = std::ofstream{tplPath() + "template-json.txt"};
+    auto fout = std::ofstream{tplPath() + "mustache.template.json"};
     fout << ankerl::nanobench::templates::json();
 
-    fout = std::ofstream{tplPath() + "template-htmlBoxplot.txt"};
+    fout = std::ofstream{tplPath() + "mustache.template.html"};
     fout << ankerl::nanobench::templates::htmlBoxplot();
 
-    fout = std::ofstream{tplPath() + "template-csv.txt"};
+    fout = std::ofstream{tplPath() + "mustache.template.csv"};
     fout << ankerl::nanobench::templates::csv();
 
-    fout = std::ofstream{tplPath() + "template-pyperf.txt"};
+    fout = std::ofstream{tplPath() + "mustache.template.pyperf"};
     fout << ankerl::nanobench::templates::pyperf();
 }
 
 TEST_CASE("unit_templates") {
-    REQUIRE(readFile(tplPath() + "template-json.txt") ==
+    REQUIRE(readFile(tplPath() + "mustache.template.json") ==
             std::string{ankerl::nanobench::templates::json()});
 
-    REQUIRE(readFile(tplPath() + "template-htmlBoxplot.txt") ==
+    REQUIRE(readFile(tplPath() + "mustache.template.html") ==
             std::string{ankerl::nanobench::templates::htmlBoxplot()});
 
-    REQUIRE(readFile(tplPath() + "template-csv.txt") ==
+    REQUIRE(readFile(tplPath() + "mustache.template.csv") ==
             std::string{ankerl::nanobench::templates::csv()});
 
-    REQUIRE(readFile(tplPath() + "template-pyperf.txt") ==
+    REQUIRE(readFile(tplPath() + "mustache.template.pyperf") ==
             std::string{ankerl::nanobench::templates::pyperf()});
 }

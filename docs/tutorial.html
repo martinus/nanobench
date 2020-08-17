@@ -430,7 +430,7 @@ optionally configures it, and then runs the code to benchmark with <a class="ref
 </tbody>
 </table>
 <p>Which means that one <code class="docutils literal notranslate"><span class="pre">x.compare_exchange_strong(y,</span> <span class="pre">0);</span></code> call takes
-5.63ns on my machine, or ~178 million operations per second. Runtime
+5.63ns on my machine (wall-clock time), or ~178 million operations per second. Runtime
 fluctuates by around 0.0%, so the results are very stable. Each call
 required 3 instructions, which took ~18 CPU cycles. There was a single branch per call,
 with only 0.1% misspredicted.</p>
@@ -1240,7 +1240,8 @@ and the boxplot itself shows median, percentiles, and outliers. You’ll might w
 38
 39
 40
-41</pre></div></td><td class="code"><div class="highlight"><pre><span></span>{
+41
+42</pre></div></td><td class="code"><div class="highlight"><pre><span></span>{
     &quot;results&quot;: [
 {{#result}}        {
             &quot;title&quot;: &quot;{{title}}&quot;,
@@ -1254,6 +1255,7 @@ and the boxplot itself shows median, percentiles, and outliers. You’ll might w
             &quot;maxEpochTime&quot;: {{maxEpochTime}},
             &quot;minEpochTime&quot;: {{minEpochTime}},
             &quot;minEpochIterations&quot;: {{minEpochIterations}},
+            &quot;epochIterations&quot;: {{epochIterations}},
             &quot;warmup&quot;: {{warmup}},
             &quot;relative&quot;: {{relative}},
             &quot;median(elapsed)&quot;: {{median(elapsed)}},
@@ -1851,6 +1853,50 @@ benchmark results. This template allows generation of output so it can be used f
 <p>Pyperf supports only a single benchmark result per generated output, so it is best to create a new
 <code class="docutils literal notranslate"><span class="pre">Bench</span></code> object for each benchmark.</p>
 </div>
+<p>The template looks like this. Note that it directly makes use of <code class="docutils literal notranslate"><span class="pre">{{#measurement}}</span></code>, which is only possible when there is a single result in the benchmark.</p>
+<div class="highlight-text notranslate"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre> 1
+ 2
+ 3
+ 4
+ 5
+ 6
+ 7
+ 8
+ 9
+10
+11
+12
+13
+14
+15
+16
+17
+18
+19
+20
+21</pre></div></td><td class="code"><div class="highlight"><pre><span></span>{
+    &quot;benchmarks&quot;: [
+        {
+            &quot;runs&quot;: [
+                {
+                    &quot;values&quot;: [
+{{#measurement}}                        {{elapsed}}{{^-last}},
+{{/last}}{{/measurement}}
+                    ]
+                }
+            ]
+        }
+    ],
+    &quot;metadata&quot;: {
+        &quot;loops&quot;: {{sum(iterations)}},
+        &quot;inner_loops&quot;: {{batch}},
+        &quot;name&quot;: &quot;{{title}}&quot;,
+        &quot;unit&quot;: &quot;second&quot;
+    },
+    &quot;version&quot;: &quot;1.0&quot;
+}
+</pre></div>
+</td></tr></table></div>
 <p>Here is an example that generates pyperf compatible output for a benchmark that shuffles an vector:</p>
 <div class="literal-block-wrapper docutils container" id="id14">
 <div class="code-block-caption"><span class="caption-text">example_pyperf.cpp</span><a class="headerlink" href="#id14" title="Permalink to this code">¶</a></div>

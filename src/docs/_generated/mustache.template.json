@@ -12,6 +12,7 @@
             "maxEpochTime": {{maxEpochTime}},
             "minEpochTime": {{minEpochTime}},
             "minEpochIterations": {{minEpochIterations}},
+            "epochIterations": {{epochIterations}},
             "warmup": {{warmup}},
             "relative": {{relative}},
             "median(elapsed)": {{median(elapsed)}},

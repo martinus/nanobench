@@ -68,7 +68,7 @@ Usage
    ==================== ===================== ========= ================= ================= ======== ================ ========= =========== ==================
 
    Which means that one ``x.compare_exchange_strong(y, 0);`` call takes
-   5.63ns on my machine, or ~178 million operations per second. Runtime
+   5.63ns on my machine (wall-clock time), or ~178 million operations per second. Runtime
    fluctuates by around 0.0%, so the results are very stable. Each call
    required 3 instructions, which took ~18 CPU cycles. There was a single branch per call,
    with only 0.1% misspredicted. 
@@ -417,6 +417,12 @@ benchmark results. This template allows generation of output so it can be used f
 
    Pyperf supports only a single benchmark result per generated output, so it is best to create a new
    ``Bench`` object for each benchmark.
+
+The template looks like this. Note that it directly makes use of ``{{#measurement}}``, which is only possible when there is a single result in the benchmark.
+
+.. literalinclude:: _generated/mustache.template.pyperf
+   :language: text
+   :linenos:
 
 Here is an example that generates pyperf compatible output for a benchmark that shuffles an vector:
 
