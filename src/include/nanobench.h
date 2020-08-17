@@ -83,7 +83,9 @@
             std::cout << __FUNCTION__ << "@" << __LINE__ << ": " << x << std::endl; \
         } while (0)
 #else
-#    define ANKERL_NANOBENCH_LOG(x)
+#    define ANKERL_NANOBENCH_LOG(x) \
+        do {                        \
+        } while (0)
 #endif
 
 #if defined(__linux__) && !defined(ANKERL_NANOBENCH_DISABLE_PERF_COUNTERS)
