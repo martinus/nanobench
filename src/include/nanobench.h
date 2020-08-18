@@ -213,7 +213,7 @@ class BigO;
  *
  *    * `{{#measurement}}` To access individual measurement results, open the begin tag for measurements.
  *
- *       * `{{elapsed}}` Average elapsed time per iteration, in seconds.
+ *       * `{{elapsed}}` Average elapsed wall clock time per iteration, in seconds.
  *
  *       * `{{iterations}}` Number of iterations in the measurement. The number of iterations will fluctuate due
  *         to some applied randomness, to enhance accuracy.
@@ -304,7 +304,7 @@ char const* csv() noexcept;
 /*!
   @brief HTML output that uses plotly to generate an interactive boxplot chart. See the tutorial for an example output.
 
-  The output uses only the elapsed time, and displays each epoch as a single dot.
+  The output uses only the elapsed wall clock time, and displays each epoch as a single dot.
   @verbatim embed:rst
   See the tutorial at :ref:`tutorial-template-html` for an example.
   @endverbatim
