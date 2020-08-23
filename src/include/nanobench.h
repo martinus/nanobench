@@ -948,6 +948,7 @@ public:
       @endverbatim
      */
     Bench& render(char const* templateContent, std::ostream& os);
+    Bench& render(std::string const& templateContent, std::ostream& os);
 
     Bench& config(Config const& benchmarkConfig);
     ANKERL_NANOBENCH(NODISCARD) Config const& config() const noexcept;
@@ -3177,6 +3178,11 @@ std::vector<Result> const& Bench::results() const noexcept {
 }
 
 Bench& Bench::render(char const* templateContent, std::ostream& os) {
+    ::ankerl::nanobench::render(templateContent, *this, os);
+    return *this;
+}
+
+Bench& Bench::render(std::string const& templateContent, std::ostream& os) {
     ::ankerl::nanobench::render(templateContent, *this, os);
     return *this;
 }
