@@ -32,7 +32,7 @@
 
 // see https://semver.org/
 #define ANKERL_NANOBENCH_VERSION_MAJOR 4 // incompatible API changes
-#define ANKERL_NANOBENCH_VERSION_MINOR 1 // backwards-compatible changes
+#define ANKERL_NANOBENCH_VERSION_MINOR 2 // backwards-compatible changes
 #define ANKERL_NANOBENCH_VERSION_PATCH 0 // backwards-compatible bug fixes
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
@@ -276,6 +276,7 @@ class BigO;
  * @param out Output for the generated output.
  */
 void render(char const* mustacheTemplate, Bench const& bench, std::ostream& out);
+void render(std::string const& mustacheTemplate, Bench const& bench, std::ostream& out);
 
 /**
  * Same as render(char const* mustacheTemplate, Bench const& bench, std::ostream& out), but for when
@@ -286,6 +287,7 @@ void render(char const* mustacheTemplate, Bench const& bench, std::ostream& out)
  * @param out Output for the generated output.
  */
 void render(char const* mustacheTemplate, std::vector<Result> const& results, std::ostream& out);
+void render(std::string const& mustacheTemplate, std::vector<Result> const& results, std::ostream& out);
 
 // Contains mustache-like templates
 namespace templates {
@@ -1858,8 +1860,16 @@ void render(char const* mustacheTemplate, std::vector<Result> const& results, st
     }
 }
 
+void render(std::string const& mustacheTemplate, std::vector<Result> const& results, std::ostream& out) {
+    render(mustacheTemplate.c_str(), results, out);
+}
+
 void render(char const* mustacheTemplate, const Bench& bench, std::ostream& out) {
     render(mustacheTemplate, bench.results(), out);
+}
+
+void render(std::string const& mustacheTemplate, const Bench& bench, std::ostream& out) {
+    render(mustacheTemplate.c_str(), bench.results(), out);
 }
 
 namespace detail {
