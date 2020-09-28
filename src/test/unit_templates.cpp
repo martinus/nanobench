@@ -7,7 +7,7 @@
 namespace {
 
 std::string readFile(std::string const& filename) {
-    auto fin = std::ifstream{filename};
+    std::ifstream fin{filename};
     return std::string{std::istreambuf_iterator<char>(fin),
                        std::istreambuf_iterator<char>()};
 }
@@ -23,17 +23,25 @@ std::string tplPath() {
 } // namespace
 
 TEST_CASE("unit_templates_generate" * doctest::skip()) {
-    auto fout = std::ofstream{tplPath() + "mustache.template.json"};
-    fout << ankerl::nanobench::templates::json();
+    {
+        std::ofstream fout{tplPath() + "mustache.template.json"};
+        fout << ankerl::nanobench::templates::json();
+    }
 
-    fout = std::ofstream{tplPath() + "mustache.template.html"};
-    fout << ankerl::nanobench::templates::htmlBoxplot();
+    {
+        std::ofstream fout{tplPath() + "mustache.template.html"};
+        fout << ankerl::nanobench::templates::htmlBoxplot();
+    }
 
-    fout = std::ofstream{tplPath() + "mustache.template.csv"};
-    fout << ankerl::nanobench::templates::csv();
+    {
+        std::ofstream fout{tplPath() + "mustache.template.csv"};
+        fout << ankerl::nanobench::templates::csv();
+    }
 
-    fout = std::ofstream{tplPath() + "mustache.template.pyperf"};
-    fout << ankerl::nanobench::templates::pyperf();
+    {
+        std::ofstream fout{tplPath() + "mustache.template.pyperf"};
+        fout << ankerl::nanobench::templates::pyperf();
+    }
 }
 
 TEST_CASE("unit_templates") {
