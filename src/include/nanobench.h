@@ -32,7 +32,7 @@
 
 // see https://semver.org/
 #define ANKERL_NANOBENCH_VERSION_MAJOR 4 // incompatible API changes
-#define ANKERL_NANOBENCH_VERSION_MINOR 2 // backwards-compatible changes
+#define ANKERL_NANOBENCH_VERSION_MINOR 3 // backwards-compatible changes
 #define ANKERL_NANOBENCH_VERSION_PATCH 0 // backwards-compatible bug fixes
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
@@ -523,6 +523,7 @@ public:
      */
     explicit Rng(uint64_t seed) noexcept;
     Rng(uint64_t x, uint64_t y) noexcept;
+    Rng(std::vector<uint64_t> const& data);
 
     /**
      * Creates a copy of the Rng, thus the copy provides exactly the same random sequence as the original.
@@ -576,6 +577,14 @@ public:
      */
     template <typename Container>
     void shuffle(Container& container) noexcept;
+
+    /**
+     * Extracts the full state of the generator, e.g. for serialization. For this RNG this is just 2 values, but to stay API compatible
+     * with future implementations that potentially use more state, we use a vector.
+     *
+     * @return Vector containing the full state:
+     */
+    std::vector<uint64_t> state() const;
 
 private:
     static constexpr uint64_t rotl(uint64_t x, unsigned k) noexcept;
@@ -3247,6 +3256,24 @@ Rng::Rng(uint64_t x, uint64_t y) noexcept
 
 Rng Rng::copy() const noexcept {
     return Rng{mX, mY};
+}
+
+Rng::Rng(std::vector<uint64_t> const& data)
+    : mX(0)
+    , mY(0) {
+    if (data.size() != 2) {
+        throw std::runtime_error("ankerl::nanobench::Rng::Rng: needed exactly 2 entries in data, but got " +
+                                 std::to_string(data.size()));
+    }
+    mX = data[0];
+    mY = data[1];
+}
+
+std::vector<uint64_t> Rng::state() const {
+    std::vector<uint64_t> data(2);
+    data[0] = mX;
+    data[1] = mY;
+    return data;
 }
 
 BigO::RangeMeasure BigO::collectRangeMeasure(std::vector<Result> const& results) {

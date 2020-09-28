@@ -66,7 +66,7 @@
             
             
               <div class="version">
-                v4.2.0
+                v4.3.0
               </div>
             
           
@@ -783,6 +783,17 @@ generator becomes available, I will switch the implementation.</p>
 <dt><strong>Parameters</strong></dt><dd><ul class="breatheparameterlist simple">
 <li><p><code class="docutils literal notranslate"><span class="pre">container</span></code>: The whole container will be shuffled. </p></li>
 </ul>
+</dd>
+</dl>
+</p>
+</dd></dl>
+
+<dl class="cpp function">
+<dt id="_CPPv4NK6ankerl9nanobench3Rng5stateEv">
+<span id="_CPPv3NK6ankerl9nanobench3Rng5stateEv"></span><span id="_CPPv2NK6ankerl9nanobench3Rng5stateEv"></span><span id="ankerl::nanobench::Rng::stateC"></span><span class="target" id="classankerl_1_1nanobench_1_1Rng_1aba1e026f61939b0e279dc046b4446ac1"></span>std::vector&lt;uint64_t&gt; <code class="sig-name descname">state</code><span class="sig-paren">(</span><span class="sig-paren">)</span> <em class="property">const</em><a class="headerlink" href="#_CPPv4NK6ankerl9nanobench3Rng5stateEv" title="Permalink to this definition">¶</a><br /></dt>
+<dd><p>Extracts the full state of the generator, e.g. for serialization. For this RNG this is just 2 values, but to stay API compatible with future implementations that potentially use more state, we use a vector.</p>
+<p><dl class="simple">
+<dt><strong>Return</strong></dt><dd><p>Vector containing the full state: </p>
 </dd>
 </dl>
 </p>

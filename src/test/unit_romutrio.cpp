@@ -70,3 +70,16 @@ TEST_CASE("unit_romutrio_seed") {
     }
     std::cout << out.str() << std::endl;
 }
+
+TEST_CASE("unit_rng_state") {
+    ankerl::nanobench::Rng rng{};
+    for (size_t i = 0; i < 10; ++i) {
+        rng();
+    }
+    auto state = rng.state();
+    ankerl::nanobench::Rng rngLoaded(state);
+
+    for (size_t i = 0; i < 100; ++i) {
+        REQUIRE(rng() == rngLoaded());
+    }
+}
