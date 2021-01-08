@@ -14,6 +14,8 @@
 # import sys
 # sys.path.insert(0, os.path.abspath('.'))
 
+#import sphinx_rtd_theme
+
 
 # -- Project information -----------------------------------------------------
 
@@ -27,7 +29,13 @@ version = 'v4.3.0'
 # Add any Sphinx extension module names here, as strings. They can be
 # extensions coming with Sphinx (named 'sphinx.ext.*') or your custom
 # ones.
-extensions = [ "breathe", "sphinx.ext.mathjax", "recommonmark" ]
+extensions = [
+    "sphinx_rtd_theme",
+    "breathe",
+    "sphinx.ext.mathjax",
+    "recommonmark"
+]
+
 breathe_projects = { "nanobench": "./_build/doxygen/xml" }
 breathe_default_project = "nanobench"
 

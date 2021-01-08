@@ -1,41 +1,44 @@
 
 
 <!DOCTYPE html>
-<!--[if IE 8]><html class="no-js lt-ie9" lang="en" > <![endif]-->
-<!--[if gt IE 8]><!--> <html class="no-js" lang="en" > <!--<![endif]-->
+<html class="writer-html5" lang="en" >
 <head>
-  <meta charset="utf-8">
+  <meta charset="utf-8" />
   
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   
   <title>Installation &mdash; nanobench  documentation</title>
   
 
   
+  <link rel="stylesheet" href="_static/css/theme.css" type="text/css" />
+  <link rel="stylesheet" href="_static/pygments.css" type="text/css" />
+
+  
   
     <link rel="shortcut icon" href="_static/favicon.ico"/>
   
+
   
   
 
   
-  <script type="text/javascript" src="_static/js/modernizr.min.js"></script>
+
+  
+  <!--[if lt IE 9]>
+    <script src="_static/js/html5shiv.min.js"></script>
+  <![endif]-->
   
     
       <script type="text/javascript" id="documentation_options" data-url_root="./" src="_static/documentation_options.js"></script>
         <script src="_static/jquery.js"></script>
         <script src="_static/underscore.js"></script>
         <script src="_static/doctools.js"></script>
-        <script src="_static/language_data.js"></script>
         <script async="async" src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.7/latest.js?config=TeX-AMS-MML_HTMLorMML"></script>
     
     <script type="text/javascript" src="_static/js/theme.js"></script>
 
     
-
-  
-  <link rel="stylesheet" href="_static/css/theme.css" type="text/css" />
-  <link rel="stylesheet" href="_static/pygments.css" type="text/css" />
     <link rel="index" title="Index" href="genindex.html" />
     <link rel="search" title="Search" href="search.html" />
     <link rel="next" title="Test Set" href="comparison.html" />
@@ -83,6 +86,7 @@
           
         </div>
 
+        
         <div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="main navigation">
           
             
@@ -211,6 +215,7 @@
             
           
         </div>
+        
       </div>
     </nav>
 
@@ -245,18 +250,20 @@
 
 
 
+
+
 <div role="navigation" aria-label="breadcrumbs navigation">
 
   <ul class="wy-breadcrumbs">
     
-      <li><a href="index.html">Docs</a> &raquo;</li>
+      <li><a href="index.html" class="icon icon-home"></a> &raquo;</li>
         
       <li>Installation</li>
     
     
       <li class="wy-breadcrumbs-aside">
         
-            
+          
             
               <a href="https://github.com/martinus/nanobench/blob/master/src/docs/tutorial.rst" class="fa fa-github"> Edit on GitHub</a>
             
@@ -728,10 +735,16 @@ I factored out the general benchmarking code so it’s easy to use for each of t
 42
 43
 44
-45</pre></div></td><td class="code"><div class="highlight"><pre><span></span><span class="k">namespace</span> <span class="p">{</span>
+45
+46
+47
+48</pre></div></td><td class="code"><div class="highlight"><pre><span></span>    <span class="kt">uint64_t</span> <span class="n">stateB</span><span class="p">;</span>
+<span class="p">};</span>
+
+<span class="k">namespace</span> <span class="p">{</span>
 
 <span class="c1">// Benchmarks how fast we can get 64bit random values from Rng.</span>
-<span class="k">template</span> <span class="o">&lt;</span><span class="k">typename</span> <span class="n">Rng</span><span class="o">&gt;</span>
+<span class="k">template</span> <span class="o">&lt;</span><span class="k">typename</span> <span class="nc">Rng</span><span class="o">&gt;</span>
 <span class="kt">void</span> <span class="n">bench</span><span class="p">(</span><span class="n">ankerl</span><span class="o">::</span><span class="n">nanobench</span><span class="o">::</span><span class="n">Bench</span><span class="o">*</span> <span class="n">bench</span><span class="p">,</span> <span class="kt">char</span> <span class="k">const</span><span class="o">*</span> <span class="n">name</span><span class="p">)</span> <span class="p">{</span>
     <span class="n">std</span><span class="o">::</span><span class="n">random_device</span> <span class="n">dev</span><span class="p">;</span>
     <span class="n">Rng</span> <span class="nf">rng</span><span class="p">(</span><span class="n">dev</span><span class="p">());</span>
@@ -1010,7 +1023,7 @@ output:</p>
 
 <span class="k">namespace</span> <span class="p">{</span>
 
-<span class="kt">void</span> <span class="n">gen</span><span class="p">(</span><span class="n">std</span><span class="o">::</span><span class="n">string</span> <span class="k">const</span><span class="o">&amp;</span> <span class="n">typeName</span><span class="p">,</span> <span class="kt">char</span> <span class="k">const</span><span class="o">*</span> <span class="n">mustacheTemplate</span><span class="p">,</span>
+<span class="kt">void</span> <span class="nf">gen</span><span class="p">(</span><span class="n">std</span><span class="o">::</span><span class="n">string</span> <span class="k">const</span><span class="o">&amp;</span> <span class="n">typeName</span><span class="p">,</span> <span class="kt">char</span> <span class="k">const</span><span class="o">*</span> <span class="n">mustacheTemplate</span><span class="p">,</span>
          <span class="n">ankerl</span><span class="o">::</span><span class="n">nanobench</span><span class="o">::</span><span class="n">Bench</span> <span class="k">const</span><span class="o">&amp;</span> <span class="n">bench</span><span class="p">)</span> <span class="p">{</span>
 
     <span class="n">std</span><span class="o">::</span><span class="n">ofstream</span> <span class="n">templateOut</span><span class="p">(</span><span class="s">&quot;mustache.template.&quot;</span> <span class="o">+</span> <span class="n">typeName</span><span class="p">);</span>
@@ -1940,16 +1953,16 @@ benchmark results. This template allows generation of output so it can be used f
     <span class="n">std</span><span class="o">::</span><span class="n">vector</span><span class="o">&lt;</span><span class="kt">uint64_t</span><span class="o">&gt;</span> <span class="n">data</span><span class="p">(</span><span class="mi">500</span><span class="p">,</span> <span class="mi">0</span><span class="p">);</span> <span class="c1">// input data for shuffling</span>
 
     <span class="n">std</span><span class="o">::</span><span class="n">default_random_engine</span> <span class="n">defaultRng</span><span class="p">(</span><span class="mi">123</span><span class="p">);</span>
-    <span class="k">auto</span> <span class="n">fout</span> <span class="o">=</span> <span class="n">std</span><span class="o">::</span><span class="n">ofstream</span><span class="p">(</span><span class="s">&quot;pyperf_shuffle_std.json&quot;</span><span class="p">);</span>
+    <span class="n">std</span><span class="o">::</span><span class="n">ofstream</span> <span class="n">fout1</span><span class="p">(</span><span class="s">&quot;pyperf_shuffle_std.json&quot;</span><span class="p">);</span>
     <span class="n">ankerl</span><span class="o">::</span><span class="n">nanobench</span><span class="o">::</span><span class="n">Bench</span><span class="p">()</span>
         <span class="p">.</span><span class="n">epochs</span><span class="p">(</span><span class="mi">100</span><span class="p">)</span>
         <span class="p">.</span><span class="n">run</span><span class="p">(</span><span class="s">&quot;std::shuffle with std::default_random_engine&quot;</span><span class="p">,</span>
              <span class="p">[</span><span class="o">&amp;</span><span class="p">]()</span> <span class="p">{</span>
                  <span class="n">std</span><span class="o">::</span><span class="n">shuffle</span><span class="p">(</span><span class="n">data</span><span class="p">.</span><span class="n">begin</span><span class="p">(),</span> <span class="n">data</span><span class="p">.</span><span class="n">end</span><span class="p">(),</span> <span class="n">defaultRng</span><span class="p">);</span>
              <span class="p">})</span>
-        <span class="p">.</span><span class="n">render</span><span class="p">(</span><span class="n">ankerl</span><span class="o">::</span><span class="n">nanobench</span><span class="o">::</span><span class="n">templates</span><span class="o">::</span><span class="n">pyperf</span><span class="p">(),</span> <span class="n">fout</span><span class="p">);</span>
+        <span class="p">.</span><span class="n">render</span><span class="p">(</span><span class="n">ankerl</span><span class="o">::</span><span class="n">nanobench</span><span class="o">::</span><span class="n">templates</span><span class="o">::</span><span class="n">pyperf</span><span class="p">(),</span> <span class="n">fout1</span><span class="p">);</span>
 
-    <span class="n">fout</span> <span class="o">=</span> <span class="n">std</span><span class="o">::</span><span class="n">ofstream</span><span class="p">(</span><span class="s">&quot;pyperf_shuffle_nanobench.json&quot;</span><span class="p">);</span>
+    <span class="n">std</span><span class="o">::</span><span class="n">ofstream</span> <span class="n">fout2</span><span class="p">(</span><span class="s">&quot;pyperf_shuffle_nanobench.json&quot;</span><span class="p">);</span>
     <span class="n">ankerl</span><span class="o">::</span><span class="n">nanobench</span><span class="o">::</span><span class="n">Rng</span> <span class="n">rng</span><span class="p">(</span><span class="mi">123</span><span class="p">);</span>
     <span class="n">ankerl</span><span class="o">::</span><span class="n">nanobench</span><span class="o">::</span><span class="n">Bench</span><span class="p">()</span>
         <span class="p">.</span><span class="n">epochs</span><span class="p">(</span><span class="mi">100</span><span class="p">)</span>
@@ -1957,7 +1970,7 @@ benchmark results. This template allows generation of output so it can be used f
              <span class="p">[</span><span class="o">&amp;</span><span class="p">]()</span> <span class="p">{</span>
                  <span class="n">rng</span><span class="p">.</span><span class="n">shuffle</span><span class="p">(</span><span class="n">data</span><span class="p">);</span>
              <span class="p">})</span>
-        <span class="p">.</span><span class="n">render</span><span class="p">(</span><span class="n">ankerl</span><span class="o">::</span><span class="n">nanobench</span><span class="o">::</span><span class="n">templates</span><span class="o">::</span><span class="n">pyperf</span><span class="p">(),</span> <span class="n">fout</span><span class="p">);</span>
+        <span class="p">.</span><span class="n">render</span><span class="p">(</span><span class="n">ankerl</span><span class="o">::</span><span class="n">nanobench</span><span class="o">::</span><span class="n">templates</span><span class="o">::</span><span class="n">pyperf</span><span class="p">(),</span> <span class="n">fout2</span><span class="p">);</span>
 <span class="p">}</span>
 </pre></div>
 </td></tr></table></div>
@@ -2028,7 +2041,7 @@ Run <code class="docutils literal notranslate"><span class="pre">python3</span> 
 </div>
 <div class="section" id="compare-results">
 <h3>Compare Results<a class="headerlink" href="#compare-results" title="Permalink to this headline">¶</a></h3>
-<p>We have generated two results in the above examples, and we can compare them easily with <code class="docutils literal notranslate"><span class="pre">python3</span> <span class="pre">-m</span> <span class="pre">pyperf</span> <span class="pre">compare_to</span> <span class="pre">pyperf_shuffle_std.json</span></code>:</p>
+<p>We have generated two results in the above examples, and we can compare them easily with <code class="docutils literal notranslate"><span class="pre">python3</span> <span class="pre">-m</span> <span class="pre">pyperf</span> <span class="pre">compare_to</span> <span class="pre">pyperf_shuffle_std.json</span> <span class="pre">pyperf_shuffle_nanobench.json</span></code>:</p>
 <div class="highlight-text notranslate"><div class="highlight"><pre><span></span>+-----------+--------------------+------------------------------+
 | Benchmark | pyperf_shuffle_std | pyperf_shuffle_nanobench     |
 +===========+====================+==============================+
@@ -2046,29 +2059,29 @@ Run <code class="docutils literal notranslate"><span class="pre">python3</span> 
            
           </div>
           <footer>
-  
     <div class="rst-footer-buttons" role="navigation" aria-label="footer navigation">
-      
-        <a href="comparison.html" class="btn btn-neutral float-right" title="Test Set" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right"></span></a>
-      
-      
-        <a href="index.html" class="btn btn-neutral float-left" title="nanobench" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left"></span> Previous</a>
-      
+        <a href="comparison.html" class="btn btn-neutral float-right" title="Test Set" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right" aria-hidden="true"></span></a>
+        <a href="index.html" class="btn btn-neutral float-left" title="nanobench" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left" aria-hidden="true"></span> Previous</a>
     </div>
-  
 
   <hr/>
 
   <div role="contentinfo">
     <p>
-        &copy; Copyright 2019-2020 Martin Ankerl &lt;martin.ankerl@gmail.com&gt;
+        &#169; Copyright 2019-2020 Martin Ankerl &lt;martin.ankerl@gmail.com&gt;.
 
     </p>
   </div>
-  Built with <a href="http://sphinx-doc.org/">Sphinx</a> using a <a href="https://github.com/rtfd/sphinx_rtd_theme">theme</a> provided by <a href="https://readthedocs.org">Read the Docs</a>. 
+    
+    
+    
+    Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    
+    provided by <a href="https://readthedocs.org">Read the Docs</a>. 
 
 </footer>
-
         </div>
       </div>
 
@@ -2076,7 +2089,6 @@ Run <code class="docutils literal notranslate"><span class="pre">python3</span> 
 
   </div>
   
-
 
   <script type="text/javascript">
       jQuery(function () {
@@ -2095,6 +2107,7 @@ Run <code class="docutils literal notranslate"><span class="pre">python3</span> 
     })(window,document,'script','https://www.google-analytics.com/analytics.js','ga');
 
     ga('create', 'UA-36863101-2', 'auto');
+    
     ga('send', 'pageview');
     </script>
 

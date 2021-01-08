@@ -1,41 +1,44 @@
 
 
 <!DOCTYPE html>
-<!--[if IE 8]><html class="no-js lt-ie9" lang="en" > <![endif]-->
-<!--[if gt IE 8]><!--> <html class="no-js" lang="en" > <!--<![endif]-->
+<html class="writer-html5" lang="en" >
 <head>
-  <meta charset="utf-8">
+  <meta charset="utf-8" />
   
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   
   <title>ankerl::nanobench Reference &mdash; nanobench  documentation</title>
   
 
   
+  <link rel="stylesheet" href="_static/css/theme.css" type="text/css" />
+  <link rel="stylesheet" href="_static/pygments.css" type="text/css" />
+
+  
   
     <link rel="shortcut icon" href="_static/favicon.ico"/>
   
+
   
   
 
   
-  <script type="text/javascript" src="_static/js/modernizr.min.js"></script>
+
+  
+  <!--[if lt IE 9]>
+    <script src="_static/js/html5shiv.min.js"></script>
+  <![endif]-->
   
     
       <script type="text/javascript" id="documentation_options" data-url_root="./" src="_static/documentation_options.js"></script>
         <script src="_static/jquery.js"></script>
         <script src="_static/underscore.js"></script>
         <script src="_static/doctools.js"></script>
-        <script src="_static/language_data.js"></script>
         <script async="async" src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.7/latest.js?config=TeX-AMS-MML_HTMLorMML"></script>
     
     <script type="text/javascript" src="_static/js/theme.js"></script>
 
     
-
-  
-  <link rel="stylesheet" href="_static/css/theme.css" type="text/css" />
-  <link rel="stylesheet" href="_static/pygments.css" type="text/css" />
     <link rel="index" title="Index" href="genindex.html" />
     <link rel="search" title="Search" href="search.html" />
     <link rel="next" title="Index" href="genindex.html" />
@@ -83,6 +86,7 @@
           
         </div>
 
+        
         <div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="main navigation">
           
             
@@ -211,6 +215,7 @@
             
           
         </div>
+        
       </div>
     </nav>
 
@@ -245,18 +250,20 @@
 
 
 
+
+
 <div role="navigation" aria-label="breadcrumbs navigation">
 
   <ul class="wy-breadcrumbs">
     
-      <li><a href="index.html">Docs</a> &raquo;</li>
+      <li><a href="index.html" class="icon icon-home"></a> &raquo;</li>
         
       <li><code class="docutils literal notranslate"><span class="pre">ankerl::nanobench</span></code> Reference</li>
     
     
       <li class="wy-breadcrumbs-aside">
         
-            
+          
             
               <a href="https://github.com/martinus/nanobench/blob/master/src/docs/reference.rst" class="fa fa-github"> Edit on GitHub</a>
             
@@ -300,13 +307,14 @@
 <span id="_CPPv3I0EN6ankerl9nanobench5Bench3runEPKcRR2Op"></span><span id="_CPPv2I0EN6ankerl9nanobench5Bench3runEPKcRR2Op"></span>template&lt;typename <code class="sig-name descname">Op</code>&gt;<br /><span class="target" id="classankerl_1_1nanobench_1_1Bench_1a396e218813c7eeb20a58adad9bbd85f7"></span><a class="reference internal" href="#_CPPv4N6ankerl9nanobench5BenchE" title="ankerl::nanobench::Bench">Bench</a> &amp;<code class="sig-name descname">run</code><span class="sig-paren">(</span>char <em class="property">const</em> *<em>benchmarkName</em>, <a class="reference internal" href="#_CPPv4I0EN6ankerl9nanobench5Bench3runER5BenchPKcRR2Op" title="ankerl::nanobench::Bench::run::Op">Op</a> &amp;&amp;<em>op</em><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv4I0EN6ankerl9nanobench5Bench3runER5BenchPKcRR2Op" title="Permalink to this definition">¶</a><br /></dt>
 <dd><p>Repeatedly calls <code class="docutils literal notranslate"><span class="pre">op()</span></code> based on the configuration, and performs measurements. </p>
 <p>This call is marked with <code class="docutils literal notranslate"><span class="pre">noinline</span></code> to prevent the compiler to optimize beyond different benchmarks. This can have quite a big effect on benchmark accuracy.</p>
-<p><div class="admonition note">
+<p><p><div class="admonition note">
 <p class="admonition-title">Note</p>
 <p>Each call to your lambda must have a side effect that the compiler can’t possibly optimize it away. E.g. add a result to an
 externally defined number (like <cite>x</cite> in the above example), and finally call <cite>doNotOptimizeAway</cite> on the variables the compiler
 must not remove. You can also use <a class="reference internal" href="#_CPPv4I0EN6ankerl9nanobench17doNotOptimizeAwayEvRR3Arg" title="ankerl::nanobench::doNotOptimizeAway"><code class="xref cpp cpp-func docutils literal notranslate"><span class="pre">ankerl::nanobench::doNotOptimizeAway()</span></code></a> directly in the lambda, but be aware that
 this has a small overhead.</p>
 </div>
+</p>
 </p>
 <p><dl class="simple">
 <dt><strong>Template Parameters</strong></dt><dd><ul class="breatheparameterlist simple">
@@ -572,16 +580,18 @@ this has a small overhead.</p>
 <dl class="cpp function">
 <dt id="_CPPv4I0EN6ankerl9nanobench5Bench17doNotOptimizeAwayER5BenchRR3Arg">
 <span id="_CPPv3I0EN6ankerl9nanobench5Bench17doNotOptimizeAwayERR3Arg"></span><span id="_CPPv2I0EN6ankerl9nanobench5Bench17doNotOptimizeAwayERR3Arg"></span>template&lt;typename <code class="sig-name descname">Arg</code>&gt;<br /><span class="target" id="classankerl_1_1nanobench_1_1Bench_1a777015f55cd397af8b76a2ff7b3ce707"></span><a class="reference internal" href="#_CPPv4N6ankerl9nanobench5BenchE" title="ankerl::nanobench::Bench">Bench</a> &amp;<code class="sig-name descname">doNotOptimizeAway</code><span class="sig-paren">(</span><a class="reference internal" href="#_CPPv4I0EN6ankerl9nanobench5Bench17doNotOptimizeAwayER5BenchRR3Arg" title="ankerl::nanobench::Bench::doNotOptimizeAway::Arg">Arg</a> &amp;&amp;<em>arg</em><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv4I0EN6ankerl9nanobench5Bench17doNotOptimizeAwayER5BenchRR3Arg" title="Permalink to this definition">¶</a><br /></dt>
-<dd><p><p>Convenience shortcut to <a class="reference internal" href="#_CPPv4I0EN6ankerl9nanobench17doNotOptimizeAwayEvRR3Arg" title="ankerl::nanobench::doNotOptimizeAway"><code class="xref cpp cpp-func docutils literal notranslate"><span class="pre">ankerl::nanobench::doNotOptimizeAway()</span></code></a>.</p>
+<dd><p><p><p>Convenience shortcut to <a class="reference internal" href="#_CPPv4I0EN6ankerl9nanobench17doNotOptimizeAwayEvRR3Arg" title="ankerl::nanobench::doNotOptimizeAway"><code class="xref cpp cpp-func docutils literal notranslate"><span class="pre">ankerl::nanobench::doNotOptimizeAway()</span></code></a>.</p>
+</p>
  </p>
 </dd></dl>
 
 <dl class="cpp function">
 <dt id="_CPPv4I0EN6ankerl9nanobench5Bench11complexityNER5Bench1T">
 <span id="_CPPv3I0EN6ankerl9nanobench5Bench11complexityNE1T"></span><span id="_CPPv2I0EN6ankerl9nanobench5Bench11complexityNE1T"></span>template&lt;typename <code class="sig-name descname">T</code>&gt;<br /><span class="target" id="classankerl_1_1nanobench_1_1Bench_1a0027b7d43a3eafb3311b8b74a749dede"></span><a class="reference internal" href="#_CPPv4N6ankerl9nanobench5BenchE" title="ankerl::nanobench::Bench">Bench</a> &amp;<code class="sig-name descname">complexityN</code><span class="sig-paren">(</span><a class="reference internal" href="#_CPPv4I0EN6ankerl9nanobench5Bench11complexityNER5Bench1T" title="ankerl::nanobench::Bench::complexityN::T">T</a> <em>b</em><span class="sig-paren">)</span> <em class="property">noexcept</em><a class="headerlink" href="#_CPPv4I0EN6ankerl9nanobench5Bench11complexityNER5Bench1T" title="Permalink to this definition">¶</a><br /></dt>
-<dd><p><p>Sets N for asymptotic complexity calculation, so it becomes possible to calculate <a class="reference external" href="https://en.wikipedia.org/wiki/Big_O_notation">Big O</a> from multiple benchmark evaluations.</p>
+<dd><p><p><p>Sets N for asymptotic complexity calculation, so it becomes possible to calculate <a class="reference external" href="https://en.wikipedia.org/wiki/Big_O_notation">Big O</a> from multiple benchmark evaluations.</p>
 <p>Use <a class="reference internal" href="#_CPPv4NK6ankerl9nanobench5Bench14complexityBigOEv" title="ankerl::nanobench::Bench::complexityBigO"><code class="xref cpp cpp-func docutils literal notranslate"><span class="pre">ankerl::nanobench::Bench::complexityBigO()</span></code></a> when the evaluation has finished. See the tutorial
 <a class="reference internal" href="tutorial.html#asymptotic-complexity"><span class="std std-ref">Asymptotic Complexity</span></a> for details.</p>
+</p>
 </p>
 <p><dl class="simple">
 <dt><strong>Template Parameters</strong></dt><dd><ul class="breatheparameterlist simple">
@@ -614,7 +624,8 @@ this has a small overhead.</p>
 </div>
 </p>
 <p>So in this case <span class="math notranslate nohighlight">\( \mathcal{O}(n\log{}n) \)</span> provides the best approximation.</p>
-<p><p>See the tutorial <a class="reference internal" href="tutorial.html#asymptotic-complexity"><span class="std std-ref">Asymptotic Complexity</span></a> for details.</p>
+<p><p><p>See the tutorial <a class="reference internal" href="tutorial.html#asymptotic-complexity"><span class="std std-ref">Asymptotic Complexity</span></a> for details.</p>
+</p>
  <dl class="simple">
 <dt><strong>Return</strong></dt><dd><p>Evaluation results, which can be printed or otherwise inspected. </p>
 </dd>
@@ -657,7 +668,8 @@ this has a small overhead.</p>
 <dl class="cpp function">
 <dt id="_CPPv4N6ankerl9nanobench5Bench6renderEPKcRNSt7ostreamE">
 <span id="_CPPv3N6ankerl9nanobench5Bench6renderEPKcRNSt7ostreamE"></span><span id="_CPPv2N6ankerl9nanobench5Bench6renderEPKcRNSt7ostreamE"></span><span id="ankerl::nanobench::Bench::render__cCP.osR"></span><span class="target" id="classankerl_1_1nanobench_1_1Bench_1ab91cedea45195fa2e5f77484e788a901"></span><a class="reference internal" href="#_CPPv4N6ankerl9nanobench5BenchE" title="ankerl::nanobench::Bench">Bench</a> &amp;<code class="sig-name descname">render</code><span class="sig-paren">(</span>char <em class="property">const</em> *<em>templateContent</em>, std::ostream &amp;<em>os</em><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv4N6ankerl9nanobench5Bench6renderEPKcRNSt7ostreamE" title="Permalink to this definition">¶</a><br /></dt>
-<dd><p><p>Convenience shortcut to <a class="reference internal" href="#_CPPv4N6ankerl9nanobench6renderEPKcRK5BenchRNSt7ostreamE" title="ankerl::nanobench::render"><code class="xref cpp cpp-func docutils literal notranslate"><span class="pre">ankerl::nanobench::render()</span></code></a>.</p>
+<dd><p><p><p>Convenience shortcut to <a class="reference internal" href="#_CPPv4N6ankerl9nanobench6renderEPKcRK5BenchRNSt7ostreamE" title="ankerl::nanobench::render"><code class="xref cpp cpp-func docutils literal notranslate"><span class="pre">ankerl::nanobench::render()</span></code></a>.</p>
+</p>
  </p>
 </dd></dl>
 
@@ -714,11 +726,12 @@ this has a small overhead.</p>
 <dt id="_CPPv4N6ankerl9nanobench3Rng3RngE8uint64_t">
 <span id="_CPPv3N6ankerl9nanobench3Rng3RngE8uint64_t"></span><span id="_CPPv2N6ankerl9nanobench3Rng3RngE8uint64_t"></span><span id="ankerl::nanobench::Rng::Rng__uint64_t"></span><span class="target" id="classankerl_1_1nanobench_1_1Rng_1a2f806b6c152353221767435ae74fc282"></span><code class="sig-name descname">Rng</code><span class="sig-paren">(</span>uint64_t <em>seed</em><span class="sig-paren">)</span> <em class="property">noexcept</em><a class="headerlink" href="#_CPPv4N6ankerl9nanobench3Rng3RngE8uint64_t" title="Permalink to this definition">¶</a><br /></dt>
 <dd><p>Creates a new <a class="reference internal" href="#classankerl_1_1nanobench_1_1Rng"><span class="std std-ref">Rng</span></a> that is seeded with a specific seed. Each <a class="reference internal" href="#classankerl_1_1nanobench_1_1Rng"><span class="std std-ref">Rng</span></a> created from the same seed will produce the same randomness sequence. This can be useful for deterministic behavior.</p>
-<p><div class="admonition note">
+<p><p><div class="admonition note">
 <p class="admonition-title">Note</p>
 <p>The random algorithm might change between nanobench releases. Whenever a faster and/or better random
 generator becomes available, I will switch the implementation.</p>
 </div>
+</p>
 </p>
 <p>As per the Romu paper, this seeds the <a class="reference internal" href="#classankerl_1_1nanobench_1_1Rng"><span class="std std-ref">Rng</span></a> with splitMix64 algorithm and performs 10 initial rounds for further mixing up of the internal state.</p>
 <p><dl class="simple">
@@ -899,7 +912,7 @@ generator becomes available, I will switch the implementation.</p>
 </li>
 </ul>
 </p>
-<p><p>For an overview of all the possible data you can get out of nanobench, please see the tutorial at <a class="reference internal" href="tutorial.html#tutorial-template-json"><span class="std std-ref">JSON - JavaScript Object Notation</span></a>.</p>
+<p><p><p>For an overview of all the possible data you can get out of nanobench, please see the tutorial at <a class="reference internal" href="tutorial.html#tutorial-template-json"><span class="std std-ref">JSON - JavaScript Object Notation</span></a>.</p>
 <p>The templates that ship with nanobench are:</p>
 <ul class="simple">
 <li><p><a class="reference internal" href="#_CPPv4N6ankerl9nanobench9templates3csvEv" title="ankerl::nanobench::templates::csv"><code class="xref cpp cpp-func docutils literal notranslate"><span class="pre">templates::csv()</span></code></a></p></li>
@@ -907,6 +920,7 @@ generator becomes available, I will switch the implementation.</p>
 <li><p><a class="reference internal" href="#_CPPv4N6ankerl9nanobench9templates11htmlBoxplotEv" title="ankerl::nanobench::templates::htmlBoxplot"><code class="xref cpp cpp-func docutils literal notranslate"><span class="pre">templates::htmlBoxplot()</span></code></a></p></li>
 <li><p><a class="reference internal" href="#_CPPv4N6ankerl9nanobench9templates6pyperfEv" title="ankerl::nanobench::templates::pyperf"><code class="xref cpp cpp-func docutils literal notranslate"><span class="pre">templates::pyperf()</span></code></a></p></li>
 </ul>
+</p>
 </p>
 <p><dl class="simple">
 <dt><strong>Parameters</strong></dt><dd><ul class="breatheparameterlist simple">
@@ -926,7 +940,8 @@ generator becomes available, I will switch the implementation.</p>
 <span id="_CPPv3N6ankerl9nanobench9templates3csvEv"></span><span id="_CPPv2N6ankerl9nanobench9templates3csvEv"></span><span id="ankerl::nanobench::templates::csv"></span><span class="target" id="nanobench_8h_1a7370b71e3ac3f8fb69c1791ab2fb915a"></span>char <em class="property">const</em> *<code class="sig-prename descclassname">ankerl::nanobench::templates<code class="sig-prename descclassname">::</code></code><code class="sig-name descname">csv</code><span class="sig-paren">(</span><span class="sig-paren">)</span> <em class="property">noexcept</em><a class="headerlink" href="#_CPPv4N6ankerl9nanobench9templates3csvEv" title="Permalink to this definition">¶</a><br /></dt>
 <dd><p>CSV data for the benchmark results. </p>
 <p>Generates a comma-separated values dataset. First line is the header, each following line is a summary of each benchmark run.</p>
-<p><p>See the tutorial at <a class="reference internal" href="tutorial.html#tutorial-template-csv"><span class="std std-ref">CSV - Comma-Separated Values</span></a> for an example.</p>
+<p><p><p>See the tutorial at <a class="reference internal" href="tutorial.html#tutorial-template-csv"><span class="std std-ref">CSV - Comma-Separated Values</span></a> for an example.</p>
+</p>
  </p>
 </dd></dl>
 
@@ -937,7 +952,8 @@ generator becomes available, I will switch the implementation.</p>
 <dt id="_CPPv4N6ankerl9nanobench9templates11htmlBoxplotEv">
 <span id="_CPPv3N6ankerl9nanobench9templates11htmlBoxplotEv"></span><span id="_CPPv2N6ankerl9nanobench9templates11htmlBoxplotEv"></span><span id="ankerl::nanobench::templates::htmlBoxplot"></span><span class="target" id="nanobench_8h_1abb9fabd0a720900e5374416d59f5f5a3"></span>char <em class="property">const</em> *<code class="sig-prename descclassname">ankerl::nanobench::templates<code class="sig-prename descclassname">::</code></code><code class="sig-name descname">htmlBoxplot</code><span class="sig-paren">(</span><span class="sig-paren">)</span> <em class="property">noexcept</em><a class="headerlink" href="#_CPPv4N6ankerl9nanobench9templates11htmlBoxplotEv" title="Permalink to this definition">¶</a><br /></dt>
 <dd><p>HTML output that uses plotly to generate an interactive boxplot chart. See the tutorial for an example output. </p>
-<p>The output uses only the elapsed wall clock time, and displays each epoch as a single dot. <p>See the tutorial at <a class="reference internal" href="tutorial.html#tutorial-template-html"><span class="std std-ref">HTML Box Plots</span></a> for an example.</p>
+<p>The output uses only the elapsed wall clock time, and displays each epoch as a single dot. <p><p>See the tutorial at <a class="reference internal" href="tutorial.html#tutorial-template-html"><span class="std std-ref">HTML Box Plots</span></a> for an example.</p>
+</p>
 </p>
 <p><dl class="simple">
 <dt><strong>See</strong></dt><dd><p>ankerl::nanobench::render() </p>
@@ -953,7 +969,8 @@ generator becomes available, I will switch the implementation.</p>
 <dt id="_CPPv4N6ankerl9nanobench9templates4jsonEv">
 <span id="_CPPv3N6ankerl9nanobench9templates4jsonEv"></span><span id="_CPPv2N6ankerl9nanobench9templates4jsonEv"></span><span id="ankerl::nanobench::templates::json"></span><span class="target" id="nanobench_8h_1a020d1a3b2296fdce879c6c56a20a81eb"></span>char <em class="property">const</em> *<code class="sig-prename descclassname">ankerl::nanobench::templates<code class="sig-prename descclassname">::</code></code><code class="sig-name descname">json</code><span class="sig-paren">(</span><span class="sig-paren">)</span> <em class="property">noexcept</em><a class="headerlink" href="#_CPPv4N6ankerl9nanobench9templates4jsonEv" title="Permalink to this definition">¶</a><br /></dt>
 <dd><p>Template to generate JSON data. </p>
-<p>The generated JSON data contains <em>all</em> data that has been generated. All times are as double values, in seconds. The output can get quite large. <p>See the tutorial at <a class="reference internal" href="tutorial.html#tutorial-template-json"><span class="std std-ref">JSON - JavaScript Object Notation</span></a> for an example.</p>
+<p>The generated JSON data contains <em>all</em> data that has been generated. All times are as double values, in seconds. The output can get quite large. <p><p>See the tutorial at <a class="reference internal" href="tutorial.html#tutorial-template-json"><span class="std std-ref">JSON - JavaScript Object Notation</span></a> for an example.</p>
+</p>
  </p>
 </dd></dl>
 
@@ -964,7 +981,8 @@ generator becomes available, I will switch the implementation.</p>
 <dt id="_CPPv4N6ankerl9nanobench9templates6pyperfEv">
 <span id="_CPPv3N6ankerl9nanobench9templates6pyperfEv"></span><span id="_CPPv2N6ankerl9nanobench9templates6pyperfEv"></span><span id="ankerl::nanobench::templates::pyperf"></span><span class="target" id="nanobench_8h_1a5a1305c12820f2b7b521648ee2a055df"></span>char <em class="property">const</em> *<code class="sig-prename descclassname">ankerl::nanobench::templates<code class="sig-prename descclassname">::</code></code><code class="sig-name descname">pyperf</code><span class="sig-paren">(</span><span class="sig-paren">)</span> <em class="property">noexcept</em><a class="headerlink" href="#_CPPv4N6ankerl9nanobench9templates6pyperfEv" title="Permalink to this definition">¶</a><br /></dt>
 <dd><p>Output in pyperf compatible JSON format, which can be used for more analyzations. </p>
-<p><p>See the tutorial at <a class="reference internal" href="tutorial.html#tutorial-template-pyperf"><span class="std std-ref">pyperf - Python pyperf module Output</span></a> for an example how to further analyze the output.</p>
+<p><p><p>See the tutorial at <a class="reference internal" href="tutorial.html#tutorial-template-pyperf"><span class="std std-ref">pyperf - Python pyperf module Output</span></a> for an example how to further analyze the output.</p>
+</p>
  </p>
 </dd></dl>
 
@@ -1011,29 +1029,29 @@ and the <code class="docutils literal notranslate"><span class="pre">:wavy_dash:
            
           </div>
           <footer>
-  
     <div class="rst-footer-buttons" role="navigation" aria-label="footer navigation">
-      
-        <a href="genindex.html" class="btn btn-neutral float-right" title="Index" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right"></span></a>
-      
-      
-        <a href="comparison.html" class="btn btn-neutral float-left" title="Test Set" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left"></span> Previous</a>
-      
+        <a href="genindex.html" class="btn btn-neutral float-right" title="Index" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right" aria-hidden="true"></span></a>
+        <a href="comparison.html" class="btn btn-neutral float-left" title="Test Set" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left" aria-hidden="true"></span> Previous</a>
     </div>
-  
 
   <hr/>
 
   <div role="contentinfo">
     <p>
-        &copy; Copyright 2019-2020 Martin Ankerl &lt;martin.ankerl@gmail.com&gt;
+        &#169; Copyright 2019-2020 Martin Ankerl &lt;martin.ankerl@gmail.com&gt;.
 
     </p>
   </div>
-  Built with <a href="http://sphinx-doc.org/">Sphinx</a> using a <a href="https://github.com/rtfd/sphinx_rtd_theme">theme</a> provided by <a href="https://readthedocs.org">Read the Docs</a>. 
+    
+    
+    
+    Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    
+    provided by <a href="https://readthedocs.org">Read the Docs</a>. 
 
 </footer>
-
         </div>
       </div>
 
@@ -1041,7 +1059,6 @@ and the <code class="docutils literal notranslate"><span class="pre">:wavy_dash:
 
   </div>
   
-
 
   <script type="text/javascript">
       jQuery(function () {
@@ -1060,6 +1077,7 @@ and the <code class="docutils literal notranslate"><span class="pre">:wavy_dash:
     })(window,document,'script','https://www.google-analytics.com/analytics.js','ga');
 
     ga('create', 'UA-36863101-2', 'auto');
+    
     ga('send', 'pageview');
     </script>
 

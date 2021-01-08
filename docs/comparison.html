@@ -1,41 +1,44 @@
 
 
 <!DOCTYPE html>
-<!--[if IE 8]><html class="no-js lt-ie9" lang="en" > <![endif]-->
-<!--[if gt IE 8]><!--> <html class="no-js" lang="en" > <!--<![endif]-->
+<html class="writer-html5" lang="en" >
 <head>
-  <meta charset="utf-8">
+  <meta charset="utf-8" />
   
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   
   <title>Test Set &mdash; nanobench  documentation</title>
   
 
   
+  <link rel="stylesheet" href="_static/css/theme.css" type="text/css" />
+  <link rel="stylesheet" href="_static/pygments.css" type="text/css" />
+
+  
   
     <link rel="shortcut icon" href="_static/favicon.ico"/>
   
+
   
   
 
   
-  <script type="text/javascript" src="_static/js/modernizr.min.js"></script>
+
+  
+  <!--[if lt IE 9]>
+    <script src="_static/js/html5shiv.min.js"></script>
+  <![endif]-->
   
     
       <script type="text/javascript" id="documentation_options" data-url_root="./" src="_static/documentation_options.js"></script>
         <script src="_static/jquery.js"></script>
         <script src="_static/underscore.js"></script>
         <script src="_static/doctools.js"></script>
-        <script src="_static/language_data.js"></script>
         <script async="async" src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.7/latest.js?config=TeX-AMS-MML_HTMLorMML"></script>
     
     <script type="text/javascript" src="_static/js/theme.js"></script>
 
     
-
-  
-  <link rel="stylesheet" href="_static/css/theme.css" type="text/css" />
-  <link rel="stylesheet" href="_static/pygments.css" type="text/css" />
     <link rel="index" title="Index" href="genindex.html" />
     <link rel="search" title="Search" href="search.html" />
     <link rel="next" title="ankerl::nanobench Reference" href="reference.html" />
@@ -83,6 +86,7 @@
           
         </div>
 
+        
         <div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="main navigation">
           
             
@@ -211,6 +215,7 @@
             
           
         </div>
+        
       </div>
     </nav>
 
@@ -245,18 +250,20 @@
 
 
 
+
+
 <div role="navigation" aria-label="breadcrumbs navigation">
 
   <ul class="wy-breadcrumbs">
     
-      <li><a href="index.html">Docs</a> &raquo;</li>
+      <li><a href="index.html" class="icon icon-home"></a> &raquo;</li>
         
       <li>Test Set</li>
     
     
       <li class="wy-breadcrumbs-aside">
         
-            
+          
             
               <a href="https://github.com/martinus/nanobench/blob/master/src/docs/comparison.rst" class="fa fa-github"> Edit on GitHub</a>
             
@@ -612,8 +619,8 @@ Get it here: <a class="reference external" href="https://github.com/libnonius/no
 
 <span class="n">NONIUS_PARAM</span><span class="p">(</span><span class="n">X</span><span class="p">,</span> <span class="n">UINT64_C</span><span class="p">(</span><span class="mi">1</span><span class="p">))</span>
 
-<span class="k">template</span> <span class="o">&lt;</span><span class="k">typename</span> <span class="n">Fn</span><span class="o">&gt;</span>
-<span class="k">struct</span> <span class="n">volatilize_fn</span> <span class="p">{</span>
+<span class="k">template</span> <span class="o">&lt;</span><span class="k">typename</span> <span class="nc">Fn</span><span class="o">&gt;</span>
+<span class="k">struct</span> <span class="nc">volatilize_fn</span> <span class="p">{</span>
     <span class="n">Fn</span> <span class="n">fn</span><span class="p">;</span>
     <span class="k">auto</span> <span class="nf">operator</span><span class="p">()()</span> <span class="k">const</span> <span class="o">-&gt;</span> <span class="k">decltype</span><span class="p">(</span><span class="n">fn</span><span class="p">())</span> <span class="p">{</span>
         <span class="k">volatile</span> <span class="k">auto</span> <span class="n">x</span> <span class="o">=</span> <span class="n">fn</span><span class="p">();</span>
@@ -621,8 +628,8 @@ Get it here: <a class="reference external" href="https://github.com/libnonius/no
     <span class="p">}</span>
 <span class="p">};</span>
 
-<span class="k">template</span> <span class="o">&lt;</span><span class="k">typename</span> <span class="n">Fn</span><span class="o">&gt;</span>
-<span class="k">auto</span> <span class="n">volatilize</span><span class="p">(</span><span class="n">Fn</span><span class="o">&amp;&amp;</span> <span class="n">fn</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">volatilize_fn</span><span class="o">&lt;</span><span class="k">typename</span> <span class="n">std</span><span class="o">::</span><span class="n">decay</span><span class="o">&lt;</span><span class="n">Fn</span><span class="o">&gt;::</span><span class="n">type</span><span class="o">&gt;</span> <span class="p">{</span>
+<span class="k">template</span> <span class="o">&lt;</span><span class="k">typename</span> <span class="nc">Fn</span><span class="o">&gt;</span>
+<span class="k">auto</span> <span class="n">volatilize</span><span class="p">(</span><span class="n">Fn</span><span class="o">&amp;&amp;</span> <span class="n">fn</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">volatilize_fn</span><span class="o">&lt;</span><span class="k">typename</span> <span class="nc">std</span><span class="o">::</span><span class="n">decay</span><span class="o">&lt;</span><span class="n">Fn</span><span class="o">&gt;::</span><span class="n">type</span><span class="o">&gt;</span> <span class="p">{</span>
     <span class="k">return</span> <span class="p">{</span><span class="n">std</span><span class="o">::</span><span class="n">forward</span><span class="o">&lt;</span><span class="n">Fn</span><span class="o">&gt;</span><span class="p">(</span><span class="n">fn</span><span class="p">)};</span>
 <span class="p">}</span>
 
@@ -746,7 +753,7 @@ run for a looong time. The number of iterations is hardcoded, this library seems
 <span class="c1">// g++ -O2 picobench.cpp -o pb</span>
 
 <span class="n">PICOBENCH_SUITE</span><span class="p">(</span><span class="s">&quot;ComparisonFast&quot;</span><span class="p">);</span>
-<span class="k">static</span> <span class="kt">void</span> <span class="nf">ComparisonFast</span><span class="p">(</span><span class="n">picobench</span><span class="o">::</span><span class="n">state</span><span class="o">&amp;</span> <span class="n">state</span><span class="p">)</span> <span class="p">{</span>
+<span class="k">static</span> <span class="kt">void</span> <span class="n">ComparisonFast</span><span class="p">(</span><span class="n">picobench</span><span class="o">::</span><span class="n">state</span><span class="o">&amp;</span> <span class="n">state</span><span class="p">)</span> <span class="p">{</span>
     <span class="kt">uint64_t</span> <span class="n">x</span> <span class="o">=</span> <span class="mi">1</span><span class="p">;</span>
     <span class="k">for</span> <span class="p">(</span><span class="k">auto</span> <span class="nl">_</span> <span class="p">:</span> <span class="n">state</span><span class="p">)</span> <span class="p">{</span>
         <span class="n">x</span> <span class="o">+=</span> <span class="n">x</span><span class="p">;</span>
@@ -1093,7 +1100,7 @@ here: <a class="reference external" href="https://github.com/ivafanas/sltbench">
 33
 34
 35
-36</pre></div></td><td class="code"><div class="highlight"><pre><span></span><span class="cp">#include</span> <span class="cpf">&lt;sltbench/Bench.h&gt; // https://github.com/ivafanas/sltbench</span><span class="cp"></span>
+36</pre></div></td><td class="code"><div class="highlight"><pre><span></span><span class="cp">#include</span> <span class="cpf">&lt;sltbench/Bench.h&gt;</span><span class="c1"> // https://github.com/ivafanas/sltbench</span><span class="cp"></span>
 
 <span class="cp">#include</span> <span class="cpf">&lt;chrono&gt;</span><span class="cp"></span>
 <span class="cp">#include</span> <span class="cpf">&lt;random&gt;</span><span class="cp"></span>
@@ -1161,29 +1168,29 @@ functionality. Honestly, I was too lazy to get this working. Too much installati
            
           </div>
           <footer>
-  
     <div class="rst-footer-buttons" role="navigation" aria-label="footer navigation">
-      
-        <a href="reference.html" class="btn btn-neutral float-right" title="ankerl::nanobench Reference" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right"></span></a>
-      
-      
-        <a href="tutorial.html" class="btn btn-neutral float-left" title="Installation" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left"></span> Previous</a>
-      
+        <a href="reference.html" class="btn btn-neutral float-right" title="ankerl::nanobench Reference" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right" aria-hidden="true"></span></a>
+        <a href="tutorial.html" class="btn btn-neutral float-left" title="Installation" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left" aria-hidden="true"></span> Previous</a>
     </div>
-  
 
   <hr/>
 
   <div role="contentinfo">
     <p>
-        &copy; Copyright 2019-2020 Martin Ankerl &lt;martin.ankerl@gmail.com&gt;
+        &#169; Copyright 2019-2020 Martin Ankerl &lt;martin.ankerl@gmail.com&gt;.
 
     </p>
   </div>
-  Built with <a href="http://sphinx-doc.org/">Sphinx</a> using a <a href="https://github.com/rtfd/sphinx_rtd_theme">theme</a> provided by <a href="https://readthedocs.org">Read the Docs</a>. 
+    
+    
+    
+    Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    
+    provided by <a href="https://readthedocs.org">Read the Docs</a>. 
 
 </footer>
-
         </div>
       </div>
 
@@ -1191,7 +1198,6 @@ functionality. Honestly, I was too lazy to get this working. Too much installati
 
   </div>
   
-
 
   <script type="text/javascript">
       jQuery(function () {
@@ -1210,6 +1216,7 @@ functionality. Honestly, I was too lazy to get this working. Too much installati
     })(window,document,'script','https://www.google-analytics.com/analytics.js','ga');
 
     ga('create', 'UA-36863101-2', 'auto');
+    
     ga('send', 'pageview');
     </script>
 
