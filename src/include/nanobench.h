@@ -7,7 +7,7 @@
 //
 // Licensed under the MIT License <http://opensource.org/licenses/MIT>.
 // SPDX-License-Identifier: MIT
-// Copyright (c) 2019-2020 Martin Ankerl <martin.ankerl@gmail.com>
+// Copyright (c) 2019-2021 Martin Ankerl <martin.ankerl@gmail.com>
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -33,7 +33,7 @@
 // see https://semver.org/
 #define ANKERL_NANOBENCH_VERSION_MAJOR 4 // incompatible API changes
 #define ANKERL_NANOBENCH_VERSION_MINOR 3 // backwards-compatible changes
-#define ANKERL_NANOBENCH_VERSION_PATCH 1 // backwards-compatible bug fixes
+#define ANKERL_NANOBENCH_VERSION_PATCH 2 // backwards-compatible bug fixes
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 // public facing api - as minimal as possible
@@ -2242,8 +2242,8 @@ struct IterationLogic::Impl {
             hash = hash_combine(std::hash<std::string>{}(mBench.title()), hash);
             hash = hash_combine(std::hash<std::string>{}(mBench.timeUnitName()), hash);
             hash = hash_combine(std::hash<double>{}(mBench.timeUnit().count()), hash);
-            hash = hash_combine(mBench.relative(), hash);
-            hash = hash_combine(mBench.performanceCounters(), hash);
+            hash = hash_combine(std::hash<bool>{}(mBench.relative()), hash);
+            hash = hash_combine(std::hash<bool>{}(mBench.performanceCounters()), hash);
 
             if (hash != singletonHeaderHash()) {
                 singletonHeaderHash() = hash;
