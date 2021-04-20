@@ -33,7 +33,7 @@
 // see https://semver.org/
 #define ANKERL_NANOBENCH_VERSION_MAJOR 4 // incompatible API changes
 #define ANKERL_NANOBENCH_VERSION_MINOR 3 // backwards-compatible changes
-#define ANKERL_NANOBENCH_VERSION_PATCH 3 // backwards-compatible bug fixes
+#define ANKERL_NANOBENCH_VERSION_PATCH 4 // backwards-compatible bug fixes
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 // public facing api - as minimal as possible
@@ -1113,7 +1113,7 @@ constexpr uint64_t(Rng::max)() {
     return (std::numeric_limits<uint64_t>::max)();
 }
 
-ANKERL_NANOBENCH_NO_SANITIZE("integer")
+ANKERL_NANOBENCH_NO_SANITIZE("integer", "undefined")
 uint64_t Rng::operator()() noexcept {
     auto x = mX;
 
@@ -1123,7 +1123,7 @@ uint64_t Rng::operator()() noexcept {
     return x;
 }
 
-ANKERL_NANOBENCH_NO_SANITIZE("integer")
+ANKERL_NANOBENCH_NO_SANITIZE("integer", "undefined")
 uint32_t Rng::bounded(uint32_t range) noexcept {
     uint64_t r32 = static_cast<uint32_t>(operator()());
     auto multiresult = r32 * range;
@@ -2025,7 +2025,7 @@ uint64_t& singletonHeaderHash() noexcept {
     return sHeaderHash;
 }
 
-ANKERL_NANOBENCH_NO_SANITIZE("integer")
+ANKERL_NANOBENCH_NO_SANITIZE("integer", "undefined")
 inline uint64_t hash_combine(uint64_t seed, uint64_t val) {
     return seed ^ (val + UINT64_C(0x9e3779b9) + (seed << 6U) + (seed >> 2U));
 }
@@ -2103,7 +2103,7 @@ struct IterationLogic::Impl {
         return static_cast<uint64_t>(doubleNewIters + 0.5);
     }
 
-    ANKERL_NANOBENCH_NO_SANITIZE("integer") void upscale(std::chrono::nanoseconds elapsed) {
+    ANKERL_NANOBENCH_NO_SANITIZE("integer", "undefined") void upscale(std::chrono::nanoseconds elapsed) {
         if (elapsed * 10 < mTargetRuntimePerEpoch) {
             // we are far below the target runtime. Multiply iterations by 10 (with overflow check)
             if (mNumIters * 10 < mNumIters) {
@@ -2402,7 +2402,7 @@ public:
     }
 
     template <typename Op>
-    ANKERL_NANOBENCH_NO_SANITIZE("integer")
+    ANKERL_NANOBENCH_NO_SANITIZE("integer", "undefined")
     void calibrate(Op&& op) {
         // clear current calibration data,
         for (auto& v : mCalibratedOverhead) {
@@ -2508,7 +2508,7 @@ bool LinuxPerformanceCounters::monitor(perf_hw_id hwId, LinuxPerformanceCounters
 }
 
 // overflow is ok, it's checked
-ANKERL_NANOBENCH_NO_SANITIZE("integer")
+ANKERL_NANOBENCH_NO_SANITIZE("integer", "undefined")
 void LinuxPerformanceCounters::updateResults(uint64_t numIters) {
     // clear old data
     for (auto& id_value : mIdToTarget) {
@@ -3235,7 +3235,7 @@ Rng::Rng()
     } while (mX == 0 && mY == 0);
 }
 
-ANKERL_NANOBENCH_NO_SANITIZE("integer")
+ANKERL_NANOBENCH_NO_SANITIZE("integer", "undefined")
 uint64_t splitMix64(uint64_t& state) noexcept {
     uint64_t z = (state += UINT64_C(0x9e3779b97f4a7c15));
     z = (z ^ (z >> 30U)) * UINT64_C(0xbf58476d1ce4e5b9);
