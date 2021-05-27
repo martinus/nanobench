@@ -33,7 +33,7 @@
 // see https://semver.org/
 #define ANKERL_NANOBENCH_VERSION_MAJOR 4 // incompatible API changes
 #define ANKERL_NANOBENCH_VERSION_MINOR 3 // backwards-compatible changes
-#define ANKERL_NANOBENCH_VERSION_PATCH 2 // backwards-compatible bug fixes
+#define ANKERL_NANOBENCH_VERSION_PATCH 3 // backwards-compatible bug fixes
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 // public facing api - as minimal as possible
@@ -3266,7 +3266,7 @@ Rng::Rng(std::vector<uint64_t> const& data)
     , mY(0) {
     if (data.size() != 2) {
         throw std::runtime_error("ankerl::nanobench::Rng::Rng: needed exactly 2 entries in data, but got " +
-                                 std::to_string(data.size()));
+                                 detail::fmt::to_s(data.size()));
     }
     mX = data[0];
     mY = data[1];
