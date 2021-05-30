@@ -1,22 +1,27 @@
+container:
+  image: gcc:latest
+
 linux_task:
-  container:
-    image: gcc:latest
-  task:
-    script:
-      - if [[ "${COMPILER}" != "" ]]; then export CXX=${COMPILER}; fi # make sure CXX is correctly set
-      - uname -a # show OS/compiler version
-      - $CXX --version
-      - cd build  # build
-      - cmake .. -DCMAKE_BUILD_TYPE=Release ${CMAKE_OPTIONS} && cmake --build . -- -j2
+  script:
+    # make sure CXX is correctly set
+    - if [[ "${COMPILER}" != "" ]]; then export CXX=${COMPILER}; fi 
+    
+    # show OS/compiler version
+    - uname -a
+    - $CXX --version
 
-      # check file
-      - file ./nb
+    # build
+    - cd build
+    - cmake .. -DCMAKE_BUILD_TYPE=Release ${CMAKE_OPTIONS} && cmake --build . -- -j2
 
-      # run test
-      - ./nb
+    # check file
+    - file ./nb
 
-      # coverage
-      - |
-        if [[ "${CODE_COVERAGE}" = "true" ]]; then
-          cmake --build . --target lcov
-        fi
+    # run test
+    - ./nb
+
+    # coverage
+    - |
+      if [[ "${CODE_COVERAGE}" = "true" ]]; then
+        cmake --build . --target lcov
+      fi
