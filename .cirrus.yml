@@ -9,7 +9,7 @@ linux_task:
 
   install_script:
     - apt update && apt upgrade -y
-    - apt install -y cmake ninja build-essentials
+    - DEBIAN_FRONTEND=noninteractive apt install -y cmake ninja build-essentials
 
   build_script:
     - cd build
