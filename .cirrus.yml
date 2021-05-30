@@ -1,3 +1,6 @@
+
+# examples from:
+# * https://github.com/chux0519/pegasocks/blob/master/.cirrus.yml
 linux_task:
   container:
     matrix:
