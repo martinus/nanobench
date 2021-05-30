@@ -16,12 +16,15 @@ linux_task:
     - image: ubuntu:focal
     - image: ubuntu:hirsute
     - image: debian:buster
+    - image: gcc:latest
 
   ccache_cache:
     folder: "/tmp/ccache_dir"
 
-  install_script:
+  env_script:
     - uname -a
+
+  install_script:
     - apt update && apt upgrade -y
     - DEBIAN_FRONTEND=noninteractive apt install -y cmake ninja-build build-essential ccache
 
