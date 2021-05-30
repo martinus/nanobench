@@ -12,8 +12,10 @@ env:
 linux_task:
   container:
     matrix:
-    - image: ubuntu:18.04
-    - image: ubuntu:20.04
+    - image: ubuntu:bionic
+    - image: ubuntu:focal
+    - image: ubuntu:hirsute
+    - image: debian:buster
 
   ccache_cache:
     folder: "/tmp/ccache_dir"
