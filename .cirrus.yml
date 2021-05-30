@@ -1,0 +1,28 @@
+linux_task:
+  name: Tests (Linux)
+  container:
+    image: gcc:latest
+  task:
+    script:
+      # make sure CXX is correctly set
+      - if [[ "${COMPILER}" != "" ]]; then export CXX=${COMPILER}; fi
+
+      # show OS/compiler version
+      - uname -a
+      - $CXX --version
+
+      # build
+      - cd build
+      - cmake .. -DCMAKE_BUILD_TYPE=Release ${CMAKE_OPTIONS} && cmake --build . -- -j2
+
+      # check file
+      - file ./nb
+
+      # run test
+      - ./nb
+
+      # coverage
+      - |
+        if [[ "${CODE_COVERAGE}" = "true" ]]; then
+          cmake --build . --target lcov
+        fi
