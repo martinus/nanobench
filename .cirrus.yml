@@ -1,13 +1,18 @@
-container:
-  image: gcc:latest
-
 linux_task:
-  script:
+  container:
+    matrix:
+    - image: ubuntu:18.04
+    - image: ubuntu:20.04
+
+  install_script:
+    - apt update && apt upgrade -y
+    - apt install -y cmake ninja build-essentials
+
+  build_script:
     - cd build
-    - cmake .. -DCMAKE_BUILD_TYPE=Release ${CMAKE_OPTIONS} && cmake --build . -- -j2
+    - cmake .. -DCMAKE_BUILD_TYPE=Release 
+    - cmake --build . -- -j4
+
+  test_script:
     - file ./nb
     - ./nb
-    - |
-      if [[ "${CODE_COVERAGE}" = "true" ]]; then
-        cmake --build . --target lcov
-      fi
