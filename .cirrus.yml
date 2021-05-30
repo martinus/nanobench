@@ -1,18 +1,12 @@
 linux_task:
-  name: Tests (Linux)
   container:
     image: gcc:latest
   task:
     script:
-      # make sure CXX is correctly set
-      - if [[ "${COMPILER}" != "" ]]; then export CXX=${COMPILER}; fi
-
-      # show OS/compiler version
-      - uname -a
+      - if [[ "${COMPILER}" != "" ]]; then export CXX=${COMPILER}; fi # make sure CXX is correctly set
+      - uname -a # show OS/compiler version
       - $CXX --version
-
-      # build
-      - cd build
+      - cd build  # build
       - cmake .. -DCMAKE_BUILD_TYPE=Release ${CMAKE_OPTIONS} && cmake --build . -- -j2
 
       # check file
