@@ -9,12 +9,12 @@ linux_task:
 
   install_script:
     - apt update && apt upgrade -y
-    - DEBIAN_FRONTEND=noninteractive apt install -y cmake ninja build-essentials
+    - DEBIAN_FRONTEND=noninteractive apt install -y cmake ninja-build build-essential
 
   build_script:
     - cd build
-    - cmake .. -DCMAKE_BUILD_TYPE=Release 
-    - cmake --build . -- -j4
+    - cmake .. -GNinja -DCMAKE_BUILD_TYPE=Release 
+    - cmake --build . -- -j2
 
   test_script:
     - file ./nb
