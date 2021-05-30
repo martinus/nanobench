@@ -29,5 +29,4 @@ linux_task:
 
   test_script:
     - cd build
-    - file ./nb
     - ./nb
