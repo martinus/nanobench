@@ -17,5 +17,6 @@ linux_task:
     - cmake --build . -- -j2
 
   test_script:
+    - cd build
     - file ./nb
     - ./nb
