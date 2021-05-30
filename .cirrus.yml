@@ -21,6 +21,7 @@ linux_task:
     folder: "/tmp/ccache_dir"
 
   install_script:
+    - uname -a
     - apt update && apt upgrade -y
     - DEBIAN_FRONTEND=noninteractive apt install -y cmake ninja-build build-essential ccache
 
