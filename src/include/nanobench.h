@@ -33,7 +33,7 @@
 // see https://semver.org/
 #define ANKERL_NANOBENCH_VERSION_MAJOR 4 // incompatible API changes
 #define ANKERL_NANOBENCH_VERSION_MINOR 3 // backwards-compatible changes
-#define ANKERL_NANOBENCH_VERSION_PATCH 3 // backwards-compatible bug fixes
+#define ANKERL_NANOBENCH_VERSION_PATCH 4 // backwards-compatible bug fixes
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 // public facing api - as minimal as possible
@@ -1149,6 +1149,7 @@ void Rng::shuffle(Container& container) noexcept {
     }
 }
 
+ANKERL_NANOBENCH_NO_SANITIZE("integer", "undefined")
 constexpr uint64_t Rng::rotl(uint64_t x, unsigned k) noexcept {
     return (x << k) | (x >> (64U - k));
 }
