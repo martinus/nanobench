@@ -33,7 +33,7 @@
 // see https://semver.org/
 #define ANKERL_NANOBENCH_VERSION_MAJOR 4 // incompatible API changes
 #define ANKERL_NANOBENCH_VERSION_MINOR 3 // backwards-compatible changes
-#define ANKERL_NANOBENCH_VERSION_PATCH 4 // backwards-compatible bug fixes
+#define ANKERL_NANOBENCH_VERSION_PATCH 5 // backwards-compatible bug fixes
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 // public facing api - as minimal as possible
@@ -88,10 +88,7 @@
         } while (0)
 #endif
 
-#if defined(__linux__) && defined(PERF_EVENT_IOC_ID) && defined(PERF_COUNT_HW_REF_CPU_CYCLES) && defined(PERF_FLAG_FD_CLOEXEC) && \
-    !defined(ANKERL_NANOBENCH_DISABLE_PERF_COUNTERS)
-// only enable perf counters on kernel 3.14 which seems to have all the necessary defines. The three PERF_... defines are not in
-// kernel 2.6.32 (all others are).
+#if defined(__linux__) && !defined(ANKERL_NANOBENCH_DISABLE_PERF_COUNTERS)
 #    define ANKERL_NANOBENCH_PRIVATE_PERF_COUNTERS() 1
 #else
 #    define ANKERL_NANOBENCH_PRIVATE_PERF_COUNTERS() 0
