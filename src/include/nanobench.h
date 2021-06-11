@@ -2212,20 +2212,20 @@ struct IterationLogic::Impl {
             columns.emplace_back(10, 1, "err%", "%", rErrorMedian * 100.0);
 
             double rInsMedian = -1.0;
-            if (mResult.has(Result::Measure::instructions)) {
+            if (mBench.performanceCounters() && mResult.has(Result::Measure::instructions)) {
                 rInsMedian = mResult.median(Result::Measure::instructions);
                 columns.emplace_back(18, 2, "ins/" + mBench.unit(), "", rInsMedian / mBench.batch());
             }
 
             double rCycMedian = -1.0;
-            if (mResult.has(Result::Measure::cpucycles)) {
+            if (mBench.performanceCounters() && mResult.has(Result::Measure::cpucycles)) {
                 rCycMedian = mResult.median(Result::Measure::cpucycles);
                 columns.emplace_back(18, 2, "cyc/" + mBench.unit(), "", rCycMedian / mBench.batch());
             }
             if (rInsMedian > 0.0 && rCycMedian > 0.0) {
                 columns.emplace_back(9, 3, "IPC", "", rCycMedian <= 0.0 ? 0.0 : rInsMedian / rCycMedian);
             }
-            if (mResult.has(Result::Measure::branchinstructions)) {
+            if (mBench.performanceCounters() && mResult.has(Result::Measure::branchinstructions)) {
                 double rBraMedian = mResult.median(Result::Measure::branchinstructions);
                 columns.emplace_back(17, 2, "bra/" + mBench.unit(), "", rBraMedian / mBench.batch());
                 if (mResult.has(Result::Measure::branchmisses)) {
