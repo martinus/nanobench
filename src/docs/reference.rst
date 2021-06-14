@@ -37,7 +37,7 @@
 :cpp:func:`doNotOptimizeAway() <ankerl::nanobench::doNotOptimizeAway>`
 ----------------------------------------------------------------------
 
-.. doxygenfunction:: ankerl::nanobench::doNotOptimizeAway()
+.. doxygenfunction:: ankerl::nanobench::doNotOptimizeAway(Arg&& arg)
 
 
 

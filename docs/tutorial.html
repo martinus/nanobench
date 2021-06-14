@@ -34,7 +34,7 @@
         <script src="_static/jquery.js"></script>
         <script src="_static/underscore.js"></script>
         <script src="_static/doctools.js"></script>
-        <script async="async" src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.7/latest.js?config=TeX-AMS-MML_HTMLorMML"></script>
+        <script async="async" src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
     
     <script type="text/javascript" src="_static/js/theme.js"></script>
 
@@ -738,8 +738,7 @@ I factored out the general benchmarking code so it’s easy to use for each of t
 45
 46
 47
-48
-49</pre></div></td><td class="code"><div class="highlight"><pre><span></span>    <span class="kt">uint64_t</span> <span class="n">stateB</span><span class="p">;</span>
+48</pre></div></td><td class="code"><div class="highlight"><pre><span></span>    <span class="kt">uint64_t</span> <span class="n">stateB</span><span class="p">;</span>
 <span class="p">};</span>
 
 <span class="k">namespace</span> <span class="p">{</span>
@@ -751,8 +750,8 @@ I factored out the general benchmarking code so it’s easy to use for each of t
     <span class="n">Rng</span> <span class="nf">rng</span><span class="p">(</span><span class="n">dev</span><span class="p">());</span>
 
     <span class="n">bench</span><span class="o">-&gt;</span><span class="n">run</span><span class="p">(</span><span class="n">name</span><span class="p">,</span> <span class="p">[</span><span class="o">&amp;</span><span class="p">]()</span> <span class="p">{</span>
-        <span class="c1">//auto r = std::uniform_int_distribution&lt;uint64_t&gt;{}(rng);</span>
-        <span class="n">ankerl</span><span class="o">::</span><span class="n">nanobench</span><span class="o">::</span><span class="n">doNotOptimizeAway</span><span class="p">(</span><span class="n">rng</span><span class="p">());</span>
+        <span class="k">auto</span> <span class="n">r</span> <span class="o">=</span> <span class="n">std</span><span class="o">::</span><span class="n">uniform_int_distribution</span><span class="o">&lt;</span><span class="kt">uint64_t</span><span class="o">&gt;</span><span class="p">{}(</span><span class="n">rng</span><span class="p">);</span>
+        <span class="n">ankerl</span><span class="o">::</span><span class="n">nanobench</span><span class="o">::</span><span class="n">doNotOptimizeAway</span><span class="p">(</span><span class="n">r</span><span class="p">);</span>
     <span class="p">});</span>
 <span class="p">}</span>
 
@@ -766,9 +765,8 @@ I factored out the general benchmarking code so it’s easy to use for each of t
     <span class="n">b</span><span class="p">.</span><span class="n">title</span><span class="p">(</span><span class="s">&quot;Random Number Generators&quot;</span><span class="p">)</span>
         <span class="p">.</span><span class="n">unit</span><span class="p">(</span><span class="s">&quot;uint64_t&quot;</span><span class="p">)</span>
         <span class="p">.</span><span class="n">warmup</span><span class="p">(</span><span class="mi">100</span><span class="p">)</span>
-        <span class="p">.</span><span class="n">clockResolutionMultiple</span><span class="p">(</span><span class="mi">100000</span><span class="p">)</span>
         <span class="p">.</span><span class="n">relative</span><span class="p">(</span><span class="nb">true</span><span class="p">);</span>
-    <span class="n">b</span><span class="p">.</span><span class="n">performanceCounters</span><span class="p">(</span><span class="nb">false</span><span class="p">);</span>
+    <span class="n">b</span><span class="p">.</span><span class="n">performanceCounters</span><span class="p">(</span><span class="nb">true</span><span class="p">);</span>
 
     <span class="c1">// sets the first one as the baseline</span>
     <span class="n">bench</span><span class="o">&lt;</span><span class="n">std</span><span class="o">::</span><span class="n">default_random_engine</span><span class="o">&gt;</span><span class="p">(</span><span class="o">&amp;</span><span class="n">b</span><span class="p">,</span> <span class="s">&quot;std::default_random_engine&quot;</span><span class="p">);</span>

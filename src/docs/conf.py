@@ -36,6 +36,11 @@ extensions = [
     "recommonmark"
 ]
 
+# math
+# use a newer mathjax version (see http://docs.mathjax.org/en/latest/web/start.html and 
+# https://www.sphinx-doc.org/en/master/usage/extensions/math.html), because we had proble
+mathjax_path = "https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"
+
 breathe_projects = { "nanobench": "./_build/doxygen/xml" }
 breathe_default_project = "nanobench"
 

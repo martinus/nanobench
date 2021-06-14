@@ -34,7 +34,7 @@
         <script src="_static/jquery.js"></script>
         <script src="_static/underscore.js"></script>
         <script src="_static/doctools.js"></script>
-        <script async="async" src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.7/latest.js?config=TeX-AMS-MML_HTMLorMML"></script>
+        <script async="async" src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
     
     <script type="text/javascript" src="_static/js/theme.js"></script>
 
@@ -294,7 +294,7 @@
 </div>
  In that example <a class="reference internal" href="#classankerl_1_1nanobench_1_1Bench_1a8345f9b4c7881b99497f5c036dde6b79"><span class="std std-ref">Bench()</span></a> constructs the benchmark, it is then configured with <a class="reference internal" href="#classankerl_1_1nanobench_1_1Bench_1ac64deea8b3bc0b8f70a12f0f1085e131"><span class="std std-ref">unit()</span></a> and <a class="reference internal" href="#classankerl_1_1nanobench_1_1Bench_1a68dc68dfad568ca7bf820139dca9c968"><span class="std std-ref">batch()</span></a>, and after configuration a benchmark is executed with <a class="reference internal" href="#classankerl_1_1nanobench_1_1Bench_1a396e218813c7eeb20a58adad9bbd85f7"><span class="std std-ref">run()</span></a>. Once <a class="reference internal" href="#classankerl_1_1nanobench_1_1Bench_1a396e218813c7eeb20a58adad9bbd85f7"><span class="std std-ref">run()</span></a> has finished, it prints the result to <code class="docutils literal notranslate"><span class="pre">std::cout</span></code>. It would also store the results in the <a class="reference internal" href="#classankerl_1_1nanobench_1_1Bench"><span class="std std-ref">Bench</span></a> instance, but in this case the object is immediately destroyed so it’s not available any more. </p>
 <div class="breathe-sectiondef docutils container">
-<p class="breathe-sectiondef-title rubric">Public Functions</p>
+<p class="breathe-sectiondef-title rubric" id="breathe-section-title-public-functions">Public Functions</p>
 <dl class="cpp function">
 <dt id="_CPPv4N6ankerl9nanobench5Bench5BenchEv">
 <span id="_CPPv3N6ankerl9nanobench5Bench5BenchEv"></span><span id="_CPPv2N6ankerl9nanobench5Bench5BenchEv"></span><span id="ankerl::nanobench::Bench::Bench"></span><span class="target" id="classankerl_1_1nanobench_1_1Bench_1a8345f9b4c7881b99497f5c036dde6b79"></span><code class="sig-name descname">Bench</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv4N6ankerl9nanobench5Bench5BenchEv" title="Permalink to this definition">¶</a><br /></dt>
@@ -306,48 +306,40 @@
 <span id="_CPPv3I0EN6ankerl9nanobench5Bench3runEPKcRR2Op"></span><span id="_CPPv2I0EN6ankerl9nanobench5Bench3runEPKcRR2Op"></span>template&lt;typename <code class="sig-name descname">Op</code>&gt;<br /><span class="target" id="classankerl_1_1nanobench_1_1Bench_1a396e218813c7eeb20a58adad9bbd85f7"></span><a class="reference internal" href="#_CPPv4N6ankerl9nanobench5BenchE" title="ankerl::nanobench::Bench">Bench</a> &amp;<code class="sig-name descname">run</code><span class="sig-paren">(</span>char <em class="property">const</em> *<em>benchmarkName</em>, <a class="reference internal" href="#_CPPv4I0EN6ankerl9nanobench5Bench3runER5BenchPKcRR2Op" title="ankerl::nanobench::Bench::run::Op">Op</a> &amp;&amp;<em>op</em><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv4I0EN6ankerl9nanobench5Bench3runER5BenchPKcRR2Op" title="Permalink to this definition">¶</a><br /></dt>
 <dd><p>Repeatedly calls <code class="docutils literal notranslate"><span class="pre">op()</span></code> based on the configuration, and performs measurements. </p>
 <p>This call is marked with <code class="docutils literal notranslate"><span class="pre">noinline</span></code> to prevent the compiler to optimize beyond different benchmarks. This can have quite a big effect on benchmark accuracy.</p>
-<p><p><div class="admonition note">
+<div class="admonition note">
 <p class="admonition-title">Note</p>
 <p>Each call to your lambda must have a side effect that the compiler can’t possibly optimize it away. E.g. add a result to an
 externally defined number (like <cite>x</cite> in the above example), and finally call <cite>doNotOptimizeAway</cite> on the variables the compiler
 must not remove. You can also use <a class="reference internal" href="#_CPPv4I0EN6ankerl9nanobench17doNotOptimizeAwayEvRR3Arg" title="ankerl::nanobench::doNotOptimizeAway"><code class="xref cpp cpp-func docutils literal notranslate"><span class="pre">ankerl::nanobench::doNotOptimizeAway()</span></code></a> directly in the lambda, but be aware that
 this has a small overhead.</p>
 </div>
-</p>
-</p>
-<p><dl class="simple">
-<dt><strong>Template Parameters</strong></dt><dd><ul class="breatheparameterlist simple">
-<li><p><code class="docutils literal notranslate"><span class="pre">Op</span></code>: The code to benchmark. </p></li>
-</ul>
+<dl class="field-list simple">
+<dt class="field-odd">Template Parameters</dt>
+<dd class="field-odd"><p><strong>Op</strong> – The code to benchmark. </p>
 </dd>
 </dl>
-</p>
 </dd></dl>
 
 <dl class="cpp function">
 <dt id="_CPPv4I0EN6ankerl9nanobench5Bench3runER5BenchRR2Op">
 <span id="_CPPv3I0EN6ankerl9nanobench5Bench3runERR2Op"></span><span id="_CPPv2I0EN6ankerl9nanobench5Bench3runERR2Op"></span>template&lt;typename <code class="sig-name descname">Op</code>&gt;<br /><span class="target" id="classankerl_1_1nanobench_1_1Bench_1a39bbb14e8cfa0ecd42ad002f73f7b7a2"></span><a class="reference internal" href="#_CPPv4N6ankerl9nanobench5BenchE" title="ankerl::nanobench::Bench">Bench</a> &amp;<code class="sig-name descname">run</code><span class="sig-paren">(</span><a class="reference internal" href="#_CPPv4I0EN6ankerl9nanobench5Bench3runER5BenchRR2Op" title="ankerl::nanobench::Bench::run::Op">Op</a> &amp;&amp;<em>op</em><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv4I0EN6ankerl9nanobench5Bench3runER5BenchRR2Op" title="Permalink to this definition">¶</a><br /></dt>
 <dd><p>Same as run(char const* benchmarkName, Op op), but instead uses the previously set name. </p>
-<p><dl class="simple">
-<dt><strong>Template Parameters</strong></dt><dd><ul class="breatheparameterlist simple">
-<li><p><code class="docutils literal notranslate"><span class="pre">Op</span></code>: The code to benchmark. </p></li>
-</ul>
+<dl class="field-list simple">
+<dt class="field-odd">Template Parameters</dt>
+<dd class="field-odd"><p><strong>Op</strong> – The code to benchmark. </p>
 </dd>
 </dl>
-</p>
 </dd></dl>
 
 <dl class="cpp function">
 <dt id="_CPPv4N6ankerl9nanobench5Bench5titleEPKc">
 <span id="_CPPv3N6ankerl9nanobench5Bench5titleEPKc"></span><span id="_CPPv2N6ankerl9nanobench5Bench5titleEPKc"></span><span id="ankerl::nanobench::Bench::title__cCP"></span><span class="target" id="classankerl_1_1nanobench_1_1Bench_1a16bfc633b8a20b19581a886863969d90"></span><a class="reference internal" href="#_CPPv4N6ankerl9nanobench5BenchE" title="ankerl::nanobench::Bench">Bench</a> &amp;<code class="sig-name descname">title</code><span class="sig-paren">(</span>char <em class="property">const</em> *<em>benchmarkTitle</em><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv4N6ankerl9nanobench5Bench5titleEPKc" title="Permalink to this definition">¶</a><br /></dt>
 <dd><p>Title of the benchmark, will be shown in the table header. Changing the title will start a new markdown table. </p>
-<p><dl class="simple">
-<dt><strong>Parameters</strong></dt><dd><ul class="breatheparameterlist simple">
-<li><p><code class="docutils literal notranslate"><span class="pre">benchmarkTitle</span></code>: The title of the benchmark. </p></li>
-</ul>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><p><strong>benchmarkTitle</strong> – The title of the benchmark. </p>
 </dd>
 </dl>
-</p>
 </dd></dl>
 
 <dl class="cpp function">
@@ -361,17 +353,14 @@ this has a small overhead.</p>
 <span id="_CPPv3I0EN6ankerl9nanobench5Bench5batchE1T"></span><span id="_CPPv2I0EN6ankerl9nanobench5Bench5batchE1T"></span>template&lt;typename <code class="sig-name descname">T</code>&gt;<br /><span class="target" id="classankerl_1_1nanobench_1_1Bench_1a68dc68dfad568ca7bf820139dca9c968"></span><a class="reference internal" href="#_CPPv4N6ankerl9nanobench5BenchE" title="ankerl::nanobench::Bench">Bench</a> &amp;<code class="sig-name descname">batch</code><span class="sig-paren">(</span><a class="reference internal" href="#_CPPv4I0EN6ankerl9nanobench5Bench5batchER5Bench1T" title="ankerl::nanobench::Bench::batch::T">T</a> <em>b</em><span class="sig-paren">)</span> <em class="property">noexcept</em><a class="headerlink" href="#_CPPv4I0EN6ankerl9nanobench5Bench5batchER5Bench1T" title="Permalink to this definition">¶</a><br /></dt>
 <dd><p>Sets the batch size. </p>
 <p>E.g. number of processed byte, or some other metric for the size of the processed data in each iteration. If you benchmark hashing of a 1000 byte long string and want byte/sec as a result, you can specify 1000 as the batch size.</p>
-<p><dl class="simple">
-<dt><strong>Template Parameters</strong></dt><dd><ul class="breatheparameterlist simple">
-<li><p><code class="docutils literal notranslate"><span class="pre">T</span></code>: Any input type is internally cast to <code class="docutils literal notranslate"><span class="pre">double</span></code>. </p></li>
-</ul>
+<dl class="field-list simple">
+<dt class="field-odd">Template Parameters</dt>
+<dd class="field-odd"><p><strong>T</strong> – Any input type is internally cast to <code class="docutils literal notranslate"><span class="pre">double</span></code>. </p>
 </dd>
-<dt><strong>Parameters</strong></dt><dd><ul class="breatheparameterlist simple">
-<li><p><code class="docutils literal notranslate"><span class="pre">b</span></code>: batch size </p></li>
-</ul>
+<dt class="field-even">Parameters</dt>
+<dd class="field-even"><p><strong>b</strong> – batch size </p>
 </dd>
 </dl>
-</p>
 </dd></dl>
 
 <dl class="cpp function">
@@ -379,13 +368,11 @@ this has a small overhead.</p>
 <span id="_CPPv3N6ankerl9nanobench5Bench4unitEPKc"></span><span id="_CPPv2N6ankerl9nanobench5Bench4unitEPKc"></span><span id="ankerl::nanobench::Bench::unit__cCP"></span><span class="target" id="classankerl_1_1nanobench_1_1Bench_1ac64deea8b3bc0b8f70a12f0f1085e131"></span><a class="reference internal" href="#_CPPv4N6ankerl9nanobench5BenchE" title="ankerl::nanobench::Bench">Bench</a> &amp;<code class="sig-name descname">unit</code><span class="sig-paren">(</span>char <em class="property">const</em> *<em>unit</em><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv4N6ankerl9nanobench5Bench4unitEPKc" title="Permalink to this definition">¶</a><br /></dt>
 <dd><p>Sets the operation unit. </p>
 <p>Defaults to “op”. Could be e.g. “byte” for string processing. This is used for the table header, e.g. to show <code class="docutils literal notranslate"><span class="pre">ns/byte</span></code>. Use singular (<em>byte</em>, not <em>bytes</em>). A change clears the currently collected results.</p>
-<p><dl class="simple">
-<dt><strong>Parameters</strong></dt><dd><ul class="breatheparameterlist simple">
-<li><p><code class="docutils literal notranslate"><span class="pre">unit</span></code>: The unit name. </p></li>
-</ul>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><p><strong>unit</strong> – The unit name. </p>
 </dd>
 </dl>
-</p>
 </dd></dl>
 
 <dl class="cpp function">
@@ -393,14 +380,14 @@ this has a small overhead.</p>
 <span id="_CPPv3N6ankerl9nanobench5Bench8timeUnitERKNSt6chrono8durationIdEERKNSt6stringE"></span><span id="_CPPv2N6ankerl9nanobench5Bench8timeUnitERKNSt6chrono8durationIdEERKNSt6stringE"></span><span id="ankerl::nanobench::Bench::timeUnit__std::chrono::duration:double:CR.ssCR"></span><span class="target" id="classankerl_1_1nanobench_1_1Bench_1a3421348ad821902126014139aed11828"></span><a class="reference internal" href="#_CPPv4N6ankerl9nanobench5BenchE" title="ankerl::nanobench::Bench">Bench</a> &amp;<code class="sig-name descname">timeUnit</code><span class="sig-paren">(</span>std::chrono::duration&lt;double&gt; <em class="property">const</em> &amp;<em>tu</em>, std::string <em class="property">const</em> &amp;<em>tuName</em><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv4N6ankerl9nanobench5Bench8timeUnitERKNSt6chrono8durationIdEERKNSt6stringE" title="Permalink to this definition">¶</a><br /></dt>
 <dd><p>Sets the time unit to be used for the default output. </p>
 <p>Nanobench defaults to using ns (nanoseconds) as output in the markdown. For some benchmarks this is too coarse, so it is possible to configure this. E.g. use <code class="docutils literal notranslate"><span class="pre">timeUnit(1ms,</span> <span class="pre">&quot;ms&quot;)</span></code> to show <code class="docutils literal notranslate"><span class="pre">ms/op</span></code> instead of <code class="docutils literal notranslate"><span class="pre">ns/op</span></code>.</p>
-<p><dl class="simple">
-<dt><strong>Parameters</strong></dt><dd><ul class="breatheparameterlist simple">
-<li><p><code class="docutils literal notranslate"><span class="pre">tu</span></code>: Time unit to display the results in, default is 1ns. </p></li>
-<li><p><code class="docutils literal notranslate"><span class="pre">tuName</span></code>: Name for the time unit, default is “ns” </p></li>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>tu</strong> – Time unit to display the results in, default is 1ns. </p></li>
+<li><p><strong>tuName</strong> – Name for the time unit, default is “ns” </p></li>
 </ul>
 </dd>
 </dl>
-</p>
 </dd></dl>
 
 <dl class="cpp function">
@@ -408,13 +395,11 @@ this has a small overhead.</p>
 <span id="_CPPv3N6ankerl9nanobench5Bench6outputEPNSt7ostreamE"></span><span id="_CPPv2N6ankerl9nanobench5Bench6outputEPNSt7ostreamE"></span><span id="ankerl::nanobench::Bench::output__osP"></span><span class="target" id="classankerl_1_1nanobench_1_1Bench_1a66d557ed790c9c63110c1910bf0878d4"></span><a class="reference internal" href="#_CPPv4N6ankerl9nanobench5BenchE" title="ankerl::nanobench::Bench">Bench</a> &amp;<code class="sig-name descname">output</code><span class="sig-paren">(</span>std::ostream *<em>outstream</em><span class="sig-paren">)</span> <em class="property">noexcept</em><a class="headerlink" href="#_CPPv4N6ankerl9nanobench5Bench6outputEPNSt7ostreamE" title="Permalink to this definition">¶</a><br /></dt>
 <dd><p>Set the output stream where the resulting markdown table will be printed to. </p>
 <p>The default is <code class="docutils literal notranslate"><span class="pre">&amp;std::cout</span></code>. You can disable all output by setting <code class="docutils literal notranslate"><span class="pre">nullptr</span></code>.</p>
-<p><dl class="simple">
-<dt><strong>Parameters</strong></dt><dd><ul class="breatheparameterlist simple">
-<li><p><code class="docutils literal notranslate"><span class="pre">outstream</span></code>: Pointer to output stream, can be <code class="docutils literal notranslate"><span class="pre">nullptr</span></code>. </p></li>
-</ul>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><p><strong>outstream</strong> – Pointer to output stream, can be <code class="docutils literal notranslate"><span class="pre">nullptr</span></code>. </p>
 </dd>
 </dl>
-</p>
 </dd></dl>
 
 <dl class="cpp function">
@@ -427,13 +412,11 @@ this has a small overhead.</p>
 </p>
 <p>To be precise, nanobench adds a 0-20% random noise to each evaluation. This is to prevent any aliasing effects, and further improves accuracy.</p>
 <p>Total runtime will be higher though: Some initial time is needed to find out the target number of iterations for each epoch, and there is some overhead involved to start &amp; stop timers and calculate resulting statistics and writing the output.</p>
-<p><dl class="simple">
-<dt><strong>Parameters</strong></dt><dd><ul class="breatheparameterlist simple">
-<li><p><code class="docutils literal notranslate"><span class="pre">multiple</span></code>: Target number of times of clock resolution. Usually 1000 is a good compromise between runtime and accuracy. </p></li>
-</ul>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><p><strong>multiple</strong> – Target number of times of clock resolution. Usually 1000 is a good compromise between runtime and accuracy. </p>
 </dd>
 </dl>
-</p>
 </dd></dl>
 
 <dl class="cpp function">
@@ -442,13 +425,11 @@ this has a small overhead.</p>
 <dd><p>Controls number of epochs, the number of measurements to perform. </p>
 <p>The reported result will be the median of evaluation of each epoch. The higher you choose this, the more deterministic the result be and outliers will be more easily removed. Also the <code class="docutils literal notranslate"><span class="pre">err%</span></code> will be more accurate the higher this number is. Note that the <code class="docutils literal notranslate"><span class="pre">err%</span></code> will not necessarily decrease when number of epochs is increased. But it will be a more accurate representation of the benchmarked code’s runtime stability.</p>
 <p>Choose the value wisely. In practice, 11 has been shown to be a reasonable choice between runtime performance and accuracy. This setting goes hand in hand with minEpocIterations() (or <a class="reference internal" href="#classankerl_1_1nanobench_1_1Bench_1a56dee1b8d68c9c4baea428e89cca14dc"><span class="std std-ref">minEpochTime()</span></a>). If you are more interested in <em>median</em> runtime, you might want to increase <a class="reference internal" href="#classankerl_1_1nanobench_1_1Bench_1ac089fc0e5e05fe5730f42ca2c1d6fcef"><span class="std std-ref">epochs()</span></a>. If you are more interested in <em>mean</em> runtime, you might want to increase <a class="reference internal" href="#classankerl_1_1nanobench_1_1Bench_1a46f034f150aa76e461fe78ad91415b0e"><span class="std std-ref">minEpochIterations()</span></a> instead.</p>
-<p><dl class="simple">
-<dt><strong>Parameters</strong></dt><dd><ul class="breatheparameterlist simple">
-<li><p><code class="docutils literal notranslate"><span class="pre">numEpochs</span></code>: Number of epochs. </p></li>
-</ul>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><p><strong>numEpochs</strong> – Number of epochs. </p>
 </dd>
 </dl>
-</p>
 </dd></dl>
 
 <dl class="cpp function">
@@ -459,12 +440,13 @@ this has a small overhead.</p>
 <p><dl class="simple">
 <dt><strong>See</strong></dt><dd><p><a class="reference internal" href="#classankerl_1_1nanobench_1_1Bench_1a56dee1b8d68c9c4baea428e89cca14dc"><span class="std std-ref">minEpochTime()</span></a>, <a class="reference internal" href="#classankerl_1_1nanobench_1_1Bench_1a46f034f150aa76e461fe78ad91415b0e"><span class="std std-ref">minEpochIterations()</span></a></p>
 </dd>
-<dt><strong>Parameters</strong></dt><dd><ul class="breatheparameterlist simple">
-<li><p><code class="docutils literal notranslate"><span class="pre">t</span></code>: Maximum target runtime for a single epoch. </p></li>
-</ul>
-</dd>
 </dl>
 </p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><p><strong>t</strong> – Maximum target runtime for a single epoch. </p>
+</dd>
+</dl>
 </dd></dl>
 
 <dl class="cpp function">
@@ -475,12 +457,13 @@ this has a small overhead.</p>
 <p><dl class="simple">
 <dt><strong>See</strong></dt><dd><p><a class="reference internal" href="#classankerl_1_1nanobench_1_1Bench_1ae2b5c8f02fc7cf334d6df1164c921f63"><span class="std std-ref">maxEpochTime()</span></a>, <a class="reference internal" href="#classankerl_1_1nanobench_1_1Bench_1a46f034f150aa76e461fe78ad91415b0e"><span class="std std-ref">minEpochIterations()</span></a></p>
 </dd>
-<dt><strong>Parameters</strong></dt><dd><ul class="breatheparameterlist simple">
-<li><p><code class="docutils literal notranslate"><span class="pre">t</span></code>: Minimum time each epoch should take. </p></li>
-</ul>
-</dd>
 </dl>
 </p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><p><strong>t</strong> – Minimum time each epoch should take. </p>
+</dd>
+</dl>
 </dd></dl>
 
 <dl class="cpp function">
@@ -491,25 +474,24 @@ this has a small overhead.</p>
 <p><dl class="simple">
 <dt><strong>See</strong></dt><dd><p><a class="reference internal" href="#classankerl_1_1nanobench_1_1Bench_1a56dee1b8d68c9c4baea428e89cca14dc"><span class="std std-ref">minEpochTime()</span></a>, <a class="reference internal" href="#classankerl_1_1nanobench_1_1Bench_1ae2b5c8f02fc7cf334d6df1164c921f63"><span class="std std-ref">maxEpochTime()</span></a>, <a class="reference internal" href="#classankerl_1_1nanobench_1_1Bench_1a46f034f150aa76e461fe78ad91415b0e"><span class="std std-ref">minEpochIterations()</span></a></p>
 </dd>
-<dt><strong>Parameters</strong></dt><dd><ul class="breatheparameterlist simple">
-<li><p><code class="docutils literal notranslate"><span class="pre">numIters</span></code>: Minimum number of iterations per epoch. </p></li>
-</ul>
-</dd>
 </dl>
 </p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><p><strong>numIters</strong> – Minimum number of iterations per epoch. </p>
+</dd>
+</dl>
 </dd></dl>
 
 <dl class="cpp function">
 <dt id="_CPPv4N6ankerl9nanobench5Bench15epochIterationsE8uint64_t">
 <span id="_CPPv3N6ankerl9nanobench5Bench15epochIterationsE8uint64_t"></span><span id="_CPPv2N6ankerl9nanobench5Bench15epochIterationsE8uint64_t"></span><span id="ankerl::nanobench::Bench::epochIterations__uint64_t"></span><span class="target" id="classankerl_1_1nanobench_1_1Bench_1a6fe98489a292b5181f0edeec6cc6f552"></span><a class="reference internal" href="#_CPPv4N6ankerl9nanobench5BenchE" title="ankerl::nanobench::Bench">Bench</a> &amp;<code class="sig-name descname">epochIterations</code><span class="sig-paren">(</span>uint64_t <em>numIters</em><span class="sig-paren">)</span> <em class="property">noexcept</em><a class="headerlink" href="#_CPPv4N6ankerl9nanobench5Bench15epochIterationsE8uint64_t" title="Permalink to this definition">¶</a><br /></dt>
 <dd><p>Sets exactly the number of iterations for each epoch. Ignores all other epoch limits. This forces nanobench to use exactly the given number of iterations for each epoch, not more and not less. Default is 0 (disabled).</p>
-<p><dl class="simple">
-<dt><strong>Parameters</strong></dt><dd><ul class="breatheparameterlist simple">
-<li><p><code class="docutils literal notranslate"><span class="pre">numIters</span></code>: Exact number of iterations to use. Set to 0 to disable. </p></li>
-</ul>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><p><strong>numIters</strong> – Exact number of iterations to use. Set to 0 to disable. </p>
 </dd>
 </dl>
-</p>
 </dd></dl>
 
 <dl class="cpp function">
@@ -517,13 +499,11 @@ this has a small overhead.</p>
 <span id="_CPPv3N6ankerl9nanobench5Bench6warmupE8uint64_t"></span><span id="_CPPv2N6ankerl9nanobench5Bench6warmupE8uint64_t"></span><span id="ankerl::nanobench::Bench::warmup__uint64_t"></span><span class="target" id="classankerl_1_1nanobench_1_1Bench_1accdef04b3e0e72ef4b231246fcba09cd"></span><a class="reference internal" href="#_CPPv4N6ankerl9nanobench5BenchE" title="ankerl::nanobench::Bench">Bench</a> &amp;<code class="sig-name descname">warmup</code><span class="sig-paren">(</span>uint64_t <em>numWarmupIters</em><span class="sig-paren">)</span> <em class="property">noexcept</em><a class="headerlink" href="#_CPPv4N6ankerl9nanobench5Bench6warmupE8uint64_t" title="Permalink to this definition">¶</a><br /></dt>
 <dd><p>Sets a number of iterations that are initially performed without any measurements. </p>
 <p>Some benchmarks need a few evaluations to warm up caches / database / whatever access. Normally this should not be needed, since we show the median result so initial outliers will be filtered away automatically. If the warmup effect is large though, you might want to set it. Default is 0.</p>
-<p><dl class="simple">
-<dt><strong>Parameters</strong></dt><dd><ul class="breatheparameterlist simple">
-<li><p><code class="docutils literal notranslate"><span class="pre">numWarmupIters</span></code>: Number of warmup iterations. </p></li>
-</ul>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><p><strong>numWarmupIters</strong> – Number of warmup iterations. </p>
 </dd>
 </dl>
-</p>
 </dd></dl>
 
 <dl class="cpp function">
@@ -541,13 +521,11 @@ this has a small overhead.</p>
 </ul>
 </p>
 <p>See the tutorial section “Comparing Results” for example usage.</p>
-<p><dl class="simple">
-<dt><strong>Parameters</strong></dt><dd><ul class="breatheparameterlist simple">
-<li><p><code class="docutils literal notranslate"><span class="pre">isRelativeEnabled</span></code>: True to enable processing </p></li>
-</ul>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><p><strong>isRelativeEnabled</strong> – True to enable processing </p>
 </dd>
 </dl>
-</p>
 </dd></dl>
 
 <dl class="cpp function">
@@ -555,13 +533,11 @@ this has a small overhead.</p>
 <span id="_CPPv3N6ankerl9nanobench5Bench19performanceCountersEb"></span><span id="_CPPv2N6ankerl9nanobench5Bench19performanceCountersEb"></span><span id="ankerl::nanobench::Bench::performanceCounters__b"></span><span class="target" id="classankerl_1_1nanobench_1_1Bench_1ac025e0589b27b066e151cfb6ed0358bf"></span><a class="reference internal" href="#_CPPv4N6ankerl9nanobench5BenchE" title="ankerl::nanobench::Bench">Bench</a> &amp;<code class="sig-name descname">performanceCounters</code><span class="sig-paren">(</span>bool <em>showPerformanceCounters</em><span class="sig-paren">)</span> <em class="property">noexcept</em><a class="headerlink" href="#_CPPv4N6ankerl9nanobench5Bench19performanceCountersEb" title="Permalink to this definition">¶</a><br /></dt>
 <dd><p>Enables/disables performance counters. </p>
 <p>On Linux nanobench has a powerful feature to use performance counters. This enables counting of retired instructions, count number of branches, missed branches, etc. On default this is enabled, but you can disable it if you don’t need that feature.</p>
-<p><dl class="simple">
-<dt><strong>Parameters</strong></dt><dd><ul class="breatheparameterlist simple">
-<li><p><code class="docutils literal notranslate"><span class="pre">showPerformanceCounters</span></code>: True to enable, false to disable. </p></li>
-</ul>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><p><strong>showPerformanceCounters</strong> – True to enable, false to disable. </p>
 </dd>
 </dl>
-</p>
 </dd></dl>
 
 <dl class="cpp function">
@@ -569,40 +545,35 @@ this has a small overhead.</p>
 <span id="_CPPv3NK6ankerl9nanobench5Bench7resultsEv"></span><span id="_CPPv2NK6ankerl9nanobench5Bench7resultsEv"></span><span id="ankerl::nanobench::Bench::resultsC"></span><span class="target" id="classankerl_1_1nanobench_1_1Bench_1aa1510ca21d8c6c2ec675f63839e43338"></span>std::vector&lt;<a class="reference internal" href="#_CPPv4N6ankerl9nanobench6ResultE" title="ankerl::nanobench::Result">Result</a>&gt; <em class="property">const</em> &amp;<code class="sig-name descname">results</code><span class="sig-paren">(</span><span class="sig-paren">)</span> <em class="property">const</em> <em class="property">noexcept</em><a class="headerlink" href="#_CPPv4NK6ankerl9nanobench5Bench7resultsEv" title="Permalink to this definition">¶</a><br /></dt>
 <dd><p>Retrieves all benchmark results collected by the bench object so far. </p>
 <p>Each call to <a class="reference internal" href="#classankerl_1_1nanobench_1_1Bench_1a396e218813c7eeb20a58adad9bbd85f7"><span class="std std-ref">run()</span></a> generates a <a class="reference internal" href="#classankerl_1_1nanobench_1_1Result"><span class="std std-ref">Result</span></a> that is stored within the <a class="reference internal" href="#classankerl_1_1nanobench_1_1Bench"><span class="std std-ref">Bench</span></a> instance. This is mostly for advanced users who want to see all the nitty gritty detials.</p>
-<p><dl class="simple">
-<dt><strong>Return</strong></dt><dd><p>All results collected so far. </p>
+<dl class="field-list simple">
+<dt class="field-odd">Returns</dt>
+<dd class="field-odd"><p>All results collected so far. </p>
 </dd>
 </dl>
-</p>
 </dd></dl>
 
 <dl class="cpp function">
 <dt id="_CPPv4I0EN6ankerl9nanobench5Bench17doNotOptimizeAwayER5BenchRR3Arg">
 <span id="_CPPv3I0EN6ankerl9nanobench5Bench17doNotOptimizeAwayERR3Arg"></span><span id="_CPPv2I0EN6ankerl9nanobench5Bench17doNotOptimizeAwayERR3Arg"></span>template&lt;typename <code class="sig-name descname">Arg</code>&gt;<br /><span class="target" id="classankerl_1_1nanobench_1_1Bench_1a777015f55cd397af8b76a2ff7b3ce707"></span><a class="reference internal" href="#_CPPv4N6ankerl9nanobench5BenchE" title="ankerl::nanobench::Bench">Bench</a> &amp;<code class="sig-name descname">doNotOptimizeAway</code><span class="sig-paren">(</span><a class="reference internal" href="#_CPPv4I0EN6ankerl9nanobench5Bench17doNotOptimizeAwayER5BenchRR3Arg" title="ankerl::nanobench::Bench::doNotOptimizeAway::Arg">Arg</a> &amp;&amp;<em>arg</em><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv4I0EN6ankerl9nanobench5Bench17doNotOptimizeAwayER5BenchRR3Arg" title="Permalink to this definition">¶</a><br /></dt>
-<dd><p><p><p>Convenience shortcut to <a class="reference internal" href="#_CPPv4I0EN6ankerl9nanobench17doNotOptimizeAwayEvRR3Arg" title="ankerl::nanobench::doNotOptimizeAway"><code class="xref cpp cpp-func docutils literal notranslate"><span class="pre">ankerl::nanobench::doNotOptimizeAway()</span></code></a>.</p>
-</p>
+<dd><p><p>Convenience shortcut to <a class="reference internal" href="#_CPPv4I0EN6ankerl9nanobench17doNotOptimizeAwayEvRR3Arg" title="ankerl::nanobench::doNotOptimizeAway"><code class="xref cpp cpp-func docutils literal notranslate"><span class="pre">ankerl::nanobench::doNotOptimizeAway()</span></code></a>.</p>
  </p>
 </dd></dl>
 
 <dl class="cpp function">
 <dt id="_CPPv4I0EN6ankerl9nanobench5Bench11complexityNER5Bench1T">
 <span id="_CPPv3I0EN6ankerl9nanobench5Bench11complexityNE1T"></span><span id="_CPPv2I0EN6ankerl9nanobench5Bench11complexityNE1T"></span>template&lt;typename <code class="sig-name descname">T</code>&gt;<br /><span class="target" id="classankerl_1_1nanobench_1_1Bench_1a0027b7d43a3eafb3311b8b74a749dede"></span><a class="reference internal" href="#_CPPv4N6ankerl9nanobench5BenchE" title="ankerl::nanobench::Bench">Bench</a> &amp;<code class="sig-name descname">complexityN</code><span class="sig-paren">(</span><a class="reference internal" href="#_CPPv4I0EN6ankerl9nanobench5Bench11complexityNER5Bench1T" title="ankerl::nanobench::Bench::complexityN::T">T</a> <em>b</em><span class="sig-paren">)</span> <em class="property">noexcept</em><a class="headerlink" href="#_CPPv4I0EN6ankerl9nanobench5Bench11complexityNER5Bench1T" title="Permalink to this definition">¶</a><br /></dt>
-<dd><p><p><p>Sets N for asymptotic complexity calculation, so it becomes possible to calculate <a class="reference external" href="https://en.wikipedia.org/wiki/Big_O_notation">Big O</a> from multiple benchmark evaluations.</p>
+<dd><p><p>Sets N for asymptotic complexity calculation, so it becomes possible to calculate <a class="reference external" href="https://en.wikipedia.org/wiki/Big_O_notation">Big O</a> from multiple benchmark evaluations.</p>
 <p>Use <a class="reference internal" href="#_CPPv4NK6ankerl9nanobench5Bench14complexityBigOEv" title="ankerl::nanobench::Bench::complexityBigO"><code class="xref cpp cpp-func docutils literal notranslate"><span class="pre">ankerl::nanobench::Bench::complexityBigO()</span></code></a> when the evaluation has finished. See the tutorial
 <a class="reference internal" href="tutorial.html#asymptotic-complexity"><span class="std std-ref">Asymptotic Complexity</span></a> for details.</p>
 </p>
-</p>
-<p><dl class="simple">
-<dt><strong>Template Parameters</strong></dt><dd><ul class="breatheparameterlist simple">
-<li><p><code class="docutils literal notranslate"><span class="pre">T</span></code>: Any type is cast to <code class="docutils literal notranslate"><span class="pre">double</span></code>. </p></li>
-</ul>
+<dl class="field-list simple">
+<dt class="field-odd">Template Parameters</dt>
+<dd class="field-odd"><p><strong>T</strong> – Any type is cast to <code class="docutils literal notranslate"><span class="pre">double</span></code>. </p>
 </dd>
-<dt><strong>Parameters</strong></dt><dd><ul class="breatheparameterlist simple">
-<li><p><code class="docutils literal notranslate"><span class="pre">b</span></code>: Length of N for the next benchmark run, so it is possible to calculate <code class="docutils literal notranslate"><span class="pre">bigO</span></code>. </p></li>
-</ul>
+<dt class="field-even">Parameters</dt>
+<dd class="field-even"><p><strong>b</strong> – Length of N for the next benchmark run, so it is possible to calculate <code class="docutils literal notranslate"><span class="pre">bigO</span></code>. </p>
 </dd>
 </dl>
-</p>
 </dd></dl>
 
 <dl class="cpp function">
@@ -623,13 +594,13 @@ this has a small overhead.</p>
 </div>
 </p>
 <p>So in this case <span class="math notranslate nohighlight">\( \mathcal{O}(n\log{}n) \)</span> provides the best approximation.</p>
-<p><p><p>See the tutorial <a class="reference internal" href="tutorial.html#asymptotic-complexity"><span class="std std-ref">Asymptotic Complexity</span></a> for details.</p>
-</p>
- <dl class="simple">
-<dt><strong>Return</strong></dt><dd><p>Evaluation results, which can be printed or otherwise inspected. </p>
+<p><p>See the tutorial <a class="reference internal" href="tutorial.html#asymptotic-complexity"><span class="std std-ref">Asymptotic Complexity</span></a> for details.</p>
+ </p>
+<dl class="field-list simple">
+<dt class="field-odd">Returns</dt>
+<dd class="field-odd"><p>Evaluation results, which can be printed or otherwise inspected. </p>
 </dd>
 </dl>
-</p>
 </dd></dl>
 
 <dl class="cpp function">
@@ -648,27 +619,26 @@ this has a small overhead.</p>
 </pre></div>
 </div>
 </p>
-<p><dl class="simple">
-<dt><strong>Return</strong></dt><dd><p>BigO Error calculation, which is streamable to std::cout. </p>
+<dl class="field-list simple">
+<dt class="field-odd">Template Parameters</dt>
+<dd class="field-odd"><p><strong>Op</strong> – Type of mapping operation. </p>
 </dd>
-<dt><strong>Template Parameters</strong></dt><dd><ul class="breatheparameterlist simple">
-<li><p><code class="docutils literal notranslate"><span class="pre">Op</span></code>: Type of mapping operation. </p></li>
+<dt class="field-even">Parameters</dt>
+<dd class="field-even"><ul class="simple">
+<li><p><strong>name</strong> – Name for the function, e.g. “O(log log n)” </p></li>
+<li><p><strong>op</strong> – Op’s operator() maps a <code class="docutils literal notranslate"><span class="pre">double</span></code> with the desired complexity function, e.g. <code class="docutils literal notranslate"><span class="pre">log2(log2(n))</span></code>. </p></li>
 </ul>
 </dd>
-<dt><strong>Parameters</strong></dt><dd><ul class="breatheparameterlist simple">
-<li><p><code class="docutils literal notranslate"><span class="pre">name</span></code>: Name for the function, e.g. “O(log log n)” </p></li>
-<li><p><code class="docutils literal notranslate"><span class="pre">op</span></code>: Op’s operator() maps a <code class="docutils literal notranslate"><span class="pre">double</span></code> with the desired complexity function, e.g. <code class="docutils literal notranslate"><span class="pre">log2(log2(n))</span></code>. </p></li>
-</ul>
+<dt class="field-odd">Returns</dt>
+<dd class="field-odd"><p>BigO Error calculation, which is streamable to std::cout. </p>
 </dd>
 </dl>
-</p>
 </dd></dl>
 
 <dl class="cpp function">
 <dt id="_CPPv4N6ankerl9nanobench5Bench6renderEPKcRNSt7ostreamE">
 <span id="_CPPv3N6ankerl9nanobench5Bench6renderEPKcRNSt7ostreamE"></span><span id="_CPPv2N6ankerl9nanobench5Bench6renderEPKcRNSt7ostreamE"></span><span id="ankerl::nanobench::Bench::render__cCP.osR"></span><span class="target" id="classankerl_1_1nanobench_1_1Bench_1ab91cedea45195fa2e5f77484e788a901"></span><a class="reference internal" href="#_CPPv4N6ankerl9nanobench5BenchE" title="ankerl::nanobench::Bench">Bench</a> &amp;<code class="sig-name descname">render</code><span class="sig-paren">(</span>char <em class="property">const</em> *<em>templateContent</em>, std::ostream &amp;<em>os</em><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv4N6ankerl9nanobench5Bench6renderEPKcRNSt7ostreamE" title="Permalink to this definition">¶</a><br /></dt>
-<dd><p><p><p>Convenience shortcut to <a class="reference internal" href="#_CPPv4N6ankerl9nanobench6renderEPKcRK5BenchRNSt7ostreamE" title="ankerl::nanobench::render"><code class="xref cpp cpp-func docutils literal notranslate"><span class="pre">ankerl::nanobench::render()</span></code></a>.</p>
-</p>
+<dd><p><p>Convenience shortcut to <a class="reference internal" href="#_CPPv4N6ankerl9nanobench6renderEPKcRK5BenchRNSt7ostreamE" title="ankerl::nanobench::render"><code class="xref cpp cpp-func docutils literal notranslate"><span class="pre">ankerl::nanobench::render()</span></code></a>.</p>
  </p>
 </dd></dl>
 
@@ -692,7 +662,7 @@ this has a small overhead.</p>
 <p>This random generator is a drop-in replacement for the generators supplied by <code class="docutils literal notranslate"><span class="pre">&lt;random&gt;</span></code>. It is not cryptographically secure. It’s intended purpose is to be very fast so that benchmarks that make use of randomness are not distorted too much by the random generator.</p>
 <p><a class="reference internal" href="#classankerl_1_1nanobench_1_1Rng"><span class="std std-ref">Rng</span></a> also provides a few non-standard helpers, optimized for speed. </p>
 <div class="breathe-sectiondef docutils container">
-<p class="breathe-sectiondef-title rubric">Public Types</p>
+<p class="breathe-sectiondef-title rubric" id="breathe-section-title-public-types">Public Types</p>
 <dl class="cpp type">
 <dt id="_CPPv4N6ankerl9nanobench3Rng11result_typeE">
 <span id="_CPPv3N6ankerl9nanobench3Rng11result_typeE"></span><span id="_CPPv2N6ankerl9nanobench3Rng11result_typeE"></span><span class="target" id="classankerl_1_1nanobench_1_1Rng_1ad016f155c687ea1720a75345421b02e7"></span><em class="property">using </em><code class="sig-name descname">result_type</code> = uint64_t<a class="headerlink" href="#_CPPv4N6ankerl9nanobench3Rng11result_typeE" title="Permalink to this definition">¶</a><br /></dt>
@@ -701,7 +671,7 @@ this has a small overhead.</p>
 
 </div>
 <div class="breathe-sectiondef docutils container">
-<p class="breathe-sectiondef-title rubric">Public Functions</p>
+<p class="breathe-sectiondef-title rubric" id="breathe-section-title-public-functions">Public Functions</p>
 <dl class="cpp function">
 <dt id="_CPPv4N6ankerl9nanobench3Rng3RngERK3Rng">
 <span id="_CPPv3N6ankerl9nanobench3Rng3RngERK3Rng"></span><span id="_CPPv2N6ankerl9nanobench3Rng3RngERK3Rng"></span><span id="ankerl::nanobench::Rng::Rng__RngCR"></span><span class="target" id="classankerl_1_1nanobench_1_1Rng_1a4b113050f04adf292a2f32a5463b9105"></span><code class="sig-name descname">Rng</code><span class="sig-paren">(</span><a class="reference internal" href="#_CPPv4N6ankerl9nanobench3Rng3RngERK3Rng" title="ankerl::nanobench::Rng::Rng">Rng</a> <em class="property">const</em>&amp;<span class="sig-paren">)</span> = delete<a class="headerlink" href="#_CPPv4N6ankerl9nanobench3Rng3RngERK3Rng" title="Permalink to this definition">¶</a><br /></dt>
@@ -723,23 +693,19 @@ this has a small overhead.</p>
 
 <dl class="cpp function">
 <dt id="_CPPv4N6ankerl9nanobench3Rng3RngE8uint64_t">
-<span id="_CPPv3N6ankerl9nanobench3Rng3RngE8uint64_t"></span><span id="_CPPv2N6ankerl9nanobench3Rng3RngE8uint64_t"></span><span id="ankerl::nanobench::Rng::Rng__uint64_t"></span><span class="target" id="classankerl_1_1nanobench_1_1Rng_1a2f806b6c152353221767435ae74fc282"></span><code class="sig-name descname">Rng</code><span class="sig-paren">(</span>uint64_t <em>seed</em><span class="sig-paren">)</span> <em class="property">noexcept</em><a class="headerlink" href="#_CPPv4N6ankerl9nanobench3Rng3RngE8uint64_t" title="Permalink to this definition">¶</a><br /></dt>
+<span id="_CPPv3N6ankerl9nanobench3Rng3RngE8uint64_t"></span><span id="_CPPv2N6ankerl9nanobench3Rng3RngE8uint64_t"></span><span id="ankerl::nanobench::Rng::Rng__uint64_t"></span><span class="target" id="classankerl_1_1nanobench_1_1Rng_1a2f806b6c152353221767435ae74fc282"></span><em class="property">explicit</em> <code class="sig-name descname">Rng</code><span class="sig-paren">(</span>uint64_t <em>seed</em><span class="sig-paren">)</span> <em class="property">noexcept</em><a class="headerlink" href="#_CPPv4N6ankerl9nanobench3Rng3RngE8uint64_t" title="Permalink to this definition">¶</a><br /></dt>
 <dd><p>Creates a new <a class="reference internal" href="#classankerl_1_1nanobench_1_1Rng"><span class="std std-ref">Rng</span></a> that is seeded with a specific seed. Each <a class="reference internal" href="#classankerl_1_1nanobench_1_1Rng"><span class="std std-ref">Rng</span></a> created from the same seed will produce the same randomness sequence. This can be useful for deterministic behavior.</p>
-<p><p><div class="admonition note">
+<p>As per the Romu paper, this seeds the <a class="reference internal" href="#classankerl_1_1nanobench_1_1Rng"><span class="std std-ref">Rng</span></a> with splitMix64 algorithm and performs 10 initial rounds for further mixing up of the internal state.</p>
+<div class="admonition note">
 <p class="admonition-title">Note</p>
 <p>The random algorithm might change between nanobench releases. Whenever a faster and/or better random
 generator becomes available, I will switch the implementation.</p>
 </div>
-</p>
-</p>
-<p>As per the Romu paper, this seeds the <a class="reference internal" href="#classankerl_1_1nanobench_1_1Rng"><span class="std std-ref">Rng</span></a> with splitMix64 algorithm and performs 10 initial rounds for further mixing up of the internal state.</p>
-<p><dl class="simple">
-<dt><strong>Parameters</strong></dt><dd><ul class="breatheparameterlist simple">
-<li><p><code class="docutils literal notranslate"><span class="pre">seed</span></code>: The 64bit seed. All values are allowed, even 0. </p></li>
-</ul>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><p><strong>seed</strong> – The 64bit seed. All values are allowed, even 0. </p>
 </dd>
 </dl>
-</p>
 </dd></dl>
 
 <dl class="cpp function">
@@ -750,65 +716,62 @@ generator becomes available, I will switch the implementation.</p>
 
 <dl class="cpp function">
 <dt id="_CPPv4N6ankerl9nanobench3RngclEv">
-<span id="_CPPv3N6ankerl9nanobench3RngclEv"></span><span id="_CPPv2N6ankerl9nanobench3RngclEv"></span><span id="ankerl::nanobench::Rng::call-operator"></span><span class="target" id="classankerl_1_1nanobench_1_1Rng_1a2c7b5e0d8b201e7367dc44b40910b81c"></span>uint64_t <code class="sig-name descname">operator()</code><span class="sig-paren">(</span><span class="sig-paren">)</span> <em class="property">noexcept</em><a class="headerlink" href="#_CPPv4N6ankerl9nanobench3RngclEv" title="Permalink to this definition">¶</a><br /></dt>
+<span id="_CPPv3N6ankerl9nanobench3RngclEv"></span><span id="_CPPv2N6ankerl9nanobench3RngclEv"></span><span id="ankerl::nanobench::Rng::call-operator"></span><span class="target" id="classankerl_1_1nanobench_1_1Rng_1a2c7b5e0d8b201e7367dc44b40910b81c"></span><em class="property">inline</em> uint64_t <code class="sig-name descname">operator()</code><span class="sig-paren">(</span><span class="sig-paren">)</span> <em class="property">noexcept</em><a class="headerlink" href="#_CPPv4N6ankerl9nanobench3RngclEv" title="Permalink to this definition">¶</a><br /></dt>
 <dd><p>Produces a 64bit random value. This should be very fast, thus it is marked as inline. In my benchmark, this is ~46 times faster than <code class="docutils literal notranslate"><span class="pre">std::default_random_engine</span></code> for producing 64bit random values. It seems that the fastest std contender is <code class="docutils literal notranslate"><span class="pre">std::mt19937_64</span></code>. Still, this RNG is 2-3 times as fast. </p>
-<p><dl class="simple">
-<dt><strong>Return</strong></dt><dd><p>uint64_t The next 64 bit random value. </p>
+<dl class="field-list simple">
+<dt class="field-odd">Returns</dt>
+<dd class="field-odd"><p>uint64_t The next 64 bit random value. </p>
 </dd>
 </dl>
-</p>
 </dd></dl>
 
 <dl class="cpp function">
 <dt id="_CPPv4N6ankerl9nanobench3Rng7boundedE8uint32_t">
-<span id="_CPPv3N6ankerl9nanobench3Rng7boundedE8uint32_t"></span><span id="_CPPv2N6ankerl9nanobench3Rng7boundedE8uint32_t"></span><span id="ankerl::nanobench::Rng::bounded__uint32_t"></span><span class="target" id="classankerl_1_1nanobench_1_1Rng_1afb3219bbffe1d0f487e69a0bc9c0f00e"></span>uint32_t <code class="sig-name descname">bounded</code><span class="sig-paren">(</span>uint32_t <em>range</em><span class="sig-paren">)</span> <em class="property">noexcept</em><a class="headerlink" href="#_CPPv4N6ankerl9nanobench3Rng7boundedE8uint32_t" title="Permalink to this definition">¶</a><br /></dt>
+<span id="_CPPv3N6ankerl9nanobench3Rng7boundedE8uint32_t"></span><span id="_CPPv2N6ankerl9nanobench3Rng7boundedE8uint32_t"></span><span id="ankerl::nanobench::Rng::bounded__uint32_t"></span><span class="target" id="classankerl_1_1nanobench_1_1Rng_1afb3219bbffe1d0f487e69a0bc9c0f00e"></span><em class="property">inline</em> uint32_t <code class="sig-name descname">bounded</code><span class="sig-paren">(</span>uint32_t <em>range</em><span class="sig-paren">)</span> <em class="property">noexcept</em><a class="headerlink" href="#_CPPv4N6ankerl9nanobench3Rng7boundedE8uint32_t" title="Permalink to this definition">¶</a><br /></dt>
 <dd><p>Generates a random number between 0 and range (excluding range).</p>
 <p>The algorithm only produces 32bit numbers, and is slightly biased. The effect is quite small unless your range is close to the maximum value of an integer. It is possible to correct the bias with rejection sampling (see <a class="reference external" href="https://lemire.me/blog/2016/06/30/fast-random-shuffling/">here</a>, but this is most likely irrelevant in practices for the purposes of this <a class="reference internal" href="#classankerl_1_1nanobench_1_1Rng"><span class="std std-ref">Rng</span></a>.</p>
 <p>See Daniel Lemire’s blog post <a class="reference external" href="https://lemire.me/blog/2016/06/27/a-fast-alternative-to-the-modulo-reduction/">A fast alternative to the modulo reduction</a></p>
-<p><dl class="simple">
-<dt><strong>Return</strong></dt><dd><p>uint32_t Generated random values in range [0, range(. </p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><p><strong>range</strong> – Upper exclusive range. E.g a value of 3 will generate random numbers 0, 1, 2. </p>
 </dd>
-<dt><strong>Parameters</strong></dt><dd><ul class="breatheparameterlist simple">
-<li><p><code class="docutils literal notranslate"><span class="pre">range</span></code>: Upper exclusive range. E.g a value of 3 will generate random numbers 0, 1, 2. </p></li>
-</ul>
+<dt class="field-even">Returns</dt>
+<dd class="field-even"><p>uint32_t Generated random values in range [0, range(. </p>
 </dd>
 </dl>
-</p>
 </dd></dl>
 
 <dl class="cpp function">
 <dt id="_CPPv4N6ankerl9nanobench3Rng9uniform01Ev">
-<span id="_CPPv3N6ankerl9nanobench3Rng9uniform01Ev"></span><span id="_CPPv2N6ankerl9nanobench3Rng9uniform01Ev"></span><span id="ankerl::nanobench::Rng::uniform01"></span><span class="target" id="classankerl_1_1nanobench_1_1Rng_1ac70a7784c044c9870682eb22094049fb"></span>double <code class="sig-name descname">uniform01</code><span class="sig-paren">(</span><span class="sig-paren">)</span> <em class="property">noexcept</em><a class="headerlink" href="#_CPPv4N6ankerl9nanobench3Rng9uniform01Ev" title="Permalink to this definition">¶</a><br /></dt>
+<span id="_CPPv3N6ankerl9nanobench3Rng9uniform01Ev"></span><span id="_CPPv2N6ankerl9nanobench3Rng9uniform01Ev"></span><span id="ankerl::nanobench::Rng::uniform01"></span><span class="target" id="classankerl_1_1nanobench_1_1Rng_1ac70a7784c044c9870682eb22094049fb"></span><em class="property">inline</em> double <code class="sig-name descname">uniform01</code><span class="sig-paren">(</span><span class="sig-paren">)</span> <em class="property">noexcept</em><a class="headerlink" href="#_CPPv4N6ankerl9nanobench3Rng9uniform01Ev" title="Permalink to this definition">¶</a><br /></dt>
 <dd><p>Provides a random uniform double value between 0 and 1. This uses the method described in <a class="reference external" href="http://prng.di.unimi.it/">Generating uniform doubles in the unit interval</a>, and is extremely fast.</p>
-<p><dl class="simple">
-<dt><strong>Return</strong></dt><dd><p>double Uniformly distributed double value in range [0,1(, excluding 1. </p>
+<dl class="field-list simple">
+<dt class="field-odd">Returns</dt>
+<dd class="field-odd"><p>double Uniformly distributed double value in range [0,1(, excluding 1. </p>
 </dd>
 </dl>
-</p>
 </dd></dl>
 
 <dl class="cpp function">
 <dt id="_CPPv4I0EN6ankerl9nanobench3Rng7shuffleEvR9Container">
 <span id="_CPPv3I0EN6ankerl9nanobench3Rng7shuffleER9Container"></span><span id="_CPPv2I0EN6ankerl9nanobench3Rng7shuffleER9Container"></span>template&lt;typename <code class="sig-name descname">Container</code>&gt;<br /><span class="target" id="classankerl_1_1nanobench_1_1Rng_1a5314a16ff500c254f8431cc3a03578f9"></span>void <code class="sig-name descname">shuffle</code><span class="sig-paren">(</span><a class="reference internal" href="#_CPPv4I0EN6ankerl9nanobench3Rng7shuffleEvR9Container" title="ankerl::nanobench::Rng::shuffle::Container">Container</a> &amp;<em>container</em><span class="sig-paren">)</span> <em class="property">noexcept</em><a class="headerlink" href="#_CPPv4I0EN6ankerl9nanobench3Rng7shuffleEvR9Container" title="Permalink to this definition">¶</a><br /></dt>
 <dd><p>Shuffles all entries in the given container. Although this has a slight bias due to the implementation of <a class="reference internal" href="#classankerl_1_1nanobench_1_1Rng_1afb3219bbffe1d0f487e69a0bc9c0f00e"><span class="std std-ref">bounded()</span></a>, this is preferable to <code class="docutils literal notranslate"><span class="pre">std::shuffle</span></code> because it is over 5 times faster. See Daniel Lemire’s blog post <a class="reference external" href="https://lemire.me/blog/2016/06/30/fast-random-shuffling/">Fast random shuffling</a>.</p>
-<p><dl class="simple">
-<dt><strong>Parameters</strong></dt><dd><ul class="breatheparameterlist simple">
-<li><p><code class="docutils literal notranslate"><span class="pre">container</span></code>: The whole container will be shuffled. </p></li>
-</ul>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><p><strong>container</strong> – The whole container will be shuffled. </p>
 </dd>
 </dl>
-</p>
 </dd></dl>
 
 <dl class="cpp function">
 <dt id="_CPPv4NK6ankerl9nanobench3Rng5stateEv">
 <span id="_CPPv3NK6ankerl9nanobench3Rng5stateEv"></span><span id="_CPPv2NK6ankerl9nanobench3Rng5stateEv"></span><span id="ankerl::nanobench::Rng::stateC"></span><span class="target" id="classankerl_1_1nanobench_1_1Rng_1aba1e026f61939b0e279dc046b4446ac1"></span>std::vector&lt;uint64_t&gt; <code class="sig-name descname">state</code><span class="sig-paren">(</span><span class="sig-paren">)</span> <em class="property">const</em><a class="headerlink" href="#_CPPv4NK6ankerl9nanobench3Rng5stateEv" title="Permalink to this definition">¶</a><br /></dt>
 <dd><p>Extracts the full state of the generator, e.g. for serialization. For this RNG this is just 2 values, but to stay API compatible with future implementations that potentially use more state, we use a vector.</p>
-<p><dl class="simple">
-<dt><strong>Return</strong></dt><dd><p>Vector containing the full state: </p>
+<dl class="field-list simple">
+<dt class="field-odd">Returns</dt>
+<dd class="field-odd"><p>Vector containing the full state: </p>
 </dd>
 </dl>
-</p>
 </dd></dl>
 
 </div>
@@ -829,17 +792,14 @@ generator becomes available, I will switch the implementation.</p>
 <dt id="_CPPv4I0EN6ankerl9nanobench17doNotOptimizeAwayEvRR3Arg">
 <span id="_CPPv3I0EN6ankerl9nanobench17doNotOptimizeAwayERR3Arg"></span><span id="_CPPv2I0EN6ankerl9nanobench17doNotOptimizeAwayERR3Arg"></span>template&lt;typename <code class="sig-name descname">Arg</code>&gt;<br /><span class="target" id="nanobench_8h_1afae575ef6845f3cd10a30c17a4a5fd7e"></span>void <code class="sig-prename descclassname">ankerl::nanobench<code class="sig-prename descclassname">::</code></code><code class="sig-name descname">doNotOptimizeAway</code><span class="sig-paren">(</span><a class="reference internal" href="#_CPPv4I0EN6ankerl9nanobench17doNotOptimizeAwayEvRR3Arg" title="ankerl::nanobench::doNotOptimizeAway::Arg">Arg</a> &amp;&amp;<em>arg</em><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv4I0EN6ankerl9nanobench17doNotOptimizeAwayEvRR3Arg" title="Permalink to this definition">¶</a><br /></dt>
 <dd><p>Makes sure none of the given arguments are optimized away by the compiler. </p>
-<p><dl class="simple">
-<dt><strong>Template Parameters</strong></dt><dd><ul class="breatheparameterlist simple">
-<li><p><code class="docutils literal notranslate"><span class="pre">Arg</span></code>: Type of the argument that shouldn’t be optimized away. </p></li>
-</ul>
+<dl class="field-list simple">
+<dt class="field-odd">Template Parameters</dt>
+<dd class="field-odd"><p><strong>Arg</strong> – Type of the argument that shouldn’t be optimized away. </p>
 </dd>
-<dt><strong>Parameters</strong></dt><dd><ul class="breatheparameterlist simple">
-<li><p><code class="docutils literal notranslate"><span class="pre">arg</span></code>: The input that we mark as being used, even though we don’t do anything with it. </p></li>
-</ul>
+<dt class="field-even">Parameters</dt>
+<dd class="field-even"><p><strong>arg</strong> – The input that we mark as being used, even though we don’t do anything with it. </p>
 </dd>
 </dl>
-</p>
 </dd></dl>
 
 </div>
@@ -911,7 +871,7 @@ generator becomes available, I will switch the implementation.</p>
 </li>
 </ul>
 </p>
-<p><p><p>For an overview of all the possible data you can get out of nanobench, please see the tutorial at <a class="reference internal" href="tutorial.html#tutorial-template-json"><span class="std std-ref">JSON - JavaScript Object Notation</span></a>.</p>
+<p><p>For an overview of all the possible data you can get out of nanobench, please see the tutorial at <a class="reference internal" href="tutorial.html#tutorial-template-json"><span class="std std-ref">JSON - JavaScript Object Notation</span></a>.</p>
 <p>The templates that ship with nanobench are:</p>
 <ul class="simple">
 <li><p><a class="reference internal" href="#_CPPv4N6ankerl9nanobench9templates3csvEv" title="ankerl::nanobench::templates::csv"><code class="xref cpp cpp-func docutils literal notranslate"><span class="pre">templates::csv()</span></code></a></p></li>
@@ -920,16 +880,15 @@ generator becomes available, I will switch the implementation.</p>
 <li><p><a class="reference internal" href="#_CPPv4N6ankerl9nanobench9templates6pyperfEv" title="ankerl::nanobench::templates::pyperf"><code class="xref cpp cpp-func docutils literal notranslate"><span class="pre">templates::pyperf()</span></code></a></p></li>
 </ul>
 </p>
-</p>
-<p><dl class="simple">
-<dt><strong>Parameters</strong></dt><dd><ul class="breatheparameterlist simple">
-<li><p><code class="docutils literal notranslate"><span class="pre">mustacheTemplate</span></code>: The template. </p></li>
-<li><p><code class="docutils literal notranslate"><span class="pre">bench</span></code>: Benchmark, containing all the results. </p></li>
-<li><p><code class="docutils literal notranslate"><span class="pre">out</span></code>: Output for the generated output. </p></li>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>mustacheTemplate</strong> – The template. </p></li>
+<li><p><strong>bench</strong> – Benchmark, containing all the results. </p></li>
+<li><p><strong>out</strong> – Output for the generated output. </p></li>
 </ul>
 </dd>
 </dl>
-</p>
 </dd></dl>
 
 <div class="section" id="templates-csv">
@@ -939,8 +898,7 @@ generator becomes available, I will switch the implementation.</p>
 <span id="_CPPv3N6ankerl9nanobench9templates3csvEv"></span><span id="_CPPv2N6ankerl9nanobench9templates3csvEv"></span><span id="ankerl::nanobench::templates::csv"></span><span class="target" id="nanobench_8h_1a7370b71e3ac3f8fb69c1791ab2fb915a"></span>char <em class="property">const</em> *<code class="sig-prename descclassname">ankerl::nanobench::templates<code class="sig-prename descclassname">::</code></code><code class="sig-name descname">csv</code><span class="sig-paren">(</span><span class="sig-paren">)</span> <em class="property">noexcept</em><a class="headerlink" href="#_CPPv4N6ankerl9nanobench9templates3csvEv" title="Permalink to this definition">¶</a><br /></dt>
 <dd><p>CSV data for the benchmark results. </p>
 <p>Generates a comma-separated values dataset. First line is the header, each following line is a summary of each benchmark run.</p>
-<p><p><p>See the tutorial at <a class="reference internal" href="tutorial.html#tutorial-template-csv"><span class="std std-ref">CSV - Comma-Separated Values</span></a> for an example.</p>
-</p>
+<p><p>See the tutorial at <a class="reference internal" href="tutorial.html#tutorial-template-csv"><span class="std std-ref">CSV - Comma-Separated Values</span></a> for an example.</p>
  </p>
 </dd></dl>
 
@@ -951,8 +909,7 @@ generator becomes available, I will switch the implementation.</p>
 <dt id="_CPPv4N6ankerl9nanobench9templates11htmlBoxplotEv">
 <span id="_CPPv3N6ankerl9nanobench9templates11htmlBoxplotEv"></span><span id="_CPPv2N6ankerl9nanobench9templates11htmlBoxplotEv"></span><span id="ankerl::nanobench::templates::htmlBoxplot"></span><span class="target" id="nanobench_8h_1abb9fabd0a720900e5374416d59f5f5a3"></span>char <em class="property">const</em> *<code class="sig-prename descclassname">ankerl::nanobench::templates<code class="sig-prename descclassname">::</code></code><code class="sig-name descname">htmlBoxplot</code><span class="sig-paren">(</span><span class="sig-paren">)</span> <em class="property">noexcept</em><a class="headerlink" href="#_CPPv4N6ankerl9nanobench9templates11htmlBoxplotEv" title="Permalink to this definition">¶</a><br /></dt>
 <dd><p>HTML output that uses plotly to generate an interactive boxplot chart. See the tutorial for an example output. </p>
-<p>The output uses only the elapsed wall clock time, and displays each epoch as a single dot. <p><p>See the tutorial at <a class="reference internal" href="tutorial.html#tutorial-template-html"><span class="std std-ref">HTML Box Plots</span></a> for an example.</p>
-</p>
+<p>The output uses only the elapsed wall clock time, and displays each epoch as a single dot. <p>See the tutorial at <a class="reference internal" href="tutorial.html#tutorial-template-html"><span class="std std-ref">HTML Box Plots</span></a> for an example.</p>
 </p>
 <p><dl class="simple">
 <dt><strong>See</strong></dt><dd><p>ankerl::nanobench::render() </p>
@@ -968,8 +925,7 @@ generator becomes available, I will switch the implementation.</p>
 <dt id="_CPPv4N6ankerl9nanobench9templates4jsonEv">
 <span id="_CPPv3N6ankerl9nanobench9templates4jsonEv"></span><span id="_CPPv2N6ankerl9nanobench9templates4jsonEv"></span><span id="ankerl::nanobench::templates::json"></span><span class="target" id="nanobench_8h_1a020d1a3b2296fdce879c6c56a20a81eb"></span>char <em class="property">const</em> *<code class="sig-prename descclassname">ankerl::nanobench::templates<code class="sig-prename descclassname">::</code></code><code class="sig-name descname">json</code><span class="sig-paren">(</span><span class="sig-paren">)</span> <em class="property">noexcept</em><a class="headerlink" href="#_CPPv4N6ankerl9nanobench9templates4jsonEv" title="Permalink to this definition">¶</a><br /></dt>
 <dd><p>Template to generate JSON data. </p>
-<p>The generated JSON data contains <em>all</em> data that has been generated. All times are as double values, in seconds. The output can get quite large. <p><p>See the tutorial at <a class="reference internal" href="tutorial.html#tutorial-template-json"><span class="std std-ref">JSON - JavaScript Object Notation</span></a> for an example.</p>
-</p>
+<p>The generated JSON data contains <em>all</em> data that has been generated. All times are as double values, in seconds. The output can get quite large. <p>See the tutorial at <a class="reference internal" href="tutorial.html#tutorial-template-json"><span class="std std-ref">JSON - JavaScript Object Notation</span></a> for an example.</p>
  </p>
 </dd></dl>
 
@@ -980,8 +936,7 @@ generator becomes available, I will switch the implementation.</p>
 <dt id="_CPPv4N6ankerl9nanobench9templates6pyperfEv">
 <span id="_CPPv3N6ankerl9nanobench9templates6pyperfEv"></span><span id="_CPPv2N6ankerl9nanobench9templates6pyperfEv"></span><span id="ankerl::nanobench::templates::pyperf"></span><span class="target" id="nanobench_8h_1a5a1305c12820f2b7b521648ee2a055df"></span>char <em class="property">const</em> *<code class="sig-prename descclassname">ankerl::nanobench::templates<code class="sig-prename descclassname">::</code></code><code class="sig-name descname">pyperf</code><span class="sig-paren">(</span><span class="sig-paren">)</span> <em class="property">noexcept</em><a class="headerlink" href="#_CPPv4N6ankerl9nanobench9templates6pyperfEv" title="Permalink to this definition">¶</a><br /></dt>
 <dd><p>Output in pyperf compatible JSON format, which can be used for more analyzations. </p>
-<p><p><p>See the tutorial at <a class="reference internal" href="tutorial.html#tutorial-template-pyperf"><span class="std std-ref">pyperf - Python pyperf module Output</span></a> for an example how to further analyze the output.</p>
-</p>
+<p><p>See the tutorial at <a class="reference internal" href="tutorial.html#tutorial-template-pyperf"><span class="std std-ref">pyperf - Python pyperf module Output</span></a> for an example how to further analyze the output.</p>
  </p>
 </dd></dl>
 
