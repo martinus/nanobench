@@ -455,7 +455,7 @@ Run ``python3 -m pyperf hist pyperf_shuffle_std.json`` produces this output
 Compare Results
 ~~~~~~~~~~~~~~~
 
-We have generated two results in the above examples, and we can compare them easily with ``python3 -m pyperf compare_to pyperf_shuffle_std.json pyperf_shuffle_nanobench.json``:
+We have generated two results in the above examples, and we can compare them easily with ``python3 -m pyperf compare_to a.json b.json``:
 
 .. literalinclude:: code/pyperf_compare_to.txt
    :language: text
