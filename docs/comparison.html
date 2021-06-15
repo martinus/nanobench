@@ -13,6 +13,8 @@
   
   <link rel="stylesheet" href="_static/css/theme.css" type="text/css" />
   <link rel="stylesheet" href="_static/pygments.css" type="text/css" />
+  <link rel="stylesheet" href="_static/pygments.css" type="text/css" />
+  <link rel="stylesheet" href="_static/css/theme.css" type="text/css" />
 
   
   
@@ -31,10 +33,10 @@
   
     
       <script type="text/javascript" id="documentation_options" data-url_root="./" src="_static/documentation_options.js"></script>
+        <script data-url_root="./" id="documentation_options" src="_static/documentation_options.js"></script>
         <script src="_static/jquery.js"></script>
         <script src="_static/underscore.js"></script>
         <script src="_static/doctools.js"></script>
-        <script async="async" src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
     
     <script type="text/javascript" src="_static/js/theme.js"></script>
 
@@ -367,67 +369,38 @@ the number of iterations: <a class="reference internal" href="#comparison-google
 <span id="comparison-nanobench"></span><h2>nanobench<a class="headerlink" href="#nanobench" title="Permalink to this headline">¶</a></h2>
 <div class="section" id="sourcecode">
 <h3>Sourcecode<a class="headerlink" href="#sourcecode" title="Permalink to this headline">¶</a></h3>
-<div class="highlight-c++ notranslate"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre> 1
- 2
- 3
- 4
- 5
- 6
- 7
- 8
- 9
-10
-11
-12
-13
-14
-15
-16
-17
-18
-19
-20
-21
-22
-23
-24
-25
-26
-27
-28
-29
-30</pre></div></td><td class="code"><div class="highlight"><pre><span></span><span class="c1">// https://github.com/martinus/nanobench</span>
-<span class="c1">// g++ -O2 -I../../include main.cpp -o m</span>
-
-<span class="cp">#define ANKERL_NANOBENCH_IMPLEMENT</span>
-<span class="cp">#include</span> <span class="cpf">&lt;nanobench.h&gt;</span><span class="cp"></span>
-
-<span class="cp">#include</span> <span class="cpf">&lt;chrono&gt;</span><span class="cp"></span>
-<span class="cp">#include</span> <span class="cpf">&lt;random&gt;</span><span class="cp"></span>
-<span class="cp">#include</span> <span class="cpf">&lt;thread&gt;</span><span class="cp"></span>
-
-<span class="kt">int</span> <span class="nf">main</span><span class="p">(</span><span class="kt">int</span><span class="p">,</span> <span class="kt">char</span><span class="o">**</span><span class="p">)</span> <span class="p">{</span>
-    <span class="kt">uint64_t</span> <span class="n">x</span> <span class="o">=</span> <span class="mi">1</span><span class="p">;</span>
-    <span class="n">ankerl</span><span class="o">::</span><span class="n">nanobench</span><span class="o">::</span><span class="n">Bench</span><span class="p">().</span><span class="n">run</span><span class="p">(</span><span class="s">&quot;x += x&quot;</span><span class="p">,</span> <span class="p">[</span><span class="o">&amp;</span><span class="p">]()</span> <span class="p">{</span>
-        <span class="n">ankerl</span><span class="o">::</span><span class="n">nanobench</span><span class="o">::</span><span class="n">doNotOptimizeAway</span><span class="p">(</span><span class="n">x</span> <span class="o">+=</span> <span class="n">x</span><span class="p">);</span>
-    <span class="p">});</span>
-
-    <span class="n">ankerl</span><span class="o">::</span><span class="n">nanobench</span><span class="o">::</span><span class="n">Bench</span><span class="p">().</span><span class="n">run</span><span class="p">(</span><span class="s">&quot;sleep 10ms&quot;</span><span class="p">,</span> <span class="p">[</span><span class="o">&amp;</span><span class="p">]()</span> <span class="p">{</span>
-        <span class="n">std</span><span class="o">::</span><span class="n">this_thread</span><span class="o">::</span><span class="n">sleep_for</span><span class="p">(</span><span class="n">std</span><span class="o">::</span><span class="n">chrono</span><span class="o">::</span><span class="n">milliseconds</span><span class="p">(</span><span class="mi">10</span><span class="p">));</span>
-    <span class="p">});</span>
-
-    <span class="n">std</span><span class="o">::</span><span class="n">random_device</span> <span class="n">dev</span><span class="p">;</span>
-    <span class="n">std</span><span class="o">::</span><span class="n">mt19937_64</span> <span class="n">rng</span><span class="p">(</span><span class="n">dev</span><span class="p">());</span>
-    <span class="n">ankerl</span><span class="o">::</span><span class="n">nanobench</span><span class="o">::</span><span class="n">Bench</span><span class="p">().</span><span class="n">run</span><span class="p">(</span><span class="s">&quot;random fluctuations&quot;</span><span class="p">,</span> <span class="p">[</span><span class="o">&amp;</span><span class="p">]()</span> <span class="p">{</span>
-        <span class="c1">// each run, perform a random number of rng calls</span>
-        <span class="k">auto</span> <span class="n">iterations</span> <span class="o">=</span> <span class="n">rng</span><span class="p">()</span> <span class="o">&amp;</span> <span class="n">UINT64_C</span><span class="p">(</span><span class="mh">0xff</span><span class="p">);</span>
-        <span class="k">for</span> <span class="p">(</span><span class="kt">uint64_t</span> <span class="n">i</span> <span class="o">=</span> <span class="mi">0</span><span class="p">;</span> <span class="n">i</span> <span class="o">&lt;</span> <span class="n">iterations</span><span class="p">;</span> <span class="o">++</span><span class="n">i</span><span class="p">)</span> <span class="p">{</span>
-            <span class="p">(</span><span class="kt">void</span><span class="p">)</span><span class="n">rng</span><span class="p">();</span>
-        <span class="p">}</span>
-    <span class="p">});</span>
-<span class="p">}</span>
+<div class="highlight-c++ notranslate"><div class="highlight"><pre><span></span><span class="linenos"> 1</span><span class="c1">// https://github.com/martinus/nanobench</span>
+<span class="linenos"> 2</span><span class="c1">// g++ -O2 -I../../include main.cpp -o m</span>
+<span class="linenos"> 3</span>
+<span class="linenos"> 4</span><span class="cp">#define ANKERL_NANOBENCH_IMPLEMENT</span>
+<span class="linenos"> 5</span><span class="cp">#include</span> <span class="cpf">&lt;nanobench.h&gt;</span><span class="cp"></span>
+<span class="linenos"> 6</span>
+<span class="linenos"> 7</span><span class="cp">#include</span> <span class="cpf">&lt;chrono&gt;</span><span class="cp"></span>
+<span class="linenos"> 8</span><span class="cp">#include</span> <span class="cpf">&lt;random&gt;</span><span class="cp"></span>
+<span class="linenos"> 9</span><span class="cp">#include</span> <span class="cpf">&lt;thread&gt;</span><span class="cp"></span>
+<span class="linenos">10</span>
+<span class="linenos">11</span><span class="kt">int</span> <span class="nf">main</span><span class="p">(</span><span class="kt">int</span><span class="p">,</span> <span class="kt">char</span><span class="o">**</span><span class="p">)</span> <span class="p">{</span>
+<span class="linenos">12</span>    <span class="kt">uint64_t</span> <span class="n">x</span> <span class="o">=</span> <span class="mi">1</span><span class="p">;</span>
+<span class="linenos">13</span>    <span class="n">ankerl</span><span class="o">::</span><span class="n">nanobench</span><span class="o">::</span><span class="n">Bench</span><span class="p">().</span><span class="n">run</span><span class="p">(</span><span class="s">&quot;x += x&quot;</span><span class="p">,</span> <span class="p">[</span><span class="o">&amp;</span><span class="p">]()</span> <span class="p">{</span>
+<span class="linenos">14</span>        <span class="n">ankerl</span><span class="o">::</span><span class="n">nanobench</span><span class="o">::</span><span class="n">doNotOptimizeAway</span><span class="p">(</span><span class="n">x</span> <span class="o">+=</span> <span class="n">x</span><span class="p">);</span>
+<span class="linenos">15</span>    <span class="p">});</span>
+<span class="linenos">16</span>
+<span class="linenos">17</span>    <span class="n">ankerl</span><span class="o">::</span><span class="n">nanobench</span><span class="o">::</span><span class="n">Bench</span><span class="p">().</span><span class="n">run</span><span class="p">(</span><span class="s">&quot;sleep 10ms&quot;</span><span class="p">,</span> <span class="p">[</span><span class="o">&amp;</span><span class="p">]()</span> <span class="p">{</span>
+<span class="linenos">18</span>        <span class="n">std</span><span class="o">::</span><span class="n">this_thread</span><span class="o">::</span><span class="n">sleep_for</span><span class="p">(</span><span class="n">std</span><span class="o">::</span><span class="n">chrono</span><span class="o">::</span><span class="n">milliseconds</span><span class="p">(</span><span class="mi">10</span><span class="p">));</span>
+<span class="linenos">19</span>    <span class="p">});</span>
+<span class="linenos">20</span>
+<span class="linenos">21</span>    <span class="n">std</span><span class="o">::</span><span class="n">random_device</span> <span class="n">dev</span><span class="p">;</span>
+<span class="linenos">22</span>    <span class="n">std</span><span class="o">::</span><span class="n">mt19937_64</span> <span class="n">rng</span><span class="p">(</span><span class="n">dev</span><span class="p">());</span>
+<span class="linenos">23</span>    <span class="n">ankerl</span><span class="o">::</span><span class="n">nanobench</span><span class="o">::</span><span class="n">Bench</span><span class="p">().</span><span class="n">run</span><span class="p">(</span><span class="s">&quot;random fluctuations&quot;</span><span class="p">,</span> <span class="p">[</span><span class="o">&amp;</span><span class="p">]()</span> <span class="p">{</span>
+<span class="linenos">24</span>        <span class="c1">// each run, perform a random number of rng calls</span>
+<span class="linenos">25</span>        <span class="k">auto</span> <span class="n">iterations</span> <span class="o">=</span> <span class="n">rng</span><span class="p">()</span> <span class="o">&amp;</span> <span class="n">UINT64_C</span><span class="p">(</span><span class="mh">0xff</span><span class="p">);</span>
+<span class="linenos">26</span>        <span class="k">for</span> <span class="p">(</span><span class="kt">uint64_t</span> <span class="n">i</span> <span class="o">=</span> <span class="mi">0</span><span class="p">;</span> <span class="n">i</span> <span class="o">&lt;</span> <span class="n">iterations</span><span class="p">;</span> <span class="o">++</span><span class="n">i</span><span class="p">)</span> <span class="p">{</span>
+<span class="linenos">27</span>            <span class="p">(</span><span class="kt">void</span><span class="p">)</span><span class="n">rng</span><span class="p">();</span>
+<span class="linenos">28</span>        <span class="p">}</span>
+<span class="linenos">29</span>    <span class="p">});</span>
+<span class="linenos">30</span><span class="p">}</span>
 </pre></div>
-</td></tr></table></div>
+</div>
 </div>
 <div class="section" id="results">
 <h3>Results<a class="headerlink" href="#results" title="Permalink to this headline">¶</a></h3>
@@ -446,87 +419,48 @@ the number of iterations: <a class="reference internal" href="#comparison-google
 google test. Get it here: <a class="reference external" href="https://github.com/google/benchmark">Google Benchmark</a></p>
 <div class="section" id="id2">
 <h3>Sourcecode<a class="headerlink" href="#id2" title="Permalink to this headline">¶</a></h3>
-<div class="highlight-c++ notranslate"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre> 1
- 2
- 3
- 4
- 5
- 6
- 7
- 8
- 9
-10
-11
-12
-13
-14
-15
-16
-17
-18
-19
-20
-21
-22
-23
-24
-25
-26
-27
-28
-29
-30
-31
-32
-33
-34
-35
-36
-37
-38
-39
-40</pre></div></td><td class="code"><div class="highlight"><pre><span></span><span class="cp">#include</span> <span class="cpf">&quot;benchmark.h&quot;</span><span class="cp"></span>
-
-<span class="cp">#include</span> <span class="cpf">&lt;chrono&gt;</span><span class="cp"></span>
-<span class="cp">#include</span> <span class="cpf">&lt;random&gt;</span><span class="cp"></span>
-<span class="cp">#include</span> <span class="cpf">&lt;thread&gt;</span><span class="cp"></span>
-
-<span class="c1">// Build instructions: https://github.com/google/benchmark#installation</span>
-<span class="c1">// curl --output benchmark.h</span>
-<span class="c1">// https://raw.githubusercontent.com/google/benchmark/master/include/benchmark/benchmark.h</span>
-<span class="c1">// g++ -O2 main.cpp -Lgit/benchmark/build/src -lbenchmark -lpthread -o m</span>
-<span class="kt">void</span> <span class="nf">ComparisonFast</span><span class="p">(</span><span class="n">benchmark</span><span class="o">::</span><span class="n">State</span><span class="o">&amp;</span> <span class="n">state</span><span class="p">)</span> <span class="p">{</span>
-    <span class="kt">uint64_t</span> <span class="n">x</span> <span class="o">=</span> <span class="mi">1</span><span class="p">;</span>
-    <span class="k">for</span> <span class="p">(</span><span class="k">auto</span> <span class="nl">_</span> <span class="p">:</span> <span class="n">state</span><span class="p">)</span> <span class="p">{</span>
-        <span class="n">x</span> <span class="o">+=</span> <span class="n">x</span><span class="p">;</span>
-    <span class="p">}</span>
-    <span class="n">benchmark</span><span class="o">::</span><span class="n">DoNotOptimize</span><span class="p">(</span><span class="n">x</span><span class="p">);</span>
-<span class="p">}</span>
-<span class="n">BENCHMARK</span><span class="p">(</span><span class="n">ComparisonFast</span><span class="p">);</span>
-
-<span class="kt">void</span> <span class="nf">ComparisonSlow</span><span class="p">(</span><span class="n">benchmark</span><span class="o">::</span><span class="n">State</span><span class="o">&amp;</span> <span class="n">state</span><span class="p">)</span> <span class="p">{</span>
-    <span class="k">for</span> <span class="p">(</span><span class="k">auto</span> <span class="nl">_</span> <span class="p">:</span> <span class="n">state</span><span class="p">)</span> <span class="p">{</span>
-        <span class="n">std</span><span class="o">::</span><span class="n">this_thread</span><span class="o">::</span><span class="n">sleep_for</span><span class="p">(</span><span class="n">std</span><span class="o">::</span><span class="n">chrono</span><span class="o">::</span><span class="n">milliseconds</span><span class="p">(</span><span class="mi">10</span><span class="p">));</span>
-    <span class="p">}</span>
-<span class="p">}</span>
-<span class="n">BENCHMARK</span><span class="p">(</span><span class="n">ComparisonSlow</span><span class="p">);</span>
-
-<span class="kt">void</span> <span class="nf">ComparisonFluctuating</span><span class="p">(</span><span class="n">benchmark</span><span class="o">::</span><span class="n">State</span><span class="o">&amp;</span> <span class="n">state</span><span class="p">)</span> <span class="p">{</span>
-    <span class="n">std</span><span class="o">::</span><span class="n">random_device</span> <span class="n">dev</span><span class="p">;</span>
-    <span class="n">std</span><span class="o">::</span><span class="n">mt19937_64</span> <span class="n">rng</span><span class="p">(</span><span class="n">dev</span><span class="p">());</span>
-    <span class="k">for</span> <span class="p">(</span><span class="k">auto</span> <span class="nl">_</span> <span class="p">:</span> <span class="n">state</span><span class="p">)</span> <span class="p">{</span>
-        <span class="c1">// each run, perform a random number of rng calls</span>
-        <span class="k">auto</span> <span class="n">iterations</span> <span class="o">=</span> <span class="n">rng</span><span class="p">()</span> <span class="o">&amp;</span> <span class="n">UINT64_C</span><span class="p">(</span><span class="mh">0xff</span><span class="p">);</span>
-        <span class="k">for</span> <span class="p">(</span><span class="kt">uint64_t</span> <span class="n">i</span> <span class="o">=</span> <span class="mi">0</span><span class="p">;</span> <span class="n">i</span> <span class="o">&lt;</span> <span class="n">iterations</span><span class="p">;</span> <span class="o">++</span><span class="n">i</span><span class="p">)</span> <span class="p">{</span>
-            <span class="p">(</span><span class="kt">void</span><span class="p">)</span><span class="n">rng</span><span class="p">();</span>
-        <span class="p">}</span>
-    <span class="p">}</span>
-<span class="p">}</span>
-<span class="n">BENCHMARK</span><span class="p">(</span><span class="n">ComparisonFluctuating</span><span class="p">);</span>
-
-<span class="n">BENCHMARK_MAIN</span><span class="p">();</span>
+<div class="highlight-c++ notranslate"><div class="highlight"><pre><span></span><span class="linenos"> 1</span><span class="cp">#include</span> <span class="cpf">&quot;benchmark.h&quot;</span><span class="cp"></span>
+<span class="linenos"> 2</span>
+<span class="linenos"> 3</span><span class="cp">#include</span> <span class="cpf">&lt;chrono&gt;</span><span class="cp"></span>
+<span class="linenos"> 4</span><span class="cp">#include</span> <span class="cpf">&lt;random&gt;</span><span class="cp"></span>
+<span class="linenos"> 5</span><span class="cp">#include</span> <span class="cpf">&lt;thread&gt;</span><span class="cp"></span>
+<span class="linenos"> 6</span>
+<span class="linenos"> 7</span><span class="c1">// Build instructions: https://github.com/google/benchmark#installation</span>
+<span class="linenos"> 8</span><span class="c1">// curl --output benchmark.h</span>
+<span class="linenos"> 9</span><span class="c1">// https://raw.githubusercontent.com/google/benchmark/master/include/benchmark/benchmark.h</span>
+<span class="linenos">10</span><span class="c1">// g++ -O2 main.cpp -Lgit/benchmark/build/src -lbenchmark -lpthread -o m</span>
+<span class="linenos">11</span><span class="kt">void</span> <span class="nf">ComparisonFast</span><span class="p">(</span><span class="n">benchmark</span><span class="o">::</span><span class="n">State</span><span class="o">&amp;</span> <span class="n">state</span><span class="p">)</span> <span class="p">{</span>
+<span class="linenos">12</span>    <span class="kt">uint64_t</span> <span class="n">x</span> <span class="o">=</span> <span class="mi">1</span><span class="p">;</span>
+<span class="linenos">13</span>    <span class="k">for</span> <span class="p">(</span><span class="k">auto</span> <span class="nl">_</span> <span class="p">:</span> <span class="n">state</span><span class="p">)</span> <span class="p">{</span>
+<span class="linenos">14</span>        <span class="n">x</span> <span class="o">+=</span> <span class="n">x</span><span class="p">;</span>
+<span class="linenos">15</span>    <span class="p">}</span>
+<span class="linenos">16</span>    <span class="n">benchmark</span><span class="o">::</span><span class="n">DoNotOptimize</span><span class="p">(</span><span class="n">x</span><span class="p">);</span>
+<span class="linenos">17</span><span class="p">}</span>
+<span class="linenos">18</span><span class="n">BENCHMARK</span><span class="p">(</span><span class="n">ComparisonFast</span><span class="p">);</span>
+<span class="linenos">19</span>
+<span class="linenos">20</span><span class="kt">void</span> <span class="nf">ComparisonSlow</span><span class="p">(</span><span class="n">benchmark</span><span class="o">::</span><span class="n">State</span><span class="o">&amp;</span> <span class="n">state</span><span class="p">)</span> <span class="p">{</span>
+<span class="linenos">21</span>    <span class="k">for</span> <span class="p">(</span><span class="k">auto</span> <span class="nl">_</span> <span class="p">:</span> <span class="n">state</span><span class="p">)</span> <span class="p">{</span>
+<span class="linenos">22</span>        <span class="n">std</span><span class="o">::</span><span class="n">this_thread</span><span class="o">::</span><span class="n">sleep_for</span><span class="p">(</span><span class="n">std</span><span class="o">::</span><span class="n">chrono</span><span class="o">::</span><span class="n">milliseconds</span><span class="p">(</span><span class="mi">10</span><span class="p">));</span>
+<span class="linenos">23</span>    <span class="p">}</span>
+<span class="linenos">24</span><span class="p">}</span>
+<span class="linenos">25</span><span class="n">BENCHMARK</span><span class="p">(</span><span class="n">ComparisonSlow</span><span class="p">);</span>
+<span class="linenos">26</span>
+<span class="linenos">27</span><span class="kt">void</span> <span class="nf">ComparisonFluctuating</span><span class="p">(</span><span class="n">benchmark</span><span class="o">::</span><span class="n">State</span><span class="o">&amp;</span> <span class="n">state</span><span class="p">)</span> <span class="p">{</span>
+<span class="linenos">28</span>    <span class="n">std</span><span class="o">::</span><span class="n">random_device</span> <span class="n">dev</span><span class="p">;</span>
+<span class="linenos">29</span>    <span class="n">std</span><span class="o">::</span><span class="n">mt19937_64</span> <span class="n">rng</span><span class="p">(</span><span class="n">dev</span><span class="p">());</span>
+<span class="linenos">30</span>    <span class="k">for</span> <span class="p">(</span><span class="k">auto</span> <span class="nl">_</span> <span class="p">:</span> <span class="n">state</span><span class="p">)</span> <span class="p">{</span>
+<span class="linenos">31</span>        <span class="c1">// each run, perform a random number of rng calls</span>
+<span class="linenos">32</span>        <span class="k">auto</span> <span class="n">iterations</span> <span class="o">=</span> <span class="n">rng</span><span class="p">()</span> <span class="o">&amp;</span> <span class="n">UINT64_C</span><span class="p">(</span><span class="mh">0xff</span><span class="p">);</span>
+<span class="linenos">33</span>        <span class="k">for</span> <span class="p">(</span><span class="kt">uint64_t</span> <span class="n">i</span> <span class="o">=</span> <span class="mi">0</span><span class="p">;</span> <span class="n">i</span> <span class="o">&lt;</span> <span class="n">iterations</span><span class="p">;</span> <span class="o">++</span><span class="n">i</span><span class="p">)</span> <span class="p">{</span>
+<span class="linenos">34</span>            <span class="p">(</span><span class="kt">void</span><span class="p">)</span><span class="n">rng</span><span class="p">();</span>
+<span class="linenos">35</span>        <span class="p">}</span>
+<span class="linenos">36</span>    <span class="p">}</span>
+<span class="linenos">37</span><span class="p">}</span>
+<span class="linenos">38</span><span class="n">BENCHMARK</span><span class="p">(</span><span class="n">ComparisonFluctuating</span><span class="p">);</span>
+<span class="linenos">39</span>
+<span class="linenos">40</span><span class="n">BENCHMARK_MAIN</span><span class="p">();</span>
 </pre></div>
-</td></tr></table></div>
+</div>
 </div>
 <div class="section" id="id3">
 <h3>Results<a class="headerlink" href="#id3" title="Permalink to this headline">¶</a></h3>
@@ -562,101 +496,55 @@ ComparisonFluctuating        993 ns          992 ns       706946
 Get it here: <a class="reference external" href="https://github.com/libnonius/nonius">nonius</a></p>
 <div class="section" id="id5">
 <h3>Sourcecode<a class="headerlink" href="#id5" title="Permalink to this headline">¶</a></h3>
-<div class="highlight-c++ notranslate"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre> 1
- 2
- 3
- 4
- 5
- 6
- 7
- 8
- 9
-10
-11
-12
-13
-14
-15
-16
-17
-18
-19
-20
-21
-22
-23
-24
-25
-26
-27
-28
-29
-30
-31
-32
-33
-34
-35
-36
-37
-38
-39
-40
-41
-42
-43
-44
-45
-46
-47</pre></div></td><td class="code"><div class="highlight"><pre><span></span><span class="cp">#define NONIUS_RUNNER</span>
-<span class="cp">#include</span> <span class="cpf">&lt;nonius/nonius_single.h++&gt;</span><span class="cp"></span>
-
-<span class="c1">// g++ -O2 main.cpp -pthread -I. -o m</span>
-
-<span class="cp">#include</span> <span class="cpf">&lt;chrono&gt;</span><span class="cp"></span>
-<span class="cp">#include</span> <span class="cpf">&lt;random&gt;</span><span class="cp"></span>
-<span class="cp">#include</span> <span class="cpf">&lt;thread&gt;</span><span class="cp"></span>
-
-<span class="n">NONIUS_PARAM</span><span class="p">(</span><span class="n">X</span><span class="p">,</span> <span class="n">UINT64_C</span><span class="p">(</span><span class="mi">1</span><span class="p">))</span>
-
-<span class="k">template</span> <span class="o">&lt;</span><span class="k">typename</span> <span class="nc">Fn</span><span class="o">&gt;</span>
-<span class="k">struct</span> <span class="nc">volatilize_fn</span> <span class="p">{</span>
-    <span class="n">Fn</span> <span class="n">fn</span><span class="p">;</span>
-    <span class="k">auto</span> <span class="nf">operator</span><span class="p">()()</span> <span class="k">const</span> <span class="o">-&gt;</span> <span class="k">decltype</span><span class="p">(</span><span class="n">fn</span><span class="p">())</span> <span class="p">{</span>
-        <span class="k">volatile</span> <span class="k">auto</span> <span class="n">x</span> <span class="o">=</span> <span class="n">fn</span><span class="p">();</span>
-        <span class="k">return</span> <span class="n">x</span><span class="p">;</span>
-    <span class="p">}</span>
-<span class="p">};</span>
-
-<span class="k">template</span> <span class="o">&lt;</span><span class="k">typename</span> <span class="nc">Fn</span><span class="o">&gt;</span>
-<span class="k">auto</span> <span class="n">volatilize</span><span class="p">(</span><span class="n">Fn</span><span class="o">&amp;&amp;</span> <span class="n">fn</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">volatilize_fn</span><span class="o">&lt;</span><span class="k">typename</span> <span class="nc">std</span><span class="o">::</span><span class="n">decay</span><span class="o">&lt;</span><span class="n">Fn</span><span class="o">&gt;::</span><span class="n">type</span><span class="o">&gt;</span> <span class="p">{</span>
-    <span class="k">return</span> <span class="p">{</span><span class="n">std</span><span class="o">::</span><span class="n">forward</span><span class="o">&lt;</span><span class="n">Fn</span><span class="o">&gt;</span><span class="p">(</span><span class="n">fn</span><span class="p">)};</span>
-<span class="p">}</span>
-
-<span class="n">NONIUS_BENCHMARK</span><span class="p">(</span><span class="s">&quot;x += x&quot;</span><span class="p">,</span> <span class="p">[](</span><span class="n">nonius</span><span class="o">::</span><span class="n">chronometer</span> <span class="n">meter</span><span class="p">)</span> <span class="p">{</span>
-    <span class="k">auto</span> <span class="n">x</span> <span class="o">=</span> <span class="n">meter</span><span class="p">.</span><span class="n">param</span><span class="o">&lt;</span><span class="n">X</span><span class="o">&gt;</span><span class="p">();</span>
-    <span class="n">meter</span><span class="p">.</span><span class="n">measure</span><span class="p">(</span><span class="n">volatilize</span><span class="p">([</span><span class="o">&amp;</span><span class="p">]()</span> <span class="p">{</span>
-        <span class="k">return</span> <span class="n">x</span> <span class="o">+=</span> <span class="n">x</span><span class="p">;</span>
-    <span class="p">}));</span>
-<span class="p">})</span>
-
-<span class="n">NONIUS_BENCHMARK</span><span class="p">(</span><span class="s">&quot;sleep 10ms&quot;</span><span class="p">,</span> <span class="p">[]</span> <span class="p">{</span>
-    <span class="n">std</span><span class="o">::</span><span class="n">this_thread</span><span class="o">::</span><span class="n">sleep_for</span><span class="p">(</span><span class="n">std</span><span class="o">::</span><span class="n">chrono</span><span class="o">::</span><span class="n">milliseconds</span><span class="p">(</span><span class="mi">10</span><span class="p">));</span>
-<span class="p">})</span>
-
-<span class="n">NONIUS_BENCHMARK</span><span class="p">(</span><span class="s">&quot;random fluctuations&quot;</span><span class="p">,</span> <span class="p">[](</span><span class="n">nonius</span><span class="o">::</span><span class="n">chronometer</span> <span class="n">meter</span><span class="p">)</span> <span class="p">{</span>
-    <span class="n">std</span><span class="o">::</span><span class="n">random_device</span> <span class="n">dev</span><span class="p">;</span>
-    <span class="n">std</span><span class="o">::</span><span class="n">mt19937_64</span> <span class="n">rng</span><span class="p">(</span><span class="n">dev</span><span class="p">());</span>
-    <span class="n">meter</span><span class="p">.</span><span class="n">measure</span><span class="p">([</span><span class="o">&amp;</span><span class="p">]</span> <span class="p">{</span>
-        <span class="c1">// each run, perform a random number of rng calls</span>
-        <span class="k">auto</span> <span class="n">iterations</span> <span class="o">=</span> <span class="n">rng</span><span class="p">()</span> <span class="o">&amp;</span> <span class="n">UINT64_C</span><span class="p">(</span><span class="mh">0xff</span><span class="p">);</span>
-        <span class="k">for</span> <span class="p">(</span><span class="kt">uint64_t</span> <span class="n">i</span> <span class="o">=</span> <span class="mi">0</span><span class="p">;</span> <span class="n">i</span> <span class="o">&lt;</span> <span class="n">iterations</span><span class="p">;</span> <span class="o">++</span><span class="n">i</span><span class="p">)</span> <span class="p">{</span>
-            <span class="p">(</span><span class="kt">void</span><span class="p">)</span><span class="n">rng</span><span class="p">();</span>
-        <span class="p">}</span>
-    <span class="p">});</span>
-<span class="p">})</span>
+<div class="highlight-c++ notranslate"><div class="highlight"><pre><span></span><span class="linenos"> 1</span><span class="cp">#define NONIUS_RUNNER</span>
+<span class="linenos"> 2</span><span class="cp">#include</span> <span class="cpf">&lt;nonius/nonius_single.h++&gt;</span><span class="cp"></span>
+<span class="linenos"> 3</span>
+<span class="linenos"> 4</span><span class="c1">// g++ -O2 main.cpp -pthread -I. -o m</span>
+<span class="linenos"> 5</span>
+<span class="linenos"> 6</span><span class="cp">#include</span> <span class="cpf">&lt;chrono&gt;</span><span class="cp"></span>
+<span class="linenos"> 7</span><span class="cp">#include</span> <span class="cpf">&lt;random&gt;</span><span class="cp"></span>
+<span class="linenos"> 8</span><span class="cp">#include</span> <span class="cpf">&lt;thread&gt;</span><span class="cp"></span>
+<span class="linenos"> 9</span>
+<span class="linenos">10</span><span class="n">NONIUS_PARAM</span><span class="p">(</span><span class="n">X</span><span class="p">,</span> <span class="n">UINT64_C</span><span class="p">(</span><span class="mi">1</span><span class="p">))</span>
+<span class="linenos">11</span>
+<span class="linenos">12</span><span class="k">template</span> <span class="o">&lt;</span><span class="k">typename</span> <span class="nc">Fn</span><span class="o">&gt;</span>
+<span class="linenos">13</span><span class="k">struct</span> <span class="nc">volatilize_fn</span> <span class="p">{</span>
+<span class="linenos">14</span>    <span class="n">Fn</span> <span class="n">fn</span><span class="p">;</span>
+<span class="linenos">15</span>    <span class="k">auto</span> <span class="nf">operator</span><span class="p">()()</span> <span class="k">const</span> <span class="o">-&gt;</span> <span class="k">decltype</span><span class="p">(</span><span class="n">fn</span><span class="p">())</span> <span class="p">{</span>
+<span class="linenos">16</span>        <span class="k">volatile</span> <span class="k">auto</span> <span class="n">x</span> <span class="o">=</span> <span class="n">fn</span><span class="p">();</span>
+<span class="linenos">17</span>        <span class="k">return</span> <span class="n">x</span><span class="p">;</span>
+<span class="linenos">18</span>    <span class="p">}</span>
+<span class="linenos">19</span><span class="p">};</span>
+<span class="linenos">20</span>
+<span class="linenos">21</span><span class="k">template</span> <span class="o">&lt;</span><span class="k">typename</span> <span class="nc">Fn</span><span class="o">&gt;</span>
+<span class="linenos">22</span><span class="k">auto</span> <span class="n">volatilize</span><span class="p">(</span><span class="n">Fn</span><span class="o">&amp;&amp;</span> <span class="n">fn</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">volatilize_fn</span><span class="o">&lt;</span><span class="k">typename</span> <span class="nc">std</span><span class="o">::</span><span class="n">decay</span><span class="o">&lt;</span><span class="n">Fn</span><span class="o">&gt;::</span><span class="n">type</span><span class="o">&gt;</span> <span class="p">{</span>
+<span class="linenos">23</span>    <span class="k">return</span> <span class="p">{</span><span class="n">std</span><span class="o">::</span><span class="n">forward</span><span class="o">&lt;</span><span class="n">Fn</span><span class="o">&gt;</span><span class="p">(</span><span class="n">fn</span><span class="p">)};</span>
+<span class="linenos">24</span><span class="p">}</span>
+<span class="linenos">25</span>
+<span class="linenos">26</span><span class="n">NONIUS_BENCHMARK</span><span class="p">(</span><span class="s">&quot;x += x&quot;</span><span class="p">,</span> <span class="p">[](</span><span class="n">nonius</span><span class="o">::</span><span class="n">chronometer</span> <span class="n">meter</span><span class="p">)</span> <span class="p">{</span>
+<span class="linenos">27</span>    <span class="k">auto</span> <span class="n">x</span> <span class="o">=</span> <span class="n">meter</span><span class="p">.</span><span class="n">param</span><span class="o">&lt;</span><span class="n">X</span><span class="o">&gt;</span><span class="p">();</span>
+<span class="linenos">28</span>    <span class="n">meter</span><span class="p">.</span><span class="n">measure</span><span class="p">(</span><span class="n">volatilize</span><span class="p">([</span><span class="o">&amp;</span><span class="p">]()</span> <span class="p">{</span>
+<span class="linenos">29</span>        <span class="k">return</span> <span class="n">x</span> <span class="o">+=</span> <span class="n">x</span><span class="p">;</span>
+<span class="linenos">30</span>    <span class="p">}));</span>
+<span class="linenos">31</span><span class="p">})</span>
+<span class="linenos">32</span>
+<span class="linenos">33</span><span class="n">NONIUS_BENCHMARK</span><span class="p">(</span><span class="s">&quot;sleep 10ms&quot;</span><span class="p">,</span> <span class="p">[]</span> <span class="p">{</span>
+<span class="linenos">34</span>    <span class="n">std</span><span class="o">::</span><span class="n">this_thread</span><span class="o">::</span><span class="n">sleep_for</span><span class="p">(</span><span class="n">std</span><span class="o">::</span><span class="n">chrono</span><span class="o">::</span><span class="n">milliseconds</span><span class="p">(</span><span class="mi">10</span><span class="p">));</span>
+<span class="linenos">35</span><span class="p">})</span>
+<span class="linenos">36</span>
+<span class="linenos">37</span><span class="n">NONIUS_BENCHMARK</span><span class="p">(</span><span class="s">&quot;random fluctuations&quot;</span><span class="p">,</span> <span class="p">[](</span><span class="n">nonius</span><span class="o">::</span><span class="n">chronometer</span> <span class="n">meter</span><span class="p">)</span> <span class="p">{</span>
+<span class="linenos">38</span>    <span class="n">std</span><span class="o">::</span><span class="n">random_device</span> <span class="n">dev</span><span class="p">;</span>
+<span class="linenos">39</span>    <span class="n">std</span><span class="o">::</span><span class="n">mt19937_64</span> <span class="n">rng</span><span class="p">(</span><span class="n">dev</span><span class="p">());</span>
+<span class="linenos">40</span>    <span class="n">meter</span><span class="p">.</span><span class="n">measure</span><span class="p">([</span><span class="o">&amp;</span><span class="p">]</span> <span class="p">{</span>
+<span class="linenos">41</span>        <span class="c1">// each run, perform a random number of rng calls</span>
+<span class="linenos">42</span>        <span class="k">auto</span> <span class="n">iterations</span> <span class="o">=</span> <span class="n">rng</span><span class="p">()</span> <span class="o">&amp;</span> <span class="n">UINT64_C</span><span class="p">(</span><span class="mh">0xff</span><span class="p">);</span>
+<span class="linenos">43</span>        <span class="k">for</span> <span class="p">(</span><span class="kt">uint64_t</span> <span class="n">i</span> <span class="o">=</span> <span class="mi">0</span><span class="p">;</span> <span class="n">i</span> <span class="o">&lt;</span> <span class="n">iterations</span><span class="p">;</span> <span class="o">++</span><span class="n">i</span><span class="p">)</span> <span class="p">{</span>
+<span class="linenos">44</span>            <span class="p">(</span><span class="kt">void</span><span class="p">)</span><span class="n">rng</span><span class="p">();</span>
+<span class="linenos">45</span>        <span class="p">}</span>
+<span class="linenos">46</span>    <span class="p">});</span>
+<span class="linenos">47</span><span class="p">})</span>
 </pre></div>
-</td></tr></table></div>
+</div>
 </div>
 <div class="section" id="id6">
 <h3>Results<a class="headerlink" href="#id6" title="Permalink to this headline">¶</a></h3>
@@ -698,93 +586,51 @@ run for a looong time. The number of iterations is hardcoded, this library seems
 <a class="reference external" href="https://github.com/iboB/picobench">picobench</a></p>
 <div class="section" id="id8">
 <h3>Sourcecode<a class="headerlink" href="#id8" title="Permalink to this headline">¶</a></h3>
-<div class="highlight-c++ notranslate"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre> 1
- 2
- 3
- 4
- 5
- 6
- 7
- 8
- 9
-10
-11
-12
-13
-14
-15
-16
-17
-18
-19
-20
-21
-22
-23
-24
-25
-26
-27
-28
-29
-30
-31
-32
-33
-34
-35
-36
-37
-38
-39
-40
-41
-42
-43</pre></div></td><td class="code"><div class="highlight"><pre><span></span><span class="cp">#define PICOBENCH_IMPLEMENT_WITH_MAIN</span>
-<span class="cp">#include</span> <span class="cpf">&quot;picobench.hpp&quot;</span><span class="cp"></span>
-
-<span class="cp">#include</span> <span class="cpf">&lt;chrono&gt;</span><span class="cp"></span>
-<span class="cp">#include</span> <span class="cpf">&lt;initializer_list&gt;</span><span class="cp"></span>
-<span class="cp">#include</span> <span class="cpf">&lt;random&gt;</span><span class="cp"></span>
-<span class="cp">#include</span> <span class="cpf">&lt;thread&gt;</span><span class="cp"></span>
-
-
-<span class="c1">// https://github.com/iboB/picobench</span>
-<span class="c1">// g++ -O2 picobench.cpp -o pb</span>
-
-<span class="n">PICOBENCH_SUITE</span><span class="p">(</span><span class="s">&quot;ComparisonFast&quot;</span><span class="p">);</span>
-<span class="k">static</span> <span class="kt">void</span> <span class="n">ComparisonFast</span><span class="p">(</span><span class="n">picobench</span><span class="o">::</span><span class="n">state</span><span class="o">&amp;</span> <span class="n">state</span><span class="p">)</span> <span class="p">{</span>
-    <span class="kt">uint64_t</span> <span class="n">x</span> <span class="o">=</span> <span class="mi">1</span><span class="p">;</span>
-    <span class="k">for</span> <span class="p">(</span><span class="k">auto</span> <span class="nl">_</span> <span class="p">:</span> <span class="n">state</span><span class="p">)</span> <span class="p">{</span>
-        <span class="n">x</span> <span class="o">+=</span> <span class="n">x</span><span class="p">;</span>
-    <span class="p">}</span>
-    <span class="n">state</span><span class="p">.</span><span class="n">set_result</span><span class="p">(</span><span class="n">x</span><span class="p">);</span>
-<span class="p">}</span>
-<span class="n">PICOBENCH</span><span class="p">(</span><span class="n">ComparisonFast</span><span class="p">);</span>
-
-<span class="n">PICOBENCH_SUITE</span><span class="p">(</span><span class="s">&quot;ComparisonSlow&quot;</span><span class="p">);</span>
-<span class="kt">void</span> <span class="nf">ComparisonSlow</span><span class="p">(</span><span class="n">picobench</span><span class="o">::</span><span class="n">state</span><span class="o">&amp;</span> <span class="n">state</span><span class="p">)</span> <span class="p">{</span>
-    <span class="k">for</span> <span class="p">(</span><span class="k">auto</span> <span class="nl">_</span> <span class="p">:</span> <span class="n">state</span><span class="p">)</span> <span class="p">{</span>
-        <span class="n">std</span><span class="o">::</span><span class="n">this_thread</span><span class="o">::</span><span class="n">sleep_for</span><span class="p">(</span><span class="n">std</span><span class="o">::</span><span class="n">chrono</span><span class="o">::</span><span class="n">milliseconds</span><span class="p">(</span><span class="mi">10</span><span class="p">));</span>
-    <span class="p">}</span>
-<span class="p">}</span>
-<span class="n">PICOBENCH</span><span class="p">(</span><span class="n">ComparisonSlow</span><span class="p">).</span><span class="n">iterations</span><span class="p">({</span><span class="mi">1</span><span class="p">,</span> <span class="mi">2</span><span class="p">,</span> <span class="mi">5</span><span class="p">,</span> <span class="mi">10</span><span class="p">});</span>
-
-<span class="n">PICOBENCH_SUITE</span><span class="p">(</span><span class="s">&quot;fluctuating&quot;</span><span class="p">);</span>
-<span class="kt">void</span> <span class="nf">ComparisonFluctuating</span><span class="p">(</span><span class="n">picobench</span><span class="o">::</span><span class="n">state</span><span class="o">&amp;</span> <span class="n">state</span><span class="p">)</span> <span class="p">{</span>
-    <span class="n">std</span><span class="o">::</span><span class="n">random_device</span> <span class="n">dev</span><span class="p">;</span>
-    <span class="n">std</span><span class="o">::</span><span class="n">mt19937_64</span> <span class="n">rng</span><span class="p">(</span><span class="n">dev</span><span class="p">());</span>
-    <span class="k">for</span> <span class="p">(</span><span class="k">auto</span> <span class="nl">_</span> <span class="p">:</span> <span class="n">state</span><span class="p">)</span> <span class="p">{</span>
-        <span class="c1">// each run, perform a random number of rng calls</span>
-        <span class="k">auto</span> <span class="n">iterations</span> <span class="o">=</span> <span class="n">rng</span><span class="p">()</span> <span class="o">&amp;</span> <span class="n">UINT64_C</span><span class="p">(</span><span class="mh">0xff</span><span class="p">);</span>
-        <span class="k">for</span> <span class="p">(</span><span class="kt">uint64_t</span> <span class="n">i</span> <span class="o">=</span> <span class="mi">0</span><span class="p">;</span> <span class="n">i</span> <span class="o">&lt;</span> <span class="n">iterations</span><span class="p">;</span> <span class="o">++</span><span class="n">i</span><span class="p">)</span> <span class="p">{</span>
-            <span class="p">(</span><span class="kt">void</span><span class="p">)</span><span class="n">rng</span><span class="p">();</span>
-        <span class="p">}</span>
-    <span class="p">}</span>
-<span class="p">}</span>
-<span class="n">PICOBENCH</span><span class="p">(</span><span class="n">ComparisonFluctuating</span><span class="p">);</span>
+<div class="highlight-c++ notranslate"><div class="highlight"><pre><span></span><span class="linenos"> 1</span><span class="cp">#define PICOBENCH_IMPLEMENT_WITH_MAIN</span>
+<span class="linenos"> 2</span><span class="cp">#include</span> <span class="cpf">&quot;picobench.hpp&quot;</span><span class="cp"></span>
+<span class="linenos"> 3</span>
+<span class="linenos"> 4</span><span class="cp">#include</span> <span class="cpf">&lt;chrono&gt;</span><span class="cp"></span>
+<span class="linenos"> 5</span><span class="cp">#include</span> <span class="cpf">&lt;initializer_list&gt;</span><span class="cp"></span>
+<span class="linenos"> 6</span><span class="cp">#include</span> <span class="cpf">&lt;random&gt;</span><span class="cp"></span>
+<span class="linenos"> 7</span><span class="cp">#include</span> <span class="cpf">&lt;thread&gt;</span><span class="cp"></span>
+<span class="linenos"> 8</span>
+<span class="linenos"> 9</span>
+<span class="linenos">10</span><span class="c1">// https://github.com/iboB/picobench</span>
+<span class="linenos">11</span><span class="c1">// g++ -O2 picobench.cpp -o pb</span>
+<span class="linenos">12</span>
+<span class="linenos">13</span><span class="n">PICOBENCH_SUITE</span><span class="p">(</span><span class="s">&quot;ComparisonFast&quot;</span><span class="p">);</span>
+<span class="linenos">14</span><span class="k">static</span> <span class="kt">void</span> <span class="n">ComparisonFast</span><span class="p">(</span><span class="n">picobench</span><span class="o">::</span><span class="n">state</span><span class="o">&amp;</span> <span class="n">state</span><span class="p">)</span> <span class="p">{</span>
+<span class="linenos">15</span>    <span class="kt">uint64_t</span> <span class="n">x</span> <span class="o">=</span> <span class="mi">1</span><span class="p">;</span>
+<span class="linenos">16</span>    <span class="k">for</span> <span class="p">(</span><span class="k">auto</span> <span class="nl">_</span> <span class="p">:</span> <span class="n">state</span><span class="p">)</span> <span class="p">{</span>
+<span class="linenos">17</span>        <span class="n">x</span> <span class="o">+=</span> <span class="n">x</span><span class="p">;</span>
+<span class="linenos">18</span>    <span class="p">}</span>
+<span class="linenos">19</span>    <span class="n">state</span><span class="p">.</span><span class="n">set_result</span><span class="p">(</span><span class="n">x</span><span class="p">);</span>
+<span class="linenos">20</span><span class="p">}</span>
+<span class="linenos">21</span><span class="n">PICOBENCH</span><span class="p">(</span><span class="n">ComparisonFast</span><span class="p">);</span>
+<span class="linenos">22</span>
+<span class="linenos">23</span><span class="n">PICOBENCH_SUITE</span><span class="p">(</span><span class="s">&quot;ComparisonSlow&quot;</span><span class="p">);</span>
+<span class="linenos">24</span><span class="kt">void</span> <span class="nf">ComparisonSlow</span><span class="p">(</span><span class="n">picobench</span><span class="o">::</span><span class="n">state</span><span class="o">&amp;</span> <span class="n">state</span><span class="p">)</span> <span class="p">{</span>
+<span class="linenos">25</span>    <span class="k">for</span> <span class="p">(</span><span class="k">auto</span> <span class="nl">_</span> <span class="p">:</span> <span class="n">state</span><span class="p">)</span> <span class="p">{</span>
+<span class="linenos">26</span>        <span class="n">std</span><span class="o">::</span><span class="n">this_thread</span><span class="o">::</span><span class="n">sleep_for</span><span class="p">(</span><span class="n">std</span><span class="o">::</span><span class="n">chrono</span><span class="o">::</span><span class="n">milliseconds</span><span class="p">(</span><span class="mi">10</span><span class="p">));</span>
+<span class="linenos">27</span>    <span class="p">}</span>
+<span class="linenos">28</span><span class="p">}</span>
+<span class="linenos">29</span><span class="n">PICOBENCH</span><span class="p">(</span><span class="n">ComparisonSlow</span><span class="p">).</span><span class="n">iterations</span><span class="p">({</span><span class="mi">1</span><span class="p">,</span> <span class="mi">2</span><span class="p">,</span> <span class="mi">5</span><span class="p">,</span> <span class="mi">10</span><span class="p">});</span>
+<span class="linenos">30</span>
+<span class="linenos">31</span><span class="n">PICOBENCH_SUITE</span><span class="p">(</span><span class="s">&quot;fluctuating&quot;</span><span class="p">);</span>
+<span class="linenos">32</span><span class="kt">void</span> <span class="nf">ComparisonFluctuating</span><span class="p">(</span><span class="n">picobench</span><span class="o">::</span><span class="n">state</span><span class="o">&amp;</span> <span class="n">state</span><span class="p">)</span> <span class="p">{</span>
+<span class="linenos">33</span>    <span class="n">std</span><span class="o">::</span><span class="n">random_device</span> <span class="n">dev</span><span class="p">;</span>
+<span class="linenos">34</span>    <span class="n">std</span><span class="o">::</span><span class="n">mt19937_64</span> <span class="n">rng</span><span class="p">(</span><span class="n">dev</span><span class="p">());</span>
+<span class="linenos">35</span>    <span class="k">for</span> <span class="p">(</span><span class="k">auto</span> <span class="nl">_</span> <span class="p">:</span> <span class="n">state</span><span class="p">)</span> <span class="p">{</span>
+<span class="linenos">36</span>        <span class="c1">// each run, perform a random number of rng calls</span>
+<span class="linenos">37</span>        <span class="k">auto</span> <span class="n">iterations</span> <span class="o">=</span> <span class="n">rng</span><span class="p">()</span> <span class="o">&amp;</span> <span class="n">UINT64_C</span><span class="p">(</span><span class="mh">0xff</span><span class="p">);</span>
+<span class="linenos">38</span>        <span class="k">for</span> <span class="p">(</span><span class="kt">uint64_t</span> <span class="n">i</span> <span class="o">=</span> <span class="mi">0</span><span class="p">;</span> <span class="n">i</span> <span class="o">&lt;</span> <span class="n">iterations</span><span class="p">;</span> <span class="o">++</span><span class="n">i</span><span class="p">)</span> <span class="p">{</span>
+<span class="linenos">39</span>            <span class="p">(</span><span class="kt">void</span><span class="p">)</span><span class="n">rng</span><span class="p">();</span>
+<span class="linenos">40</span>        <span class="p">}</span>
+<span class="linenos">41</span>    <span class="p">}</span>
+<span class="linenos">42</span><span class="p">}</span>
+<span class="linenos">43</span><span class="n">PICOBENCH</span><span class="p">(</span><span class="n">ComparisonFluctuating</span><span class="p">);</span>
 </pre></div>
-</td></tr></table></div>
+</div>
 </div>
 <div class="section" id="id9">
 <h3>Results<a class="headerlink" href="#id9" title="Permalink to this headline">¶</a></h3>
@@ -829,77 +675,43 @@ but does not seem too configurable. I find the way it writes the output very con
 <a class="reference external" href="https://github.com/catchorg/Catch2">Catch2</a></p>
 <div class="section" id="id11">
 <h3>Sourcecode<a class="headerlink" href="#id11" title="Permalink to this headline">¶</a></h3>
-<div class="highlight-c++ notranslate"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre> 1
- 2
- 3
- 4
- 5
- 6
- 7
- 8
- 9
-10
-11
-12
-13
-14
-15
-16
-17
-18
-19
-20
-21
-22
-23
-24
-25
-26
-27
-28
-29
-30
-31
-32
-33
-34
-35</pre></div></td><td class="code"><div class="highlight"><pre><span></span><span class="c1">// https://github.com/catchorg/Catch2</span>
-<span class="c1">// g++ -O2 catch.cpp -o c</span>
-
-<span class="cp">#define CATCH_CONFIG_ENABLE_BENCHMARKING</span>
-<span class="cp">#define CATCH_CONFIG_MAIN</span>
-<span class="cp">#include</span> <span class="cpf">&quot;catch.hpp&quot;</span><span class="cp"></span>
-
-<span class="cp">#include</span> <span class="cpf">&lt;chrono&gt;</span><span class="cp"></span>
-<span class="cp">#include</span> <span class="cpf">&lt;random&gt;</span><span class="cp"></span>
-<span class="cp">#include</span> <span class="cpf">&lt;thread&gt;</span><span class="cp"></span>
-
-<span class="n">TEST_CASE</span><span class="p">(</span><span class="s">&quot;comparison_fast&quot;</span><span class="p">)</span> <span class="p">{</span>
-    <span class="kt">uint64_t</span> <span class="n">x</span> <span class="o">=</span> <span class="mi">1</span><span class="p">;</span>
-    <span class="n">BENCHMARK</span><span class="p">(</span><span class="s">&quot;x += x&quot;</span><span class="p">)</span> <span class="p">{</span>
-        <span class="k">return</span> <span class="n">x</span> <span class="o">+=</span> <span class="n">x</span><span class="p">;</span>
-    <span class="p">};</span>
-<span class="p">}</span>
-
-<span class="n">TEST_CASE</span><span class="p">(</span><span class="s">&quot;comparison_slow&quot;</span><span class="p">)</span> <span class="p">{</span>
-    <span class="n">BENCHMARK</span><span class="p">(</span><span class="s">&quot;sleep 10ms&quot;</span><span class="p">)</span> <span class="p">{</span>
-        <span class="n">std</span><span class="o">::</span><span class="n">this_thread</span><span class="o">::</span><span class="n">sleep_for</span><span class="p">(</span><span class="n">std</span><span class="o">::</span><span class="n">chrono</span><span class="o">::</span><span class="n">milliseconds</span><span class="p">(</span><span class="mi">10</span><span class="p">));</span>
-    <span class="p">};</span>
-<span class="p">}</span>
-
-<span class="n">TEST_CASE</span><span class="p">(</span><span class="s">&quot;comparison_fluctuating_v2&quot;</span><span class="p">)</span> <span class="p">{</span>
-    <span class="n">std</span><span class="o">::</span><span class="n">random_device</span> <span class="n">dev</span><span class="p">;</span>
-    <span class="n">std</span><span class="o">::</span><span class="n">mt19937_64</span> <span class="n">rng</span><span class="p">(</span><span class="n">dev</span><span class="p">());</span>
-    <span class="n">BENCHMARK</span><span class="p">(</span><span class="s">&quot;random fluctuations&quot;</span><span class="p">)</span> <span class="p">{</span>
-        <span class="c1">// each run, perform a random number of rng calls</span>
-        <span class="k">auto</span> <span class="n">iterations</span> <span class="o">=</span> <span class="n">rng</span><span class="p">()</span> <span class="o">&amp;</span> <span class="n">UINT64_C</span><span class="p">(</span><span class="mh">0xff</span><span class="p">);</span>
-        <span class="k">for</span> <span class="p">(</span><span class="kt">uint64_t</span> <span class="n">i</span> <span class="o">=</span> <span class="mi">0</span><span class="p">;</span> <span class="n">i</span> <span class="o">&lt;</span> <span class="n">iterations</span><span class="p">;</span> <span class="o">++</span><span class="n">i</span><span class="p">)</span> <span class="p">{</span>
-            <span class="p">(</span><span class="kt">void</span><span class="p">)</span><span class="n">rng</span><span class="p">();</span>
-        <span class="p">}</span>
-    <span class="p">};</span>
-<span class="p">}</span>
+<div class="highlight-c++ notranslate"><div class="highlight"><pre><span></span><span class="linenos"> 1</span><span class="c1">// https://github.com/catchorg/Catch2</span>
+<span class="linenos"> 2</span><span class="c1">// g++ -O2 catch.cpp -o c</span>
+<span class="linenos"> 3</span>
+<span class="linenos"> 4</span><span class="cp">#define CATCH_CONFIG_ENABLE_BENCHMARKING</span>
+<span class="linenos"> 5</span><span class="cp">#define CATCH_CONFIG_MAIN</span>
+<span class="linenos"> 6</span><span class="cp">#include</span> <span class="cpf">&quot;catch.hpp&quot;</span><span class="cp"></span>
+<span class="linenos"> 7</span>
+<span class="linenos"> 8</span><span class="cp">#include</span> <span class="cpf">&lt;chrono&gt;</span><span class="cp"></span>
+<span class="linenos"> 9</span><span class="cp">#include</span> <span class="cpf">&lt;random&gt;</span><span class="cp"></span>
+<span class="linenos">10</span><span class="cp">#include</span> <span class="cpf">&lt;thread&gt;</span><span class="cp"></span>
+<span class="linenos">11</span>
+<span class="linenos">12</span><span class="n">TEST_CASE</span><span class="p">(</span><span class="s">&quot;comparison_fast&quot;</span><span class="p">)</span> <span class="p">{</span>
+<span class="linenos">13</span>    <span class="kt">uint64_t</span> <span class="n">x</span> <span class="o">=</span> <span class="mi">1</span><span class="p">;</span>
+<span class="linenos">14</span>    <span class="n">BENCHMARK</span><span class="p">(</span><span class="s">&quot;x += x&quot;</span><span class="p">)</span> <span class="p">{</span>
+<span class="linenos">15</span>        <span class="k">return</span> <span class="n">x</span> <span class="o">+=</span> <span class="n">x</span><span class="p">;</span>
+<span class="linenos">16</span>    <span class="p">};</span>
+<span class="linenos">17</span><span class="p">}</span>
+<span class="linenos">18</span>
+<span class="linenos">19</span><span class="n">TEST_CASE</span><span class="p">(</span><span class="s">&quot;comparison_slow&quot;</span><span class="p">)</span> <span class="p">{</span>
+<span class="linenos">20</span>    <span class="n">BENCHMARK</span><span class="p">(</span><span class="s">&quot;sleep 10ms&quot;</span><span class="p">)</span> <span class="p">{</span>
+<span class="linenos">21</span>        <span class="n">std</span><span class="o">::</span><span class="n">this_thread</span><span class="o">::</span><span class="n">sleep_for</span><span class="p">(</span><span class="n">std</span><span class="o">::</span><span class="n">chrono</span><span class="o">::</span><span class="n">milliseconds</span><span class="p">(</span><span class="mi">10</span><span class="p">));</span>
+<span class="linenos">22</span>    <span class="p">};</span>
+<span class="linenos">23</span><span class="p">}</span>
+<span class="linenos">24</span>
+<span class="linenos">25</span><span class="n">TEST_CASE</span><span class="p">(</span><span class="s">&quot;comparison_fluctuating_v2&quot;</span><span class="p">)</span> <span class="p">{</span>
+<span class="linenos">26</span>    <span class="n">std</span><span class="o">::</span><span class="n">random_device</span> <span class="n">dev</span><span class="p">;</span>
+<span class="linenos">27</span>    <span class="n">std</span><span class="o">::</span><span class="n">mt19937_64</span> <span class="n">rng</span><span class="p">(</span><span class="n">dev</span><span class="p">());</span>
+<span class="linenos">28</span>    <span class="n">BENCHMARK</span><span class="p">(</span><span class="s">&quot;random fluctuations&quot;</span><span class="p">)</span> <span class="p">{</span>
+<span class="linenos">29</span>        <span class="c1">// each run, perform a random number of rng calls</span>
+<span class="linenos">30</span>        <span class="k">auto</span> <span class="n">iterations</span> <span class="o">=</span> <span class="n">rng</span><span class="p">()</span> <span class="o">&amp;</span> <span class="n">UINT64_C</span><span class="p">(</span><span class="mh">0xff</span><span class="p">);</span>
+<span class="linenos">31</span>        <span class="k">for</span> <span class="p">(</span><span class="kt">uint64_t</span> <span class="n">i</span> <span class="o">=</span> <span class="mi">0</span><span class="p">;</span> <span class="n">i</span> <span class="o">&lt;</span> <span class="n">iterations</span><span class="p">;</span> <span class="o">++</span><span class="n">i</span><span class="p">)</span> <span class="p">{</span>
+<span class="linenos">32</span>            <span class="p">(</span><span class="kt">void</span><span class="p">)</span><span class="n">rng</span><span class="p">();</span>
+<span class="linenos">33</span>        <span class="p">}</span>
+<span class="linenos">34</span>    <span class="p">};</span>
+<span class="linenos">35</span><span class="p">}</span>
 </pre></div>
-</td></tr></table></div>
+</div>
 </div>
 <div class="section" id="id12">
 <h3>Results<a class="headerlink" href="#id12" title="Permalink to this headline">¶</a></h3>
@@ -965,87 +777,48 @@ assertions: - none -
 no doNotOptimize, no output formatting. Get it here: <a class="reference external" href="https://github.com/cameron314/microbench">moodycamel::microbench</a></p>
 <div class="section" id="id14">
 <h3>Sourcecode<a class="headerlink" href="#id14" title="Permalink to this headline">¶</a></h3>
-<div class="highlight-c++ notranslate"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre> 1
- 2
- 3
- 4
- 5
- 6
- 7
- 8
- 9
-10
-11
-12
-13
-14
-15
-16
-17
-18
-19
-20
-21
-22
-23
-24
-25
-26
-27
-28
-29
-30
-31
-32
-33
-34
-35
-36
-37
-38
-39
-40</pre></div></td><td class="code"><div class="highlight"><pre><span></span><span class="cp">#include</span> <span class="cpf">&quot;microbench.h&quot;</span><span class="cp"></span>
-
-<span class="cp">#include</span> <span class="cpf">&lt;chrono&gt;</span><span class="cp"></span>
-<span class="cp">#include</span> <span class="cpf">&lt;iostream&gt;</span><span class="cp"></span>
-<span class="cp">#include</span> <span class="cpf">&lt;random&gt;</span><span class="cp"></span>
-<span class="cp">#include</span> <span class="cpf">&lt;thread&gt;</span><span class="cp"></span>
-
-<span class="c1">// g++ -O2 -c systemtime.cpp</span>
-<span class="c1">// g++ -O2 -c microbench.cpp</span>
-<span class="c1">// g++ microbench.o systemtime.o -o mb</span>
-
-<span class="kt">int</span> <span class="nf">main</span><span class="p">(</span><span class="kt">int</span><span class="p">,</span> <span class="kt">char</span><span class="o">**</span><span class="p">)</span> <span class="p">{</span>
-  <span class="c1">// something fast</span>
-  <span class="kt">uint64_t</span> <span class="n">x</span> <span class="o">=</span> <span class="mi">1</span><span class="p">;</span>
-  <span class="n">std</span><span class="o">::</span><span class="n">cout</span> <span class="o">&lt;&lt;</span> <span class="n">moodycamel</span><span class="o">::</span><span class="n">microbench</span><span class="p">(</span>
-                 <span class="p">[</span><span class="o">&amp;</span><span class="p">]()</span> <span class="p">{</span>
-                   <span class="n">x</span> <span class="o">+=</span> <span class="n">x</span><span class="p">;</span>
-                 <span class="p">},</span>
-                 <span class="mi">10000000</span><span class="p">,</span> <span class="mi">51</span><span class="p">)</span>
-            <span class="o">&lt;&lt;</span> <span class="s">&quot; sec x += x (x==&quot;</span> <span class="o">&lt;&lt;</span> <span class="n">x</span> <span class="o">&lt;&lt;</span> <span class="s">&quot;)&quot;</span> <span class="o">&lt;&lt;</span> <span class="n">std</span><span class="o">::</span><span class="n">endl</span><span class="p">;</span>
-
-  <span class="n">std</span><span class="o">::</span><span class="n">cout</span> <span class="o">&lt;&lt;</span> <span class="n">moodycamel</span><span class="o">::</span><span class="n">microbench</span><span class="p">([</span><span class="o">&amp;</span><span class="p">]</span> <span class="p">{</span>
-    <span class="n">std</span><span class="o">::</span><span class="n">this_thread</span><span class="o">::</span><span class="n">sleep_for</span><span class="p">(</span><span class="n">std</span><span class="o">::</span><span class="n">chrono</span><span class="o">::</span><span class="n">milliseconds</span><span class="p">(</span><span class="mi">10</span><span class="p">));</span>
-  <span class="p">})</span> <span class="o">&lt;&lt;</span> <span class="s">&quot; sec sleep 10ms&quot;</span>
-            <span class="o">&lt;&lt;</span> <span class="n">std</span><span class="o">::</span><span class="n">endl</span><span class="p">;</span>
-
-  <span class="n">std</span><span class="o">::</span><span class="n">random_device</span> <span class="n">dev</span><span class="p">;</span>
-  <span class="n">std</span><span class="o">::</span><span class="n">mt19937_64</span> <span class="n">rng</span><span class="p">(</span><span class="n">dev</span><span class="p">());</span>
-  <span class="n">std</span><span class="o">::</span><span class="n">cout</span> <span class="o">&lt;&lt;</span> <span class="n">moodycamel</span><span class="o">::</span><span class="n">microbench</span><span class="p">(</span>
-                 <span class="p">[</span><span class="o">&amp;</span><span class="p">]</span> <span class="p">{</span>
-                   <span class="c1">// each run, perform a random number of</span>
-                   <span class="c1">// rng calls</span>
-                   <span class="k">auto</span> <span class="n">iterations</span> <span class="o">=</span> <span class="n">rng</span><span class="p">()</span> <span class="o">&amp;</span> <span class="n">UINT64_C</span><span class="p">(</span><span class="mh">0xff</span><span class="p">);</span>
-                   <span class="k">for</span> <span class="p">(</span><span class="kt">uint64_t</span> <span class="n">i</span> <span class="o">=</span> <span class="mi">0</span><span class="p">;</span> <span class="n">i</span> <span class="o">&lt;</span> <span class="n">iterations</span><span class="p">;</span> <span class="o">++</span><span class="n">i</span><span class="p">)</span> <span class="p">{</span>
-                     <span class="p">(</span><span class="kt">void</span><span class="p">)</span><span class="n">rng</span><span class="p">();</span>
-                   <span class="p">}</span>
-                 <span class="p">},</span>
-                 <span class="mi">1000</span><span class="p">,</span> <span class="mi">51</span><span class="p">)</span>
-            <span class="o">&lt;&lt;</span> <span class="s">&quot; sec random fluctuations&quot;</span> <span class="o">&lt;&lt;</span> <span class="n">std</span><span class="o">::</span><span class="n">endl</span><span class="p">;</span>
-<span class="p">}</span>
+<div class="highlight-c++ notranslate"><div class="highlight"><pre><span></span><span class="linenos"> 1</span><span class="cp">#include</span> <span class="cpf">&quot;microbench.h&quot;</span><span class="cp"></span>
+<span class="linenos"> 2</span>
+<span class="linenos"> 3</span><span class="cp">#include</span> <span class="cpf">&lt;chrono&gt;</span><span class="cp"></span>
+<span class="linenos"> 4</span><span class="cp">#include</span> <span class="cpf">&lt;iostream&gt;</span><span class="cp"></span>
+<span class="linenos"> 5</span><span class="cp">#include</span> <span class="cpf">&lt;random&gt;</span><span class="cp"></span>
+<span class="linenos"> 6</span><span class="cp">#include</span> <span class="cpf">&lt;thread&gt;</span><span class="cp"></span>
+<span class="linenos"> 7</span>
+<span class="linenos"> 8</span><span class="c1">// g++ -O2 -c systemtime.cpp</span>
+<span class="linenos"> 9</span><span class="c1">// g++ -O2 -c microbench.cpp</span>
+<span class="linenos">10</span><span class="c1">// g++ microbench.o systemtime.o -o mb</span>
+<span class="linenos">11</span>
+<span class="linenos">12</span><span class="kt">int</span> <span class="nf">main</span><span class="p">(</span><span class="kt">int</span><span class="p">,</span> <span class="kt">char</span><span class="o">**</span><span class="p">)</span> <span class="p">{</span>
+<span class="linenos">13</span>  <span class="c1">// something fast</span>
+<span class="linenos">14</span>  <span class="kt">uint64_t</span> <span class="n">x</span> <span class="o">=</span> <span class="mi">1</span><span class="p">;</span>
+<span class="linenos">15</span>  <span class="n">std</span><span class="o">::</span><span class="n">cout</span> <span class="o">&lt;&lt;</span> <span class="n">moodycamel</span><span class="o">::</span><span class="n">microbench</span><span class="p">(</span>
+<span class="linenos">16</span>                 <span class="p">[</span><span class="o">&amp;</span><span class="p">]()</span> <span class="p">{</span>
+<span class="linenos">17</span>                   <span class="n">x</span> <span class="o">+=</span> <span class="n">x</span><span class="p">;</span>
+<span class="linenos">18</span>                 <span class="p">},</span>
+<span class="linenos">19</span>                 <span class="mi">10000000</span><span class="p">,</span> <span class="mi">51</span><span class="p">)</span>
+<span class="linenos">20</span>            <span class="o">&lt;&lt;</span> <span class="s">&quot; sec x += x (x==&quot;</span> <span class="o">&lt;&lt;</span> <span class="n">x</span> <span class="o">&lt;&lt;</span> <span class="s">&quot;)&quot;</span> <span class="o">&lt;&lt;</span> <span class="n">std</span><span class="o">::</span><span class="n">endl</span><span class="p">;</span>
+<span class="linenos">21</span>
+<span class="linenos">22</span>  <span class="n">std</span><span class="o">::</span><span class="n">cout</span> <span class="o">&lt;&lt;</span> <span class="n">moodycamel</span><span class="o">::</span><span class="n">microbench</span><span class="p">([</span><span class="o">&amp;</span><span class="p">]</span> <span class="p">{</span>
+<span class="linenos">23</span>    <span class="n">std</span><span class="o">::</span><span class="n">this_thread</span><span class="o">::</span><span class="n">sleep_for</span><span class="p">(</span><span class="n">std</span><span class="o">::</span><span class="n">chrono</span><span class="o">::</span><span class="n">milliseconds</span><span class="p">(</span><span class="mi">10</span><span class="p">));</span>
+<span class="linenos">24</span>  <span class="p">})</span> <span class="o">&lt;&lt;</span> <span class="s">&quot; sec sleep 10ms&quot;</span>
+<span class="linenos">25</span>            <span class="o">&lt;&lt;</span> <span class="n">std</span><span class="o">::</span><span class="n">endl</span><span class="p">;</span>
+<span class="linenos">26</span>
+<span class="linenos">27</span>  <span class="n">std</span><span class="o">::</span><span class="n">random_device</span> <span class="n">dev</span><span class="p">;</span>
+<span class="linenos">28</span>  <span class="n">std</span><span class="o">::</span><span class="n">mt19937_64</span> <span class="n">rng</span><span class="p">(</span><span class="n">dev</span><span class="p">());</span>
+<span class="linenos">29</span>  <span class="n">std</span><span class="o">::</span><span class="n">cout</span> <span class="o">&lt;&lt;</span> <span class="n">moodycamel</span><span class="o">::</span><span class="n">microbench</span><span class="p">(</span>
+<span class="linenos">30</span>                 <span class="p">[</span><span class="o">&amp;</span><span class="p">]</span> <span class="p">{</span>
+<span class="linenos">31</span>                   <span class="c1">// each run, perform a random number of</span>
+<span class="linenos">32</span>                   <span class="c1">// rng calls</span>
+<span class="linenos">33</span>                   <span class="k">auto</span> <span class="n">iterations</span> <span class="o">=</span> <span class="n">rng</span><span class="p">()</span> <span class="o">&amp;</span> <span class="n">UINT64_C</span><span class="p">(</span><span class="mh">0xff</span><span class="p">);</span>
+<span class="linenos">34</span>                   <span class="k">for</span> <span class="p">(</span><span class="kt">uint64_t</span> <span class="n">i</span> <span class="o">=</span> <span class="mi">0</span><span class="p">;</span> <span class="n">i</span> <span class="o">&lt;</span> <span class="n">iterations</span><span class="p">;</span> <span class="o">++</span><span class="n">i</span><span class="p">)</span> <span class="p">{</span>
+<span class="linenos">35</span>                     <span class="p">(</span><span class="kt">void</span><span class="p">)</span><span class="n">rng</span><span class="p">();</span>
+<span class="linenos">36</span>                   <span class="p">}</span>
+<span class="linenos">37</span>                 <span class="p">},</span>
+<span class="linenos">38</span>                 <span class="mi">1000</span><span class="p">,</span> <span class="mi">51</span><span class="p">)</span>
+<span class="linenos">39</span>            <span class="o">&lt;&lt;</span> <span class="s">&quot; sec random fluctuations&quot;</span> <span class="o">&lt;&lt;</span> <span class="n">std</span><span class="o">::</span><span class="n">endl</span><span class="p">;</span>
+<span class="linenos">40</span><span class="p">}</span>
 </pre></div>
-</td></tr></table></div>
+</div>
 </div>
 <div class="section" id="id15">
 <h3>Results<a class="headerlink" href="#id15" title="Permalink to this headline">¶</a></h3>
@@ -1065,79 +838,44 @@ that I needed in my <code class="docutils literal notranslate"><span class="pre"
 here: <a class="reference external" href="https://github.com/ivafanas/sltbench">sltbench</a></p>
 <div class="section" id="id17">
 <h3>Sourcecode<a class="headerlink" href="#id17" title="Permalink to this headline">¶</a></h3>
-<div class="highlight-c++ notranslate"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre> 1
- 2
- 3
- 4
- 5
- 6
- 7
- 8
- 9
-10
-11
-12
-13
-14
-15
-16
-17
-18
-19
-20
-21
-22
-23
-24
-25
-26
-27
-28
-29
-30
-31
-32
-33
-34
-35
-36</pre></div></td><td class="code"><div class="highlight"><pre><span></span><span class="cp">#include</span> <span class="cpf">&lt;sltbench/Bench.h&gt;</span><span class="c1"> // https://github.com/ivafanas/sltbench</span><span class="cp"></span>
-
-<span class="cp">#include</span> <span class="cpf">&lt;chrono&gt;</span><span class="cp"></span>
-<span class="cp">#include</span> <span class="cpf">&lt;random&gt;</span><span class="cp"></span>
-<span class="cp">#include</span> <span class="cpf">&lt;thread&gt;</span><span class="cp"></span>
-
-<span class="c1">// cmake build as online instructions describes</span>
-<span class="c1">//</span>
-<span class="c1">// g++ -O3 -I/home/martinus/git/sltbench/install/include -c main.cpp</span>
-<span class="c1">// g++ -o m -L/home/martinus/git/sltbench/install/lib main.o -lsltbench</span>
-
-<span class="kt">uint64_t</span> <span class="n">x</span> <span class="o">=</span> <span class="mi">1</span><span class="p">;</span>
-<span class="kt">void</span> <span class="nf">ComparisonFast</span><span class="p">()</span> <span class="p">{</span>
-    <span class="n">sltbench</span><span class="o">::</span><span class="n">DoNotOptimize</span><span class="p">(</span><span class="n">x</span> <span class="o">+=</span> <span class="n">x</span><span class="p">);</span>
-<span class="p">}</span>
-
-<span class="n">SLTBENCH_FUNCTION</span><span class="p">(</span><span class="n">ComparisonFast</span><span class="p">);</span>
-
-<span class="kt">void</span> <span class="nf">ComparisonSlow</span><span class="p">()</span> <span class="p">{</span>
-    <span class="n">std</span><span class="o">::</span><span class="n">this_thread</span><span class="o">::</span><span class="n">sleep_for</span><span class="p">(</span><span class="n">std</span><span class="o">::</span><span class="n">chrono</span><span class="o">::</span><span class="n">milliseconds</span><span class="p">(</span><span class="mi">10</span><span class="p">));</span>
-<span class="p">}</span>
-<span class="n">SLTBENCH_FUNCTION</span><span class="p">(</span><span class="n">ComparisonSlow</span><span class="p">);</span>
-
-<span class="n">std</span><span class="o">::</span><span class="n">random_device</span> <span class="n">dev</span><span class="p">;</span>
-<span class="n">std</span><span class="o">::</span><span class="n">mt19937_64</span> <span class="n">rng</span><span class="p">(</span><span class="n">dev</span><span class="p">());</span>
-
-<span class="kt">void</span> <span class="nf">ComparisonFluctuating</span><span class="p">()</span> <span class="p">{</span>
-    <span class="c1">// each run, perform a random number of rng calls</span>
-    <span class="k">auto</span> <span class="n">iterations</span> <span class="o">=</span> <span class="n">rng</span><span class="p">()</span> <span class="o">&amp;</span> <span class="n">UINT64_C</span><span class="p">(</span><span class="mh">0xff</span><span class="p">);</span>
-    <span class="k">for</span> <span class="p">(</span><span class="kt">uint64_t</span> <span class="n">i</span> <span class="o">=</span> <span class="mi">0</span><span class="p">;</span> <span class="n">i</span> <span class="o">&lt;</span> <span class="n">iterations</span><span class="p">;</span> <span class="o">++</span><span class="n">i</span><span class="p">)</span> <span class="p">{</span>
-        <span class="p">(</span><span class="kt">void</span><span class="p">)</span><span class="n">rng</span><span class="p">();</span>
-    <span class="p">}</span>
-<span class="p">}</span>
-<span class="n">SLTBENCH_FUNCTION</span><span class="p">(</span><span class="n">ComparisonFluctuating</span><span class="p">);</span>
-
-<span class="n">SLTBENCH_MAIN</span><span class="p">();</span>
+<div class="highlight-c++ notranslate"><div class="highlight"><pre><span></span><span class="linenos"> 1</span><span class="cp">#include</span> <span class="cpf">&lt;sltbench/Bench.h&gt;</span><span class="c1"> // https://github.com/ivafanas/sltbench</span><span class="cp"></span>
+<span class="linenos"> 2</span>
+<span class="linenos"> 3</span><span class="cp">#include</span> <span class="cpf">&lt;chrono&gt;</span><span class="cp"></span>
+<span class="linenos"> 4</span><span class="cp">#include</span> <span class="cpf">&lt;random&gt;</span><span class="cp"></span>
+<span class="linenos"> 5</span><span class="cp">#include</span> <span class="cpf">&lt;thread&gt;</span><span class="cp"></span>
+<span class="linenos"> 6</span>
+<span class="linenos"> 7</span><span class="c1">// cmake build as online instructions describes</span>
+<span class="linenos"> 8</span><span class="c1">//</span>
+<span class="linenos"> 9</span><span class="c1">// g++ -O3 -I/home/martinus/git/sltbench/install/include -c main.cpp</span>
+<span class="linenos">10</span><span class="c1">// g++ -o m -L/home/martinus/git/sltbench/install/lib main.o -lsltbench</span>
+<span class="linenos">11</span>
+<span class="linenos">12</span><span class="kt">uint64_t</span> <span class="n">x</span> <span class="o">=</span> <span class="mi">1</span><span class="p">;</span>
+<span class="linenos">13</span><span class="kt">void</span> <span class="nf">ComparisonFast</span><span class="p">()</span> <span class="p">{</span>
+<span class="linenos">14</span>    <span class="n">sltbench</span><span class="o">::</span><span class="n">DoNotOptimize</span><span class="p">(</span><span class="n">x</span> <span class="o">+=</span> <span class="n">x</span><span class="p">);</span>
+<span class="linenos">15</span><span class="p">}</span>
+<span class="linenos">16</span>
+<span class="linenos">17</span><span class="n">SLTBENCH_FUNCTION</span><span class="p">(</span><span class="n">ComparisonFast</span><span class="p">);</span>
+<span class="linenos">18</span>
+<span class="linenos">19</span><span class="kt">void</span> <span class="nf">ComparisonSlow</span><span class="p">()</span> <span class="p">{</span>
+<span class="linenos">20</span>    <span class="n">std</span><span class="o">::</span><span class="n">this_thread</span><span class="o">::</span><span class="n">sleep_for</span><span class="p">(</span><span class="n">std</span><span class="o">::</span><span class="n">chrono</span><span class="o">::</span><span class="n">milliseconds</span><span class="p">(</span><span class="mi">10</span><span class="p">));</span>
+<span class="linenos">21</span><span class="p">}</span>
+<span class="linenos">22</span><span class="n">SLTBENCH_FUNCTION</span><span class="p">(</span><span class="n">ComparisonSlow</span><span class="p">);</span>
+<span class="linenos">23</span>
+<span class="linenos">24</span><span class="n">std</span><span class="o">::</span><span class="n">random_device</span> <span class="n">dev</span><span class="p">;</span>
+<span class="linenos">25</span><span class="n">std</span><span class="o">::</span><span class="n">mt19937_64</span> <span class="n">rng</span><span class="p">(</span><span class="n">dev</span><span class="p">());</span>
+<span class="linenos">26</span>
+<span class="linenos">27</span><span class="kt">void</span> <span class="nf">ComparisonFluctuating</span><span class="p">()</span> <span class="p">{</span>
+<span class="linenos">28</span>    <span class="c1">// each run, perform a random number of rng calls</span>
+<span class="linenos">29</span>    <span class="k">auto</span> <span class="n">iterations</span> <span class="o">=</span> <span class="n">rng</span><span class="p">()</span> <span class="o">&amp;</span> <span class="n">UINT64_C</span><span class="p">(</span><span class="mh">0xff</span><span class="p">);</span>
+<span class="linenos">30</span>    <span class="k">for</span> <span class="p">(</span><span class="kt">uint64_t</span> <span class="n">i</span> <span class="o">=</span> <span class="mi">0</span><span class="p">;</span> <span class="n">i</span> <span class="o">&lt;</span> <span class="n">iterations</span><span class="p">;</span> <span class="o">++</span><span class="n">i</span><span class="p">)</span> <span class="p">{</span>
+<span class="linenos">31</span>        <span class="p">(</span><span class="kt">void</span><span class="p">)</span><span class="n">rng</span><span class="p">();</span>
+<span class="linenos">32</span>    <span class="p">}</span>
+<span class="linenos">33</span><span class="p">}</span>
+<span class="linenos">34</span><span class="n">SLTBENCH_FUNCTION</span><span class="p">(</span><span class="n">ComparisonFluctuating</span><span class="p">);</span>
+<span class="linenos">35</span>
+<span class="linenos">36</span><span class="n">SLTBENCH_MAIN</span><span class="p">();</span>
 </pre></div>
-</td></tr></table></div>
+</div>
 </div>
 <div class="section" id="id18">
 <h3>Results<a class="headerlink" href="#id18" title="Permalink to this headline">¶</a></h3>

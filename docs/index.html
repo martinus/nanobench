@@ -13,6 +13,8 @@
   
   <link rel="stylesheet" href="_static/css/theme.css" type="text/css" />
   <link rel="stylesheet" href="_static/pygments.css" type="text/css" />
+  <link rel="stylesheet" href="_static/pygments.css" type="text/css" />
+  <link rel="stylesheet" href="_static/css/theme.css" type="text/css" />
 
   
   
@@ -31,10 +33,10 @@
   
     
       <script type="text/javascript" id="documentation_options" data-url_root="./" src="_static/documentation_options.js"></script>
+        <script data-url_root="./" id="documentation_options" src="_static/documentation_options.js"></script>
         <script src="_static/jquery.js"></script>
         <script src="_static/underscore.js"></script>
         <script src="_static/doctools.js"></script>
-        <script async="async" src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
     
     <script type="text/javascript" src="_static/js/theme.js"></script>
 
@@ -295,33 +297,21 @@
 Get the latest <a class="reference download external" download="" href="https://github.com/martinus/nanobench/releases/latest"><code class="xref download docutils literal notranslate"><span class="pre">release</span></code></a>.</p>
 </div>
 <p><code class="docutils literal notranslate"><span class="pre">ankerl::nanobench</span></code> is a platform independent microbenchmarking library for C++11/14/17/20.</p>
-<div class="highlight-c++ notranslate"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre> 1
- 2
- 3
- 4
- 5
- 6
- 7
- 8
- 9
-10
-11
-12
-13</pre></div></td><td class="code"><div class="highlight"><pre><span></span><span class="cp">#define ANKERL_NANOBENCH_IMPLEMENT</span>
-<span class="cp">#include</span> <span class="cpf">&lt;nanobench.h&gt;</span><span class="cp"></span>
-
-<span class="kt">int</span> <span class="nf">main</span><span class="p">()</span> <span class="p">{</span>
-    <span class="kt">double</span> <span class="n">d</span> <span class="o">=</span> <span class="mf">1.0</span><span class="p">;</span>
-    <span class="n">ankerl</span><span class="o">::</span><span class="n">nanobench</span><span class="o">::</span><span class="n">Bench</span><span class="p">().</span><span class="n">run</span><span class="p">(</span><span class="s">&quot;some double ops&quot;</span><span class="p">,</span> <span class="p">[</span><span class="o">&amp;</span><span class="p">]</span> <span class="p">{</span>
-        <span class="n">d</span> <span class="o">+=</span> <span class="mf">1.0</span> <span class="o">/</span> <span class="n">d</span><span class="p">;</span>
-        <span class="k">if</span> <span class="p">(</span><span class="n">d</span> <span class="o">&gt;</span> <span class="mf">5.0</span><span class="p">)</span> <span class="p">{</span>
-            <span class="n">d</span> <span class="o">-=</span> <span class="mf">5.0</span><span class="p">;</span>
-        <span class="p">}</span>
-        <span class="n">ankerl</span><span class="o">::</span><span class="n">nanobench</span><span class="o">::</span><span class="n">doNotOptimizeAway</span><span class="p">(</span><span class="n">d</span><span class="p">);</span>
-    <span class="p">});</span>
-<span class="p">}</span>
+<div class="highlight-c++ notranslate"><div class="highlight"><pre><span></span><span class="linenos"> 1</span><span class="cp">#define ANKERL_NANOBENCH_IMPLEMENT</span>
+<span class="linenos"> 2</span><span class="cp">#include</span> <span class="cpf">&lt;nanobench.h&gt;</span><span class="cp"></span>
+<span class="linenos"> 3</span>
+<span class="linenos"> 4</span><span class="kt">int</span> <span class="nf">main</span><span class="p">()</span> <span class="p">{</span>
+<span class="linenos"> 5</span>    <span class="kt">double</span> <span class="n">d</span> <span class="o">=</span> <span class="mf">1.0</span><span class="p">;</span>
+<span class="linenos"> 6</span>    <span class="n">ankerl</span><span class="o">::</span><span class="n">nanobench</span><span class="o">::</span><span class="n">Bench</span><span class="p">().</span><span class="n">run</span><span class="p">(</span><span class="s">&quot;some double ops&quot;</span><span class="p">,</span> <span class="p">[</span><span class="o">&amp;</span><span class="p">]</span> <span class="p">{</span>
+<span class="linenos"> 7</span>        <span class="n">d</span> <span class="o">+=</span> <span class="mf">1.0</span> <span class="o">/</span> <span class="n">d</span><span class="p">;</span>
+<span class="linenos"> 8</span>        <span class="k">if</span> <span class="p">(</span><span class="n">d</span> <span class="o">&gt;</span> <span class="mf">5.0</span><span class="p">)</span> <span class="p">{</span>
+<span class="linenos"> 9</span>            <span class="n">d</span> <span class="o">-=</span> <span class="mf">5.0</span><span class="p">;</span>
+<span class="linenos">10</span>        <span class="p">}</span>
+<span class="linenos">11</span>        <span class="n">ankerl</span><span class="o">::</span><span class="n">nanobench</span><span class="o">::</span><span class="n">doNotOptimizeAway</span><span class="p">(</span><span class="n">d</span><span class="p">);</span>
+<span class="linenos">12</span>    <span class="p">});</span>
+<span class="linenos">13</span><span class="p">}</span>
 </pre></div>
-</td></tr></table></div>
+</div>
 <p>The whole executable runs for ~60ms and prints</p>
 <div class="highlight-text notranslate"><div class="highlight"><pre><span></span>|               ns/op |                op/s |    err% |          ins/op |          cyc/op |    IPC |         bra/op |   miss% |     total | benchmark
 |--------------------:|--------------------:|--------:|----------------:|----------------:|-------:|---------------:|--------:|----------:|:----------
