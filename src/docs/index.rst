@@ -82,6 +82,7 @@ nanobench
 |badge-release| |badge-license| |badge-travis| |badge-appveyor| |badge-gitter|
 
 .. image:: nanobench-logo-small.svg
+   :alt: I need a better logo. Currently I use a small bench. Nanobench. Ha ha.
 
 
 .. hint::
