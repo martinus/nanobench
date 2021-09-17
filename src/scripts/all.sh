@@ -25,7 +25,7 @@ function build() {
     ${NICE} cmake --build .
     rm -f ubsan.log*
 
-    UBSAN_OPTIONS=print_stacktrace=1:log_path=ubsan.log:suppressions=${ROOTDIR}/ubsan.supp ${NICE} ./nb
+    UBSAN_OPTIONS=print_stacktrace=1:log_path=ubsan.log:suppressions=${ROOTDIR}/ubsan.supp ./nb
     if ls ubsan.log* 1> /dev/null 2>&1; then
         cat ubsan.log*
         exit 1

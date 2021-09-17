@@ -3,6 +3,7 @@
 
 namespace {
 
+ANKERL_NANOBENCH_NO_SANITIZE("integer", "undefined")
 constexpr uint64_t rotl(uint64_t x, unsigned k) noexcept {
     return (x << k) | (x >> (64U - k));
 }

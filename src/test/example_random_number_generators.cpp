@@ -9,7 +9,7 @@
 #    if defined(__GNUC__) || defined(__clang__)
 #        pragma GCC diagnostic push
 #        pragma GCC diagnostic ignored "-Wpedantic"
-         using uint128_t = unsigned __int128;
+using uint128_t = unsigned __int128;
 #        pragma GCC diagnostic pop
 #    endif
 #elif (defined(_MSC_VER) && SIZE_MAX == UINT64_MAX)
@@ -99,6 +99,7 @@ public:
     NasamRng(uint64_t seed) noexcept
         : mState(seed) {}
 
+    ANKERL_NANOBENCH_NO_SANITIZE("integer", "undefined")
     uint64_t operator()() noexcept {
         auto x = mState++;
 
@@ -115,6 +116,7 @@ public:
 private:
     // rotate right
     template <typename T>
+    ANKERL_NANOBENCH_NO_SANITIZE("integer", "undefined")
     static T rotr(T x, size_t k) {
         return (x >> k) | (x << (8U * sizeof(T) - k));
     }
@@ -143,6 +145,7 @@ public:
         }
     }
 
+    ANKERL_NANOBENCH_NO_SANITIZE("integer", "undefined")
     uint64_t operator()() noexcept {
         uint64_t tmp = mA + mB + mCounter++;
         mA = mB ^ (mB >> 11U);
@@ -152,6 +155,7 @@ public:
     }
 
 private:
+    ANKERL_NANOBENCH_NO_SANITIZE("integer", "undefined")
     static constexpr uint64_t rotl(uint64_t x, unsigned k) noexcept {
         return (x << k) | (x >> (64U - k));
     }
@@ -193,6 +197,7 @@ public:
     }
 
 private:
+    ANKERL_NANOBENCH_NO_SANITIZE("integer", "undefined")
     static constexpr uint64_t rotl(uint64_t x, unsigned k) noexcept {
         return (x << k) | (x >> (64U - k));
     }
@@ -229,6 +234,7 @@ public:
     }
 
 private:
+    ANKERL_NANOBENCH_NO_SANITIZE("integer", "undefined")
     static constexpr uint64_t rotl(uint64_t x, unsigned k) noexcept {
         return (x << k) | (x >> (64U - k));
     }
@@ -266,6 +272,7 @@ public:
     }
 
 private:
+    ANKERL_NANOBENCH_NO_SANITIZE("integer", "undefined")
     static constexpr uint64_t rotl(uint64_t x, unsigned k) noexcept {
         return (x << k) | (x >> (64U - k));
     }

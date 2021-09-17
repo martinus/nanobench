@@ -53,7 +53,7 @@ if (NANOBENCH_STANDALONE_PROJECT)
 
             # we have to globally set the property here, so it actually works https://cmake.org/pipermail/cmake/2010-March/036020.html
             set_source_files_properties(
-                src/test/tutorial_fast_v1.cpp 
+                src/test/tutorial_fast_v1.cpp
                 src/test/tutorial_fast_v2.cpp
                 PROPERTIES COMPILE_FLAGS "-fno-sanitize=integer")
 

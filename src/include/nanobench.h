@@ -2404,6 +2404,14 @@ public:
         return (a + divisor / 2) / divisor;
     }
 
+    ANKERL_NANOBENCH_NO_SANITIZE("integer", "undefined")
+    static inline uint32_t mix(uint32_t x) noexcept {
+        x ^= x << 13;
+        x ^= x >> 17;
+        x ^= x << 5;
+        return x;
+    }
+
     template <typename Op>
     ANKERL_NANOBENCH_NO_SANITIZE("integer", "undefined")
     void calibrate(Op&& op) {
@@ -2443,15 +2451,10 @@ public:
             uint64_t const numIters = 100000U + (std::random_device{}() & 3);
             uint64_t n = numIters;
             uint32_t x = 1234567;
-            auto fn = [&]() {
-                x ^= x << 13;
-                x ^= x >> 17;
-                x ^= x << 5;
-            };
 
             beginMeasure();
             while (n-- > 0) {
-                fn();
+                x = mix(x);
             }
             endMeasure();
             detail::doNotOptimizeAway(x);
@@ -2461,8 +2464,8 @@ public:
             beginMeasure();
             while (n-- > 0) {
                 // we now run *twice* so we can easily calculate the overhead
-                fn();
-                fn();
+                x = mix(x);
+                x = mix(x);
             }
             endMeasure();
             detail::doNotOptimizeAway(x);
