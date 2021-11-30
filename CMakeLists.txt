@@ -1,4 +1,4 @@
-cmake_minimum_required(VERSION 3.5)
+cmake_minimum_required(VERSION 3.8)
 project(nanobench LANGUAGES CXX)
 
 # determine whether this is a standalone project or included by other projects
@@ -81,6 +81,51 @@ if (NANOBENCH_STANDALONE_PROJECT)
     add_compile_flags_target(nb)
 
     target_sources_local(nb PUBLIC .clang-tidy)
+
+
+    include(GNUInstallDirs)
+    set(INSTALL_CONFIGDIR ${CMAKE_INSTALL_LIBDIR}/${PROJECT_NAME}/cmake)
+    set(INSTALL_LIBDIR ${CMAKE_INSTALL_LIBDIR}/${PROJECT_NAME})
+
+    # Install library target
+    add_library(nanobench STATIC ${PROJECT_SOURCE_DIR}/src/test/app/nanobench.cpp)
+    target_compile_features(nanobench PUBLIC cxx_std_11)
+    target_include_directories(nanobench
+      PUBLIC
+        $<BUILD_INTERFACE:${PROJECT_SOURCE_DIR}/src/include>
+        $<INSTALL_INTERFACE:include>
+    )
+    install(
+      TARGETS nanobench
+      EXPORT install_targets
+      LIBRARY DESTINATION ${INSTALL_LIBDIR}
+      ARCHIVE DESTINATION ${INSTALL_LIBDIR}
+    )
+
+    # Install targets file
+    install(EXPORT install_targets
+      FILE
+        ${PROJECT_NAME}Targets.cmake
+      NAMESPACE
+        ${PROJECT_NAME}::
+      DESTINATION
+        ${INSTALL_CONFIGDIR}
+    )
+
+    # Install ${PROJECT_NAME}Config.cmake
+    include(CMakePackageConfigHelpers)
+    configure_package_config_file(
+      ${CMAKE_CURRENT_SOURCE_DIR}/cmake/${PROJECT_NAME}Config.cmake.in
+      ${CMAKE_CURRENT_BINARY_DIR}/${PROJECT_NAME}Config.cmake
+      INSTALL_DESTINATION ${INSTALL_CONFIGDIR}
+    )
+    install(FILES
+      ${CMAKE_CURRENT_BINARY_DIR}/${PROJECT_NAME}Config.cmake
+      DESTINATION ${INSTALL_CONFIGDIR}
+    )
+
+    # Install headers
+    install(FILES src/include/nanobench.h DESTINATION ${CMAKE_INSTALL_INCLUDEDIR})
 else()
     add_library(nanobench STATIC ${PROJECT_SOURCE_DIR}/src/test/app/nanobench.cpp)
     add_library(nanobench::nanobench ALIAS nanobench)
