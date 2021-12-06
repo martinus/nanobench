@@ -321,7 +321,7 @@ char const* csv() noexcept;
 char const* htmlBoxplot() noexcept;
 
 /*!
- @brief Output in pyperf  compatible JSON format, which can be used for more analyzations.
+ @brief Output in pyperf compatible JSON format, which can be used for more analyzation.
  @verbatim embed:rst
  See the tutorial at :ref:`tutorial-template-pyperf` for an example how to further analyze the output.
  @endverbatim
@@ -754,9 +754,9 @@ public:
      * representation of the benchmarked code's runtime stability.
      *
      * Choose the value wisely. In practice, 11 has been shown to be a reasonable choice between runtime performance and accuracy.
-     * This setting goes hand in hand with minEpocIterations() (or minEpochTime()). If you are more interested in *median* runtime, you
-     * might want to increase epochs(). If you are more interested in *mean* runtime, you might want to increase minEpochIterations()
-     * instead.
+     * This setting goes hand in hand with minEpochIterations() (or minEpochTime()). If you are more interested in *median* runtime,
+     * you might want to increase epochs(). If you are more interested in *mean* runtime, you might want to increase
+     * minEpochIterations() instead.
      *
      * @param numEpochs Number of epochs.
      */
@@ -858,7 +858,7 @@ public:
      * @brief Retrieves all benchmark results collected by the bench object so far.
      *
      * Each call to run() generates a Result that is stored within the Bench instance. This is mostly for advanced users who want to
-     * see all the nitty gritty detials.
+     * see all the nitty gritty details.
      *
      * @return All results collected so far.
      */
@@ -993,7 +993,7 @@ void doNotOptimizeAway(T const& val);
 #else
 
 // These assembly magic is directly from what Google Benchmark is doing. I have previously used what facebook's folly was doing, but
-// this seemd to have compilation problems in some cases. Google Benchmark seemed to be the most well tested anyways.
+// this seemed to have compilation problems in some cases. Google Benchmark seemed to be the most well tested anyways.
 // see https://github.com/google/benchmark/blob/master/include/benchmark/benchmark.h#L307
 template <typename T>
 void doNotOptimizeAway(T const& val) {
