@@ -353,6 +353,10 @@ class PerformanceCounters;
 class LinuxPerformanceCounters;
 #endif
 
+#ifdef __riscv
+class RiscvPerformanceCounters;
+#endif
+
 } // namespace detail
 } // namespace nanobench
 } // namespace ankerl
@@ -1052,6 +1056,11 @@ private:
 #if ANKERL_NANOBENCH(PERF_COUNTERS)
     LinuxPerformanceCounters* mPc = nullptr;
 #endif
+
+#ifdef __riscv
+    RiscvPerformanceCounters* mPc = nullptr;
+#endif
+
     PerfCountSet<uint64_t> mVal{};
     PerfCountSet<bool> mHas{};
 };
@@ -1273,6 +1282,22 @@ void doNotOptimizeAway(T const& val) {
 #        include <unistd.h>
 #    endif
 
+
+// FIXME
+#ifdef __riscv
+#   include <map> // map
+#   include <unistd.h>
+#   include <cmath>
+#   pragma message "adding log2()"
+// Calculates log2 of number.  
+namespace std {
+double log2( double n )  
+{  
+    // log(n)/log(2) is log2.  
+    return log( n ) / log( 2 );  
+}  
+}
+#endif
 // declarations ///////////////////////////////////////////////////////////////////////////////////
 
 namespace ankerl {
@@ -2333,6 +2358,81 @@ void IterationLogic::moveResultTo(std::vector<Result>& results) noexcept {
     results.emplace_back(std::move(mPimpl->mResult));
 }
 
+#ifdef __riscv
+ANKERL_NANOBENCH(IGNORE_PADDED_PUSH)
+class RiscvPerformanceCounters {
+public:
+    struct Target {
+        Target(uint64_t* targetValue_, bool correctMeasuringOverhead_, bool correctLoopOverhead_)
+            : targetValue(targetValue_)
+            , correctMeasuringOverhead(correctMeasuringOverhead_)
+            , correctLoopOverhead(correctLoopOverhead_) {}
+
+        uint64_t* targetValue{};
+        bool correctMeasuringOverhead{};
+        bool correctLoopOverhead{};
+    };
+
+    ~RiscvPerformanceCounters();
+private:
+    bool monitor(uint32_t type, uint64_t eventid, Target target);
+
+    std::map<uint64_t, Target> mIdToTarget{};
+
+    // // start with minimum size of 3 for read_format
+    std::vector<uint64_t> mCounters{3};
+    std::vector<uint64_t> mCalibratedOverhead{3};
+    std::vector<uint64_t> mLoopOverhead{3};
+
+    uint64_t mTimeEnabledNanos = 0;
+    uint64_t mTimeRunningNanos = 0;
+    int mFd = -1;
+    bool mHasError = false;
+
+};
+ANKERL_NANOBENCH(IGNORE_PADDED_POP)
+
+RiscvPerformanceCounters::~RiscvPerformanceCounters() {
+    if (-1 != mFd) {
+        close(mFd);
+    }
+}
+
+bool RiscvPerformanceCounters::monitor(uint32_t type, uint64_t eventid, Target target) {
+    *target.targetValue = (std::numeric_limits<uint64_t>::max)();
+    if (mHasError) {
+        return false;
+    }
+
+    uint64_t id = 0;
+
+    switch (eventid) {
+    // TODO: implement eventid handling
+        // case PERF_COUNT_HW_INSTRUCTIONS:    id = 0; break;
+        // case PERF_COUNT_HW_REF_CPU_CYCLES:  id = 1; break;
+        default: return false;
+    }
+
+    return true;
+}
+
+
+static inline unsigned long arch_cycle(void)
+{
+    unsigned long res;
+    asm ("csrr %0, cycle" : "=r"(res) :: "memory");
+    return res;
+}
+
+static inline unsigned long arch_instret(void)
+{
+    unsigned long res;
+    asm ("csrr %0, instret" : "=r"(res) :: "memory");
+    return res;
+}
+
+#endif
+
 #    if ANKERL_NANOBENCH(PERF_COUNTERS)
 
 ANKERL_NANOBENCH(IGNORE_PADDED_PUSH)
@@ -2610,10 +2710,23 @@ bool LinuxPerformanceCounters::monitor(uint32_t type, uint64_t eventid, Target t
 }
 
 PerformanceCounters::PerformanceCounters()
+#ifdef __riscv
+    : mPc(new RiscvPerformanceCounters())
+#else
     : mPc(new LinuxPerformanceCounters())
+#endif
     , mVal()
     , mHas() {
 
+#ifdef __riscv
+    mHas.cpuCycles = mPc->monitor(PERF_COUNT_HW_REF_CPU_CYCLES, LinuxPerformanceCounters::Target(&mVal.cpuCycles, true, false));
+    mHas.instructions = mPc->monitor(PERF_COUNT_HW_INSTRUCTIONS, LinuxPerformanceCounters::Target(&mVal.instructions, true, true));
+
+    mHas.pageFaults = false;
+    mHas.contextSwitches = false;
+    mHas.branchInstructions = false;
+    mHas.branchMisses = false;
+#else
     mHas.pageFaults = mPc->monitor(PERF_COUNT_SW_PAGE_FAULTS, LinuxPerformanceCounters::Target(&mVal.pageFaults, true, false));
     mHas.cpuCycles = mPc->monitor(PERF_COUNT_HW_REF_CPU_CYCLES, LinuxPerformanceCounters::Target(&mVal.cpuCycles, true, false));
     mHas.contextSwitches =
@@ -2623,6 +2736,7 @@ PerformanceCounters::PerformanceCounters()
         mPc->monitor(PERF_COUNT_HW_BRANCH_INSTRUCTIONS, LinuxPerformanceCounters::Target(&mVal.branchInstructions, true, false));
     mHas.branchMisses = mPc->monitor(PERF_COUNT_HW_BRANCH_MISSES, LinuxPerformanceCounters::Target(&mVal.branchMisses, true, false));
     // mHas.branchMisses = false;
+#endif
 
     mPc->start();
     mPc->calibrate([] {
