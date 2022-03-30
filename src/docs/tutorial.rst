@@ -210,8 +210,10 @@ The results are  more stable, with only 0.7% error.
 
 Comparing Results
 =================
+To compare results, keep the `ankerl::nanobench::Bench` object around, enable `.relative(true)`, and `.run(...)` your benchmarks. All benchmarks will be automatically compared to the first one.
 
-I have implemented a comparison of multiple random number generators.
+
+As an example, I have implemented a comparison of multiple random number generators.
 Here several RNGs are compared to a baseline calculated from `std::default_random_engine`.
 I factored out the general benchmarking code so it's easy to use for each of the random number generators:
 
