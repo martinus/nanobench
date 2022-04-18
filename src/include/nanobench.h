@@ -7,7 +7,7 @@
 //
 // Licensed under the MIT License <http://opensource.org/licenses/MIT>.
 // SPDX-License-Identifier: MIT
-// Copyright (c) 2019-2021 Martin Ankerl <martin.ankerl@gmail.com>
+// Copyright (c) 2019-2022 Martin Ankerl <martin.ankerl@gmail.com>
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -33,7 +33,7 @@
 // see https://semver.org/
 #define ANKERL_NANOBENCH_VERSION_MAJOR 4 // incompatible API changes
 #define ANKERL_NANOBENCH_VERSION_MINOR 3 // backwards-compatible changes
-#define ANKERL_NANOBENCH_VERSION_PATCH 6 // backwards-compatible bug fixes
+#define ANKERL_NANOBENCH_VERSION_PATCH 7 // backwards-compatible bug fixes
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 // public facing api - as minimal as possible
@@ -167,7 +167,7 @@ class BigO;
  *    * `{{maxEpochTime}}` Configuration for a maximum time each measurement (epoch) is allowed to take. Note that at least
  *      a single iteration will be performed, even when that takes longer than maxEpochTime. See Bench::maxEpochTime().
  *
- *    * `{{minEpochTime}}` Minimum epoch time, usually not set. See Bench::minEpochTime().
+ *    * `{{minEpochTime}}` Minimum epoch time, defaults to 1ms. See Bench::minEpochTime().
  *
  *    * `{{minEpochIterations}}` See Bench::minEpochIterations().
  *
@@ -386,7 +386,7 @@ struct Config {
     size_t mNumEpochs = 11;
     size_t mClockResolutionMultiple = static_cast<size_t>(1000);
     std::chrono::nanoseconds mMaxEpochTime = std::chrono::milliseconds(100);
-    std::chrono::nanoseconds mMinEpochTime{};
+    std::chrono::nanoseconds mMinEpochTime = std::chrono::milliseconds(1);
     uint64_t mMinEpochIterations{1};
     uint64_t mEpochIterations{0}; // If not 0, run *exactly* these number of iterations per epoch.
     uint64_t mWarmup = 0;

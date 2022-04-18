@@ -33,7 +33,7 @@
             <img src="_static/nanobench-logo.svg" class="logo" alt="Logo"/>
           </a>
               <div class="version">
-                v4.3.6
+                v4.3.7
               </div>
 <div role="search">
   <form id="rtd-search-form" class="wy-form" action="search.html" method="get">
@@ -330,7 +330,7 @@ this has a small overhead.</p>
 <span id="_CPPv3N6ankerl9nanobench5Bench6epochsE6size_t"></span><span id="_CPPv2N6ankerl9nanobench5Bench6epochsE6size_t"></span><span id="ankerl::nanobench::Bench::epochs__s"></span><span class="target" id="classankerl_1_1nanobench_1_1Bench_1a5795648d6235b578ca71ce38b787ec81"></span><a class="reference internal" href="#_CPPv4N6ankerl9nanobench5BenchE" title="ankerl::nanobench::Bench"><span class="n"><span class="pre">Bench</span></span></a><span class="w"> </span><span class="p"><span class="pre">&amp;</span></span><span class="sig-name descname"><span class="n"><span class="pre">epochs</span></span></span><span class="sig-paren">(</span><span class="n"><span class="pre">size_t</span></span><span class="w"> </span><span class="n sig-param"><span class="pre">numEpochs</span></span><span class="sig-paren">)</span><span class="w"> </span><span class="k"><span class="pre">noexcept</span></span><a class="headerlink" href="#_CPPv4N6ankerl9nanobench5Bench6epochsE6size_t" title="Permalink to this definition"></a><br /></dt>
 <dd><p>Controls number of epochs, the number of measurements to perform. </p>
 <p>The reported result will be the median of evaluation of each epoch. The higher you choose this, the more deterministic the result be and outliers will be more easily removed. Also the <code class="docutils literal notranslate"><span class="pre">err%</span></code> will be more accurate the higher this number is. Note that the <code class="docutils literal notranslate"><span class="pre">err%</span></code> will not necessarily decrease when number of epochs is increased. But it will be a more accurate representation of the benchmarked code’s runtime stability.</p>
-<p>Choose the value wisely. In practice, 11 has been shown to be a reasonable choice between runtime performance and accuracy. This setting goes hand in hand with minEpocIterations() (or <a class="reference internal" href="#classankerl_1_1nanobench_1_1Bench_1a15fc41385e77877d7568797fbadba5f9"><span class="std std-ref">minEpochTime()</span></a>). If you are more interested in <em>median</em> runtime, you might want to increase <a class="reference internal" href="#classankerl_1_1nanobench_1_1Bench_1a5795648d6235b578ca71ce38b787ec81"><span class="std std-ref">epochs()</span></a>. If you are more interested in <em>mean</em> runtime, you might want to increase <a class="reference internal" href="#classankerl_1_1nanobench_1_1Bench_1a58417b962f49acec5e323e8e736109a6"><span class="std std-ref">minEpochIterations()</span></a> instead.</p>
+<p>Choose the value wisely. In practice, 11 has been shown to be a reasonable choice between runtime performance and accuracy. This setting goes hand in hand with <a class="reference internal" href="#classankerl_1_1nanobench_1_1Bench_1a58417b962f49acec5e323e8e736109a6"><span class="std std-ref">minEpochIterations()</span></a> (or <a class="reference internal" href="#classankerl_1_1nanobench_1_1Bench_1a15fc41385e77877d7568797fbadba5f9"><span class="std std-ref">minEpochTime()</span></a>). If you are more interested in <em>median</em> runtime, you might want to increase <a class="reference internal" href="#classankerl_1_1nanobench_1_1Bench_1a5795648d6235b578ca71ce38b787ec81"><span class="std std-ref">epochs()</span></a>. If you are more interested in <em>mean</em> runtime, you might want to increase <a class="reference internal" href="#classankerl_1_1nanobench_1_1Bench_1a58417b962f49acec5e323e8e736109a6"><span class="std std-ref">minEpochIterations()</span></a> instead.</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters</dt>
 <dd class="field-odd"><p><strong>numEpochs</strong> – Number of epochs. </p>
@@ -343,10 +343,10 @@ this has a small overhead.</p>
 <span id="_CPPv3N6ankerl9nanobench5Bench12maxEpochTimeENSt6chrono11nanosecondsE"></span><span id="_CPPv2N6ankerl9nanobench5Bench12maxEpochTimeENSt6chrono11nanosecondsE"></span><span id="ankerl::nanobench::Bench::maxEpochTime__std::chrono::nanoseconds"></span><span class="target" id="classankerl_1_1nanobench_1_1Bench_1aef7bbd7a1f059dda0e03ed47748b8f13"></span><a class="reference internal" href="#_CPPv4N6ankerl9nanobench5BenchE" title="ankerl::nanobench::Bench"><span class="n"><span class="pre">Bench</span></span></a><span class="w"> </span><span class="p"><span class="pre">&amp;</span></span><span class="sig-name descname"><span class="n"><span class="pre">maxEpochTime</span></span></span><span class="sig-paren">(</span><span class="n"><span class="pre">std</span></span><span class="p"><span class="pre">::</span></span><span class="n"><span class="pre">chrono</span></span><span class="p"><span class="pre">::</span></span><span class="n"><span class="pre">nanoseconds</span></span><span class="w"> </span><span class="n sig-param"><span class="pre">t</span></span><span class="sig-paren">)</span><span class="w"> </span><span class="k"><span class="pre">noexcept</span></span><a class="headerlink" href="#_CPPv4N6ankerl9nanobench5Bench12maxEpochTimeENSt6chrono11nanosecondsE" title="Permalink to this definition"></a><br /></dt>
 <dd><p>Upper limit for the runtime of each epoch. </p>
 <p>As a safety precausion if the clock is not very accurate, we can set an upper limit for the maximum evaluation time per epoch. Default is 100ms. At least a single evaluation of the benchmark is performed.</p>
-<p><dl class="simple">
-<dt><strong>See</strong></dt><dd><p><a class="reference internal" href="#classankerl_1_1nanobench_1_1Bench_1a15fc41385e77877d7568797fbadba5f9"><span class="std std-ref">minEpochTime()</span></a>, <a class="reference internal" href="#classankerl_1_1nanobench_1_1Bench_1a58417b962f49acec5e323e8e736109a6"><span class="std std-ref">minEpochIterations()</span></a></p>
-</dd>
-</dl>
+<p><div class="admonition seealso">
+<p class="admonition-title">See also</p>
+<p><a class="reference internal" href="#classankerl_1_1nanobench_1_1Bench_1a15fc41385e77877d7568797fbadba5f9"><span class="std std-ref">minEpochTime()</span></a>, <a class="reference internal" href="#classankerl_1_1nanobench_1_1Bench_1a58417b962f49acec5e323e8e736109a6"><span class="std std-ref">minEpochIterations()</span></a></p>
+</div>
 </p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters</dt>
@@ -360,10 +360,10 @@ this has a small overhead.</p>
 <span id="_CPPv3N6ankerl9nanobench5Bench12minEpochTimeENSt6chrono11nanosecondsE"></span><span id="_CPPv2N6ankerl9nanobench5Bench12minEpochTimeENSt6chrono11nanosecondsE"></span><span id="ankerl::nanobench::Bench::minEpochTime__std::chrono::nanoseconds"></span><span class="target" id="classankerl_1_1nanobench_1_1Bench_1a15fc41385e77877d7568797fbadba5f9"></span><a class="reference internal" href="#_CPPv4N6ankerl9nanobench5BenchE" title="ankerl::nanobench::Bench"><span class="n"><span class="pre">Bench</span></span></a><span class="w"> </span><span class="p"><span class="pre">&amp;</span></span><span class="sig-name descname"><span class="n"><span class="pre">minEpochTime</span></span></span><span class="sig-paren">(</span><span class="n"><span class="pre">std</span></span><span class="p"><span class="pre">::</span></span><span class="n"><span class="pre">chrono</span></span><span class="p"><span class="pre">::</span></span><span class="n"><span class="pre">nanoseconds</span></span><span class="w"> </span><span class="n sig-param"><span class="pre">t</span></span><span class="sig-paren">)</span><span class="w"> </span><span class="k"><span class="pre">noexcept</span></span><a class="headerlink" href="#_CPPv4N6ankerl9nanobench5Bench12minEpochTimeENSt6chrono11nanosecondsE" title="Permalink to this definition"></a><br /></dt>
 <dd><p>Minimum time each epoch should take. </p>
 <p>Default is zero, so we are fully relying on <a class="reference internal" href="#classankerl_1_1nanobench_1_1Bench_1a13097e497dac40f467b42b2f54b8bb43"><span class="std std-ref">clockResolutionMultiple()</span></a>. In most cases this is exactly what you want. If you see that the evaluation is unreliable with a high <code class="docutils literal notranslate"><span class="pre">err%</span></code>, you can increase either <a class="reference internal" href="#classankerl_1_1nanobench_1_1Bench_1a15fc41385e77877d7568797fbadba5f9"><span class="std std-ref">minEpochTime()</span></a> or <a class="reference internal" href="#classankerl_1_1nanobench_1_1Bench_1a58417b962f49acec5e323e8e736109a6"><span class="std std-ref">minEpochIterations()</span></a>.</p>
-<p><dl class="simple">
-<dt><strong>See</strong></dt><dd><p><a class="reference internal" href="#classankerl_1_1nanobench_1_1Bench_1aef7bbd7a1f059dda0e03ed47748b8f13"><span class="std std-ref">maxEpochTime()</span></a>, <a class="reference internal" href="#classankerl_1_1nanobench_1_1Bench_1a58417b962f49acec5e323e8e736109a6"><span class="std std-ref">minEpochIterations()</span></a></p>
-</dd>
-</dl>
+<p><div class="admonition seealso">
+<p class="admonition-title">See also</p>
+<p><a class="reference internal" href="#classankerl_1_1nanobench_1_1Bench_1aef7bbd7a1f059dda0e03ed47748b8f13"><span class="std std-ref">maxEpochTime()</span></a>, <a class="reference internal" href="#classankerl_1_1nanobench_1_1Bench_1a58417b962f49acec5e323e8e736109a6"><span class="std std-ref">minEpochIterations()</span></a></p>
+</div>
 </p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters</dt>
@@ -377,10 +377,10 @@ this has a small overhead.</p>
 <span id="_CPPv3N6ankerl9nanobench5Bench18minEpochIterationsE8uint64_t"></span><span id="_CPPv2N6ankerl9nanobench5Bench18minEpochIterationsE8uint64_t"></span><span id="ankerl::nanobench::Bench::minEpochIterations__uint64_t"></span><span class="target" id="classankerl_1_1nanobench_1_1Bench_1a58417b962f49acec5e323e8e736109a6"></span><a class="reference internal" href="#_CPPv4N6ankerl9nanobench5BenchE" title="ankerl::nanobench::Bench"><span class="n"><span class="pre">Bench</span></span></a><span class="w"> </span><span class="p"><span class="pre">&amp;</span></span><span class="sig-name descname"><span class="n"><span class="pre">minEpochIterations</span></span></span><span class="sig-paren">(</span><span class="n"><span class="pre">uint64_t</span></span><span class="w"> </span><span class="n sig-param"><span class="pre">numIters</span></span><span class="sig-paren">)</span><span class="w"> </span><span class="k"><span class="pre">noexcept</span></span><a class="headerlink" href="#_CPPv4N6ankerl9nanobench5Bench18minEpochIterationsE8uint64_t" title="Permalink to this definition"></a><br /></dt>
 <dd><p>Sets the minimum number of iterations each epoch should take. </p>
 <p>Default is 1, and we rely on <a class="reference internal" href="#classankerl_1_1nanobench_1_1Bench_1a13097e497dac40f467b42b2f54b8bb43"><span class="std std-ref">clockResolutionMultiple()</span></a>. If the <code class="docutils literal notranslate"><span class="pre">err%</span></code> is high and you want a more smooth result, you might want to increase the minimum number or iterations, or increase the <a class="reference internal" href="#classankerl_1_1nanobench_1_1Bench_1a15fc41385e77877d7568797fbadba5f9"><span class="std std-ref">minEpochTime()</span></a>.</p>
-<p><dl class="simple">
-<dt><strong>See</strong></dt><dd><p><a class="reference internal" href="#classankerl_1_1nanobench_1_1Bench_1a15fc41385e77877d7568797fbadba5f9"><span class="std std-ref">minEpochTime()</span></a>, <a class="reference internal" href="#classankerl_1_1nanobench_1_1Bench_1aef7bbd7a1f059dda0e03ed47748b8f13"><span class="std std-ref">maxEpochTime()</span></a>, <a class="reference internal" href="#classankerl_1_1nanobench_1_1Bench_1a58417b962f49acec5e323e8e736109a6"><span class="std std-ref">minEpochIterations()</span></a></p>
-</dd>
-</dl>
+<p><div class="admonition seealso">
+<p class="admonition-title">See also</p>
+<p><a class="reference internal" href="#classankerl_1_1nanobench_1_1Bench_1a15fc41385e77877d7568797fbadba5f9"><span class="std std-ref">minEpochTime()</span></a>, <a class="reference internal" href="#classankerl_1_1nanobench_1_1Bench_1aef7bbd7a1f059dda0e03ed47748b8f13"><span class="std std-ref">maxEpochTime()</span></a>, <a class="reference internal" href="#classankerl_1_1nanobench_1_1Bench_1a58417b962f49acec5e323e8e736109a6"><span class="std std-ref">minEpochIterations()</span></a></p>
+</div>
 </p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters</dt>
@@ -450,7 +450,7 @@ this has a small overhead.</p>
 <dt class="sig sig-object cpp" id="_CPPv4NK6ankerl9nanobench5Bench7resultsEv">
 <span id="_CPPv3NK6ankerl9nanobench5Bench7resultsEv"></span><span id="_CPPv2NK6ankerl9nanobench5Bench7resultsEv"></span><span id="ankerl::nanobench::Bench::resultsC"></span><span class="target" id="classankerl_1_1nanobench_1_1Bench_1a266c3d2e260c20703c37d344b34b689f"></span><span class="n"><span class="pre">std</span></span><span class="p"><span class="pre">::</span></span><span class="n"><span class="pre">vector</span></span><span class="p"><span class="pre">&lt;</span></span><a class="reference internal" href="#_CPPv4N6ankerl9nanobench6ResultE" title="ankerl::nanobench::Result"><span class="n"><span class="pre">Result</span></span></a><span class="p"><span class="pre">&gt;</span></span><span class="w"> </span><span class="k"><span class="pre">const</span></span><span class="w"> </span><span class="p"><span class="pre">&amp;</span></span><span class="sig-name descname"><span class="n"><span class="pre">results</span></span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><span class="w"> </span><span class="k"><span class="pre">const</span></span><span class="w"> </span><span class="k"><span class="pre">noexcept</span></span><a class="headerlink" href="#_CPPv4NK6ankerl9nanobench5Bench7resultsEv" title="Permalink to this definition"></a><br /></dt>
 <dd><p>Retrieves all benchmark results collected by the bench object so far. </p>
-<p>Each call to <a class="reference internal" href="#classankerl_1_1nanobench_1_1Bench_1a396e218813c7eeb20a58adad9bbd85f7"><span class="std std-ref">run()</span></a> generates a <a class="reference internal" href="#classankerl_1_1nanobench_1_1Result"><span class="std std-ref">Result</span></a> that is stored within the <a class="reference internal" href="#classankerl_1_1nanobench_1_1Bench"><span class="std std-ref">Bench</span></a> instance. This is mostly for advanced users who want to see all the nitty gritty detials.</p>
+<p>Each call to <a class="reference internal" href="#classankerl_1_1nanobench_1_1Bench_1a396e218813c7eeb20a58adad9bbd85f7"><span class="std std-ref">run()</span></a> generates a <a class="reference internal" href="#classankerl_1_1nanobench_1_1Result"><span class="std std-ref">Result</span></a> that is stored within the <a class="reference internal" href="#classankerl_1_1nanobench_1_1Bench"><span class="std std-ref">Bench</span></a> instance. This is mostly for advanced users who want to see all the nitty gritty details.</p>
 <dl class="field-list simple">
 <dt class="field-odd">Returns</dt>
 <dd class="field-odd"><p>All results collected so far. </p>
@@ -521,7 +521,7 @@ this has a small overhead.</p>
 </div>
 </p>
 <p>The resulting mean squared error can be printed with <code class="docutils literal notranslate"><span class="pre">std::cout</span> <span class="pre">&lt;&lt;</span> <span class="pre">logLogN</span></code>. E.g. it prints something like this:</p>
-<p><div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="mf">2.46985e-05</span> <span class="o">*</span> <span class="n">O</span><span class="p">(</span><span class="n">log</span> <span class="n">log</span> <span class="n">n</span><span class="p">),</span> <span class="n">rms</span><span class="o">=</span><span class="mf">1.48121</span>
+<p><div class="highlight-text notranslate"><div class="highlight"><pre><span></span>2.46985e-05 * O(log log n), rms=1.48121
 </pre></div>
 </div>
 </p>
@@ -728,7 +728,7 @@ generator becomes available, I will switch the implementation.</p>
 <li><p><code class="docutils literal notranslate"><span class="pre">{{clockResolution}}</span></code> Accuracy of the clock, i.e. what’s the smallest time possible to measure with the clock. For modern systems, this can be around 20 ns. This value is automatically determined by nanobench at the first benchmark that is run, and used as a static variable throughout the application’s runtime.</p></li>
 <li><p><code class="docutils literal notranslate"><span class="pre">{{clockResolutionMultiple}}</span></code> Configuration multiplier for <code class="docutils literal notranslate"><span class="pre">clockResolution</span></code>. See <a class="reference internal" href="#classankerl_1_1nanobench_1_1Bench_1a13097e497dac40f467b42b2f54b8bb43"><span class="std std-ref">Bench::clockResolutionMultiple()</span></a>. This is the target runtime for each measurement (epoch). That means the more accurate your clock is, the faster will be the benchmark. Basing the measurement’s runtime on the clock resolution is the main reason why nanobench is so fast.</p></li>
 <li><p><code class="docutils literal notranslate"><span class="pre">{{maxEpochTime}}</span></code> Configuration for a maximum time each measurement (epoch) is allowed to take. Note that at least a single iteration will be performed, even when that takes longer than maxEpochTime. See <a class="reference internal" href="#classankerl_1_1nanobench_1_1Bench_1aef7bbd7a1f059dda0e03ed47748b8f13"><span class="std std-ref">Bench::maxEpochTime()</span></a>.</p></li>
-<li><p><code class="docutils literal notranslate"><span class="pre">{{minEpochTime}}</span></code> Minimum epoch time, usually not set. See <a class="reference internal" href="#classankerl_1_1nanobench_1_1Bench_1a15fc41385e77877d7568797fbadba5f9"><span class="std std-ref">Bench::minEpochTime()</span></a>.</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">{{minEpochTime}}</span></code> Minimum epoch time, defaults to 1ms. See <a class="reference internal" href="#classankerl_1_1nanobench_1_1Bench_1a15fc41385e77877d7568797fbadba5f9"><span class="std std-ref">Bench::minEpochTime()</span></a>.</p></li>
 <li><p><code class="docutils literal notranslate"><span class="pre">{{minEpochIterations}}</span></code> See <a class="reference internal" href="#classankerl_1_1nanobench_1_1Bench_1a58417b962f49acec5e323e8e736109a6"><span class="std std-ref">Bench::minEpochIterations()</span></a>.</p></li>
 <li><p><code class="docutils literal notranslate"><span class="pre">{{epochIterations}}</span></code> See <a class="reference internal" href="#classankerl_1_1nanobench_1_1Bench_1afb83c3694a8f494c19d3114162fc9ebb"><span class="std std-ref">Bench::epochIterations()</span></a>.</p></li>
 <li><p><code class="docutils literal notranslate"><span class="pre">{{warmup}}</span></code> Number of iterations used before measuring starts. See <a class="reference internal" href="#classankerl_1_1nanobench_1_1Bench_1a09d1947386503bddf1d34fe7d0338e98"><span class="std std-ref">Bench::warmup()</span></a>.</p></li>
@@ -817,10 +817,10 @@ generator becomes available, I will switch the implementation.</p>
 <dd><p>HTML output that uses plotly to generate an interactive boxplot chart. See the tutorial for an example output. </p>
 <p>The output uses only the elapsed wall clock time, and displays each epoch as a single dot. <p>See the tutorial at <a class="reference internal" href="tutorial.html#tutorial-template-html"><span class="std std-ref">HTML Box Plots</span></a> for an example.</p>
 </p>
-<p><dl class="simple">
-<dt><strong>See</strong></dt><dd><p>ankerl::nanobench::render() </p>
-</dd>
-</dl>
+<p><div class="admonition seealso">
+<p class="admonition-title">See also</p>
+<p>ankerl::nanobench::render() </p>
+</div>
 </p>
 </dd></dl>
 
@@ -841,7 +841,7 @@ generator becomes available, I will switch the implementation.</p>
 <dl class="cpp function">
 <dt class="sig sig-object cpp" id="_CPPv4N6ankerl9nanobench9templates6pyperfEv">
 <span id="_CPPv3N6ankerl9nanobench9templates6pyperfEv"></span><span id="_CPPv2N6ankerl9nanobench9templates6pyperfEv"></span><span id="ankerl::nanobench::templates::pyperf"></span><span class="target" id="nanobench_8h_1a610d41405f43dc2d7eb2a687de297185"></span><span class="kt"><span class="pre">char</span></span><span class="w"> </span><span class="k"><span class="pre">const</span></span><span class="w"> </span><span class="p"><span class="pre">*</span></span><span class="sig-prename descclassname"><span class="n"><span class="pre">ankerl</span></span><span class="p"><span class="pre">::</span></span><span class="n"><span class="pre">nanobench</span></span><span class="p"><span class="pre">::</span></span><span class="n"><span class="pre">templates</span></span><span class="p"><span class="pre">::</span></span></span><span class="sig-name descname"><span class="n"><span class="pre">pyperf</span></span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><span class="w"> </span><span class="k"><span class="pre">noexcept</span></span><a class="headerlink" href="#_CPPv4N6ankerl9nanobench9templates6pyperfEv" title="Permalink to this definition"></a><br /></dt>
-<dd><p>Output in pyperf compatible JSON format, which can be used for more analyzations. </p>
+<dd><p>Output in pyperf compatible JSON format, which can be used for more analyzation. </p>
 <p><p>See the tutorial at <a class="reference internal" href="tutorial.html#tutorial-template-pyperf"><span class="std std-ref">pyperf - Python pyperf module Output</span></a> for an example how to further analyze the output.</p>
  </p>
 </dd></dl>
@@ -895,7 +895,7 @@ and the <code class="docutils literal notranslate"><span class="pre">:wavy_dash:
   <hr/>
 
   <div role="contentinfo">
-    <p>&#169; Copyright 2019-2021 Martin Ankerl &lt;martin.ankerl@gmail.com&gt;.</p>
+    <p>&#169; Copyright 2019-2022 Martin Ankerl &lt;martin.ankerl@gmail.com&gt;.</p>
   </div>
 
   Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a

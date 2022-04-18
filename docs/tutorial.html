@@ -33,7 +33,7 @@
             <img src="_static/nanobench-logo.svg" class="logo" alt="Logo"/>
           </a>
               <div class="version">
-                v4.3.6
+                v4.3.7
               </div>
 <div role="search">
   <form id="rtd-search-form" class="wy-form" action="search.html" method="get">
@@ -211,26 +211,26 @@ the bulk of nanobench, and took 2.4 seconds on my machine. It needs to be compil
 a <a class="reference external" href="https://git-scm.com/book/en/v2/Git-Tools-Submodules">git submodule</a>. Here is a full example how to this can be done:</p>
 <div class="literal-block-wrapper docutils container" id="id3">
 <div class="code-block-caption"><span class="caption-text">CMakeLists.txt</span><a class="headerlink" href="#id3" title="Permalink to this code"></a></div>
-<div class="highlight-CMake notranslate"><div class="highlight"><pre><span></span><span class="linenos"> 1</span><span class="nb">cmake_minimum_required</span><span class="p">(</span><span class="s">VERSION</span> <span class="s">3.14</span><span class="p">)</span>
-<span class="linenos"> 2</span><span class="nb">set</span><span class="p">(</span><span class="s">CMAKE_CXX_STANDARD</span> <span class="s">17</span><span class="p">)</span>
+<div class="highlight-CMake notranslate"><div class="highlight"><pre><span></span><span class="linenos"> 1</span><span class="nb">cmake_minimum_required</span><span class="p">(</span><span class="s">VERSION</span><span class="w"> </span><span class="s">3.14</span><span class="p">)</span>
+<span class="linenos"> 2</span><span class="nb">set</span><span class="p">(</span><span class="s">CMAKE_CXX_STANDARD</span><span class="w"> </span><span class="s">17</span><span class="p">)</span>
 <span class="linenos"> 3</span>
 <span class="linenos"> 4</span><span class="nb">project</span><span class="p">(</span>
-<span class="linenos"> 5</span>    <span class="s">CMakeNanobenchExample</span>
-<span class="linenos"> 6</span>    <span class="s">VERSION</span> <span class="s">1.0</span>
-<span class="linenos"> 7</span>    <span class="s">LANGUAGES</span> <span class="s">CXX</span><span class="p">)</span>
+<span class="linenos"> 5</span><span class="w">    </span><span class="s">CMakeNanobenchExample</span>
+<span class="linenos"> 6</span><span class="w">    </span><span class="s">VERSION</span><span class="w"> </span><span class="s">1.0</span>
+<span class="linenos"> 7</span><span class="w">    </span><span class="s">LANGUAGES</span><span class="w"> </span><span class="s">CXX</span><span class="p">)</span>
 <span class="linenos"> 8</span>
 <span class="linenos"> 9</span><span class="nb">include</span><span class="p">(</span><span class="s">FetchContent</span><span class="p">)</span>
 <span class="linenos">10</span>
 <span class="linenos">11</span><span class="nb">FetchContent_Declare</span><span class="p">(</span>
-<span class="linenos">12</span>    <span class="s">nanobench</span>
-<span class="linenos">13</span>    <span class="s">GIT_REPOSITORY</span> <span class="s">https://github.com/martinus/nanobench.git</span>
-<span class="linenos">14</span>    <span class="s">GIT_TAG</span> <span class="s">v4.1.0</span>
-<span class="linenos">15</span>    <span class="s">GIT_SHALLOW</span> <span class="s">TRUE</span><span class="p">)</span>
+<span class="linenos">12</span><span class="w">    </span><span class="s">nanobench</span>
+<span class="linenos">13</span><span class="w">    </span><span class="s">GIT_REPOSITORY</span><span class="w"> </span><span class="s">https://github.com/martinus/nanobench.git</span>
+<span class="linenos">14</span><span class="w">    </span><span class="s">GIT_TAG</span><span class="w"> </span><span class="s">v4.1.0</span>
+<span class="linenos">15</span><span class="w">    </span><span class="s">GIT_SHALLOW</span><span class="w"> </span><span class="s">TRUE</span><span class="p">)</span>
 <span class="linenos">16</span>
 <span class="linenos">17</span><span class="nb">FetchContent_MakeAvailable</span><span class="p">(</span><span class="s">nanobench</span><span class="p">)</span>
 <span class="linenos">18</span>
-<span class="linenos">19</span><span class="nb">add_executable</span><span class="p">(</span><span class="s">MyExample</span> <span class="s">my_example.cpp</span><span class="p">)</span>
-<span class="linenos">20</span><span class="nb">target_link_libraries</span><span class="p">(</span><span class="s">MyExample</span> <span class="s">PRIVATE</span> <span class="s">nanobench</span><span class="p">)</span>
+<span class="linenos">19</span><span class="nb">add_executable</span><span class="p">(</span><span class="s">MyExample</span><span class="w"> </span><span class="s">my_example.cpp</span><span class="p">)</span>
+<span class="linenos">20</span><span class="nb">target_link_libraries</span><span class="p">(</span><span class="s">MyExample</span><span class="w"> </span><span class="s">PRIVATE</span><span class="w"> </span><span class="s">nanobench</span><span class="p">)</span>
 </pre></div>
 </div>
 </div>
@@ -495,7 +495,8 @@ randomly skip between 0-254 random numbers:</p>
 </section>
 <section id="comparing-results">
 <span id="tutorial-comparing-results"></span><h1>Comparing Results<a class="headerlink" href="#comparing-results" title="Permalink to this headline"></a></h1>
-<p>I have implemented a comparison of multiple random number generators.
+<p>To compare results, keep the <cite>ankerl::nanobench::Bench</cite> object around, enable <cite>.relative(true)</cite>, and <cite>.run(…)</cite> your benchmarks. All benchmarks will be automatically compared to the first one.</p>
+<p>As an example, I have implemented a comparison of multiple random number generators.
 Here several RNGs are compared to a baseline calculated from <cite>std::default_random_engine</cite>.
 I factored out the general benchmarking code so it’s easy to use for each of the random number generators:</p>
 <div class="literal-block-wrapper docutils container" id="id11">
@@ -512,7 +513,7 @@ I factored out the general benchmarking code so it’s easy to use for each of t
 <span class="linenos">10</span><span class="k">namespace</span><span class="w"> </span><span class="p">{</span><span class="w"></span>
 <span class="linenos">11</span>
 <span class="linenos">12</span><span class="c1">// Benchmarks how fast we can get 64bit random values from Rng.</span>
-<span class="linenos">13</span><span class="k">template</span><span class="w"> </span><span class="o">&lt;</span><span class="k">typename</span> <span class="nc">Rng</span><span class="o">&gt;</span><span class="w"></span>
+<span class="linenos">13</span><span class="k">template</span><span class="w"> </span><span class="o">&lt;</span><span class="k">typename</span><span class="w"> </span><span class="nc">Rng</span><span class="o">&gt;</span><span class="w"></span>
 <span class="linenos">14</span><span class="kt">void</span><span class="w"> </span><span class="n">bench</span><span class="p">(</span><span class="n">ankerl</span><span class="o">::</span><span class="n">nanobench</span><span class="o">::</span><span class="n">Bench</span><span class="o">*</span><span class="w"> </span><span class="n">bench</span><span class="p">,</span><span class="w"> </span><span class="kt">char</span><span class="w"> </span><span class="k">const</span><span class="o">*</span><span class="w"> </span><span class="n">name</span><span class="p">)</span><span class="w"> </span><span class="p">{</span><span class="w"></span>
 <span class="linenos">15</span><span class="w">    </span><span class="n">std</span><span class="o">::</span><span class="n">random_device</span><span class="w"> </span><span class="n">dev</span><span class="p">;</span><span class="w"></span>
 <span class="linenos">16</span><span class="w">    </span><span class="n">Rng</span><span class="w"> </span><span class="nf">rng</span><span class="p">(</span><span class="n">dev</span><span class="p">());</span><span class="w"></span>
@@ -613,7 +614,7 @@ benchmark with different complexity N, then nanobench can calculate the best fit
 <span class="linenos">15</span><span class="w">    </span><span class="n">std</span><span class="o">::</span><span class="n">set</span><span class="o">&lt;</span><span class="kt">uint64_t</span><span class="o">&gt;</span><span class="w"> </span><span class="n">set</span><span class="p">;</span><span class="w"></span>
 <span class="linenos">16</span>
 <span class="linenos">17</span><span class="w">    </span><span class="c1">// Running the benchmark multiple times, with different number of elements</span>
-<span class="linenos">18</span><span class="w">    </span><span class="k">for</span><span class="w"> </span><span class="p">(</span><span class="k">auto</span><span class="w"> </span><span class="nl">setSize</span> <span class="p">:</span><span class="w"></span>
+<span class="linenos">18</span><span class="w">    </span><span class="k">for</span><span class="w"> </span><span class="p">(</span><span class="k">auto</span><span class="w"> </span><span class="n">setSize</span><span class="w"> </span><span class="o">:</span><span class="w"></span>
 <span class="linenos">19</span><span class="w">         </span><span class="p">{</span><span class="mi">10U</span><span class="p">,</span><span class="w"> </span><span class="mi">20U</span><span class="p">,</span><span class="w"> </span><span class="mi">50U</span><span class="p">,</span><span class="w"> </span><span class="mi">100U</span><span class="p">,</span><span class="w"> </span><span class="mi">200U</span><span class="p">,</span><span class="w"> </span><span class="mi">500U</span><span class="p">,</span><span class="w"> </span><span class="mi">1000U</span><span class="p">,</span><span class="w"> </span><span class="mi">2000U</span><span class="p">,</span><span class="w"> </span><span class="mi">5000U</span><span class="p">,</span><span class="w"> </span><span class="mi">10000U</span><span class="p">})</span><span class="w"> </span><span class="p">{</span><span class="w"></span>
 <span class="linenos">20</span>
 <span class="linenos">21</span><span class="w">        </span><span class="c1">// fill up the set with random data</span>
@@ -913,284 +914,284 @@ and the boxplot itself shows median, percentiles, and outliers. You’ll might w
 </pre></div>
 </div>
 <p>This also gives the data from each separate <a class="reference internal" href="reference.html#_CPPv4N6ankerl9nanobench5Bench6epochsE6size_t" title="ankerl::nanobench::Bench::epochs"><code class="xref cpp cpp-func docutils literal notranslate"><span class="pre">ankerl::nanobench::Bench::epochs()</span></code></a>, not just the accumulated data as in the CSV template.</p>
-<div class="highlight-json notranslate"><div class="highlight"><pre><span></span><span class="linenos">  1</span><span class="p">{</span>
-<span class="linenos">  2</span>    <span class="nt">&quot;results&quot;</span><span class="p">:</span> <span class="p">[</span>
-<span class="linenos">  3</span>        <span class="p">{</span>
-<span class="linenos">  4</span>            <span class="nt">&quot;title&quot;</span><span class="p">:</span> <span class="s2">&quot;Benchmarking std::mt19937_64 and std::knuth_b&quot;</span><span class="p">,</span>
-<span class="linenos">  5</span>            <span class="nt">&quot;name&quot;</span><span class="p">:</span> <span class="s2">&quot;std::mt19937_64&quot;</span><span class="p">,</span>
-<span class="linenos">  6</span>            <span class="nt">&quot;unit&quot;</span><span class="p">:</span> <span class="s2">&quot;op&quot;</span><span class="p">,</span>
-<span class="linenos">  7</span>            <span class="nt">&quot;batch&quot;</span><span class="p">:</span> <span class="mi">1</span><span class="p">,</span>
-<span class="linenos">  8</span>            <span class="nt">&quot;complexityN&quot;</span><span class="p">:</span> <span class="mi">-1</span><span class="p">,</span>
-<span class="linenos">  9</span>            <span class="nt">&quot;epochs&quot;</span><span class="p">:</span> <span class="mi">11</span><span class="p">,</span>
-<span class="linenos"> 10</span>            <span class="nt">&quot;clockResolution&quot;</span><span class="p">:</span> <span class="mf">1.8e-08</span><span class="p">,</span>
-<span class="linenos"> 11</span>            <span class="nt">&quot;clockResolutionMultiple&quot;</span><span class="p">:</span> <span class="mi">1000</span><span class="p">,</span>
-<span class="linenos"> 12</span>            <span class="nt">&quot;maxEpochTime&quot;</span><span class="p">:</span> <span class="mf">0.1</span><span class="p">,</span>
-<span class="linenos"> 13</span>            <span class="nt">&quot;minEpochTime&quot;</span><span class="p">:</span> <span class="mi">0</span><span class="p">,</span>
-<span class="linenos"> 14</span>            <span class="nt">&quot;minEpochIterations&quot;</span><span class="p">:</span> <span class="mi">1</span><span class="p">,</span>
-<span class="linenos"> 15</span>            <span class="nt">&quot;warmup&quot;</span><span class="p">:</span> <span class="mi">0</span><span class="p">,</span>
-<span class="linenos"> 16</span>            <span class="nt">&quot;relative&quot;</span><span class="p">:</span> <span class="mi">0</span><span class="p">,</span>
-<span class="linenos"> 17</span>            <span class="nt">&quot;median(elapsed)&quot;</span><span class="p">:</span> <span class="mf">2.54441805225653e-08</span><span class="p">,</span>
-<span class="linenos"> 18</span>            <span class="nt">&quot;medianAbsolutePercentError(elapsed)&quot;</span><span class="p">:</span> <span class="mf">0.0236579384033733</span><span class="p">,</span>
-<span class="linenos"> 19</span>            <span class="nt">&quot;median(instructions)&quot;</span><span class="p">:</span> <span class="mf">125.989678899083</span><span class="p">,</span>
-<span class="linenos"> 20</span>            <span class="nt">&quot;medianAbsolutePercentError(instructions)&quot;</span><span class="p">:</span> <span class="mf">0.035125448044942</span><span class="p">,</span>
-<span class="linenos"> 21</span>            <span class="nt">&quot;median(cpucycles)&quot;</span><span class="p">:</span> <span class="mf">81.3479809976247</span><span class="p">,</span>
-<span class="linenos"> 22</span>            <span class="nt">&quot;median(contextswitches)&quot;</span><span class="p">:</span> <span class="mi">0</span><span class="p">,</span>
-<span class="linenos"> 23</span>            <span class="nt">&quot;median(pagefaults)&quot;</span><span class="p">:</span> <span class="mi">0</span><span class="p">,</span>
-<span class="linenos"> 24</span>            <span class="nt">&quot;median(branchinstructions)&quot;</span><span class="p">:</span> <span class="mf">16.7645714285714</span><span class="p">,</span>
-<span class="linenos"> 25</span>            <span class="nt">&quot;median(branchmisses)&quot;</span><span class="p">:</span> <span class="mf">0.564133016627078</span><span class="p">,</span>
-<span class="linenos"> 26</span>            <span class="nt">&quot;totalTime&quot;</span><span class="p">:</span> <span class="mf">0.000218811</span><span class="p">,</span>
-<span class="linenos"> 27</span>            <span class="nt">&quot;measurements&quot;</span><span class="p">:</span> <span class="p">[</span>
-<span class="linenos"> 28</span>                <span class="p">{</span>
-<span class="linenos"> 29</span>                    <span class="nt">&quot;iterations&quot;</span><span class="p">:</span> <span class="mi">875</span><span class="p">,</span>
-<span class="linenos"> 30</span>                    <span class="nt">&quot;elapsed&quot;</span><span class="p">:</span> <span class="mf">2.54708571428571e-08</span><span class="p">,</span>
-<span class="linenos"> 31</span>                    <span class="nt">&quot;pagefaults&quot;</span><span class="p">:</span> <span class="mi">0</span><span class="p">,</span>
-<span class="linenos"> 32</span>                    <span class="nt">&quot;cpucycles&quot;</span><span class="p">:</span> <span class="mf">81.472</span><span class="p">,</span>
-<span class="linenos"> 33</span>                    <span class="nt">&quot;contextswitches&quot;</span><span class="p">:</span> <span class="mi">0</span><span class="p">,</span>
-<span class="linenos"> 34</span>                    <span class="nt">&quot;instructions&quot;</span><span class="p">:</span> <span class="mf">125.885714285714</span><span class="p">,</span>
-<span class="linenos"> 35</span>                    <span class="nt">&quot;branchinstructions&quot;</span><span class="p">:</span> <span class="mf">16.7645714285714</span><span class="p">,</span>
-<span class="linenos"> 36</span>                    <span class="nt">&quot;branchmisses&quot;</span><span class="p">:</span> <span class="mf">0.574857142857143</span>
-<span class="linenos"> 37</span>                <span class="p">},</span>
-<span class="linenos"> 38</span>                <span class="p">{</span>
-<span class="linenos"> 39</span>                    <span class="nt">&quot;iterations&quot;</span><span class="p">:</span> <span class="mi">809</span><span class="p">,</span>
-<span class="linenos"> 40</span>                    <span class="nt">&quot;elapsed&quot;</span><span class="p">:</span> <span class="mf">2.58467243510507e-08</span><span class="p">,</span>
-<span class="linenos"> 41</span>                    <span class="nt">&quot;pagefaults&quot;</span><span class="p">:</span> <span class="mi">0</span><span class="p">,</span>
-<span class="linenos"> 42</span>                    <span class="nt">&quot;cpucycles&quot;</span><span class="p">:</span> <span class="mf">82.5290482076638</span><span class="p">,</span>
-<span class="linenos"> 43</span>                    <span class="nt">&quot;contextswitches&quot;</span><span class="p">:</span> <span class="mi">0</span><span class="p">,</span>
-<span class="linenos"> 44</span>                    <span class="nt">&quot;instructions&quot;</span><span class="p">:</span> <span class="mf">128.771322620519</span><span class="p">,</span>
-<span class="linenos"> 45</span>                    <span class="nt">&quot;branchinstructions&quot;</span><span class="p">:</span> <span class="mf">17.0296662546354</span><span class="p">,</span>
-<span class="linenos"> 46</span>                    <span class="nt">&quot;branchmisses&quot;</span><span class="p">:</span> <span class="mf">0.582200247218789</span>
-<span class="linenos"> 47</span>                <span class="p">},</span>
-<span class="linenos"> 48</span>                <span class="p">{</span>
-<span class="linenos"> 49</span>                    <span class="nt">&quot;iterations&quot;</span><span class="p">:</span> <span class="mi">737</span><span class="p">,</span>
-<span class="linenos"> 50</span>                    <span class="nt">&quot;elapsed&quot;</span><span class="p">:</span> <span class="mf">2.24097693351425e-08</span><span class="p">,</span>
-<span class="linenos"> 51</span>                    <span class="nt">&quot;pagefaults&quot;</span><span class="p">:</span> <span class="mi">0</span><span class="p">,</span>
-<span class="linenos"> 52</span>                    <span class="nt">&quot;cpucycles&quot;</span><span class="p">:</span> <span class="mf">71.6431478968792</span><span class="p">,</span>
-<span class="linenos"> 53</span>                    <span class="nt">&quot;contextswitches&quot;</span><span class="p">:</span> <span class="mi">0</span><span class="p">,</span>
-<span class="linenos"> 54</span>                    <span class="nt">&quot;instructions&quot;</span><span class="p">:</span> <span class="mf">118.374491180461</span><span class="p">,</span>
-<span class="linenos"> 55</span>                    <span class="nt">&quot;branchinstructions&quot;</span><span class="p">:</span> <span class="mf">15.9470827679783</span><span class="p">,</span>
-<span class="linenos"> 56</span>                    <span class="nt">&quot;branchmisses&quot;</span><span class="p">:</span> <span class="mf">0.417910447761194</span>
-<span class="linenos"> 57</span>                <span class="p">},</span>
-<span class="linenos"> 58</span>                <span class="p">{</span>
-<span class="linenos"> 59</span>                    <span class="nt">&quot;iterations&quot;</span><span class="p">:</span> <span class="mi">872</span><span class="p">,</span>
-<span class="linenos"> 60</span>                    <span class="nt">&quot;elapsed&quot;</span><span class="p">:</span> <span class="mf">2.53405963302752e-08</span><span class="p">,</span>
-<span class="linenos"> 61</span>                    <span class="nt">&quot;pagefaults&quot;</span><span class="p">:</span> <span class="mi">0</span><span class="p">,</span>
-<span class="linenos"> 62</span>                    <span class="nt">&quot;cpucycles&quot;</span><span class="p">:</span> <span class="mf">80.9896788990826</span><span class="p">,</span>
-<span class="linenos"> 63</span>                    <span class="nt">&quot;contextswitches&quot;</span><span class="p">:</span> <span class="mi">0</span><span class="p">,</span>
-<span class="linenos"> 64</span>                    <span class="nt">&quot;instructions&quot;</span><span class="p">:</span> <span class="mf">125.989678899083</span><span class="p">,</span>
-<span class="linenos"> 65</span>                    <span class="nt">&quot;branchinstructions&quot;</span><span class="p">:</span> <span class="mf">16.7580275229358</span><span class="p">,</span>
-<span class="linenos"> 66</span>                    <span class="nt">&quot;branchmisses&quot;</span><span class="p">:</span> <span class="mf">0.563073394495413</span>
-<span class="linenos"> 67</span>                <span class="p">},</span>
-<span class="linenos"> 68</span>                <span class="p">{</span>
-<span class="linenos"> 69</span>                    <span class="nt">&quot;iterations&quot;</span><span class="p">:</span> <span class="mi">834</span><span class="p">,</span>
-<span class="linenos"> 70</span>                    <span class="nt">&quot;elapsed&quot;</span><span class="p">:</span> <span class="mf">2.59256594724221e-08</span><span class="p">,</span>
-<span class="linenos"> 71</span>                    <span class="nt">&quot;pagefaults&quot;</span><span class="p">:</span> <span class="mi">0</span><span class="p">,</span>
-<span class="linenos"> 72</span>                    <span class="nt">&quot;cpucycles&quot;</span><span class="p">:</span> <span class="mf">82.7661870503597</span><span class="p">,</span>
-<span class="linenos"> 73</span>                    <span class="nt">&quot;contextswitches&quot;</span><span class="p">:</span> <span class="mi">0</span><span class="p">,</span>
-<span class="linenos"> 74</span>                    <span class="nt">&quot;instructions&quot;</span><span class="p">:</span> <span class="mf">127.635491606715</span><span class="p">,</span>
-<span class="linenos"> 75</span>                    <span class="nt">&quot;branchinstructions&quot;</span><span class="p">:</span> <span class="mf">16.9352517985612</span><span class="p">,</span>
-<span class="linenos"> 76</span>                    <span class="nt">&quot;branchmisses&quot;</span><span class="p">:</span> <span class="mf">0.575539568345324</span>
-<span class="linenos"> 77</span>                <span class="p">},</span>
-<span class="linenos"> 78</span>                <span class="p">{</span>
-<span class="linenos"> 79</span>                    <span class="nt">&quot;iterations&quot;</span><span class="p">:</span> <span class="mi">772</span><span class="p">,</span>
-<span class="linenos"> 80</span>                    <span class="nt">&quot;elapsed&quot;</span><span class="p">:</span> <span class="mf">2.25310880829016e-08</span><span class="p">,</span>
-<span class="linenos"> 81</span>                    <span class="nt">&quot;pagefaults&quot;</span><span class="p">:</span> <span class="mi">0</span><span class="p">,</span>
-<span class="linenos"> 82</span>                    <span class="nt">&quot;cpucycles&quot;</span><span class="p">:</span> <span class="mf">72.0129533678757</span><span class="p">,</span>
-<span class="linenos"> 83</span>                    <span class="nt">&quot;contextswitches&quot;</span><span class="p">:</span> <span class="mi">0</span><span class="p">,</span>
-<span class="linenos"> 84</span>                    <span class="nt">&quot;instructions&quot;</span><span class="p">:</span> <span class="mf">117.108808290155</span><span class="p">,</span>
-<span class="linenos"> 85</span>                    <span class="nt">&quot;branchinstructions&quot;</span><span class="p">:</span> <span class="mf">15.8341968911917</span><span class="p">,</span>
-<span class="linenos"> 86</span>                    <span class="nt">&quot;branchmisses&quot;</span><span class="p">:</span> <span class="mf">0.405440414507772</span>
-<span class="linenos"> 87</span>                <span class="p">},</span>
-<span class="linenos"> 88</span>                <span class="p">{</span>
-<span class="linenos"> 89</span>                    <span class="nt">&quot;iterations&quot;</span><span class="p">:</span> <span class="mi">842</span><span class="p">,</span>
-<span class="linenos"> 90</span>                    <span class="nt">&quot;elapsed&quot;</span><span class="p">:</span> <span class="mf">2.54441805225653e-08</span><span class="p">,</span>
-<span class="linenos"> 91</span>                    <span class="nt">&quot;pagefaults&quot;</span><span class="p">:</span> <span class="mi">0</span><span class="p">,</span>
-<span class="linenos"> 92</span>                    <span class="nt">&quot;cpucycles&quot;</span><span class="p">:</span> <span class="mf">81.3479809976247</span><span class="p">,</span>
-<span class="linenos"> 93</span>                    <span class="nt">&quot;contextswitches&quot;</span><span class="p">:</span> <span class="mi">0</span><span class="p">,</span>
-<span class="linenos"> 94</span>                    <span class="nt">&quot;instructions&quot;</span><span class="p">:</span> <span class="mf">127.266033254157</span><span class="p">,</span>
-<span class="linenos"> 95</span>                    <span class="nt">&quot;branchinstructions&quot;</span><span class="p">:</span> <span class="mf">16.8859857482185</span><span class="p">,</span>
-<span class="linenos"> 96</span>                    <span class="nt">&quot;branchmisses&quot;</span><span class="p">:</span> <span class="mf">0.564133016627078</span>
-<span class="linenos"> 97</span>                <span class="p">},</span>
-<span class="linenos"> 98</span>                <span class="p">{</span>
-<span class="linenos"> 99</span>                    <span class="nt">&quot;iterations&quot;</span><span class="p">:</span> <span class="mi">792</span><span class="p">,</span>
-<span class="linenos">100</span>                    <span class="nt">&quot;elapsed&quot;</span><span class="p">:</span> <span class="mf">2.20126262626263e-08</span><span class="p">,</span>
-<span class="linenos">101</span>                    <span class="nt">&quot;pagefaults&quot;</span><span class="p">:</span> <span class="mi">0</span><span class="p">,</span>
-<span class="linenos">102</span>                    <span class="nt">&quot;cpucycles&quot;</span><span class="p">:</span> <span class="mf">70.3623737373737</span><span class="p">,</span>
-<span class="linenos">103</span>                    <span class="nt">&quot;contextswitches&quot;</span><span class="p">:</span> <span class="mi">0</span><span class="p">,</span>
-<span class="linenos">104</span>                    <span class="nt">&quot;instructions&quot;</span><span class="p">:</span> <span class="mf">116.420454545455</span><span class="p">,</span>
-<span class="linenos">105</span>                    <span class="nt">&quot;branchinstructions&quot;</span><span class="p">:</span> <span class="mf">15.7588383838384</span><span class="p">,</span>
-<span class="linenos">106</span>                    <span class="nt">&quot;branchmisses&quot;</span><span class="p">:</span> <span class="mf">0.396464646464646</span>
-<span class="linenos">107</span>                <span class="p">},</span>
-<span class="linenos">108</span>                <span class="p">{</span>
-<span class="linenos">109</span>                    <span class="nt">&quot;iterations&quot;</span><span class="p">:</span> <span class="mi">757</span><span class="p">,</span>
-<span class="linenos">110</span>                    <span class="nt">&quot;elapsed&quot;</span><span class="p">:</span> <span class="mf">2.63870541611625e-08</span><span class="p">,</span>
-<span class="linenos">111</span>                    <span class="nt">&quot;pagefaults&quot;</span><span class="p">:</span> <span class="mi">0</span><span class="p">,</span>
-<span class="linenos">112</span>                    <span class="nt">&quot;cpucycles&quot;</span><span class="p">:</span> <span class="mf">84.332892998679</span><span class="p">,</span>
-<span class="linenos">113</span>                    <span class="nt">&quot;contextswitches&quot;</span><span class="p">:</span> <span class="mi">0</span><span class="p">,</span>
-<span class="linenos">114</span>                    <span class="nt">&quot;instructions&quot;</span><span class="p">:</span> <span class="mf">131.462351387054</span><span class="p">,</span>
-<span class="linenos">115</span>                    <span class="nt">&quot;branchinstructions&quot;</span><span class="p">:</span> <span class="mf">17.334214002642</span><span class="p">,</span>
-<span class="linenos">116</span>                    <span class="nt">&quot;branchmisses&quot;</span><span class="p">:</span> <span class="mf">0.618229854689564</span>
-<span class="linenos">117</span>                <span class="p">},</span>
-<span class="linenos">118</span>                <span class="p">{</span>
-<span class="linenos">119</span>                    <span class="nt">&quot;iterations&quot;</span><span class="p">:</span> <span class="mi">850</span><span class="p">,</span>
-<span class="linenos">120</span>                    <span class="nt">&quot;elapsed&quot;</span><span class="p">:</span> <span class="mf">2.23305882352941e-08</span><span class="p">,</span>
-<span class="linenos">121</span>                    <span class="nt">&quot;pagefaults&quot;</span><span class="p">:</span> <span class="mi">0</span><span class="p">,</span>
-<span class="linenos">122</span>                    <span class="nt">&quot;cpucycles&quot;</span><span class="p">:</span> <span class="mf">71.3505882352941</span><span class="p">,</span>
-<span class="linenos">123</span>                    <span class="nt">&quot;contextswitches&quot;</span><span class="p">:</span> <span class="mi">0</span><span class="p">,</span>
-<span class="linenos">124</span>                    <span class="nt">&quot;instructions&quot;</span><span class="p">:</span> <span class="mf">114.629411764706</span><span class="p">,</span>
-<span class="linenos">125</span>                    <span class="nt">&quot;branchinstructions&quot;</span><span class="p">:</span> <span class="mf">15.5823529411765</span><span class="p">,</span>
-<span class="linenos">126</span>                    <span class="nt">&quot;branchmisses&quot;</span><span class="p">:</span> <span class="mf">0.392941176470588</span>
-<span class="linenos">127</span>                <span class="p">},</span>
-<span class="linenos">128</span>                <span class="p">{</span>
-<span class="linenos">129</span>                    <span class="nt">&quot;iterations&quot;</span><span class="p">:</span> <span class="mi">774</span><span class="p">,</span>
-<span class="linenos">130</span>                    <span class="nt">&quot;elapsed&quot;</span><span class="p">:</span> <span class="mf">2.60607235142119e-08</span><span class="p">,</span>
-<span class="linenos">131</span>                    <span class="nt">&quot;pagefaults&quot;</span><span class="p">:</span> <span class="mi">0</span><span class="p">,</span>
-<span class="linenos">132</span>                    <span class="nt">&quot;cpucycles&quot;</span><span class="p">:</span> <span class="mf">83.1679586563308</span><span class="p">,</span>
-<span class="linenos">133</span>                    <span class="nt">&quot;contextswitches&quot;</span><span class="p">:</span> <span class="mi">0</span><span class="p">,</span>
-<span class="linenos">134</span>                    <span class="nt">&quot;instructions&quot;</span><span class="p">:</span> <span class="mf">130.576227390181</span><span class="p">,</span>
-<span class="linenos">135</span>                    <span class="nt">&quot;branchinstructions&quot;</span><span class="p">:</span> <span class="mf">17.2635658914729</span><span class="p">,</span>
-<span class="linenos">136</span>                    <span class="nt">&quot;branchmisses&quot;</span><span class="p">:</span> <span class="mf">0.590439276485788</span>
-<span class="linenos">137</span>                <span class="p">}</span>
-<span class="linenos">138</span>            <span class="p">]</span>
-<span class="linenos">139</span>        <span class="p">},</span>
-<span class="linenos">140</span>        <span class="p">{</span>
-<span class="linenos">141</span>            <span class="nt">&quot;title&quot;</span><span class="p">:</span> <span class="s2">&quot;Benchmarking std::mt19937_64 and std::knuth_b&quot;</span><span class="p">,</span>
-<span class="linenos">142</span>            <span class="nt">&quot;name&quot;</span><span class="p">:</span> <span class="s2">&quot;std::knuth_b&quot;</span><span class="p">,</span>
-<span class="linenos">143</span>            <span class="nt">&quot;unit&quot;</span><span class="p">:</span> <span class="s2">&quot;op&quot;</span><span class="p">,</span>
-<span class="linenos">144</span>            <span class="nt">&quot;batch&quot;</span><span class="p">:</span> <span class="mi">1</span><span class="p">,</span>
-<span class="linenos">145</span>            <span class="nt">&quot;complexityN&quot;</span><span class="p">:</span> <span class="mi">-1</span><span class="p">,</span>
-<span class="linenos">146</span>            <span class="nt">&quot;epochs&quot;</span><span class="p">:</span> <span class="mi">11</span><span class="p">,</span>
-<span class="linenos">147</span>            <span class="nt">&quot;clockResolution&quot;</span><span class="p">:</span> <span class="mf">1.8e-08</span><span class="p">,</span>
-<span class="linenos">148</span>            <span class="nt">&quot;clockResolutionMultiple&quot;</span><span class="p">:</span> <span class="mi">1000</span><span class="p">,</span>
-<span class="linenos">149</span>            <span class="nt">&quot;maxEpochTime&quot;</span><span class="p">:</span> <span class="mf">0.1</span><span class="p">,</span>
-<span class="linenos">150</span>            <span class="nt">&quot;minEpochTime&quot;</span><span class="p">:</span> <span class="mi">0</span><span class="p">,</span>
-<span class="linenos">151</span>            <span class="nt">&quot;minEpochIterations&quot;</span><span class="p">:</span> <span class="mi">1</span><span class="p">,</span>
-<span class="linenos">152</span>            <span class="nt">&quot;warmup&quot;</span><span class="p">:</span> <span class="mi">0</span><span class="p">,</span>
-<span class="linenos">153</span>            <span class="nt">&quot;relative&quot;</span><span class="p">:</span> <span class="mi">0</span><span class="p">,</span>
-<span class="linenos">154</span>            <span class="nt">&quot;median(elapsed)&quot;</span><span class="p">:</span> <span class="mf">3.19013867488444e-08</span><span class="p">,</span>
-<span class="linenos">155</span>            <span class="nt">&quot;medianAbsolutePercentError(elapsed)&quot;</span><span class="p">:</span> <span class="mf">0.00091350764819687</span><span class="p">,</span>
-<span class="linenos">156</span>            <span class="nt">&quot;median(instructions)&quot;</span><span class="p">:</span> <span class="mf">170.013008130081</span><span class="p">,</span>
-<span class="linenos">157</span>            <span class="nt">&quot;medianAbsolutePercentError(instructions)&quot;</span><span class="p">:</span> <span class="mf">4.11992392254248e-06</span><span class="p">,</span>
-<span class="linenos">158</span>            <span class="nt">&quot;median(cpucycles)&quot;</span><span class="p">:</span> <span class="mf">101.973254086181</span><span class="p">,</span>
-<span class="linenos">159</span>            <span class="nt">&quot;median(contextswitches)&quot;</span><span class="p">:</span> <span class="mi">0</span><span class="p">,</span>
-<span class="linenos">160</span>            <span class="nt">&quot;median(pagefaults)&quot;</span><span class="p">:</span> <span class="mi">0</span><span class="p">,</span>
-<span class="linenos">161</span>            <span class="nt">&quot;median(branchinstructions)&quot;</span><span class="p">:</span> <span class="mi">28</span><span class="p">,</span>
-<span class="linenos">162</span>            <span class="nt">&quot;median(branchmisses)&quot;</span><span class="p">:</span> <span class="mf">0.0031104199066874</span><span class="p">,</span>
-<span class="linenos">163</span>            <span class="nt">&quot;totalTime&quot;</span><span class="p">:</span> <span class="mf">0.000217248</span><span class="p">,</span>
-<span class="linenos">164</span>            <span class="nt">&quot;measurements&quot;</span><span class="p">:</span> <span class="p">[</span>
-<span class="linenos">165</span>                <span class="p">{</span>
-<span class="linenos">166</span>                    <span class="nt">&quot;iterations&quot;</span><span class="p">:</span> <span class="mi">568</span><span class="p">,</span>
-<span class="linenos">167</span>                    <span class="nt">&quot;elapsed&quot;</span><span class="p">:</span> <span class="mf">3.2137323943662e-08</span><span class="p">,</span>
-<span class="linenos">168</span>                    <span class="nt">&quot;pagefaults&quot;</span><span class="p">:</span> <span class="mi">0</span><span class="p">,</span>
-<span class="linenos">169</span>                    <span class="nt">&quot;cpucycles&quot;</span><span class="p">:</span> <span class="mf">102.55985915493</span><span class="p">,</span>
-<span class="linenos">170</span>                    <span class="nt">&quot;contextswitches&quot;</span><span class="p">:</span> <span class="mi">0</span><span class="p">,</span>
-<span class="linenos">171</span>                    <span class="nt">&quot;instructions&quot;</span><span class="p">:</span> <span class="mf">170.014084507042</span><span class="p">,</span>
-<span class="linenos">172</span>                    <span class="nt">&quot;branchinstructions&quot;</span><span class="p">:</span> <span class="mi">28</span><span class="p">,</span>
-<span class="linenos">173</span>                    <span class="nt">&quot;branchmisses&quot;</span><span class="p">:</span> <span class="mf">0.00528169014084507</span>
-<span class="linenos">174</span>                <span class="p">},</span>
-<span class="linenos">175</span>                <span class="p">{</span>
-<span class="linenos">176</span>                    <span class="nt">&quot;iterations&quot;</span><span class="p">:</span> <span class="mi">576</span><span class="p">,</span>
-<span class="linenos">177</span>                    <span class="nt">&quot;elapsed&quot;</span><span class="p">:</span> <span class="mf">3.19305555555556e-08</span><span class="p">,</span>
-<span class="linenos">178</span>                    <span class="nt">&quot;pagefaults&quot;</span><span class="p">:</span> <span class="mi">0</span><span class="p">,</span>
-<span class="linenos">179</span>                    <span class="nt">&quot;cpucycles&quot;</span><span class="p">:</span> <span class="mf">102.059027777778</span><span class="p">,</span>
-<span class="linenos">180</span>                    <span class="nt">&quot;contextswitches&quot;</span><span class="p">:</span> <span class="mi">0</span><span class="p">,</span>
-<span class="linenos">181</span>                    <span class="nt">&quot;instructions&quot;</span><span class="p">:</span> <span class="mf">170.013888888889</span><span class="p">,</span>
-<span class="linenos">182</span>                    <span class="nt">&quot;branchinstructions&quot;</span><span class="p">:</span> <span class="mi">28</span><span class="p">,</span>
-<span class="linenos">183</span>                    <span class="nt">&quot;branchmisses&quot;</span><span class="p">:</span> <span class="mf">0.00347222222222222</span>
-<span class="linenos">184</span>                <span class="p">},</span>
-<span class="linenos">185</span>                <span class="p">{</span>
-<span class="linenos">186</span>                    <span class="nt">&quot;iterations&quot;</span><span class="p">:</span> <span class="mi">643</span><span class="p">,</span>
-<span class="linenos">187</span>                    <span class="nt">&quot;elapsed&quot;</span><span class="p">:</span> <span class="mf">3.18973561430793e-08</span><span class="p">,</span>
-<span class="linenos">188</span>                    <span class="nt">&quot;pagefaults&quot;</span><span class="p">:</span> <span class="mi">0</span><span class="p">,</span>
-<span class="linenos">189</span>                    <span class="nt">&quot;cpucycles&quot;</span><span class="p">:</span> <span class="mf">101.973561430793</span><span class="p">,</span>
-<span class="linenos">190</span>                    <span class="nt">&quot;contextswitches&quot;</span><span class="p">:</span> <span class="mi">0</span><span class="p">,</span>
-<span class="linenos">191</span>                    <span class="nt">&quot;instructions&quot;</span><span class="p">:</span> <span class="mf">170.012441679627</span><span class="p">,</span>
-<span class="linenos">192</span>                    <span class="nt">&quot;branchinstructions&quot;</span><span class="p">:</span> <span class="mi">28</span><span class="p">,</span>
-<span class="linenos">193</span>                    <span class="nt">&quot;branchmisses&quot;</span><span class="p">:</span> <span class="mf">0.0031104199066874</span>
-<span class="linenos">194</span>                <span class="p">},</span>
-<span class="linenos">195</span>                <span class="p">{</span>
-<span class="linenos">196</span>                    <span class="nt">&quot;iterations&quot;</span><span class="p">:</span> <span class="mi">591</span><span class="p">,</span>
-<span class="linenos">197</span>                    <span class="nt">&quot;elapsed&quot;</span><span class="p">:</span> <span class="mf">3.1912013536379e-08</span><span class="p">,</span>
-<span class="linenos">198</span>                    <span class="nt">&quot;pagefaults&quot;</span><span class="p">:</span> <span class="mi">0</span><span class="p">,</span>
-<span class="linenos">199</span>                    <span class="nt">&quot;cpucycles&quot;</span><span class="p">:</span> <span class="mf">101.944162436548</span><span class="p">,</span>
-<span class="linenos">200</span>                    <span class="nt">&quot;contextswitches&quot;</span><span class="p">:</span> <span class="mi">0</span><span class="p">,</span>
-<span class="linenos">201</span>                    <span class="nt">&quot;instructions&quot;</span><span class="p">:</span> <span class="mf">170.013536379019</span><span class="p">,</span>
-<span class="linenos">202</span>                    <span class="nt">&quot;branchinstructions&quot;</span><span class="p">:</span> <span class="mi">28</span><span class="p">,</span>
-<span class="linenos">203</span>                    <span class="nt">&quot;branchmisses&quot;</span><span class="p">:</span> <span class="mf">0.00169204737732657</span>
-<span class="linenos">204</span>                <span class="p">},</span>
-<span class="linenos">205</span>                <span class="p">{</span>
-<span class="linenos">206</span>                    <span class="nt">&quot;iterations&quot;</span><span class="p">:</span> <span class="mi">673</span><span class="p">,</span>
-<span class="linenos">207</span>                    <span class="nt">&quot;elapsed&quot;</span><span class="p">:</span> <span class="mf">3.19049034175334e-08</span><span class="p">,</span>
-<span class="linenos">208</span>                    <span class="nt">&quot;pagefaults&quot;</span><span class="p">:</span> <span class="mi">0</span><span class="p">,</span>
-<span class="linenos">209</span>                    <span class="nt">&quot;cpucycles&quot;</span><span class="p">:</span> <span class="mf">101.973254086181</span><span class="p">,</span>
-<span class="linenos">210</span>                    <span class="nt">&quot;contextswitches&quot;</span><span class="p">:</span> <span class="mi">0</span><span class="p">,</span>
-<span class="linenos">211</span>                    <span class="nt">&quot;instructions&quot;</span><span class="p">:</span> <span class="mf">170.011887072808</span><span class="p">,</span>
-<span class="linenos">212</span>                    <span class="nt">&quot;branchinstructions&quot;</span><span class="p">:</span> <span class="mi">28</span><span class="p">,</span>
-<span class="linenos">213</span>                    <span class="nt">&quot;branchmisses&quot;</span><span class="p">:</span> <span class="mf">0.00297176820208024</span>
-<span class="linenos">214</span>                <span class="p">},</span>
-<span class="linenos">215</span>                <span class="p">{</span>
-<span class="linenos">216</span>                    <span class="nt">&quot;iterations&quot;</span><span class="p">:</span> <span class="mi">649</span><span class="p">,</span>
-<span class="linenos">217</span>                    <span class="nt">&quot;elapsed&quot;</span><span class="p">:</span> <span class="mf">3.19013867488444e-08</span><span class="p">,</span>
-<span class="linenos">218</span>                    <span class="nt">&quot;pagefaults&quot;</span><span class="p">:</span> <span class="mi">0</span><span class="p">,</span>
-<span class="linenos">219</span>                    <span class="nt">&quot;cpucycles&quot;</span><span class="p">:</span> <span class="mf">101.850539291217</span><span class="p">,</span>
-<span class="linenos">220</span>                    <span class="nt">&quot;contextswitches&quot;</span><span class="p">:</span> <span class="mi">0</span><span class="p">,</span>
-<span class="linenos">221</span>                    <span class="nt">&quot;instructions&quot;</span><span class="p">:</span> <span class="mf">170.012326656394</span><span class="p">,</span>
-<span class="linenos">222</span>                    <span class="nt">&quot;branchinstructions&quot;</span><span class="p">:</span> <span class="mi">28</span><span class="p">,</span>
-<span class="linenos">223</span>                    <span class="nt">&quot;branchmisses&quot;</span><span class="p">:</span> <span class="mf">0.00308166409861325</span>
-<span class="linenos">224</span>                <span class="p">},</span>
-<span class="linenos">225</span>                <span class="p">{</span>
-<span class="linenos">226</span>                    <span class="nt">&quot;iterations&quot;</span><span class="p">:</span> <span class="mi">606</span><span class="p">,</span>
-<span class="linenos">227</span>                    <span class="nt">&quot;elapsed&quot;</span><span class="p">:</span> <span class="mf">3.18547854785479e-08</span><span class="p">,</span>
-<span class="linenos">228</span>                    <span class="nt">&quot;pagefaults&quot;</span><span class="p">:</span> <span class="mi">0</span><span class="p">,</span>
-<span class="linenos">229</span>                    <span class="nt">&quot;cpucycles&quot;</span><span class="p">:</span> <span class="mf">101.83498349835</span><span class="p">,</span>
-<span class="linenos">230</span>                    <span class="nt">&quot;contextswitches&quot;</span><span class="p">:</span> <span class="mi">0</span><span class="p">,</span>
-<span class="linenos">231</span>                    <span class="nt">&quot;instructions&quot;</span><span class="p">:</span> <span class="mf">170.013201320132</span><span class="p">,</span>
-<span class="linenos">232</span>                    <span class="nt">&quot;branchinstructions&quot;</span><span class="p">:</span> <span class="mi">28</span><span class="p">,</span>
-<span class="linenos">233</span>                    <span class="nt">&quot;branchmisses&quot;</span><span class="p">:</span> <span class="mf">0.0033003300330033</span>
-<span class="linenos">234</span>                <span class="p">},</span>
-<span class="linenos">235</span>                <span class="p">{</span>
-<span class="linenos">236</span>                    <span class="nt">&quot;iterations&quot;</span><span class="p">:</span> <span class="mi">650</span><span class="p">,</span>
-<span class="linenos">237</span>                    <span class="nt">&quot;elapsed&quot;</span><span class="p">:</span> <span class="mf">3.18769230769231e-08</span><span class="p">,</span>
-<span class="linenos">238</span>                    <span class="nt">&quot;pagefaults&quot;</span><span class="p">:</span> <span class="mi">0</span><span class="p">,</span>
-<span class="linenos">239</span>                    <span class="nt">&quot;cpucycles&quot;</span><span class="p">:</span> <span class="mf">101.898461538462</span><span class="p">,</span>
-<span class="linenos">240</span>                    <span class="nt">&quot;contextswitches&quot;</span><span class="p">:</span> <span class="mi">0</span><span class="p">,</span>
-<span class="linenos">241</span>                    <span class="nt">&quot;instructions&quot;</span><span class="p">:</span> <span class="mf">170.012307692308</span><span class="p">,</span>
-<span class="linenos">242</span>                    <span class="nt">&quot;branchinstructions&quot;</span><span class="p">:</span> <span class="mi">28</span><span class="p">,</span>
-<span class="linenos">243</span>                    <span class="nt">&quot;branchmisses&quot;</span><span class="p">:</span> <span class="mf">0.00307692307692308</span>
-<span class="linenos">244</span>                <span class="p">},</span>
-<span class="linenos">245</span>                <span class="p">{</span>
-<span class="linenos">246</span>                    <span class="nt">&quot;iterations&quot;</span><span class="p">:</span> <span class="mi">615</span><span class="p">,</span>
-<span class="linenos">247</span>                    <span class="nt">&quot;elapsed&quot;</span><span class="p">:</span> <span class="mf">3.18520325203252e-08</span><span class="p">,</span>
-<span class="linenos">248</span>                    <span class="nt">&quot;pagefaults&quot;</span><span class="p">:</span> <span class="mi">0</span><span class="p">,</span>
-<span class="linenos">249</span>                    <span class="nt">&quot;cpucycles&quot;</span><span class="p">:</span> <span class="mf">101.858536585366</span><span class="p">,</span>
-<span class="linenos">250</span>                    <span class="nt">&quot;contextswitches&quot;</span><span class="p">:</span> <span class="mi">0</span><span class="p">,</span>
-<span class="linenos">251</span>                    <span class="nt">&quot;instructions&quot;</span><span class="p">:</span> <span class="mf">170.013008130081</span><span class="p">,</span>
-<span class="linenos">252</span>                    <span class="nt">&quot;branchinstructions&quot;</span><span class="p">:</span> <span class="mi">28</span><span class="p">,</span>
-<span class="linenos">253</span>                    <span class="nt">&quot;branchmisses&quot;</span><span class="p">:</span> <span class="mf">0.0032520325203252</span>
-<span class="linenos">254</span>                <span class="p">},</span>
-<span class="linenos">255</span>                <span class="p">{</span>
-<span class="linenos">256</span>                    <span class="nt">&quot;iterations&quot;</span><span class="p">:</span> <span class="mi">579</span><span class="p">,</span>
-<span class="linenos">257</span>                    <span class="nt">&quot;elapsed&quot;</span><span class="p">:</span> <span class="mf">3.18618307426598e-08</span><span class="p">,</span>
-<span class="linenos">258</span>                    <span class="nt">&quot;pagefaults&quot;</span><span class="p">:</span> <span class="mi">0</span><span class="p">,</span>
-<span class="linenos">259</span>                    <span class="nt">&quot;cpucycles&quot;</span><span class="p">:</span> <span class="mf">101.989637305699</span><span class="p">,</span>
-<span class="linenos">260</span>                    <span class="nt">&quot;contextswitches&quot;</span><span class="p">:</span> <span class="mi">0</span><span class="p">,</span>
-<span class="linenos">261</span>                    <span class="nt">&quot;instructions&quot;</span><span class="p">:</span> <span class="mf">170.013816925734</span><span class="p">,</span>
-<span class="linenos">262</span>                    <span class="nt">&quot;branchinstructions&quot;</span><span class="p">:</span> <span class="mi">28</span><span class="p">,</span>
-<span class="linenos">263</span>                    <span class="nt">&quot;branchmisses&quot;</span><span class="p">:</span> <span class="mf">0.00345423143350604</span>
-<span class="linenos">264</span>                <span class="p">},</span>
-<span class="linenos">265</span>                <span class="p">{</span>
-<span class="linenos">266</span>                    <span class="nt">&quot;iterations&quot;</span><span class="p">:</span> <span class="mi">657</span><span class="p">,</span>
-<span class="linenos">267</span>                    <span class="nt">&quot;elapsed&quot;</span><span class="p">:</span> <span class="mf">3.19558599695586e-08</span><span class="p">,</span>
-<span class="linenos">268</span>                    <span class="nt">&quot;pagefaults&quot;</span><span class="p">:</span> <span class="mi">0</span><span class="p">,</span>
-<span class="linenos">269</span>                    <span class="nt">&quot;cpucycles&quot;</span><span class="p">:</span> <span class="mf">102.229832572298</span><span class="p">,</span>
-<span class="linenos">270</span>                    <span class="nt">&quot;contextswitches&quot;</span><span class="p">:</span> <span class="mi">0</span><span class="p">,</span>
-<span class="linenos">271</span>                    <span class="nt">&quot;instructions&quot;</span><span class="p">:</span> <span class="mf">170.012176560122</span><span class="p">,</span>
-<span class="linenos">272</span>                    <span class="nt">&quot;branchinstructions&quot;</span><span class="p">:</span> <span class="mi">28</span><span class="p">,</span>
-<span class="linenos">273</span>                    <span class="nt">&quot;branchmisses&quot;</span><span class="p">:</span> <span class="mf">0.0030441400304414</span>
-<span class="linenos">274</span>                <span class="p">}</span>
-<span class="linenos">275</span>            <span class="p">]</span>
-<span class="linenos">276</span>        <span class="p">}</span>
-<span class="linenos">277</span>    <span class="p">]</span>
-<span class="linenos">278</span><span class="p">}</span>
+<div class="highlight-json notranslate"><div class="highlight"><pre><span></span><span class="linenos">  1</span><span class="p">{</span><span class="w"></span>
+<span class="linenos">  2</span><span class="w">    </span><span class="nt">&quot;results&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">[</span><span class="w"></span>
+<span class="linenos">  3</span><span class="w">        </span><span class="p">{</span><span class="w"></span>
+<span class="linenos">  4</span><span class="w">            </span><span class="nt">&quot;title&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;Benchmarking std::mt19937_64 and std::knuth_b&quot;</span><span class="p">,</span><span class="w"></span>
+<span class="linenos">  5</span><span class="w">            </span><span class="nt">&quot;name&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;std::mt19937_64&quot;</span><span class="p">,</span><span class="w"></span>
+<span class="linenos">  6</span><span class="w">            </span><span class="nt">&quot;unit&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;op&quot;</span><span class="p">,</span><span class="w"></span>
+<span class="linenos">  7</span><span class="w">            </span><span class="nt">&quot;batch&quot;</span><span class="p">:</span><span class="w"> </span><span class="mi">1</span><span class="p">,</span><span class="w"></span>
+<span class="linenos">  8</span><span class="w">            </span><span class="nt">&quot;complexityN&quot;</span><span class="p">:</span><span class="w"> </span><span class="mi">-1</span><span class="p">,</span><span class="w"></span>
+<span class="linenos">  9</span><span class="w">            </span><span class="nt">&quot;epochs&quot;</span><span class="p">:</span><span class="w"> </span><span class="mi">11</span><span class="p">,</span><span class="w"></span>
+<span class="linenos"> 10</span><span class="w">            </span><span class="nt">&quot;clockResolution&quot;</span><span class="p">:</span><span class="w"> </span><span class="mf">1.8e-08</span><span class="p">,</span><span class="w"></span>
+<span class="linenos"> 11</span><span class="w">            </span><span class="nt">&quot;clockResolutionMultiple&quot;</span><span class="p">:</span><span class="w"> </span><span class="mi">1000</span><span class="p">,</span><span class="w"></span>
+<span class="linenos"> 12</span><span class="w">            </span><span class="nt">&quot;maxEpochTime&quot;</span><span class="p">:</span><span class="w"> </span><span class="mf">0.1</span><span class="p">,</span><span class="w"></span>
+<span class="linenos"> 13</span><span class="w">            </span><span class="nt">&quot;minEpochTime&quot;</span><span class="p">:</span><span class="w"> </span><span class="mi">0</span><span class="p">,</span><span class="w"></span>
+<span class="linenos"> 14</span><span class="w">            </span><span class="nt">&quot;minEpochIterations&quot;</span><span class="p">:</span><span class="w"> </span><span class="mi">1</span><span class="p">,</span><span class="w"></span>
+<span class="linenos"> 15</span><span class="w">            </span><span class="nt">&quot;warmup&quot;</span><span class="p">:</span><span class="w"> </span><span class="mi">0</span><span class="p">,</span><span class="w"></span>
+<span class="linenos"> 16</span><span class="w">            </span><span class="nt">&quot;relative&quot;</span><span class="p">:</span><span class="w"> </span><span class="mi">0</span><span class="p">,</span><span class="w"></span>
+<span class="linenos"> 17</span><span class="w">            </span><span class="nt">&quot;median(elapsed)&quot;</span><span class="p">:</span><span class="w"> </span><span class="mf">2.54441805225653e-08</span><span class="p">,</span><span class="w"></span>
+<span class="linenos"> 18</span><span class="w">            </span><span class="nt">&quot;medianAbsolutePercentError(elapsed)&quot;</span><span class="p">:</span><span class="w"> </span><span class="mf">0.0236579384033733</span><span class="p">,</span><span class="w"></span>
+<span class="linenos"> 19</span><span class="w">            </span><span class="nt">&quot;median(instructions)&quot;</span><span class="p">:</span><span class="w"> </span><span class="mf">125.989678899083</span><span class="p">,</span><span class="w"></span>
+<span class="linenos"> 20</span><span class="w">            </span><span class="nt">&quot;medianAbsolutePercentError(instructions)&quot;</span><span class="p">:</span><span class="w"> </span><span class="mf">0.035125448044942</span><span class="p">,</span><span class="w"></span>
+<span class="linenos"> 21</span><span class="w">            </span><span class="nt">&quot;median(cpucycles)&quot;</span><span class="p">:</span><span class="w"> </span><span class="mf">81.3479809976247</span><span class="p">,</span><span class="w"></span>
+<span class="linenos"> 22</span><span class="w">            </span><span class="nt">&quot;median(contextswitches)&quot;</span><span class="p">:</span><span class="w"> </span><span class="mi">0</span><span class="p">,</span><span class="w"></span>
+<span class="linenos"> 23</span><span class="w">            </span><span class="nt">&quot;median(pagefaults)&quot;</span><span class="p">:</span><span class="w"> </span><span class="mi">0</span><span class="p">,</span><span class="w"></span>
+<span class="linenos"> 24</span><span class="w">            </span><span class="nt">&quot;median(branchinstructions)&quot;</span><span class="p">:</span><span class="w"> </span><span class="mf">16.7645714285714</span><span class="p">,</span><span class="w"></span>
+<span class="linenos"> 25</span><span class="w">            </span><span class="nt">&quot;median(branchmisses)&quot;</span><span class="p">:</span><span class="w"> </span><span class="mf">0.564133016627078</span><span class="p">,</span><span class="w"></span>
+<span class="linenos"> 26</span><span class="w">            </span><span class="nt">&quot;totalTime&quot;</span><span class="p">:</span><span class="w"> </span><span class="mf">0.000218811</span><span class="p">,</span><span class="w"></span>
+<span class="linenos"> 27</span><span class="w">            </span><span class="nt">&quot;measurements&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">[</span><span class="w"></span>
+<span class="linenos"> 28</span><span class="w">                </span><span class="p">{</span><span class="w"></span>
+<span class="linenos"> 29</span><span class="w">                    </span><span class="nt">&quot;iterations&quot;</span><span class="p">:</span><span class="w"> </span><span class="mi">875</span><span class="p">,</span><span class="w"></span>
+<span class="linenos"> 30</span><span class="w">                    </span><span class="nt">&quot;elapsed&quot;</span><span class="p">:</span><span class="w"> </span><span class="mf">2.54708571428571e-08</span><span class="p">,</span><span class="w"></span>
+<span class="linenos"> 31</span><span class="w">                    </span><span class="nt">&quot;pagefaults&quot;</span><span class="p">:</span><span class="w"> </span><span class="mi">0</span><span class="p">,</span><span class="w"></span>
+<span class="linenos"> 32</span><span class="w">                    </span><span class="nt">&quot;cpucycles&quot;</span><span class="p">:</span><span class="w"> </span><span class="mf">81.472</span><span class="p">,</span><span class="w"></span>
+<span class="linenos"> 33</span><span class="w">                    </span><span class="nt">&quot;contextswitches&quot;</span><span class="p">:</span><span class="w"> </span><span class="mi">0</span><span class="p">,</span><span class="w"></span>
+<span class="linenos"> 34</span><span class="w">                    </span><span class="nt">&quot;instructions&quot;</span><span class="p">:</span><span class="w"> </span><span class="mf">125.885714285714</span><span class="p">,</span><span class="w"></span>
+<span class="linenos"> 35</span><span class="w">                    </span><span class="nt">&quot;branchinstructions&quot;</span><span class="p">:</span><span class="w"> </span><span class="mf">16.7645714285714</span><span class="p">,</span><span class="w"></span>
+<span class="linenos"> 36</span><span class="w">                    </span><span class="nt">&quot;branchmisses&quot;</span><span class="p">:</span><span class="w"> </span><span class="mf">0.574857142857143</span><span class="w"></span>
+<span class="linenos"> 37</span><span class="w">                </span><span class="p">},</span><span class="w"></span>
+<span class="linenos"> 38</span><span class="w">                </span><span class="p">{</span><span class="w"></span>
+<span class="linenos"> 39</span><span class="w">                    </span><span class="nt">&quot;iterations&quot;</span><span class="p">:</span><span class="w"> </span><span class="mi">809</span><span class="p">,</span><span class="w"></span>
+<span class="linenos"> 40</span><span class="w">                    </span><span class="nt">&quot;elapsed&quot;</span><span class="p">:</span><span class="w"> </span><span class="mf">2.58467243510507e-08</span><span class="p">,</span><span class="w"></span>
+<span class="linenos"> 41</span><span class="w">                    </span><span class="nt">&quot;pagefaults&quot;</span><span class="p">:</span><span class="w"> </span><span class="mi">0</span><span class="p">,</span><span class="w"></span>
+<span class="linenos"> 42</span><span class="w">                    </span><span class="nt">&quot;cpucycles&quot;</span><span class="p">:</span><span class="w"> </span><span class="mf">82.5290482076638</span><span class="p">,</span><span class="w"></span>
+<span class="linenos"> 43</span><span class="w">                    </span><span class="nt">&quot;contextswitches&quot;</span><span class="p">:</span><span class="w"> </span><span class="mi">0</span><span class="p">,</span><span class="w"></span>
+<span class="linenos"> 44</span><span class="w">                    </span><span class="nt">&quot;instructions&quot;</span><span class="p">:</span><span class="w"> </span><span class="mf">128.771322620519</span><span class="p">,</span><span class="w"></span>
+<span class="linenos"> 45</span><span class="w">                    </span><span class="nt">&quot;branchinstructions&quot;</span><span class="p">:</span><span class="w"> </span><span class="mf">17.0296662546354</span><span class="p">,</span><span class="w"></span>
+<span class="linenos"> 46</span><span class="w">                    </span><span class="nt">&quot;branchmisses&quot;</span><span class="p">:</span><span class="w"> </span><span class="mf">0.582200247218789</span><span class="w"></span>
+<span class="linenos"> 47</span><span class="w">                </span><span class="p">},</span><span class="w"></span>
+<span class="linenos"> 48</span><span class="w">                </span><span class="p">{</span><span class="w"></span>
+<span class="linenos"> 49</span><span class="w">                    </span><span class="nt">&quot;iterations&quot;</span><span class="p">:</span><span class="w"> </span><span class="mi">737</span><span class="p">,</span><span class="w"></span>
+<span class="linenos"> 50</span><span class="w">                    </span><span class="nt">&quot;elapsed&quot;</span><span class="p">:</span><span class="w"> </span><span class="mf">2.24097693351425e-08</span><span class="p">,</span><span class="w"></span>
+<span class="linenos"> 51</span><span class="w">                    </span><span class="nt">&quot;pagefaults&quot;</span><span class="p">:</span><span class="w"> </span><span class="mi">0</span><span class="p">,</span><span class="w"></span>
+<span class="linenos"> 52</span><span class="w">                    </span><span class="nt">&quot;cpucycles&quot;</span><span class="p">:</span><span class="w"> </span><span class="mf">71.6431478968792</span><span class="p">,</span><span class="w"></span>
+<span class="linenos"> 53</span><span class="w">                    </span><span class="nt">&quot;contextswitches&quot;</span><span class="p">:</span><span class="w"> </span><span class="mi">0</span><span class="p">,</span><span class="w"></span>
+<span class="linenos"> 54</span><span class="w">                    </span><span class="nt">&quot;instructions&quot;</span><span class="p">:</span><span class="w"> </span><span class="mf">118.374491180461</span><span class="p">,</span><span class="w"></span>
+<span class="linenos"> 55</span><span class="w">                    </span><span class="nt">&quot;branchinstructions&quot;</span><span class="p">:</span><span class="w"> </span><span class="mf">15.9470827679783</span><span class="p">,</span><span class="w"></span>
+<span class="linenos"> 56</span><span class="w">                    </span><span class="nt">&quot;branchmisses&quot;</span><span class="p">:</span><span class="w"> </span><span class="mf">0.417910447761194</span><span class="w"></span>
+<span class="linenos"> 57</span><span class="w">                </span><span class="p">},</span><span class="w"></span>
+<span class="linenos"> 58</span><span class="w">                </span><span class="p">{</span><span class="w"></span>
+<span class="linenos"> 59</span><span class="w">                    </span><span class="nt">&quot;iterations&quot;</span><span class="p">:</span><span class="w"> </span><span class="mi">872</span><span class="p">,</span><span class="w"></span>
+<span class="linenos"> 60</span><span class="w">                    </span><span class="nt">&quot;elapsed&quot;</span><span class="p">:</span><span class="w"> </span><span class="mf">2.53405963302752e-08</span><span class="p">,</span><span class="w"></span>
+<span class="linenos"> 61</span><span class="w">                    </span><span class="nt">&quot;pagefaults&quot;</span><span class="p">:</span><span class="w"> </span><span class="mi">0</span><span class="p">,</span><span class="w"></span>
+<span class="linenos"> 62</span><span class="w">                    </span><span class="nt">&quot;cpucycles&quot;</span><span class="p">:</span><span class="w"> </span><span class="mf">80.9896788990826</span><span class="p">,</span><span class="w"></span>
+<span class="linenos"> 63</span><span class="w">                    </span><span class="nt">&quot;contextswitches&quot;</span><span class="p">:</span><span class="w"> </span><span class="mi">0</span><span class="p">,</span><span class="w"></span>
+<span class="linenos"> 64</span><span class="w">                    </span><span class="nt">&quot;instructions&quot;</span><span class="p">:</span><span class="w"> </span><span class="mf">125.989678899083</span><span class="p">,</span><span class="w"></span>
+<span class="linenos"> 65</span><span class="w">                    </span><span class="nt">&quot;branchinstructions&quot;</span><span class="p">:</span><span class="w"> </span><span class="mf">16.7580275229358</span><span class="p">,</span><span class="w"></span>
+<span class="linenos"> 66</span><span class="w">                    </span><span class="nt">&quot;branchmisses&quot;</span><span class="p">:</span><span class="w"> </span><span class="mf">0.563073394495413</span><span class="w"></span>
+<span class="linenos"> 67</span><span class="w">                </span><span class="p">},</span><span class="w"></span>
+<span class="linenos"> 68</span><span class="w">                </span><span class="p">{</span><span class="w"></span>
+<span class="linenos"> 69</span><span class="w">                    </span><span class="nt">&quot;iterations&quot;</span><span class="p">:</span><span class="w"> </span><span class="mi">834</span><span class="p">,</span><span class="w"></span>
+<span class="linenos"> 70</span><span class="w">                    </span><span class="nt">&quot;elapsed&quot;</span><span class="p">:</span><span class="w"> </span><span class="mf">2.59256594724221e-08</span><span class="p">,</span><span class="w"></span>
+<span class="linenos"> 71</span><span class="w">                    </span><span class="nt">&quot;pagefaults&quot;</span><span class="p">:</span><span class="w"> </span><span class="mi">0</span><span class="p">,</span><span class="w"></span>
+<span class="linenos"> 72</span><span class="w">                    </span><span class="nt">&quot;cpucycles&quot;</span><span class="p">:</span><span class="w"> </span><span class="mf">82.7661870503597</span><span class="p">,</span><span class="w"></span>
+<span class="linenos"> 73</span><span class="w">                    </span><span class="nt">&quot;contextswitches&quot;</span><span class="p">:</span><span class="w"> </span><span class="mi">0</span><span class="p">,</span><span class="w"></span>
+<span class="linenos"> 74</span><span class="w">                    </span><span class="nt">&quot;instructions&quot;</span><span class="p">:</span><span class="w"> </span><span class="mf">127.635491606715</span><span class="p">,</span><span class="w"></span>
+<span class="linenos"> 75</span><span class="w">                    </span><span class="nt">&quot;branchinstructions&quot;</span><span class="p">:</span><span class="w"> </span><span class="mf">16.9352517985612</span><span class="p">,</span><span class="w"></span>
+<span class="linenos"> 76</span><span class="w">                    </span><span class="nt">&quot;branchmisses&quot;</span><span class="p">:</span><span class="w"> </span><span class="mf">0.575539568345324</span><span class="w"></span>
+<span class="linenos"> 77</span><span class="w">                </span><span class="p">},</span><span class="w"></span>
+<span class="linenos"> 78</span><span class="w">                </span><span class="p">{</span><span class="w"></span>
+<span class="linenos"> 79</span><span class="w">                    </span><span class="nt">&quot;iterations&quot;</span><span class="p">:</span><span class="w"> </span><span class="mi">772</span><span class="p">,</span><span class="w"></span>
+<span class="linenos"> 80</span><span class="w">                    </span><span class="nt">&quot;elapsed&quot;</span><span class="p">:</span><span class="w"> </span><span class="mf">2.25310880829016e-08</span><span class="p">,</span><span class="w"></span>
+<span class="linenos"> 81</span><span class="w">                    </span><span class="nt">&quot;pagefaults&quot;</span><span class="p">:</span><span class="w"> </span><span class="mi">0</span><span class="p">,</span><span class="w"></span>
+<span class="linenos"> 82</span><span class="w">                    </span><span class="nt">&quot;cpucycles&quot;</span><span class="p">:</span><span class="w"> </span><span class="mf">72.0129533678757</span><span class="p">,</span><span class="w"></span>
+<span class="linenos"> 83</span><span class="w">                    </span><span class="nt">&quot;contextswitches&quot;</span><span class="p">:</span><span class="w"> </span><span class="mi">0</span><span class="p">,</span><span class="w"></span>
+<span class="linenos"> 84</span><span class="w">                    </span><span class="nt">&quot;instructions&quot;</span><span class="p">:</span><span class="w"> </span><span class="mf">117.108808290155</span><span class="p">,</span><span class="w"></span>
+<span class="linenos"> 85</span><span class="w">                    </span><span class="nt">&quot;branchinstructions&quot;</span><span class="p">:</span><span class="w"> </span><span class="mf">15.8341968911917</span><span class="p">,</span><span class="w"></span>
+<span class="linenos"> 86</span><span class="w">                    </span><span class="nt">&quot;branchmisses&quot;</span><span class="p">:</span><span class="w"> </span><span class="mf">0.405440414507772</span><span class="w"></span>
+<span class="linenos"> 87</span><span class="w">                </span><span class="p">},</span><span class="w"></span>
+<span class="linenos"> 88</span><span class="w">                </span><span class="p">{</span><span class="w"></span>
+<span class="linenos"> 89</span><span class="w">                    </span><span class="nt">&quot;iterations&quot;</span><span class="p">:</span><span class="w"> </span><span class="mi">842</span><span class="p">,</span><span class="w"></span>
+<span class="linenos"> 90</span><span class="w">                    </span><span class="nt">&quot;elapsed&quot;</span><span class="p">:</span><span class="w"> </span><span class="mf">2.54441805225653e-08</span><span class="p">,</span><span class="w"></span>
+<span class="linenos"> 91</span><span class="w">                    </span><span class="nt">&quot;pagefaults&quot;</span><span class="p">:</span><span class="w"> </span><span class="mi">0</span><span class="p">,</span><span class="w"></span>
+<span class="linenos"> 92</span><span class="w">                    </span><span class="nt">&quot;cpucycles&quot;</span><span class="p">:</span><span class="w"> </span><span class="mf">81.3479809976247</span><span class="p">,</span><span class="w"></span>
+<span class="linenos"> 93</span><span class="w">                    </span><span class="nt">&quot;contextswitches&quot;</span><span class="p">:</span><span class="w"> </span><span class="mi">0</span><span class="p">,</span><span class="w"></span>
+<span class="linenos"> 94</span><span class="w">                    </span><span class="nt">&quot;instructions&quot;</span><span class="p">:</span><span class="w"> </span><span class="mf">127.266033254157</span><span class="p">,</span><span class="w"></span>
+<span class="linenos"> 95</span><span class="w">                    </span><span class="nt">&quot;branchinstructions&quot;</span><span class="p">:</span><span class="w"> </span><span class="mf">16.8859857482185</span><span class="p">,</span><span class="w"></span>
+<span class="linenos"> 96</span><span class="w">                    </span><span class="nt">&quot;branchmisses&quot;</span><span class="p">:</span><span class="w"> </span><span class="mf">0.564133016627078</span><span class="w"></span>
+<span class="linenos"> 97</span><span class="w">                </span><span class="p">},</span><span class="w"></span>
+<span class="linenos"> 98</span><span class="w">                </span><span class="p">{</span><span class="w"></span>
+<span class="linenos"> 99</span><span class="w">                    </span><span class="nt">&quot;iterations&quot;</span><span class="p">:</span><span class="w"> </span><span class="mi">792</span><span class="p">,</span><span class="w"></span>
+<span class="linenos">100</span><span class="w">                    </span><span class="nt">&quot;elapsed&quot;</span><span class="p">:</span><span class="w"> </span><span class="mf">2.20126262626263e-08</span><span class="p">,</span><span class="w"></span>
+<span class="linenos">101</span><span class="w">                    </span><span class="nt">&quot;pagefaults&quot;</span><span class="p">:</span><span class="w"> </span><span class="mi">0</span><span class="p">,</span><span class="w"></span>
+<span class="linenos">102</span><span class="w">                    </span><span class="nt">&quot;cpucycles&quot;</span><span class="p">:</span><span class="w"> </span><span class="mf">70.3623737373737</span><span class="p">,</span><span class="w"></span>
+<span class="linenos">103</span><span class="w">                    </span><span class="nt">&quot;contextswitches&quot;</span><span class="p">:</span><span class="w"> </span><span class="mi">0</span><span class="p">,</span><span class="w"></span>
+<span class="linenos">104</span><span class="w">                    </span><span class="nt">&quot;instructions&quot;</span><span class="p">:</span><span class="w"> </span><span class="mf">116.420454545455</span><span class="p">,</span><span class="w"></span>
+<span class="linenos">105</span><span class="w">                    </span><span class="nt">&quot;branchinstructions&quot;</span><span class="p">:</span><span class="w"> </span><span class="mf">15.7588383838384</span><span class="p">,</span><span class="w"></span>
+<span class="linenos">106</span><span class="w">                    </span><span class="nt">&quot;branchmisses&quot;</span><span class="p">:</span><span class="w"> </span><span class="mf">0.396464646464646</span><span class="w"></span>
+<span class="linenos">107</span><span class="w">                </span><span class="p">},</span><span class="w"></span>
+<span class="linenos">108</span><span class="w">                </span><span class="p">{</span><span class="w"></span>
+<span class="linenos">109</span><span class="w">                    </span><span class="nt">&quot;iterations&quot;</span><span class="p">:</span><span class="w"> </span><span class="mi">757</span><span class="p">,</span><span class="w"></span>
+<span class="linenos">110</span><span class="w">                    </span><span class="nt">&quot;elapsed&quot;</span><span class="p">:</span><span class="w"> </span><span class="mf">2.63870541611625e-08</span><span class="p">,</span><span class="w"></span>
+<span class="linenos">111</span><span class="w">                    </span><span class="nt">&quot;pagefaults&quot;</span><span class="p">:</span><span class="w"> </span><span class="mi">0</span><span class="p">,</span><span class="w"></span>
+<span class="linenos">112</span><span class="w">                    </span><span class="nt">&quot;cpucycles&quot;</span><span class="p">:</span><span class="w"> </span><span class="mf">84.332892998679</span><span class="p">,</span><span class="w"></span>
+<span class="linenos">113</span><span class="w">                    </span><span class="nt">&quot;contextswitches&quot;</span><span class="p">:</span><span class="w"> </span><span class="mi">0</span><span class="p">,</span><span class="w"></span>
+<span class="linenos">114</span><span class="w">                    </span><span class="nt">&quot;instructions&quot;</span><span class="p">:</span><span class="w"> </span><span class="mf">131.462351387054</span><span class="p">,</span><span class="w"></span>
+<span class="linenos">115</span><span class="w">                    </span><span class="nt">&quot;branchinstructions&quot;</span><span class="p">:</span><span class="w"> </span><span class="mf">17.334214002642</span><span class="p">,</span><span class="w"></span>
+<span class="linenos">116</span><span class="w">                    </span><span class="nt">&quot;branchmisses&quot;</span><span class="p">:</span><span class="w"> </span><span class="mf">0.618229854689564</span><span class="w"></span>
+<span class="linenos">117</span><span class="w">                </span><span class="p">},</span><span class="w"></span>
+<span class="linenos">118</span><span class="w">                </span><span class="p">{</span><span class="w"></span>
+<span class="linenos">119</span><span class="w">                    </span><span class="nt">&quot;iterations&quot;</span><span class="p">:</span><span class="w"> </span><span class="mi">850</span><span class="p">,</span><span class="w"></span>
+<span class="linenos">120</span><span class="w">                    </span><span class="nt">&quot;elapsed&quot;</span><span class="p">:</span><span class="w"> </span><span class="mf">2.23305882352941e-08</span><span class="p">,</span><span class="w"></span>
+<span class="linenos">121</span><span class="w">                    </span><span class="nt">&quot;pagefaults&quot;</span><span class="p">:</span><span class="w"> </span><span class="mi">0</span><span class="p">,</span><span class="w"></span>
+<span class="linenos">122</span><span class="w">                    </span><span class="nt">&quot;cpucycles&quot;</span><span class="p">:</span><span class="w"> </span><span class="mf">71.3505882352941</span><span class="p">,</span><span class="w"></span>
+<span class="linenos">123</span><span class="w">                    </span><span class="nt">&quot;contextswitches&quot;</span><span class="p">:</span><span class="w"> </span><span class="mi">0</span><span class="p">,</span><span class="w"></span>
+<span class="linenos">124</span><span class="w">                    </span><span class="nt">&quot;instructions&quot;</span><span class="p">:</span><span class="w"> </span><span class="mf">114.629411764706</span><span class="p">,</span><span class="w"></span>
+<span class="linenos">125</span><span class="w">                    </span><span class="nt">&quot;branchinstructions&quot;</span><span class="p">:</span><span class="w"> </span><span class="mf">15.5823529411765</span><span class="p">,</span><span class="w"></span>
+<span class="linenos">126</span><span class="w">                    </span><span class="nt">&quot;branchmisses&quot;</span><span class="p">:</span><span class="w"> </span><span class="mf">0.392941176470588</span><span class="w"></span>
+<span class="linenos">127</span><span class="w">                </span><span class="p">},</span><span class="w"></span>
+<span class="linenos">128</span><span class="w">                </span><span class="p">{</span><span class="w"></span>
+<span class="linenos">129</span><span class="w">                    </span><span class="nt">&quot;iterations&quot;</span><span class="p">:</span><span class="w"> </span><span class="mi">774</span><span class="p">,</span><span class="w"></span>
+<span class="linenos">130</span><span class="w">                    </span><span class="nt">&quot;elapsed&quot;</span><span class="p">:</span><span class="w"> </span><span class="mf">2.60607235142119e-08</span><span class="p">,</span><span class="w"></span>
+<span class="linenos">131</span><span class="w">                    </span><span class="nt">&quot;pagefaults&quot;</span><span class="p">:</span><span class="w"> </span><span class="mi">0</span><span class="p">,</span><span class="w"></span>
+<span class="linenos">132</span><span class="w">                    </span><span class="nt">&quot;cpucycles&quot;</span><span class="p">:</span><span class="w"> </span><span class="mf">83.1679586563308</span><span class="p">,</span><span class="w"></span>
+<span class="linenos">133</span><span class="w">                    </span><span class="nt">&quot;contextswitches&quot;</span><span class="p">:</span><span class="w"> </span><span class="mi">0</span><span class="p">,</span><span class="w"></span>
+<span class="linenos">134</span><span class="w">                    </span><span class="nt">&quot;instructions&quot;</span><span class="p">:</span><span class="w"> </span><span class="mf">130.576227390181</span><span class="p">,</span><span class="w"></span>
+<span class="linenos">135</span><span class="w">                    </span><span class="nt">&quot;branchinstructions&quot;</span><span class="p">:</span><span class="w"> </span><span class="mf">17.2635658914729</span><span class="p">,</span><span class="w"></span>
+<span class="linenos">136</span><span class="w">                    </span><span class="nt">&quot;branchmisses&quot;</span><span class="p">:</span><span class="w"> </span><span class="mf">0.590439276485788</span><span class="w"></span>
+<span class="linenos">137</span><span class="w">                </span><span class="p">}</span><span class="w"></span>
+<span class="linenos">138</span><span class="w">            </span><span class="p">]</span><span class="w"></span>
+<span class="linenos">139</span><span class="w">        </span><span class="p">},</span><span class="w"></span>
+<span class="linenos">140</span><span class="w">        </span><span class="p">{</span><span class="w"></span>
+<span class="linenos">141</span><span class="w">            </span><span class="nt">&quot;title&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;Benchmarking std::mt19937_64 and std::knuth_b&quot;</span><span class="p">,</span><span class="w"></span>
+<span class="linenos">142</span><span class="w">            </span><span class="nt">&quot;name&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;std::knuth_b&quot;</span><span class="p">,</span><span class="w"></span>
+<span class="linenos">143</span><span class="w">            </span><span class="nt">&quot;unit&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;op&quot;</span><span class="p">,</span><span class="w"></span>
+<span class="linenos">144</span><span class="w">            </span><span class="nt">&quot;batch&quot;</span><span class="p">:</span><span class="w"> </span><span class="mi">1</span><span class="p">,</span><span class="w"></span>
+<span class="linenos">145</span><span class="w">            </span><span class="nt">&quot;complexityN&quot;</span><span class="p">:</span><span class="w"> </span><span class="mi">-1</span><span class="p">,</span><span class="w"></span>
+<span class="linenos">146</span><span class="w">            </span><span class="nt">&quot;epochs&quot;</span><span class="p">:</span><span class="w"> </span><span class="mi">11</span><span class="p">,</span><span class="w"></span>
+<span class="linenos">147</span><span class="w">            </span><span class="nt">&quot;clockResolution&quot;</span><span class="p">:</span><span class="w"> </span><span class="mf">1.8e-08</span><span class="p">,</span><span class="w"></span>
+<span class="linenos">148</span><span class="w">            </span><span class="nt">&quot;clockResolutionMultiple&quot;</span><span class="p">:</span><span class="w"> </span><span class="mi">1000</span><span class="p">,</span><span class="w"></span>
+<span class="linenos">149</span><span class="w">            </span><span class="nt">&quot;maxEpochTime&quot;</span><span class="p">:</span><span class="w"> </span><span class="mf">0.1</span><span class="p">,</span><span class="w"></span>
+<span class="linenos">150</span><span class="w">            </span><span class="nt">&quot;minEpochTime&quot;</span><span class="p">:</span><span class="w"> </span><span class="mi">0</span><span class="p">,</span><span class="w"></span>
+<span class="linenos">151</span><span class="w">            </span><span class="nt">&quot;minEpochIterations&quot;</span><span class="p">:</span><span class="w"> </span><span class="mi">1</span><span class="p">,</span><span class="w"></span>
+<span class="linenos">152</span><span class="w">            </span><span class="nt">&quot;warmup&quot;</span><span class="p">:</span><span class="w"> </span><span class="mi">0</span><span class="p">,</span><span class="w"></span>
+<span class="linenos">153</span><span class="w">            </span><span class="nt">&quot;relative&quot;</span><span class="p">:</span><span class="w"> </span><span class="mi">0</span><span class="p">,</span><span class="w"></span>
+<span class="linenos">154</span><span class="w">            </span><span class="nt">&quot;median(elapsed)&quot;</span><span class="p">:</span><span class="w"> </span><span class="mf">3.19013867488444e-08</span><span class="p">,</span><span class="w"></span>
+<span class="linenos">155</span><span class="w">            </span><span class="nt">&quot;medianAbsolutePercentError(elapsed)&quot;</span><span class="p">:</span><span class="w"> </span><span class="mf">0.00091350764819687</span><span class="p">,</span><span class="w"></span>
+<span class="linenos">156</span><span class="w">            </span><span class="nt">&quot;median(instructions)&quot;</span><span class="p">:</span><span class="w"> </span><span class="mf">170.013008130081</span><span class="p">,</span><span class="w"></span>
+<span class="linenos">157</span><span class="w">            </span><span class="nt">&quot;medianAbsolutePercentError(instructions)&quot;</span><span class="p">:</span><span class="w"> </span><span class="mf">4.11992392254248e-06</span><span class="p">,</span><span class="w"></span>
+<span class="linenos">158</span><span class="w">            </span><span class="nt">&quot;median(cpucycles)&quot;</span><span class="p">:</span><span class="w"> </span><span class="mf">101.973254086181</span><span class="p">,</span><span class="w"></span>
+<span class="linenos">159</span><span class="w">            </span><span class="nt">&quot;median(contextswitches)&quot;</span><span class="p">:</span><span class="w"> </span><span class="mi">0</span><span class="p">,</span><span class="w"></span>
+<span class="linenos">160</span><span class="w">            </span><span class="nt">&quot;median(pagefaults)&quot;</span><span class="p">:</span><span class="w"> </span><span class="mi">0</span><span class="p">,</span><span class="w"></span>
+<span class="linenos">161</span><span class="w">            </span><span class="nt">&quot;median(branchinstructions)&quot;</span><span class="p">:</span><span class="w"> </span><span class="mi">28</span><span class="p">,</span><span class="w"></span>
+<span class="linenos">162</span><span class="w">            </span><span class="nt">&quot;median(branchmisses)&quot;</span><span class="p">:</span><span class="w"> </span><span class="mf">0.0031104199066874</span><span class="p">,</span><span class="w"></span>
+<span class="linenos">163</span><span class="w">            </span><span class="nt">&quot;totalTime&quot;</span><span class="p">:</span><span class="w"> </span><span class="mf">0.000217248</span><span class="p">,</span><span class="w"></span>
+<span class="linenos">164</span><span class="w">            </span><span class="nt">&quot;measurements&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">[</span><span class="w"></span>
+<span class="linenos">165</span><span class="w">                </span><span class="p">{</span><span class="w"></span>
+<span class="linenos">166</span><span class="w">                    </span><span class="nt">&quot;iterations&quot;</span><span class="p">:</span><span class="w"> </span><span class="mi">568</span><span class="p">,</span><span class="w"></span>
+<span class="linenos">167</span><span class="w">                    </span><span class="nt">&quot;elapsed&quot;</span><span class="p">:</span><span class="w"> </span><span class="mf">3.2137323943662e-08</span><span class="p">,</span><span class="w"></span>
+<span class="linenos">168</span><span class="w">                    </span><span class="nt">&quot;pagefaults&quot;</span><span class="p">:</span><span class="w"> </span><span class="mi">0</span><span class="p">,</span><span class="w"></span>
+<span class="linenos">169</span><span class="w">                    </span><span class="nt">&quot;cpucycles&quot;</span><span class="p">:</span><span class="w"> </span><span class="mf">102.55985915493</span><span class="p">,</span><span class="w"></span>
+<span class="linenos">170</span><span class="w">                    </span><span class="nt">&quot;contextswitches&quot;</span><span class="p">:</span><span class="w"> </span><span class="mi">0</span><span class="p">,</span><span class="w"></span>
+<span class="linenos">171</span><span class="w">                    </span><span class="nt">&quot;instructions&quot;</span><span class="p">:</span><span class="w"> </span><span class="mf">170.014084507042</span><span class="p">,</span><span class="w"></span>
+<span class="linenos">172</span><span class="w">                    </span><span class="nt">&quot;branchinstructions&quot;</span><span class="p">:</span><span class="w"> </span><span class="mi">28</span><span class="p">,</span><span class="w"></span>
+<span class="linenos">173</span><span class="w">                    </span><span class="nt">&quot;branchmisses&quot;</span><span class="p">:</span><span class="w"> </span><span class="mf">0.00528169014084507</span><span class="w"></span>
+<span class="linenos">174</span><span class="w">                </span><span class="p">},</span><span class="w"></span>
+<span class="linenos">175</span><span class="w">                </span><span class="p">{</span><span class="w"></span>
+<span class="linenos">176</span><span class="w">                    </span><span class="nt">&quot;iterations&quot;</span><span class="p">:</span><span class="w"> </span><span class="mi">576</span><span class="p">,</span><span class="w"></span>
+<span class="linenos">177</span><span class="w">                    </span><span class="nt">&quot;elapsed&quot;</span><span class="p">:</span><span class="w"> </span><span class="mf">3.19305555555556e-08</span><span class="p">,</span><span class="w"></span>
+<span class="linenos">178</span><span class="w">                    </span><span class="nt">&quot;pagefaults&quot;</span><span class="p">:</span><span class="w"> </span><span class="mi">0</span><span class="p">,</span><span class="w"></span>
+<span class="linenos">179</span><span class="w">                    </span><span class="nt">&quot;cpucycles&quot;</span><span class="p">:</span><span class="w"> </span><span class="mf">102.059027777778</span><span class="p">,</span><span class="w"></span>
+<span class="linenos">180</span><span class="w">                    </span><span class="nt">&quot;contextswitches&quot;</span><span class="p">:</span><span class="w"> </span><span class="mi">0</span><span class="p">,</span><span class="w"></span>
+<span class="linenos">181</span><span class="w">                    </span><span class="nt">&quot;instructions&quot;</span><span class="p">:</span><span class="w"> </span><span class="mf">170.013888888889</span><span class="p">,</span><span class="w"></span>
+<span class="linenos">182</span><span class="w">                    </span><span class="nt">&quot;branchinstructions&quot;</span><span class="p">:</span><span class="w"> </span><span class="mi">28</span><span class="p">,</span><span class="w"></span>
+<span class="linenos">183</span><span class="w">                    </span><span class="nt">&quot;branchmisses&quot;</span><span class="p">:</span><span class="w"> </span><span class="mf">0.00347222222222222</span><span class="w"></span>
+<span class="linenos">184</span><span class="w">                </span><span class="p">},</span><span class="w"></span>
+<span class="linenos">185</span><span class="w">                </span><span class="p">{</span><span class="w"></span>
+<span class="linenos">186</span><span class="w">                    </span><span class="nt">&quot;iterations&quot;</span><span class="p">:</span><span class="w"> </span><span class="mi">643</span><span class="p">,</span><span class="w"></span>
+<span class="linenos">187</span><span class="w">                    </span><span class="nt">&quot;elapsed&quot;</span><span class="p">:</span><span class="w"> </span><span class="mf">3.18973561430793e-08</span><span class="p">,</span><span class="w"></span>
+<span class="linenos">188</span><span class="w">                    </span><span class="nt">&quot;pagefaults&quot;</span><span class="p">:</span><span class="w"> </span><span class="mi">0</span><span class="p">,</span><span class="w"></span>
+<span class="linenos">189</span><span class="w">                    </span><span class="nt">&quot;cpucycles&quot;</span><span class="p">:</span><span class="w"> </span><span class="mf">101.973561430793</span><span class="p">,</span><span class="w"></span>
+<span class="linenos">190</span><span class="w">                    </span><span class="nt">&quot;contextswitches&quot;</span><span class="p">:</span><span class="w"> </span><span class="mi">0</span><span class="p">,</span><span class="w"></span>
+<span class="linenos">191</span><span class="w">                    </span><span class="nt">&quot;instructions&quot;</span><span class="p">:</span><span class="w"> </span><span class="mf">170.012441679627</span><span class="p">,</span><span class="w"></span>
+<span class="linenos">192</span><span class="w">                    </span><span class="nt">&quot;branchinstructions&quot;</span><span class="p">:</span><span class="w"> </span><span class="mi">28</span><span class="p">,</span><span class="w"></span>
+<span class="linenos">193</span><span class="w">                    </span><span class="nt">&quot;branchmisses&quot;</span><span class="p">:</span><span class="w"> </span><span class="mf">0.0031104199066874</span><span class="w"></span>
+<span class="linenos">194</span><span class="w">                </span><span class="p">},</span><span class="w"></span>
+<span class="linenos">195</span><span class="w">                </span><span class="p">{</span><span class="w"></span>
+<span class="linenos">196</span><span class="w">                    </span><span class="nt">&quot;iterations&quot;</span><span class="p">:</span><span class="w"> </span><span class="mi">591</span><span class="p">,</span><span class="w"></span>
+<span class="linenos">197</span><span class="w">                    </span><span class="nt">&quot;elapsed&quot;</span><span class="p">:</span><span class="w"> </span><span class="mf">3.1912013536379e-08</span><span class="p">,</span><span class="w"></span>
+<span class="linenos">198</span><span class="w">                    </span><span class="nt">&quot;pagefaults&quot;</span><span class="p">:</span><span class="w"> </span><span class="mi">0</span><span class="p">,</span><span class="w"></span>
+<span class="linenos">199</span><span class="w">                    </span><span class="nt">&quot;cpucycles&quot;</span><span class="p">:</span><span class="w"> </span><span class="mf">101.944162436548</span><span class="p">,</span><span class="w"></span>
+<span class="linenos">200</span><span class="w">                    </span><span class="nt">&quot;contextswitches&quot;</span><span class="p">:</span><span class="w"> </span><span class="mi">0</span><span class="p">,</span><span class="w"></span>
+<span class="linenos">201</span><span class="w">                    </span><span class="nt">&quot;instructions&quot;</span><span class="p">:</span><span class="w"> </span><span class="mf">170.013536379019</span><span class="p">,</span><span class="w"></span>
+<span class="linenos">202</span><span class="w">                    </span><span class="nt">&quot;branchinstructions&quot;</span><span class="p">:</span><span class="w"> </span><span class="mi">28</span><span class="p">,</span><span class="w"></span>
+<span class="linenos">203</span><span class="w">                    </span><span class="nt">&quot;branchmisses&quot;</span><span class="p">:</span><span class="w"> </span><span class="mf">0.00169204737732657</span><span class="w"></span>
+<span class="linenos">204</span><span class="w">                </span><span class="p">},</span><span class="w"></span>
+<span class="linenos">205</span><span class="w">                </span><span class="p">{</span><span class="w"></span>
+<span class="linenos">206</span><span class="w">                    </span><span class="nt">&quot;iterations&quot;</span><span class="p">:</span><span class="w"> </span><span class="mi">673</span><span class="p">,</span><span class="w"></span>
+<span class="linenos">207</span><span class="w">                    </span><span class="nt">&quot;elapsed&quot;</span><span class="p">:</span><span class="w"> </span><span class="mf">3.19049034175334e-08</span><span class="p">,</span><span class="w"></span>
+<span class="linenos">208</span><span class="w">                    </span><span class="nt">&quot;pagefaults&quot;</span><span class="p">:</span><span class="w"> </span><span class="mi">0</span><span class="p">,</span><span class="w"></span>
+<span class="linenos">209</span><span class="w">                    </span><span class="nt">&quot;cpucycles&quot;</span><span class="p">:</span><span class="w"> </span><span class="mf">101.973254086181</span><span class="p">,</span><span class="w"></span>
+<span class="linenos">210</span><span class="w">                    </span><span class="nt">&quot;contextswitches&quot;</span><span class="p">:</span><span class="w"> </span><span class="mi">0</span><span class="p">,</span><span class="w"></span>
+<span class="linenos">211</span><span class="w">                    </span><span class="nt">&quot;instructions&quot;</span><span class="p">:</span><span class="w"> </span><span class="mf">170.011887072808</span><span class="p">,</span><span class="w"></span>
+<span class="linenos">212</span><span class="w">                    </span><span class="nt">&quot;branchinstructions&quot;</span><span class="p">:</span><span class="w"> </span><span class="mi">28</span><span class="p">,</span><span class="w"></span>
+<span class="linenos">213</span><span class="w">                    </span><span class="nt">&quot;branchmisses&quot;</span><span class="p">:</span><span class="w"> </span><span class="mf">0.00297176820208024</span><span class="w"></span>
+<span class="linenos">214</span><span class="w">                </span><span class="p">},</span><span class="w"></span>
+<span class="linenos">215</span><span class="w">                </span><span class="p">{</span><span class="w"></span>
+<span class="linenos">216</span><span class="w">                    </span><span class="nt">&quot;iterations&quot;</span><span class="p">:</span><span class="w"> </span><span class="mi">649</span><span class="p">,</span><span class="w"></span>
+<span class="linenos">217</span><span class="w">                    </span><span class="nt">&quot;elapsed&quot;</span><span class="p">:</span><span class="w"> </span><span class="mf">3.19013867488444e-08</span><span class="p">,</span><span class="w"></span>
+<span class="linenos">218</span><span class="w">                    </span><span class="nt">&quot;pagefaults&quot;</span><span class="p">:</span><span class="w"> </span><span class="mi">0</span><span class="p">,</span><span class="w"></span>
+<span class="linenos">219</span><span class="w">                    </span><span class="nt">&quot;cpucycles&quot;</span><span class="p">:</span><span class="w"> </span><span class="mf">101.850539291217</span><span class="p">,</span><span class="w"></span>
+<span class="linenos">220</span><span class="w">                    </span><span class="nt">&quot;contextswitches&quot;</span><span class="p">:</span><span class="w"> </span><span class="mi">0</span><span class="p">,</span><span class="w"></span>
+<span class="linenos">221</span><span class="w">                    </span><span class="nt">&quot;instructions&quot;</span><span class="p">:</span><span class="w"> </span><span class="mf">170.012326656394</span><span class="p">,</span><span class="w"></span>
+<span class="linenos">222</span><span class="w">                    </span><span class="nt">&quot;branchinstructions&quot;</span><span class="p">:</span><span class="w"> </span><span class="mi">28</span><span class="p">,</span><span class="w"></span>
+<span class="linenos">223</span><span class="w">                    </span><span class="nt">&quot;branchmisses&quot;</span><span class="p">:</span><span class="w"> </span><span class="mf">0.00308166409861325</span><span class="w"></span>
+<span class="linenos">224</span><span class="w">                </span><span class="p">},</span><span class="w"></span>
+<span class="linenos">225</span><span class="w">                </span><span class="p">{</span><span class="w"></span>
+<span class="linenos">226</span><span class="w">                    </span><span class="nt">&quot;iterations&quot;</span><span class="p">:</span><span class="w"> </span><span class="mi">606</span><span class="p">,</span><span class="w"></span>
+<span class="linenos">227</span><span class="w">                    </span><span class="nt">&quot;elapsed&quot;</span><span class="p">:</span><span class="w"> </span><span class="mf">3.18547854785479e-08</span><span class="p">,</span><span class="w"></span>
+<span class="linenos">228</span><span class="w">                    </span><span class="nt">&quot;pagefaults&quot;</span><span class="p">:</span><span class="w"> </span><span class="mi">0</span><span class="p">,</span><span class="w"></span>
+<span class="linenos">229</span><span class="w">                    </span><span class="nt">&quot;cpucycles&quot;</span><span class="p">:</span><span class="w"> </span><span class="mf">101.83498349835</span><span class="p">,</span><span class="w"></span>
+<span class="linenos">230</span><span class="w">                    </span><span class="nt">&quot;contextswitches&quot;</span><span class="p">:</span><span class="w"> </span><span class="mi">0</span><span class="p">,</span><span class="w"></span>
+<span class="linenos">231</span><span class="w">                    </span><span class="nt">&quot;instructions&quot;</span><span class="p">:</span><span class="w"> </span><span class="mf">170.013201320132</span><span class="p">,</span><span class="w"></span>
+<span class="linenos">232</span><span class="w">                    </span><span class="nt">&quot;branchinstructions&quot;</span><span class="p">:</span><span class="w"> </span><span class="mi">28</span><span class="p">,</span><span class="w"></span>
+<span class="linenos">233</span><span class="w">                    </span><span class="nt">&quot;branchmisses&quot;</span><span class="p">:</span><span class="w"> </span><span class="mf">0.0033003300330033</span><span class="w"></span>
+<span class="linenos">234</span><span class="w">                </span><span class="p">},</span><span class="w"></span>
+<span class="linenos">235</span><span class="w">                </span><span class="p">{</span><span class="w"></span>
+<span class="linenos">236</span><span class="w">                    </span><span class="nt">&quot;iterations&quot;</span><span class="p">:</span><span class="w"> </span><span class="mi">650</span><span class="p">,</span><span class="w"></span>
+<span class="linenos">237</span><span class="w">                    </span><span class="nt">&quot;elapsed&quot;</span><span class="p">:</span><span class="w"> </span><span class="mf">3.18769230769231e-08</span><span class="p">,</span><span class="w"></span>
+<span class="linenos">238</span><span class="w">                    </span><span class="nt">&quot;pagefaults&quot;</span><span class="p">:</span><span class="w"> </span><span class="mi">0</span><span class="p">,</span><span class="w"></span>
+<span class="linenos">239</span><span class="w">                    </span><span class="nt">&quot;cpucycles&quot;</span><span class="p">:</span><span class="w"> </span><span class="mf">101.898461538462</span><span class="p">,</span><span class="w"></span>
+<span class="linenos">240</span><span class="w">                    </span><span class="nt">&quot;contextswitches&quot;</span><span class="p">:</span><span class="w"> </span><span class="mi">0</span><span class="p">,</span><span class="w"></span>
+<span class="linenos">241</span><span class="w">                    </span><span class="nt">&quot;instructions&quot;</span><span class="p">:</span><span class="w"> </span><span class="mf">170.012307692308</span><span class="p">,</span><span class="w"></span>
+<span class="linenos">242</span><span class="w">                    </span><span class="nt">&quot;branchinstructions&quot;</span><span class="p">:</span><span class="w"> </span><span class="mi">28</span><span class="p">,</span><span class="w"></span>
+<span class="linenos">243</span><span class="w">                    </span><span class="nt">&quot;branchmisses&quot;</span><span class="p">:</span><span class="w"> </span><span class="mf">0.00307692307692308</span><span class="w"></span>
+<span class="linenos">244</span><span class="w">                </span><span class="p">},</span><span class="w"></span>
+<span class="linenos">245</span><span class="w">                </span><span class="p">{</span><span class="w"></span>
+<span class="linenos">246</span><span class="w">                    </span><span class="nt">&quot;iterations&quot;</span><span class="p">:</span><span class="w"> </span><span class="mi">615</span><span class="p">,</span><span class="w"></span>
+<span class="linenos">247</span><span class="w">                    </span><span class="nt">&quot;elapsed&quot;</span><span class="p">:</span><span class="w"> </span><span class="mf">3.18520325203252e-08</span><span class="p">,</span><span class="w"></span>
+<span class="linenos">248</span><span class="w">                    </span><span class="nt">&quot;pagefaults&quot;</span><span class="p">:</span><span class="w"> </span><span class="mi">0</span><span class="p">,</span><span class="w"></span>
+<span class="linenos">249</span><span class="w">                    </span><span class="nt">&quot;cpucycles&quot;</span><span class="p">:</span><span class="w"> </span><span class="mf">101.858536585366</span><span class="p">,</span><span class="w"></span>
+<span class="linenos">250</span><span class="w">                    </span><span class="nt">&quot;contextswitches&quot;</span><span class="p">:</span><span class="w"> </span><span class="mi">0</span><span class="p">,</span><span class="w"></span>
+<span class="linenos">251</span><span class="w">                    </span><span class="nt">&quot;instructions&quot;</span><span class="p">:</span><span class="w"> </span><span class="mf">170.013008130081</span><span class="p">,</span><span class="w"></span>
+<span class="linenos">252</span><span class="w">                    </span><span class="nt">&quot;branchinstructions&quot;</span><span class="p">:</span><span class="w"> </span><span class="mi">28</span><span class="p">,</span><span class="w"></span>
+<span class="linenos">253</span><span class="w">                    </span><span class="nt">&quot;branchmisses&quot;</span><span class="p">:</span><span class="w"> </span><span class="mf">0.0032520325203252</span><span class="w"></span>
+<span class="linenos">254</span><span class="w">                </span><span class="p">},</span><span class="w"></span>
+<span class="linenos">255</span><span class="w">                </span><span class="p">{</span><span class="w"></span>
+<span class="linenos">256</span><span class="w">                    </span><span class="nt">&quot;iterations&quot;</span><span class="p">:</span><span class="w"> </span><span class="mi">579</span><span class="p">,</span><span class="w"></span>
+<span class="linenos">257</span><span class="w">                    </span><span class="nt">&quot;elapsed&quot;</span><span class="p">:</span><span class="w"> </span><span class="mf">3.18618307426598e-08</span><span class="p">,</span><span class="w"></span>
+<span class="linenos">258</span><span class="w">                    </span><span class="nt">&quot;pagefaults&quot;</span><span class="p">:</span><span class="w"> </span><span class="mi">0</span><span class="p">,</span><span class="w"></span>
+<span class="linenos">259</span><span class="w">                    </span><span class="nt">&quot;cpucycles&quot;</span><span class="p">:</span><span class="w"> </span><span class="mf">101.989637305699</span><span class="p">,</span><span class="w"></span>
+<span class="linenos">260</span><span class="w">                    </span><span class="nt">&quot;contextswitches&quot;</span><span class="p">:</span><span class="w"> </span><span class="mi">0</span><span class="p">,</span><span class="w"></span>
+<span class="linenos">261</span><span class="w">                    </span><span class="nt">&quot;instructions&quot;</span><span class="p">:</span><span class="w"> </span><span class="mf">170.013816925734</span><span class="p">,</span><span class="w"></span>
+<span class="linenos">262</span><span class="w">                    </span><span class="nt">&quot;branchinstructions&quot;</span><span class="p">:</span><span class="w"> </span><span class="mi">28</span><span class="p">,</span><span class="w"></span>
+<span class="linenos">263</span><span class="w">                    </span><span class="nt">&quot;branchmisses&quot;</span><span class="p">:</span><span class="w"> </span><span class="mf">0.00345423143350604</span><span class="w"></span>
+<span class="linenos">264</span><span class="w">                </span><span class="p">},</span><span class="w"></span>
+<span class="linenos">265</span><span class="w">                </span><span class="p">{</span><span class="w"></span>
+<span class="linenos">266</span><span class="w">                    </span><span class="nt">&quot;iterations&quot;</span><span class="p">:</span><span class="w"> </span><span class="mi">657</span><span class="p">,</span><span class="w"></span>
+<span class="linenos">267</span><span class="w">                    </span><span class="nt">&quot;elapsed&quot;</span><span class="p">:</span><span class="w"> </span><span class="mf">3.19558599695586e-08</span><span class="p">,</span><span class="w"></span>
+<span class="linenos">268</span><span class="w">                    </span><span class="nt">&quot;pagefaults&quot;</span><span class="p">:</span><span class="w"> </span><span class="mi">0</span><span class="p">,</span><span class="w"></span>
+<span class="linenos">269</span><span class="w">                    </span><span class="nt">&quot;cpucycles&quot;</span><span class="p">:</span><span class="w"> </span><span class="mf">102.229832572298</span><span class="p">,</span><span class="w"></span>
+<span class="linenos">270</span><span class="w">                    </span><span class="nt">&quot;contextswitches&quot;</span><span class="p">:</span><span class="w"> </span><span class="mi">0</span><span class="p">,</span><span class="w"></span>
+<span class="linenos">271</span><span class="w">                    </span><span class="nt">&quot;instructions&quot;</span><span class="p">:</span><span class="w"> </span><span class="mf">170.012176560122</span><span class="p">,</span><span class="w"></span>
+<span class="linenos">272</span><span class="w">                    </span><span class="nt">&quot;branchinstructions&quot;</span><span class="p">:</span><span class="w"> </span><span class="mi">28</span><span class="p">,</span><span class="w"></span>
+<span class="linenos">273</span><span class="w">                    </span><span class="nt">&quot;branchmisses&quot;</span><span class="p">:</span><span class="w"> </span><span class="mf">0.0030441400304414</span><span class="w"></span>
+<span class="linenos">274</span><span class="w">                </span><span class="p">}</span><span class="w"></span>
+<span class="linenos">275</span><span class="w">            </span><span class="p">]</span><span class="w"></span>
+<span class="linenos">276</span><span class="w">        </span><span class="p">}</span><span class="w"></span>
+<span class="linenos">277</span><span class="w">    </span><span class="p">]</span><span class="w"></span>
+<span class="linenos">278</span><span class="p">}</span><span class="w"></span>
 </pre></div>
 </div>
 </section>
@@ -1353,7 +1354,7 @@ Run <code class="docutils literal notranslate"><span class="pre">python3</span> 
   <hr/>
 
   <div role="contentinfo">
-    <p>&#169; Copyright 2019-2021 Martin Ankerl &lt;martin.ankerl@gmail.com&gt;.</p>
+    <p>&#169; Copyright 2019-2022 Martin Ankerl &lt;martin.ankerl@gmail.com&gt;.</p>
   </div>
 
   Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
