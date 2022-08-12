@@ -91,7 +91,7 @@
 #define ANKERL_NANOBENCH_PRIVATE_PERF_COUNTERS() 0
 #if defined(__linux__) && !defined(ANKERL_NANOBENCH_DISABLE_PERF_COUNTERS)
 #    include <linux/version.h>
-#    if LINUX_VERSION_CODE >= KERNEL_VERSION(3, 14, 0)
+#    if LINUX_VERSION_CODE >= KERNEL_VERSION(3, 3, 0)
 // PERF_COUNT_HW_REF_CPU_CYCLES only available since kernel 3.3
 // PERF_FLAG_FD_CLOEXEC since kernel 3.14
 #        undef ANKERL_NANOBENCH_PRIVATE_PERF_COUNTERS
