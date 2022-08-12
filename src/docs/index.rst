@@ -120,7 +120,7 @@ Which github renders like
 
 The benchmarked code takes **7.52** nanoseconds to run, so **~133** million times per seconds. Measurements fluctuate by
 **1.1%**. On average **6.65** instructions are executed in **24.07** CPU cycles, resulting in **0.276** instructions per
-second. A **single** branch is in the code, which branch prediction missed in **8.9%** of the cases. Total runtime of
+cycle. A **single** branch is in the code, which branch prediction missed in **8.9%** of the cases. Total runtime of
 the benchmark with the name ``some double ops`` is **0.00**, so just a few milliseconds.
 
 Design Goals
