@@ -180,7 +180,7 @@ class BigO;
  *    Apart from these tags, it is also possible to use some mathematical operations on the measurement data. The operations
  *    are of the form `{{command(name)}}`.  Currently `name` can be one of `elapsed`, `iterations`. If performance counters
  *    are available (currently only on current Linux systems), you also have `pagefaults`, `cpucycles`,
- *    `contextswitches`, `instructions`, `branchinstructions`, and `branchmisses`. All the measuers (except `iterations`) are
+ *    `contextswitches`, `instructions`, `branchinstructions`, and `branchmisses`. All the measures (except `iterations`) are
  *    provided for a single iteration (so `elapsed` is the time a single iteration took). The following tags are available:
  *
  *    * `{{median(<name>)}}` Calculate median of a measurement data set, e.g. `{{median(elapsed)}}`.
@@ -485,7 +485,7 @@ public:
     static constexpr uint64_t(max)();
 
     /**
-     * As a safety precausion, we don't allow copying. Copying a PRNG would mean you would have two random generators that produce the
+     * As a safety precaution, we don't allow copying. Copying a PRNG would mean you would have two random generators that produce the
      * same sequence, which is generally not what one wants. Instead create a new rng with the default constructor Rng(), which is
      * automatically seeded from `std::random_device`. If you really need a copy, use copy().
      */
@@ -766,7 +766,7 @@ public:
     /**
      * @brief Upper limit for the runtime of each epoch.
      *
-     * As a safety precausion if the clock is not very accurate, we can set an upper limit for the maximum evaluation time per
+     * As a safety precaution if the clock is not very accurate, we can set an upper limit for the maximum evaluation time per
      * epoch. Default is 100ms. At least a single evaluation of the benchmark is performed.
      *
      * @see minEpochTime(), minEpochIterations()
@@ -793,7 +793,7 @@ public:
      * @brief Sets the minimum number of iterations each epoch should take.
      *
      * Default is 1, and we rely on clockResolutionMultiple(). If the `err%` is high and you want a more smooth result, you might want
-     * to increase the minimum number or iterations, or increase the minEpochTime().
+     * to increase the minimum number of iterations, or increase the minEpochTime().
      *
      * @see minEpochTime(), maxEpochTime(), minEpochIterations()
      *

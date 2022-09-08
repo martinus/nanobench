@@ -111,7 +111,7 @@ once it reaches that state.
 ``NANOBENCH_SUPPRESS_WARNINGS`` - No Stability Warnings
 -------------------------------------------------------
 
-In environmens where it is clear that the results will not be stable, e.g. in CI where benchmarks are merely run to check if they don't cause a crash,
+In environments where it is clear that the results will not be stable, e.g. in CI where benchmarks are merely run to check if they don't cause a crash,
 the environment variable ``NANOBENCH_SUPPRESS_WARNINGS`` can be used to suppress any warnings. This includes the header warnings like for frequency scaling,
 and the ``:wavy_dash:`` warnings for the individual tests.
 
