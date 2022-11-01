@@ -485,7 +485,7 @@ public:
     static constexpr uint64_t(max)();
 
     /**
-     * As a safety precausion, we don't allow copying. Copying a PRNG would mean you would have two random generators that produce the
+     * As a safety precaution, we don't allow copying. Copying a PRNG would mean you would have two random generators that produce the
      * same sequence, which is generally not what one wants. Instead create a new rng with the default constructor Rng(), which is
      * automatically seeded from `std::random_device`. If you really need a copy, use copy().
      */
