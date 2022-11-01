@@ -316,7 +316,7 @@ optionally configures it, and then runs the code to benchmark with <a class="ref
 5.63ns on my machine (wall-clock time), or ~178 million operations per second. Runtime
 fluctuates by around 0.0%, so the results are very stable. Each call
 required 3 instructions, which took ~18 CPU cycles. There was a single branch per call,
-with only 0.1% misspredicted.</p>
+with only 0.1% mispredicted.</p>
 </li>
 </ol>
 <p>Nanobench does not come with a test runner, so you can easily use it with any framework you like.  In the remaining examples, I’m
@@ -354,7 +354,7 @@ through <code class="docutils literal notranslate"><span class="pre">perf_event_
 |                   - |                   - |       - |         - | :boom: `++x` (iterations overflow. Maybe your code got optimized away?)
 </pre></div>
 </div>
-<p>No data there! we only get <code class="docutils literal notranslate"><span class="pre">:boom:</span> <span class="pre">iterations</span> <span class="pre">overflow.</span></code>.  The compiler could optimize <code class="docutils literal notranslate"><span class="pre">x</span> <span class="pre">+=</span> <span class="pre">x</span></code>
+<p>No data there! We only get <code class="docutils literal notranslate"><span class="pre">:boom:</span> <span class="pre">iterations</span> <span class="pre">overflow.</span></code>.  The compiler could optimize <code class="docutils literal notranslate"><span class="pre">x</span> <span class="pre">+=</span> <span class="pre">x</span></code>
 away because we never used the output. Thanks to <code class="docutils literal notranslate"><span class="pre">doNotOptimizeAway</span></code>, this is easy to fix:</p>
 <div class="literal-block-wrapper docutils container" id="id6">
 <div class="code-block-caption"><span class="caption-text">tutorial_fast_v2.cpp</span><a class="headerlink" href="#id6" title="Permalink to this code"></a></div>
@@ -404,7 +404,7 @@ away because we never used the output. Thanks to <code class="docutils literal n
 |      100,125,753.00 |                9.99 |    0.0% |           51.00 |        7,714.00 |  0.007 |          11.00 |   90.9% |      1.10 | `sleep 100ms, auto`
 </pre></div>
 </div>
-<p>So we actually take 100.125ms instead of 100ms. Next time I run it, I get 100.141. Also a very stable result. Interestingly, sleep takes 51 instructions but 7,714 cycles - so we only got 0.007 instructions per cycle. That’s extremely low, but expected of <code class="docutils literal notranslate"><span class="pre">sleep</span></code>. It also required 11 branches, of which 90.9% were misspredicted on average.</p>
+<p>So we actually take 100.125ms instead of 100ms. Next time I run it, I get 100.141. Also a very stable result. Interestingly, sleep takes 51 instructions but 7,714 cycles - so we only got 0.007 instructions per cycle. That’s extremely low, but expected of <code class="docutils literal notranslate"><span class="pre">sleep</span></code>. It also required 11 branches, of which 90.9% were mispredicted on average.</p>
 <p>If the extremely slow 1.1 second is too much for you, you can manually configure the number of evaluations (epochs):</p>
 <div class="literal-block-wrapper docutils container" id="id8">
 <div class="code-block-caption"><span class="caption-text">tutorial_slow_v2.cpp</span><a class="headerlink" href="#id8" title="Permalink to this code"></a></div>
@@ -427,11 +427,11 @@ away because we never used the output. Thanks to <code class="docutils literal n
 |      100,099,096.00 |                9.99 |    0.0% |           51.00 |        7,182.00 |  0.007 |          11.00 |   90.9% |      0.30 | `sleep 100ms`
 </pre></div>
 </div>
-<p>This time it took only 0.3 seconds, but with only 3 evaluations instead of 11. The err% will be less meaningfull, but since the benchmark is so stable it doesn’t really matter.</p>
+<p>This time it took only 0.3 seconds, but with only 3 evaluations instead of 11. The err% will be less meaningful, but since the benchmark is so stable it doesn’t really matter.</p>
 </section>
 <section id="something-unstable">
 <h2>Something Unstable<a class="headerlink" href="#something-unstable" title="Permalink to this headline"></a></h2>
-<p>Lets create an extreme artifical test that’s hard to benchmark, because runtime fluctuates randomly: Each iteration
+<p>Let's create an extreme artificial test that’s hard to benchmark, because runtime fluctuates randomly: Each iteration
 randomly skip between 0-254 random numbers:</p>
 <div class="literal-block-wrapper docutils container" id="id9">
 <div class="code-block-caption"><span class="caption-text">tutorial_fluctuating_v1.cpp</span><a class="headerlink" href="#id9" title="Permalink to this code"></a></div>
@@ -696,7 +696,7 @@ CSV template, and write the rendered output to <code class="docutils literal not
 </pre></div>
 </div>
 <p>Nanobench comes with a few preconfigured templates, residing in the namespace <code class="docutils literal notranslate"><span class="pre">ankerl::nanobench::templates</span></code>. To demonstrate what these templates can do,
-here is an simple example that benchmarks two random generators <code class="docutils literal notranslate"><span class="pre">std::mt19937_64</span></code> and <code class="docutils literal notranslate"><span class="pre">std::knuth_b</span></code> and prints both the template and the rendered
+here is a simple example that benchmarks two random generators <code class="docutils literal notranslate"><span class="pre">std::mt19937_64</span></code> and <code class="docutils literal notranslate"><span class="pre">std::knuth_b</span></code> and prints both the template and the rendered
 output:</p>
 <div class="highlight-c++ notranslate"><div class="highlight"><pre><span></span><span class="linenos"> 1</span><span class="cp">#include</span><span class="w"> </span><span class="cpf">&lt;nanobench.h&gt;</span><span class="cp"></span>
 <span class="linenos"> 2</span><span class="cp">#include</span><span class="w"> </span><span class="cpf">&lt;thirdparty/doctest/doctest.h&gt;</span><span class="cp"></span>
@@ -809,7 +809,7 @@ output:</p>
 <section id="html-box-plots">
 <span id="tutorial-template-html"></span><h2>HTML Box Plots<a class="headerlink" href="#html-box-plots" title="Permalink to this headline"></a></h2>
 <p>With the template <a class="reference internal" href="reference.html#_CPPv4N6ankerl9nanobench9templates11htmlBoxplotEv" title="ankerl::nanobench::templates::htmlBoxplot"><code class="xref cpp cpp-func docutils literal notranslate"><span class="pre">ankerl::nanobench::templates::htmlBoxplot()</span></code></a> you get a <a class="reference external" href="https://plotly.com/javascript/">plotly</a> based HTML output which generates
-an boxplot of the runtime. The template is rather simple.</p>
+a boxplot of the runtime. The template is rather simple.</p>
 <div class="highlight-xml notranslate"><div class="highlight"><pre><span></span><span class="linenos"> 1</span><span class="nt">&lt;html&gt;</span>
 <span class="linenos"> 2</span>
 <span class="linenos"> 3</span><span class="nt">&lt;head&gt;</span>
@@ -1228,7 +1228,7 @@ benchmark results. This template allows generation of output so it can be used f
 <span class="linenos">21</span>}
 </pre></div>
 </div>
-<p>Here is an example that generates pyperf compatible output for a benchmark that shuffles an vector:</p>
+<p>Here is an example that generates pyperf compatible output for a benchmark that shuffles a vector:</p>
 <div class="literal-block-wrapper docutils container" id="id14">
 <div class="code-block-caption"><span class="caption-text">example_pyperf.cpp</span><a class="headerlink" href="#id14" title="Permalink to this code"></a></div>
 <div class="highlight-cpp notranslate"><div class="highlight"><pre><span></span><span class="linenos"> 1</span><span class="cp">#include</span><span class="w"> </span><span class="cpf">&lt;nanobench.h&gt;</span><span class="cp"></span>
