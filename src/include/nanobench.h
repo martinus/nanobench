@@ -1143,11 +1143,15 @@ double Rng::uniform01() noexcept {
 
 template <typename Container>
 void Rng::shuffle(Container& container) noexcept {
-    auto size = static_cast<uint32_t>(container.size());
-    for (auto i = size; i > 1U; --i) {
+    auto i = container.size();
+    while (i > 1U) {
         using std::swap;
-        auto p = bounded(i); // number in [0, i)
-        swap(container[i - 1], container[p]);
+        auto n = operator()();
+        auto b1 = static_cast<size_t>((static_cast<uint32_t>(n) * static_cast<uint64_t>(i)) >> 32U);
+        swap(container[--i], container[b1]);
+
+        auto b2 = static_cast<size_t>(((n >> 32U) * static_cast<uint64_t>(i)) >> 32U);
+        swap(container[--i], container[b2]);
     }
 }
 
