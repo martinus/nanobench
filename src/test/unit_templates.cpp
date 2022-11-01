@@ -3,13 +3,15 @@
 
 #include <fstream>
 #include <iostream>
+#include <sstream>
 
 namespace {
 
 std::string readFile(std::string const& filename) {
     std::ifstream fin{filename};
-    return std::string{std::istreambuf_iterator<char>(fin),
-                       std::istreambuf_iterator<char>()};
+    std::ostringstream buf;
+    buf << fin.rdbuf();
+    return buf.str();
 }
 
 // path where the template files are
