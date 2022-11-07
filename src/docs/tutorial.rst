@@ -342,6 +342,11 @@ output:
    :language: c++
    :linenos:
 
+Nanobench allows to specify further context information, which may be accessed using ``{{context(name)}}`` where ``name`` names a variable defined in ``Bench::context()``.
+
+.. literalinclude:: ../test/tutorial_context.cpp
+   :language: c++
+   :linenos:
 
 .. _tutorial-template-csv:
 

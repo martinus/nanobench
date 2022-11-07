@@ -43,6 +43,7 @@
 #include <cstring> // memcpy
 #include <iosfwd>  // for std::ostream* custom output target in Config
 #include <string>  // all names
+#include <unordered_map> // holds context information of results
 #include <vector>  // holds all results
 
 #define ANKERL_NANOBENCH(x) ANKERL_NANOBENCH_PRIVATE_##x()
@@ -176,6 +177,8 @@ class BigO;
  *    * `{{warmup}}` Number of iterations used before measuring starts. See Bench::warmup().
  *
  *    * `{{relative}}` True or false, depending on the setting you have used. See Bench::relative().
+ *
+ *    * `{{context(variableName)}} See Bench::context().
  *
  *    Apart from these tags, it is also possible to use some mathematical operations on the measurement data. The operations
  *    are of the form `{{command(name)}}`.  Currently `name` can be one of `elapsed`, `iterations`. If performance counters
@@ -395,6 +398,7 @@ struct Config {
     std::string mTimeUnitName = "ns";
     bool mShowPerformanceCounters = true;
     bool mIsRelative = false;
+    std::unordered_map<std::string,std::string> mContext{};
 
     Config();
     ~Config();
@@ -442,6 +446,7 @@ public:
     ANKERL_NANOBENCH(NODISCARD) double sumProduct(Measure m1, Measure m2) const noexcept;
     ANKERL_NANOBENCH(NODISCARD) double minimum(Measure m) const noexcept;
     ANKERL_NANOBENCH(NODISCARD) double maximum(Measure m) const noexcept;
+    ANKERL_NANOBENCH(NODISCARD) std::string const& context(std::string const&) const noexcept;
 
     ANKERL_NANOBENCH(NODISCARD) bool has(Measure m) const noexcept;
     ANKERL_NANOBENCH(NODISCARD) double get(size_t idx, Measure m) const;
@@ -673,6 +678,20 @@ public:
     Bench& name(char const* benchmarkName);
     Bench& name(std::string const& benchmarkName);
     ANKERL_NANOBENCH(NODISCARD) std::string const& name() const noexcept;
+
+    /**
+     * @brief Set context information.
+     *
+     * The information can be accessed using custom render templates via `{{context(variableName)}}`.
+     * Trying to render a variable that hasn't been set before, results in empty output (for that variable).
+     * Not included in (default) markdown table.
+     *
+     * @see render()
+     *
+     * @param variableName The name of the context variable.
+     * @param variableValue The value of the context variable.
+     */
+    Bench& context(std::string const& variableName, std::string const& variableValue);
 
     /**
      * @brief Sets the batch size.
@@ -1600,6 +1619,10 @@ static std::ostream& generateResultTag(Node const& n, Result const& r, std::ostr
     std::vector<std::string> matchResult;
     if (matchCmdArgs(std::string(n.begin, n.end), matchResult)) {
         if (matchResult.size() == 2) {
+            if (matchResult[0] == "context") {
+                return out << r.context(matchResult[1]);
+            }
+
             auto m = Result::fromString(matchResult[1]);
             if (m == Result::Measure::_size) {
                 return out << 0.0;
@@ -2991,6 +3014,16 @@ double Result::maximum(Measure m) const noexcept {
     return *std::max_element(data.begin(), data.end());
 }
 
+std::string const& Result::context(std::string const& variableName) const noexcept {
+    auto context = mConfig.mContext;
+    auto search = context.find(variableName);
+    static std::string NOTFOUND;
+    if (search == context.end()) {
+        return NOTFOUND;
+    }
+    return search->second;
+}
+
 Result::Measure Result::fromString(std::string const& str) {
     if (str == "elapsed") {
         return Measure::elapsed;
@@ -3116,6 +3149,11 @@ Bench& Bench::name(std::string const& benchmarkName) {
 
 std::string const& Bench::name() const noexcept {
     return mConfig.mBenchmarkName;
+}
+
+Bench& Bench::context(std::string const& variableName, std::string const& variableValue) {
+    mConfig.mContext[variableName] = variableValue;
+    return *this;
 }
 
 // Number of epochs to evaluate. The reported result will be the median of evaluation of each epoch.
