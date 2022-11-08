@@ -31,11 +31,6 @@ char const* csv() {
 TEST_CASE("tutorial_context") {
     ankerl::nanobench::Bench bench;
     bench.title("Addition").output(nullptr);
-    bench.run("missing context", [] {
-        int a = 1, b = 2;
-        int c = a + b;
-        ankerl::nanobench::doNotOptimizeAway(c);
-    });
     bench
         .context("scalar", "f32")
         .context("foo", "bar")

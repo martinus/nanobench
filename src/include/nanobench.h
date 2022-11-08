@@ -446,7 +446,7 @@ public:
     ANKERL_NANOBENCH(NODISCARD) double sumProduct(Measure m1, Measure m2) const noexcept;
     ANKERL_NANOBENCH(NODISCARD) double minimum(Measure m) const noexcept;
     ANKERL_NANOBENCH(NODISCARD) double maximum(Measure m) const noexcept;
-    ANKERL_NANOBENCH(NODISCARD) std::string const& context(std::string const&) const noexcept;
+    ANKERL_NANOBENCH(NODISCARD) std::string const& context(std::string const&) const;
 
     ANKERL_NANOBENCH(NODISCARD) bool has(Measure m) const noexcept;
     ANKERL_NANOBENCH(NODISCARD) double get(size_t idx, Measure m) const;
@@ -683,7 +683,7 @@ public:
      * @brief Set context information.
      *
      * The information can be accessed using custom render templates via `{{context(variableName)}}`.
-     * Trying to render a variable that hasn't been set before, results in empty output (for that variable).
+     * Trying to render a variable that hasn't been set before raises an exception.
      * Not included in (default) markdown table.
      *
      * @see render()
@@ -3014,14 +3014,8 @@ double Result::maximum(Measure m) const noexcept {
     return *std::max_element(data.begin(), data.end());
 }
 
-std::string const& Result::context(std::string const& variableName) const noexcept {
-    auto context = mConfig.mContext;
-    auto search = context.find(variableName);
-    static std::string NOTFOUND;
-    if (search == context.end()) {
-        return NOTFOUND;
-    }
-    return search->second;
+std::string const& Result::context(std::string const& variableName) const {
+    return mConfig.mContext.at(variableName);
 }
 
 Result::Measure Result::fromString(std::string const& str) {
