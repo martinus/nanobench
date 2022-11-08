@@ -446,6 +446,7 @@ public:
     ANKERL_NANOBENCH(NODISCARD) double sumProduct(Measure m1, Measure m2) const noexcept;
     ANKERL_NANOBENCH(NODISCARD) double minimum(Measure m) const noexcept;
     ANKERL_NANOBENCH(NODISCARD) double maximum(Measure m) const noexcept;
+    ANKERL_NANOBENCH(NODISCARD) std::string const& context(char const*) const;
     ANKERL_NANOBENCH(NODISCARD) std::string const& context(std::string const&) const;
 
     ANKERL_NANOBENCH(NODISCARD) bool has(Measure m) const noexcept;
@@ -691,6 +692,7 @@ public:
      * @param variableName The name of the context variable.
      * @param variableValue The value of the context variable.
      */
+    Bench& context(char const* variableName, char const* variableValue);
     Bench& context(std::string const& variableName, std::string const& variableValue);
 
     /**
@@ -3024,6 +3026,10 @@ double Result::maximum(Measure m) const noexcept {
     return *std::max_element(data.begin(), data.end());
 }
 
+std::string const& Result::context(char const* variableName) const {
+    return mConfig.mContext.at(variableName);
+}
+
 std::string const& Result::context(std::string const& variableName) const {
     return mConfig.mContext.at(variableName);
 }
@@ -3153,6 +3159,11 @@ Bench& Bench::name(std::string const& benchmarkName) {
 
 std::string const& Bench::name() const noexcept {
     return mConfig.mBenchmarkName;
+}
+
+Bench& Bench::context(char const* variableName, char const* variableValue) {
+    mConfig.mContext[variableName] = variableValue;
+    return *this;
 }
 
 Bench& Bench::context(std::string const& variableName, std::string const& variableValue) {
