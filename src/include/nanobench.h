@@ -686,12 +686,22 @@ public:
      * Trying to render a variable that hasn't been set before raises an exception.
      * Not included in (default) markdown table.
      *
-     * @see render()
+     * @see clearContext(), render()
      *
      * @param variableName The name of the context variable.
      * @param variableValue The value of the context variable.
      */
     Bench& context(std::string const& variableName, std::string const& variableValue);
+
+    /**
+     * @brief Reset context information.
+     *
+     * This may be improve efficiency when using many context entries,
+     * or improve robustness by removing spurious context entries.
+     *
+     * @see context()
+     */
+    Bench& clearContext();
 
     /**
      * @brief Sets the batch size.
@@ -3147,6 +3157,11 @@ std::string const& Bench::name() const noexcept {
 
 Bench& Bench::context(std::string const& variableName, std::string const& variableValue) {
     mConfig.mContext[variableName] = variableValue;
+    return *this;
+}
+
+Bench& Bench::clearContext() {
+    mConfig.mContext.clear();
     return *this;
 }
 
