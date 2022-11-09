@@ -6,7 +6,7 @@ ROOTDIR="$(cd -P "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd )"
 
 function build() {
     #NICE="nice -n20"
-    NICE="schedtool -5 -e"
+    NICE="chrt -i 0"
 
     ORIGINDIR=$(pwd)
 
