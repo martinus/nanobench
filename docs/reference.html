@@ -255,6 +255,38 @@ this has a small overhead.</p>
 </dd></dl>
 
 <dl class="cpp function">
+<dt class="sig sig-object cpp" id="_CPPv4N6ankerl9nanobench5Bench7contextEPKcPKc">
+<span id="_CPPv3N6ankerl9nanobench5Bench7contextEPKcPKc"></span><span id="_CPPv2N6ankerl9nanobench5Bench7contextEPKcPKc"></span><span id="ankerl::nanobench::Bench::context__cCP.cCP"></span><span class="target" id="classankerl_1_1nanobench_1_1Bench_1a40c5016aca69c0c5208d43eca5862804"></span><a class="reference internal" href="#_CPPv4N6ankerl9nanobench5BenchE" title="ankerl::nanobench::Bench"><span class="n"><span class="pre">Bench</span></span></a><span class="w"> </span><span class="p"><span class="pre">&amp;</span></span><span class="sig-name descname"><span class="n"><span class="pre">context</span></span></span><span class="sig-paren">(</span><span class="kt"><span class="pre">char</span></span><span class="w"> </span><span class="k"><span class="pre">const</span></span><span class="w"> </span><span class="p"><span class="pre">*</span></span><span class="n sig-param"><span class="pre">variableName</span></span>, <span class="kt"><span class="pre">char</span></span><span class="w"> </span><span class="k"><span class="pre">const</span></span><span class="w"> </span><span class="p"><span class="pre">*</span></span><span class="n sig-param"><span class="pre">variableValue</span></span><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv4N6ankerl9nanobench5Bench7contextEPKcPKc" title="Permalink to this definition"></a><br /></dt>
+<dd><p>Set context information. </p>
+<p>The information can be accessed using custom render templates via <code class="docutils literal notranslate"><span class="pre">{{context(variableName)}}</span></code>. Trying to render a variable that hasn’t been set before raises an exception. Not included in (default) markdown table.</p>
+<p><div class="admonition seealso">
+<p class="admonition-title">See also</p>
+<p><a class="reference internal" href="#classankerl_1_1nanobench_1_1Bench_1a6a955a8fe692080c4f0c032141d59d03"><span class="std std-ref">clearContext()</span></a>, <a class="reference internal" href="#classankerl_1_1nanobench_1_1Bench_1ab50465d76051f2632cd88381b09657ac"><span class="std std-ref">render()</span></a></p>
+</div>
+</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>variableName</strong> – The name of the context variable. </p></li>
+<li><p><strong>variableValue</strong> – The value of the context variable. </p></li>
+</ul>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="cpp function">
+<dt class="sig sig-object cpp" id="_CPPv4N6ankerl9nanobench5Bench12clearContextEv">
+<span id="_CPPv3N6ankerl9nanobench5Bench12clearContextEv"></span><span id="_CPPv2N6ankerl9nanobench5Bench12clearContextEv"></span><span id="ankerl::nanobench::Bench::clearContext"></span><span class="target" id="classankerl_1_1nanobench_1_1Bench_1a6a955a8fe692080c4f0c032141d59d03"></span><a class="reference internal" href="#_CPPv4N6ankerl9nanobench5BenchE" title="ankerl::nanobench::Bench"><span class="n"><span class="pre">Bench</span></span></a><span class="w"> </span><span class="p"><span class="pre">&amp;</span></span><span class="sig-name descname"><span class="n"><span class="pre">clearContext</span></span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv4N6ankerl9nanobench5Bench12clearContextEv" title="Permalink to this definition"></a><br /></dt>
+<dd><p>Reset context information. </p>
+<p>This may be improve efficiency when using many context entries, or improve robustness by removing spurious context entries.</p>
+<p><div class="admonition seealso">
+<p class="admonition-title">See also</p>
+<p><a class="reference internal" href="#classankerl_1_1nanobench_1_1Bench_1a40c5016aca69c0c5208d43eca5862804"><span class="std std-ref">context()</span></a> </p>
+</div>
+</p>
+</dd></dl>
+
+<dl class="cpp function">
 <dt class="sig sig-object cpp" id="_CPPv4I0EN6ankerl9nanobench5Bench5batchER5Bench1T">
 <span id="_CPPv3I0EN6ankerl9nanobench5Bench5batchE1T"></span><span id="_CPPv2I0EN6ankerl9nanobench5Bench5batchE1T"></span><span class="k"><span class="pre">template</span></span><span class="p"><span class="pre">&lt;</span></span><span class="k"><span class="pre">typename</span></span><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">T</span></span></span><span class="p"><span class="pre">&gt;</span></span><br /><span class="target" id="classankerl_1_1nanobench_1_1Bench_1a68dc68dfad568ca7bf820139dca9c968"></span><a class="reference internal" href="#_CPPv4N6ankerl9nanobench5BenchE" title="ankerl::nanobench::Bench"><span class="n"><span class="pre">Bench</span></span></a><span class="w"> </span><span class="p"><span class="pre">&amp;</span></span><span class="sig-name descname"><span class="n"><span class="pre">batch</span></span></span><span class="sig-paren">(</span><a class="reference internal" href="#_CPPv4I0EN6ankerl9nanobench5Bench5batchER5Bench1T" title="ankerl::nanobench::Bench::batch::T"><span class="n"><span class="pre">T</span></span></a><span class="w"> </span><span class="n sig-param"><span class="pre">b</span></span><span class="sig-paren">)</span><span class="w"> </span><span class="k"><span class="pre">noexcept</span></span><a class="headerlink" href="#_CPPv4I0EN6ankerl9nanobench5Bench5batchER5Bench1T" title="Permalink to this definition"></a><br /></dt>
 <dd><p>Sets the batch size. </p>
@@ -733,6 +765,7 @@ generator becomes available, I will switch the implementation.</p>
 <li><p><code class="docutils literal notranslate"><span class="pre">{{epochIterations}}</span></code> See <a class="reference internal" href="#classankerl_1_1nanobench_1_1Bench_1afb83c3694a8f494c19d3114162fc9ebb"><span class="std std-ref">Bench::epochIterations()</span></a>.</p></li>
 <li><p><code class="docutils literal notranslate"><span class="pre">{{warmup}}</span></code> Number of iterations used before measuring starts. See <a class="reference internal" href="#classankerl_1_1nanobench_1_1Bench_1a09d1947386503bddf1d34fe7d0338e98"><span class="std std-ref">Bench::warmup()</span></a>.</p></li>
 <li><p><code class="docutils literal notranslate"><span class="pre">{{relative}}</span></code> True or false, depending on the setting you have used. See <a class="reference internal" href="#classankerl_1_1nanobench_1_1Bench_1afccbfce7dfbf7506410392f5ad096597"><span class="std std-ref">Bench::relative()</span></a>.</p></li>
+<li><p>`{{context(variableName)}} See <a class="reference internal" href="#classankerl_1_1nanobench_1_1Bench_1a40c5016aca69c0c5208d43eca5862804"><span class="std std-ref">Bench::context()</span></a>.</p></li>
 </ul>
 </p>
 <p>Apart from these tags, it is also possible to use some mathematical operations on the measurement data. The operations are of the form <code class="docutils literal notranslate"><span class="pre">{{command(name)}}</span></code>. Currently <code class="docutils literal notranslate"><span class="pre">name</span></code> can be one of <code class="docutils literal notranslate"><span class="pre">elapsed</span></code>, <code class="docutils literal notranslate"><span class="pre">iterations</span></code>. If performance counters are available (currently only on current Linux systems), you also have <code class="docutils literal notranslate"><span class="pre">pagefaults</span></code>, <code class="docutils literal notranslate"><span class="pre">cpucycles</span></code>, <code class="docutils literal notranslate"><span class="pre">contextswitches</span></code>, <code class="docutils literal notranslate"><span class="pre">instructions</span></code>, <code class="docutils literal notranslate"><span class="pre">branchinstructions</span></code>, and <code class="docutils literal notranslate"><span class="pre">branchmisses</span></code>. All the measures (except <code class="docutils literal notranslate"><span class="pre">iterations</span></code>) are provided for a single iteration (so <code class="docutils literal notranslate"><span class="pre">elapsed</span></code> is the time a single iteration took). The following tags are available:<ul>
