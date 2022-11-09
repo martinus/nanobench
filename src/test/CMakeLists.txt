@@ -19,6 +19,7 @@ target_sources_local(nb PRIVATE
     example_shuffle.cpp
     tutorial_complexity_set.cpp
     tutorial_complexity_sort.cpp
+    tutorial_context.cpp
     tutorial_fast_v1.cpp
     tutorial_fast_v2.cpp
     tutorial_fluctuating_v1.cpp
