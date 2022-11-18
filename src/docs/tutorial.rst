@@ -342,7 +342,7 @@ output:
    :language: c++
    :linenos:
 
-Nanobench allows to specify further context information, which may be accessed using ``{{context(name)}}`` where ``name`` names a variable defined in ``Bench::context()``.
+Nanobench allows to specify further context information, which may be accessed using ``{{context(name)}}`` where ``name`` names a variable defined via :cpp:func:`Bench::context() <ankerl::nanobench::Bench::context()>`.
 
 .. literalinclude:: ../test/tutorial_context.cpp
    :language: c++
