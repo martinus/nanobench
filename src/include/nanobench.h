@@ -178,7 +178,7 @@ class BigO;
  *
  *    * `{{relative}}` True or false, depending on the setting you have used. See Bench::relative().
  *
- *    * `{{context(variableName)}} See Bench::context().
+ *    * `{{context(variableName)}}` See Bench::context().
  *
  *    Apart from these tags, it is also possible to use some mathematical operations on the measurement data. The operations
  *    are of the form `{{command(name)}}`.  Currently `name` can be one of `elapsed`, `iterations`. If performance counters
@@ -698,7 +698,7 @@ public:
     /**
      * @brief Reset context information.
      *
-     * This may be improve efficiency when using many context entries,
+     * This may improve efficiency when using many context entries,
      * or improve robustness by removing spurious context entries.
      *
      * @see context()
