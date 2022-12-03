@@ -149,7 +149,7 @@ class BigO;
  *
  *    * `{{name}}` Benchmark name, usually directly provided with Bench::run(), but can also be set with Bench::name().
  *
- *    * `{{unit}}` Unit, e.g. `byte`. Defaults to `op`, see Bench::title().
+ *    * `{{unit}}` Unit, e.g. `byte`. Defaults to `op`, see Bench::unit().
  *
  *    * `{{batch}}` Batch size, see Bench::batch().
  *
@@ -178,7 +178,7 @@ class BigO;
  *
  *    * `{{relative}}` True or false, depending on the setting you have used. See Bench::relative().
  *
- *    * `{{context(variableName)}} See Bench::context().
+ *    * `{{context(variableName)}}` See Bench::context().
  *
  *    Apart from these tags, it is also possible to use some mathematical operations on the measurement data. The operations
  *    are of the form `{{command(name)}}`.  Currently `name` can be one of `elapsed`, `iterations`. If performance counters
@@ -204,7 +204,7 @@ class BigO;
  *      This measurement is a bit hard to interpret, but it is very robust against outliers. E.g. a value of 5% means that half of the
  *      measurements deviate less than 5% from the median, and the other deviate more than 5% from the median.
  *
- *    * `{{sum(<name>)}}` Sums of all the measurements. E.g. `{{sum(iterations)}}` will give you the total number of iterations
+ *    * `{{sum(<name>)}}` Sum of all the measurements. E.g. `{{sum(iterations)}}` will give you the total number of iterations
 *        measured in this benchmark.
  *
  *    * `{{minimum(<name>)}}` Minimum of all measurements.
@@ -247,21 +247,21 @@ class BigO;
  *  For the layer tags *result* and *measurement* you additionally can use these special markers:
  *
  *  * ``{{#-first}}`` - Begin marker of a template that will be instantiated *only for the first* entry in the layer. Use is only
- *    allowed between the begin and end marker of the layer allowed. So between ``{{#result}}`` and ``{{/result}}``, or between
+ *    allowed between the begin and end marker of the layer. So between ``{{#result}}`` and ``{{/result}}``, or between
  *    ``{{#measurement}}`` and ``{{/measurement}}``. Finish the template with ``{{/-first}}``.
  *
  *  * ``{{^-first}}`` - Begin marker of a template that will be instantiated *for each except the first* entry in the layer. This,
- *    this is basically the inversion of ``{{#-first}}``. Use is only allowed between the begin and end marker of the layer allowed.
+ *    this is basically the inversion of ``{{#-first}}``. Use is only allowed between the begin and end marker of the layer.
  *    So between ``{{#result}}`` and ``{{/result}}``, or between ``{{#measurement}}`` and ``{{/measurement}}``.
  *
  *  * ``{{/-first}}`` - End marker for either ``{{#-first}}`` or ``{{^-first}}``.
  *
  *  * ``{{#-last}}`` - Begin marker of a template that will be instantiated *only for the last* entry in the layer. Use is only
- *    allowed between the begin and end marker of the layer allowed. So between ``{{#result}}`` and ``{{/result}}``, or between
+ *    allowed between the begin and end marker of the layer. So between ``{{#result}}`` and ``{{/result}}``, or between
  *    ``{{#measurement}}`` and ``{{/measurement}}``. Finish the template with ``{{/-last}}``.
  *
  *  * ``{{^-last}}`` - Begin marker of a template that will be instantiated *for each except the last* entry in the layer. This,
- *    this is basically the inversion of ``{{#-last}}``. Use is only allowed between the begin and end marker of the layer allowed.
+ *    this is basically the inversion of ``{{#-last}}``. Use is only allowed between the begin and end marker of the layer.
  *    So between ``{{#result}}`` and ``{{/result}}``, or between ``{{#measurement}}`` and ``{{/measurement}}``.
  *
  *  * ``{{/-last}}`` - End marker for either ``{{#-last}}`` or ``{{^-last}}``.
@@ -698,7 +698,7 @@ public:
     /**
      * @brief Reset context information.
      *
-     * This may be improve efficiency when using many context entries,
+     * This may improve efficiency when using many context entries,
      * or improve robustness by removing spurious context entries.
      *
      * @see context()
