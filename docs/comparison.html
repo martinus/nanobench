@@ -15,7 +15,9 @@
         <script data-url_root="./" id="documentation_options" src="_static/documentation_options.js"></script>
         <script src="_static/jquery.js"></script>
         <script src="_static/underscore.js"></script>
+        <script src="_static/_sphinx_javascript_frameworks_compat.js"></script>
         <script src="_static/doctools.js"></script>
+        <script src="_static/sphinx_highlight.js"></script>
     <script src="_static/js/theme.js"></script>
     <link rel="index" title="Index" href="genindex.html" />
     <link rel="search" title="Search" href="search.html" />
@@ -32,7 +34,7 @@
             <img src="_static/nanobench-logo.svg" class="logo" alt="Logo"/>
           </a>
               <div class="version">
-                v4.3.7
+                v4.3.8
               </div>
 <div role="search">
   <form id="rtd-search-form" class="wy-form" action="search.html" method="get">
@@ -185,7 +187,7 @@
            <div itemprop="articleBody">
              
   <section id="test-set">
-<h1>Test Set<a class="headerlink" href="#test-set" title="Permalink to this headline"></a></h1>
+<h1>Test Set<a class="headerlink" href="#test-set" title="Permalink to this heading"></a></h1>
 <p>I’ve implemented the three different benchmarks: Fast, Slow, Fluctuating in several frameworks for comparison.</p>
 <dl class="simple">
 <dt>Fast</dt><dd><p>Benchmarks <code class="docutils literal notranslate"><span class="pre">x</span> <span class="pre">+=</span> <span class="pre">x</span></code>, starting from 1. This is a single instruction, and prone to be optimized away.</p>
@@ -201,7 +203,7 @@ is achieved by randomly producing 0-255 random numbers with <code class="docutil
 <a class="reference external" href="https://pyperf.readthedocs.io/en/latest/system.html">pyperf system tune</a>.</p>
 </section>
 <section id="runtime">
-<h1>Runtime<a class="headerlink" href="#runtime" title="Permalink to this headline"></a></h1>
+<h1>Runtime<a class="headerlink" href="#runtime" title="Permalink to this heading"></a></h1>
 <p>I wrote a little timing tool that measures how long exactly it takes to print benchmark output to the screen.
 With this I have measured the runtimes of major benchmarking frameworks which support automatic tuning of
 the number of iterations: <a class="reference internal" href="#comparison-google-benchmark"><span class="std std-ref">Google Benchmark</span></a>, <a class="reference internal" href="#comparison-catch2"><span class="std std-ref">Catch2</span></a>,
@@ -267,11 +269,11 @@ the number of iterations: <a class="reference internal" href="#comparison-google
 <p>Nanobench is clearly the fastest autotuning benchmarking framework, by an enormous margin.</p>
 </section>
 <section id="implementations-output">
-<h1>Implementations &amp; Output<a class="headerlink" href="#implementations-output" title="Permalink to this headline"></a></h1>
+<h1>Implementations &amp; Output<a class="headerlink" href="#implementations-output" title="Permalink to this heading"></a></h1>
 <section id="nanobench">
-<span id="comparison-nanobench"></span><h2>nanobench<a class="headerlink" href="#nanobench" title="Permalink to this headline"></a></h2>
+<span id="comparison-nanobench"></span><h2>nanobench<a class="headerlink" href="#nanobench" title="Permalink to this heading"></a></h2>
 <section id="sourcecode">
-<h3>Sourcecode<a class="headerlink" href="#sourcecode" title="Permalink to this headline"></a></h3>
+<h3>Sourcecode<a class="headerlink" href="#sourcecode" title="Permalink to this heading"></a></h3>
 <div class="highlight-c++ notranslate"><div class="highlight"><pre><span></span><span class="linenos"> 1</span><span class="c1">// https://github.com/martinus/nanobench</span>
 <span class="linenos"> 2</span><span class="c1">// g++ -O2 -I../../include main.cpp -o m</span>
 <span class="linenos"> 3</span>
@@ -306,7 +308,7 @@ the number of iterations: <a class="reference internal" href="#comparison-google
 </div>
 </section>
 <section id="results">
-<h3>Results<a class="headerlink" href="#results" title="Permalink to this headline"></a></h3>
+<h3>Results<a class="headerlink" href="#results" title="Permalink to this heading"></a></h3>
 <div class="highlight-text notranslate"><div class="highlight"><pre><span></span>|               ns/op |                op/s |    err% |          ins/op |          cyc/op |    IPC |         bra/op |   miss% |     total | benchmark
 |--------------------:|--------------------:|--------:|----------------:|----------------:|-------:|---------------:|--------:|----------:|:----------
 |                0.31 |    3,192,709,967.58 |    0.0% |            1.00 |            1.00 |  0.999 |           0.00 |    0.0% |      0.00 | `x += x`
@@ -317,11 +319,11 @@ the number of iterations: <a class="reference internal" href="#comparison-google
 </section>
 </section>
 <section id="google-benchmark">
-<span id="comparison-google-benchmark"></span><h2>Google Benchmark<a class="headerlink" href="#google-benchmark" title="Permalink to this headline"></a></h2>
+<span id="comparison-google-benchmark"></span><h2>Google Benchmark<a class="headerlink" href="#google-benchmark" title="Permalink to this heading"></a></h2>
 <p>Very feature rich, battle proven, but a bit aged. Requires
 google test. Get it here: <a class="reference external" href="https://github.com/google/benchmark">Google Benchmark</a></p>
 <section id="id2">
-<h3>Sourcecode<a class="headerlink" href="#id2" title="Permalink to this headline"></a></h3>
+<h3>Sourcecode<a class="headerlink" href="#id2" title="Permalink to this heading"></a></h3>
 <div class="highlight-c++ notranslate"><div class="highlight"><pre><span></span><span class="linenos"> 1</span><span class="cp">#include</span><span class="w"> </span><span class="cpf">&quot;benchmark.h&quot;</span><span class="cp"></span>
 <span class="linenos"> 2</span>
 <span class="linenos"> 3</span><span class="cp">#include</span><span class="w"> </span><span class="cpf">&lt;chrono&gt;</span><span class="cp"></span>
@@ -366,7 +368,7 @@ google test. Get it here: <a class="reference external" href="https://github.com
 </div>
 </section>
 <section id="id3">
-<h3>Results<a class="headerlink" href="#id3" title="Permalink to this headline"></a></h3>
+<h3>Results<a class="headerlink" href="#id3" title="Permalink to this heading"></a></h3>
 <p>Compiled &amp; linked with</p>
 <div class="highlight-sh notranslate"><div class="highlight"><pre><span></span>g++ -O2 main.cpp -L/home/martinus/git/benchmark/build/src -lbenchmark -lpthread -o gbench
 </pre></div>
@@ -394,11 +396,11 @@ ComparisonFluctuating        993 ns          992 ns       706946
 </section>
 </section>
 <section id="nonius">
-<span id="comparison-nonius"></span><h2>nonius<a class="headerlink" href="#nonius" title="Permalink to this headline"></a></h2>
+<span id="comparison-nonius"></span><h2>nonius<a class="headerlink" href="#nonius" title="Permalink to this heading"></a></h2>
 <p>It gives lots of statistics, but seems a bit complicated to me. Not as straight forward as I’d like it. It shows lots of statistics, which makes the output a bit hard to read. I am not sure if it is still actively maintained. The homepage has been down for a while.
 Get it here: <a class="reference external" href="https://github.com/libnonius/nonius">nonius</a></p>
 <section id="id5">
-<h3>Sourcecode<a class="headerlink" href="#id5" title="Permalink to this headline"></a></h3>
+<h3>Sourcecode<a class="headerlink" href="#id5" title="Permalink to this heading"></a></h3>
 <div class="highlight-c++ notranslate"><div class="highlight"><pre><span></span><span class="linenos"> 1</span><span class="cp">#define NONIUS_RUNNER</span>
 <span class="linenos"> 2</span><span class="cp">#include</span><span class="w"> </span><span class="cpf">&lt;nonius/nonius_single.h++&gt;</span><span class="cp"></span>
 <span class="linenos"> 3</span>
@@ -450,7 +452,7 @@ Get it here: <a class="reference external" href="https://github.com/libnonius/no
 </div>
 </section>
 <section id="id6">
-<h3>Results<a class="headerlink" href="#id6" title="Permalink to this headline"></a></h3>
+<h3>Results<a class="headerlink" href="#id6" title="Permalink to this heading"></a></h3>
 <div class="highlight-text notranslate"><div class="highlight"><pre><span></span>clock resolution: mean is 22.0426 ns (20480002 iterations)
 
 
@@ -483,12 +485,12 @@ variance is severely inflated by outliers
 </section>
 </section>
 <section id="picobench">
-<h2>Picobench<a class="headerlink" href="#picobench" title="Permalink to this headline"></a></h2>
+<h2>Picobench<a class="headerlink" href="#picobench" title="Permalink to this heading"></a></h2>
 <p>It took me a while to figure out that I have to configure the slow test, otherwise it would
 run for a looong time. The number of iterations is hardcoded, this library seems very basic. Get it here:
 <a class="reference external" href="https://github.com/iboB/picobench">picobench</a></p>
 <section id="id8">
-<h3>Sourcecode<a class="headerlink" href="#id8" title="Permalink to this headline"></a></h3>
+<h3>Sourcecode<a class="headerlink" href="#id8" title="Permalink to this heading"></a></h3>
 <div class="highlight-c++ notranslate"><div class="highlight"><pre><span></span><span class="linenos"> 1</span><span class="cp">#define PICOBENCH_IMPLEMENT_WITH_MAIN</span>
 <span class="linenos"> 2</span><span class="cp">#include</span><span class="w"> </span><span class="cpf">&quot;picobench.hpp&quot;</span><span class="cp"></span>
 <span class="linenos"> 3</span>
@@ -536,7 +538,7 @@ run for a looong time. The number of iterations is hardcoded, this library seems
 </div>
 </section>
 <section id="id9">
-<h3>Results<a class="headerlink" href="#id9" title="Permalink to this headline"></a></h3>
+<h3>Results<a class="headerlink" href="#id9" title="Permalink to this heading"></a></h3>
 <div class="highlight-text notranslate"><div class="highlight"><pre><span></span>ComparisonFast:
 ===============================================================================
    Name (baseline is *)   |   Dim   |  Total ms |  ns/op  |Baseline| Ops/second
@@ -572,12 +574,12 @@ fluctuating:
 </section>
 </section>
 <section id="catch2">
-<span id="comparison-catch2"></span><h2>Catch2<a class="headerlink" href="#catch2" title="Permalink to this headline"></a></h2>
+<span id="comparison-catch2"></span><h2>Catch2<a class="headerlink" href="#catch2" title="Permalink to this heading"></a></h2>
 <p>Catch2 is mostly a unit testing framework, and has recently integrated benchmarking faciliy. It is very easy to use,
 but does not seem too configurable. I find the way it writes the output very confusing. Get it here:
 <a class="reference external" href="https://github.com/catchorg/Catch2">Catch2</a></p>
 <section id="id11">
-<h3>Sourcecode<a class="headerlink" href="#id11" title="Permalink to this headline"></a></h3>
+<h3>Sourcecode<a class="headerlink" href="#id11" title="Permalink to this heading"></a></h3>
 <div class="highlight-c++ notranslate"><div class="highlight"><pre><span></span><span class="linenos"> 1</span><span class="c1">// https://github.com/catchorg/Catch2</span>
 <span class="linenos"> 2</span><span class="c1">// g++ -O2 catch.cpp -o c</span>
 <span class="linenos"> 3</span>
@@ -617,7 +619,7 @@ but does not seem too configurable. I find the way it writes the output very con
 </div>
 </section>
 <section id="id12">
-<h3>Results<a class="headerlink" href="#id12" title="Permalink to this headline"></a></h3>
+<h3>Results<a class="headerlink" href="#id12" title="Permalink to this heading"></a></h3>
 <div class="highlight-text notranslate"><div class="highlight"><pre><span></span>~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 c is a Catch v2.9.2 host application.
 Run with -? for options
@@ -675,11 +677,11 @@ assertions: - none -
 </section>
 </section>
 <section id="moodycamel-microbench">
-<h2>moodycamel::microbench<a class="headerlink" href="#moodycamel-microbench" title="Permalink to this headline"></a></h2>
+<h2>moodycamel::microbench<a class="headerlink" href="#moodycamel-microbench" title="Permalink to this heading"></a></h2>
 <p>A very simple benchmarking tool, and an API that’s very similar to <code class="docutils literal notranslate"><span class="pre">ankerl::nanobench</span></code>. No autotuning,
 no doNotOptimize, no output formatting. Get it here: <a class="reference external" href="https://github.com/cameron314/microbench">moodycamel::microbench</a></p>
 <section id="id14">
-<h3>Sourcecode<a class="headerlink" href="#id14" title="Permalink to this headline"></a></h3>
+<h3>Sourcecode<a class="headerlink" href="#id14" title="Permalink to this heading"></a></h3>
 <div class="highlight-c++ notranslate"><div class="highlight"><pre><span></span><span class="linenos"> 1</span><span class="cp">#include</span><span class="w"> </span><span class="cpf">&quot;microbench.h&quot;</span><span class="cp"></span>
 <span class="linenos"> 2</span>
 <span class="linenos"> 3</span><span class="cp">#include</span><span class="w"> </span><span class="cpf">&lt;chrono&gt;</span><span class="cp"></span>
@@ -724,7 +726,7 @@ no doNotOptimize, no output formatting. Get it here: <a class="reference externa
 </div>
 </section>
 <section id="id15">
-<h3>Results<a class="headerlink" href="#id15" title="Permalink to this headline"></a></h3>
+<h3>Results<a class="headerlink" href="#id15" title="Permalink to this heading"></a></h3>
 <div class="highlight-text notranslate"><div class="highlight"><pre><span></span>3.12506e-07 sec x += x (x==0)
 10.056 sec sleep 10ms
 0.000661384 sec random fluctuations
@@ -733,14 +735,14 @@ no doNotOptimize, no output formatting. Get it here: <a class="reference externa
 </section>
 </section>
 <section id="sltbench">
-<span id="comparison-sltbench"></span><h2>sltbench<a class="headerlink" href="#sltbench" title="Permalink to this headline"></a></h2>
+<span id="comparison-sltbench"></span><h2>sltbench<a class="headerlink" href="#sltbench" title="Permalink to this heading"></a></h2>
 <p>C++ benchmark which seems to have similar intentions to nanonbech. It claims to be 4.7 times faster than googlebench.
 It requires to be compiled and linked. I initially got a compile error because of missing <code class="docutils literal notranslate"><span class="pre">&lt;cstdint&gt;</span></code> include.
 After that it compiled fine, and I created an example. I didn’t like that I had to use global variables for the state
 that I needed in my <code class="docutils literal notranslate"><span class="pre">ComparisonFast</span></code> and <code class="docutils literal notranslate"><span class="pre">ComparisonSlow</span></code> benchmark. Get it
 here: <a class="reference external" href="https://github.com/ivafanas/sltbench">sltbench</a></p>
 <section id="id17">
-<h3>Sourcecode<a class="headerlink" href="#id17" title="Permalink to this headline"></a></h3>
+<h3>Sourcecode<a class="headerlink" href="#id17" title="Permalink to this heading"></a></h3>
 <div class="highlight-c++ notranslate"><div class="highlight"><pre><span></span><span class="linenos"> 1</span><span class="cp">#include</span><span class="w"> </span><span class="cpf">&lt;sltbench/Bench.h&gt;</span><span class="c1"> // https://github.com/ivafanas/sltbench</span><span class="cp"></span>
 <span class="linenos"> 2</span>
 <span class="linenos"> 3</span><span class="cp">#include</span><span class="w"> </span><span class="cpf">&lt;chrono&gt;</span><span class="cp"></span>
@@ -781,7 +783,7 @@ here: <a class="reference external" href="https://github.com/ivafanas/sltbench">
 </div>
 </section>
 <section id="id18">
-<h3>Results<a class="headerlink" href="#id18" title="Permalink to this headline"></a></h3>
+<h3>Results<a class="headerlink" href="#id18" title="Permalink to this heading"></a></h3>
 <div class="highlight-text notranslate"><div class="highlight"><pre><span></span>benchmark                                                   arg                      status               time(ns)
 ComparisonFast                                                                       ok                          1
 ComparisonFluctuating                                                                ok                         20
@@ -792,12 +794,12 @@ ComparisonSlow                                                                  
 </section>
 </section>
 <section id="celero">
-<h2>Celero<a class="headerlink" href="#celero" title="Permalink to this headline"></a></h2>
+<h2>Celero<a class="headerlink" href="#celero" title="Permalink to this heading"></a></h2>
 <p>Unfortunately I couldn’t get it working. I only got segmentation faults for my <code class="docutils literal notranslate"><span class="pre">x</span> <span class="pre">+=</span> <span class="pre">x</span></code> benchmarks.
 Get it here: <a class="reference external" href="https://github.com/DigitalInBlue/Celero">celero</a></p>
 </section>
 <section id="folly-benchmark">
-<h2>folly Benchmark<a class="headerlink" href="#folly-benchmark" title="Permalink to this headline"></a></h2>
+<h2>folly Benchmark<a class="headerlink" href="#folly-benchmark" title="Permalink to this heading"></a></h2>
 <p>Facebook’s folly comes with benchmarking facility. It seems rather basic, but with good <code class="docutils literal notranslate"><span class="pre">DoNotOptimizeAway</span></code>
 functionality. Honestly, I was too lazy to get this working. Too much installation hazzle. Get it here:
 <a class="reference external" href="https://github.com/facebook/folly">folly</a></p>
@@ -815,7 +817,7 @@ functionality. Honestly, I was too lazy to get this working. Too much installati
   <hr/>
 
   <div role="contentinfo">
-    <p>&#169; Copyright 2019-2022 Martin Ankerl &lt;martin.ankerl@gmail.com&gt;.</p>
+    <p>&#169; Copyright 2019-2022 Martin Leitner-Ankerl &lt;martin.ankerl@gmail.com&gt;.</p>
   </div>
 
   Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a

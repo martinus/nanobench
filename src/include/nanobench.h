@@ -7,7 +7,7 @@
 //
 // Licensed under the MIT License <http://opensource.org/licenses/MIT>.
 // SPDX-License-Identifier: MIT
-// Copyright (c) 2019-2022 Martin Ankerl <martin.ankerl@gmail.com>
+// Copyright (c) 2019-2022 Martin Leitner-Ankerl <martin.ankerl@gmail.com>
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -33,7 +33,7 @@
 // see https://semver.org/
 #define ANKERL_NANOBENCH_VERSION_MAJOR 4 // incompatible API changes
 #define ANKERL_NANOBENCH_VERSION_MINOR 3 // backwards-compatible changes
-#define ANKERL_NANOBENCH_VERSION_PATCH 7 // backwards-compatible bug fixes
+#define ANKERL_NANOBENCH_VERSION_PATCH 8 // backwards-compatible bug fixes
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 // public facing api - as minimal as possible
@@ -145,40 +145,40 @@ class BigO;
  * * `{{#result}}` Marks the begin of the result layer. Whatever comes after this will be instantiated as often as
  *   a benchmark result is available. Within it, you can use these tags:
  *
- *    * `{{title}}` See Bench::title().
+ *    * `{{title}}` See Bench::title.
  *
- *    * `{{name}}` Benchmark name, usually directly provided with Bench::run(), but can also be set with Bench::name().
+ *    * `{{name}}` Benchmark name, usually directly provided with Bench::run, but can also be set with Bench::name.
  *
- *    * `{{unit}}` Unit, e.g. `byte`. Defaults to `op`, see Bench::unit().
+ *    * `{{unit}}` Unit, e.g. `byte`. Defaults to `op`, see Bench::unit.
  *
- *    * `{{batch}}` Batch size, see Bench::batch().
+ *    * `{{batch}}` Batch size, see Bench::batch.
  *
- *    * `{{complexityN}}` Value used for asymptotic complexity calculation. See Bench::complexityN().
+ *    * `{{complexityN}}` Value used for asymptotic complexity calculation. See Bench::complexityN.
  *
- *    * `{{epochs}}` Number of epochs, see Bench::epochs().
+ *    * `{{epochs}}` Number of epochs, see Bench::epochs.
  *
  *    * `{{clockResolution}}` Accuracy of the clock, i.e. what's the smallest time possible to measure with the clock.
  *      For modern systems, this can be around 20 ns. This value is automatically determined by nanobench at the first
  *      benchmark that is run, and used as a static variable throughout the application's runtime.
  *
- *    * `{{clockResolutionMultiple}}` Configuration multiplier for `clockResolution`. See Bench::clockResolutionMultiple().
+ *    * `{{clockResolutionMultiple}}` Configuration multiplier for `clockResolution`. See Bench::clockResolutionMultiple.
  *      This is the target runtime for each measurement (epoch). That means the more accurate your clock is, the faster
  *      will be the benchmark. Basing the measurement's runtime on the clock resolution is the main reason why nanobench is so fast.
  *
  *    * `{{maxEpochTime}}` Configuration for a maximum time each measurement (epoch) is allowed to take. Note that at least
- *      a single iteration will be performed, even when that takes longer than maxEpochTime. See Bench::maxEpochTime().
+ *      a single iteration will be performed, even when that takes longer than maxEpochTime. See Bench::maxEpochTime.
  *
- *    * `{{minEpochTime}}` Minimum epoch time, defaults to 1ms. See Bench::minEpochTime().
+ *    * `{{minEpochTime}}` Minimum epoch time, defaults to 1ms. See Bench::minEpochTime.
  *
- *    * `{{minEpochIterations}}` See Bench::minEpochIterations().
+ *    * `{{minEpochIterations}}` See Bench::minEpochIterations.
  *
- *    * `{{epochIterations}}` See Bench::epochIterations().
+ *    * `{{epochIterations}}` See Bench::epochIterations.
  *
- *    * `{{warmup}}` Number of iterations used before measuring starts. See Bench::warmup().
+ *    * `{{warmup}}` Number of iterations used before measuring starts. See Bench::warmup.
  *
- *    * `{{relative}}` True or false, depending on the setting you have used. See Bench::relative().
+ *    * `{{relative}}` True or false, depending on the setting you have used. See Bench::relative.
  *
- *    * `{{context(variableName)}}` See Bench::context().
+ *    * `{{context(variableName)}}` See Bench::context.
  *
  *    Apart from these tags, it is also possible to use some mathematical operations on the measurement data. The operations
  *    are of the form `{{command(name)}}`.  Currently `name` can be one of `elapsed`, `iterations`. If performance counters
@@ -319,7 +319,7 @@ char const* csv() noexcept;
   See the tutorial at :ref:`tutorial-template-html` for an example.
   @endverbatim
 
-  @see ankerl::nanobench::render()
+  @see also ankerl::nanobench::render()
  */
 char const* htmlBoxplot() noexcept;
 
@@ -493,7 +493,7 @@ public:
     /**
      * As a safety precaution, we don't allow copying. Copying a PRNG would mean you would have two random generators that produce the
      * same sequence, which is generally not what one wants. Instead create a new rng with the default constructor Rng(), which is
-     * automatically seeded from `std::random_device`. If you really need a copy, use copy().
+     * automatically seeded from `std::random_device`. If you really need a copy, use `copy()`.
      */
     Rng(Rng const&) = delete;
 
@@ -673,6 +673,10 @@ public:
      */
     Bench& title(char const* benchmarkTitle);
     Bench& title(std::string const& benchmarkTitle);
+
+    /**
+     * @brief Gets the title of the benchmark
+     */
     ANKERL_NANOBENCH(NODISCARD) std::string const& title() const noexcept;
 
     /// Name of the benchmark, will be shown in the table row.
@@ -687,7 +691,7 @@ public:
      * Trying to render a variable that hasn't been set before raises an exception.
      * Not included in (default) markdown table.
      *
-     * @see clearContext(), render()
+     * @see clearContext, render
      *
      * @param variableName The name of the context variable.
      * @param variableValue The value of the context variable.
@@ -701,7 +705,7 @@ public:
      * This may improve efficiency when using many context entries,
      * or improve robustness by removing spurious context entries.
      *
-     * @see context()
+     * @see context
      */
     Bench& clearContext();
 
@@ -800,7 +804,7 @@ public:
      * As a safety precaution if the clock is not very accurate, we can set an upper limit for the maximum evaluation time per
      * epoch. Default is 100ms. At least a single evaluation of the benchmark is performed.
      *
-     * @see minEpochTime(), minEpochIterations()
+     * @see minEpochTime, minEpochIterations
      *
      * @param t Maximum target runtime for a single epoch.
      */
@@ -813,7 +817,7 @@ public:
      * Default is zero, so we are fully relying on clockResolutionMultiple(). In most cases this is exactly what you want. If you see
      * that the evaluation is unreliable with a high `err%`, you can increase either minEpochTime() or minEpochIterations().
      *
-     * @see maxEpochTime(), minEpochIterations()
+     * @see maxEpochTim), minEpochIterations
      *
      * @param t Minimum time each epoch should take.
      */
@@ -826,7 +830,7 @@ public:
      * Default is 1, and we rely on clockResolutionMultiple(). If the `err%` is high and you want a more smooth result, you might want
      * to increase the minimum number of iterations, or increase the minEpochTime().
      *
-     * @see minEpochTime(), maxEpochTime(), minEpochIterations()
+     * @see minEpochTime, maxEpochTime, minEpochIterations
      *
      * @param numIters Minimum number of iterations per epoch.
      */
