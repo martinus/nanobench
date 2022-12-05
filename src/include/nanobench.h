@@ -33,7 +33,7 @@
 // see https://semver.org/
 #define ANKERL_NANOBENCH_VERSION_MAJOR 4 // incompatible API changes
 #define ANKERL_NANOBENCH_VERSION_MINOR 3 // backwards-compatible changes
-#define ANKERL_NANOBENCH_VERSION_PATCH 8 // backwards-compatible bug fixes
+#define ANKERL_NANOBENCH_VERSION_PATCH 9 // backwards-compatible bug fixes
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 // public facing api - as minimal as possible
@@ -1182,10 +1182,11 @@ void Rng::shuffle(Container& container) noexcept {
     while (i > 1U) {
         using std::swap;
         auto n = operator()();
-        auto b1 = static_cast<size_t>((static_cast<uint32_t>(n) * static_cast<uint64_t>(i)) >> 32U);
+        // using decltype(i) instead of size_t to be compatible to containers with 32bit index (see #80)
+        auto b1 = static_cast<decltype(i)>((static_cast<uint32_t>(n) * static_cast<uint64_t>(i)) >> 32U);
         swap(container[--i], container[b1]);
 
-        auto b2 = static_cast<size_t>(((n >> 32U) * static_cast<uint64_t>(i)) >> 32U);
+        auto b2 = static_cast<decltype(i)>(((n >> 32U) * static_cast<uint64_t>(i)) >> 32U);
         swap(container[--i], container[b2]);
     }
 }
