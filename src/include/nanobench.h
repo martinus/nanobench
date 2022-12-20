@@ -435,7 +435,11 @@ public:
     Result& operator=(Result const&);
     Result& operator=(Result&&);
     Result(Result const&);
+#if defined(_MSC_VER) && _MSC_VER < 1928
+    Result(Result&&);
+#else
     Result(Result&&) noexcept;
+#endif
 
     // adds new measurement results
     // all values are scaled by iters (except iters...)
@@ -2869,7 +2873,11 @@ Result::~Result() = default;
 Result& Result::operator=(Result const&) = default;
 Result& Result::operator=(Result&&) = default;
 Result::Result(Result const&) = default;
+#if defined(_MSC_VER) && _MSC_VER < 1928
+Result::Result(Result&&) = default;
+#else
 Result::Result(Result&&) noexcept = default;
+#endif
 
 namespace detail {
 template <typename T>
