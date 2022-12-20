@@ -405,7 +405,11 @@ struct Config {
     Config& operator=(Config const&);
     Config& operator=(Config&&);
     Config(Config const&);
+#if defined(_MSC_VER) && _MSC_VER < 1928
+    Config(Config&&);
+#else
     Config(Config&&) noexcept;
+#endif
 };
 ANKERL_NANOBENCH(IGNORE_PADDED_POP)
 
@@ -2854,7 +2858,11 @@ Config::~Config() = default;
 Config& Config::operator=(Config const&) = default;
 Config& Config::operator=(Config&&) = default;
 Config::Config(Config const&) = default;
+#if defined(_MSC_VER) && _MSC_VER < 1928
+Config::Config(Config&&) = default;
+#else
 Config::Config(Config&&) noexcept = default;
+#endif
 
 // provide implementation here so it's only generated once
 Result::~Result() = default;
