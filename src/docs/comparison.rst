@@ -187,7 +187,7 @@ Sourcecode
 ----------
 
 
-.. literalinclude:: ../comparisons/cameron314_microbench/microbench.cpp
+.. literalinclude:: ../comparisons/cameron317_microbench/microbench.cpp
     :language: c++
     :linenos:
 
@@ -196,7 +196,7 @@ Sourcecode
 Results
 -------
 
-.. literalinclude:: ../comparisons/cameron314_microbench/out.txt
+.. literalinclude:: ../comparisons/cameron317_microbench/out.txt
     :language: text
 
 
