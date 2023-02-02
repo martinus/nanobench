@@ -121,8 +121,8 @@ function(add_compile_flags_target target)
         target_compile_options(${target} PRIVATE /EHsc) # exception handling
         target_compile_options(${target} PRIVATE /std:c++latest) # for post c++14 updates in MSVC
         target_compile_options(${target} PRIVATE /permissive-)   # force standard conformance - this is the better flag than /Za
-        target_compile_options(${target} PRIVATE /WX)
-        target_compile_options(${target} PRIVATE /Wall) # turns on warnings from levels 1 through 4 which are off by default - https://msdn.microsoft.com/en-us/library/23k5d385.aspx
+        target_compile_options(${target} PRIVATE /W4)
+        # target_compile_options(${target} PRIVATE /Wall) # turns on warnings from levels 1 through 4 which are off by default - https://msdn.microsoft.com/en-us/library/23k5d385.aspx
         
         add_definitions(/MP) # parallel builds
 
