@@ -5,9 +5,11 @@
 #include <fstream>
 #include <random>
 
+// NOLINTNEXTLINE
 TEST_CASE("shuffle_pyperf") {
     std::vector<uint64_t> data(500, 0); // input data for shuffling
 
+    // NOLINTNEXTLINE(cert-msc32-c,cert-msc51-cpp)
     std::default_random_engine defaultRng(123);
     std::ofstream fout1("pyperf_shuffle_std.json");
     ankerl::nanobench::Bench()

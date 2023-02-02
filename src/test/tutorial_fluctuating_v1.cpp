@@ -3,6 +3,7 @@
 
 #include <random>
 
+// NOLINTNEXTLINE
 TEST_CASE("tutorial_fluctuating_v1") {
     std::random_device dev;
     std::mt19937_64 rng(dev());

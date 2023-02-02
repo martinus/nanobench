@@ -5,6 +5,7 @@
 
 // This example should show about one branch per op, and about 50% branch misses
 // since it is completely unpredictable.
+// NOLINTNEXTLINE
 TEST_CASE("example_branch_misses") {
     ankerl::nanobench::Rng rng;
 
@@ -15,7 +16,7 @@ TEST_CASE("example_branch_misses") {
     bench.batch(1.5)
         .run("50% forced misspredictions",
              [&] {
-                 if (rng() & 1U) {
+                 if ((rng() & 1U) != 0U) {
                      rng();
                  }
              })

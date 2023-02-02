@@ -12,10 +12,11 @@
 // `compare_exchange_strong`
 //
 // example from https://github.com/cameron314/microbench
+// NOLINTNEXTLINE
 TEST_CASE("performance_counters") {
     ankerl::nanobench::Bench bench;
 
     bench.run("start & stop counting", [&] {
-        std::vector<int> v = {{11, 5, 5, 5, 5, 5, 5, 5, 5, 6, 7}};
+        std::vector<int> const v = {{11, 5, 5, 5, 5, 5, 5, 5, 5, 6, 7}};
     });
 }

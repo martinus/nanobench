@@ -19,6 +19,7 @@ std::string to_s(uint64_t n) {
 
 } // namespace
 
+// NOLINTNEXTLINE
 TEST_CASE("to_s") {
     REQUIRE(to_s(UINT64_C(123)) == "123");
     REQUIRE(to_s(UINT64_C(0)) == "0");

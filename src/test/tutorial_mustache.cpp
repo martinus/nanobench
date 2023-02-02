@@ -18,15 +18,18 @@ void gen(std::string const& typeName, char const* mustacheTemplate,
 
 } // namespace
 
+// NOLINTNEXTLINE
 TEST_CASE("tutorial_mustache") {
     ankerl::nanobench::Bench bench;
     bench.title("Benchmarking std::mt19937_64 and std::knuth_b");
 
+    // NOLINTNEXTLINE(cert-msc32-c,cert-msc51-cpp)
     std::mt19937_64 rng1;
     bench.run("std::mt19937_64", [&] {
         ankerl::nanobench::doNotOptimizeAway(rng1());
     });
 
+    // NOLINTNEXTLINE(cert-msc32-c,cert-msc51-cpp)
     std::knuth_b rng2;
     bench.run("std::knuth_b", [&] {
         ankerl::nanobench::doNotOptimizeAway(rng2());

@@ -9,11 +9,11 @@
 namespace {
 
 template <typename ContainerT>
-static void testBenchSet(char const* label, int n,
-                         ankerl::nanobench::Bench& bench) {
+void testBenchSet(char const* label, int n, ankerl::nanobench::Bench& bench) {
     bench.run(label, [&] {
         ContainerT items;
         for (int i = 0; i < n; ++i) {
+            // NOLINTNEXTLINE(performance-inefficient-vector-operation)
             items.push_back(i);
         }
         ankerl::nanobench::doNotOptimizeAway(&items);
@@ -41,10 +41,12 @@ void exampleCsv(bool useCsv) {
 
 } // namespace
 
+// NOLINTNEXTLINE
 TEST_CASE("example_csv_csv") {
     exampleCsv(true);
 }
 
+// NOLINTNEXTLINE
 TEST_CASE("example_csv_md") {
     exampleCsv(false);
 }

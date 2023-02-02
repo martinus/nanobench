@@ -5,6 +5,7 @@
 
 // Benchmarks insertion and removal in multiple different containers.
 // This uses a very fast random generator.
+// NOLINTNEXTLINE
 TEST_CASE("unit_cold") {
     int x = 0;
     ankerl::nanobench::Bench().epochs(1).epochIterations(1).run(

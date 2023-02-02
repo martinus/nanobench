@@ -1,8 +1,11 @@
 #include <nanobench.h>
 #include <thirdparty/doctest/doctest.h>
 
+#include <cmath>
+
 // Benchmarks insertion and removal in multiple different containers.
 // This uses a very fast random generator.
+// NOLINTNEXTLINE
 TEST_CASE("test_exact_iters_and_epochs") {
 
     ankerl::nanobench::Bench bench;
@@ -26,16 +29,13 @@ TEST_CASE("test_exact_iters_and_epochs") {
         auto const& r = bench.results()[0];
         REQUIRE(r.size() == 7U); // each epoch has a result
         for (size_t i = 0; i < r.size(); ++i) {
-            REQUIRE(
-                static_cast<int>(
-                    0.5 +
-                    r.get(i, ankerl::nanobench::Result::Measure::iterations)) ==
-                123);
+            REQUIRE(static_cast<int>(std::lround(r.get(
+                        i, ankerl::nanobench::Result::Measure::iterations))) ==
+                    123);
         }
-        REQUIRE(
-            static_cast<int>(
-                0.5 + r.sum(ankerl::nanobench::Result::Measure::iterations)) ==
-            7 * 123);
+        REQUIRE(static_cast<int>(std::lround(
+                    r.sum(ankerl::nanobench::Result::Measure::iterations))) ==
+                7 * 123);
     }
 
     {
@@ -43,15 +43,12 @@ TEST_CASE("test_exact_iters_and_epochs") {
         auto const& r = bench.results()[1];
         REQUIRE(r.size() == 1U); // each epoch has a result
         for (size_t i = 0; i < r.size(); ++i) {
-            REQUIRE(
-                static_cast<int>(
-                    0.5 +
-                    r.get(i, ankerl::nanobench::Result::Measure::iterations)) ==
-                77);
+            REQUIRE(static_cast<int>(std::lround(r.get(
+                        i, ankerl::nanobench::Result::Measure::iterations))) ==
+                    77);
         }
-        REQUIRE(
-            static_cast<int>(
-                0.5 + r.sum(ankerl::nanobench::Result::Measure::iterations)) ==
-            1 * 77);
+        REQUIRE(static_cast<int>(std::lround(
+                    r.sum(ankerl::nanobench::Result::Measure::iterations))) ==
+                1 * 77);
     }
 }

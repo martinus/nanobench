@@ -27,12 +27,14 @@ constexpr uint64_t rotl(uint64_t x, unsigned k) noexcept {
 // Great for general purpose work, including huge jobs.
 // Est. capacity = 2^75 bytes. Register pressure = 6. State size = 192 bits.
 
+// NOLINTNEXTLINE
 uint64_t xState, yState, zState; // set to nonzero seed
 
 ANKERL_NANOBENCH_NO_SANITIZE("integer")
 uint64_t romuTrio_random() {
+    // NOLINTNEXTLINE
     uint64_t xp = xState, yp = yState, zp = zState;
-    xState = 15241094284759029579u * zp;
+    xState = 15241094284759029579U * zp;
     yState = yp - xp;
     yState = rotl(yState, 12);
     zState = zp - yp;
@@ -56,6 +58,7 @@ void romuTrio_seed(uint64_t seed) {
 #include <iostream>
 #include <sstream>
 
+// NOLINTNEXTLINE
 TEST_CASE("unit_romutrio_seed") {
     std::ostringstream out;
     for (int skip = 0; skip < 10; ++skip) {
@@ -72,6 +75,7 @@ TEST_CASE("unit_romutrio_seed") {
     std::cout << out.str() << std::endl;
 }
 
+// NOLINTNEXTLINE
 TEST_CASE("unit_rng_state") {
     ankerl::nanobench::Rng rng{};
     for (size_t i = 0; i < 10; ++i) {

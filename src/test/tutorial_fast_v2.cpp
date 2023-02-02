@@ -1,6 +1,7 @@
 #include <nanobench.h>
 #include <thirdparty/doctest/doctest.h>
 
+// NOLINTNEXTLINE
 TEST_CASE("tutorial_fast_v2") {
     uint64_t x = 1;
     ankerl::nanobench::Bench().run("++x", [&]() {

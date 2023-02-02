@@ -4,6 +4,7 @@
 #include <atomic>
 #include <iostream>
 
+// NOLINTNEXTLINE
 TEST_CASE("tutorial_render_simple") {
     std::atomic<int> x(0);
 

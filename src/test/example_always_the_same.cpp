@@ -3,10 +3,11 @@
 
 #include <fstream>
 
+// NOLINTNEXTLINE
 TEST_CASE("always_the_same") {
     ankerl::nanobench::Bench bench;
 
-    std::string shortString = "hello World!";
+    std::string const shortString = "hello World!";
 
     ankerl::nanobench::Rng rng;
     for (int i = 0; i < 40; ++i) {

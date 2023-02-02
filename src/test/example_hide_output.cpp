@@ -13,6 +13,7 @@
 // `compare_exchange_strong`
 //
 // example from https://github.com/cameron314/microbench
+// NOLINTNEXTLINE
 TEST_CASE("example_atomic") {
     int y = 0;
     std::atomic<int> x(0);

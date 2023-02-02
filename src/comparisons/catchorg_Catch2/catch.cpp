@@ -3,13 +3,13 @@
 
 #define CATCH_CONFIG_ENABLE_BENCHMARKING
 #define CATCH_CONFIG_MAIN
-#include "catch.hpp"
+#include "catch.hpp" // NOLINT
 
 #include <chrono>
 #include <random>
 #include <thread>
 
-TEST_CASE("comparison_fast") {
+TEST_CASE("comparison_fast"){
     uint64_t x = 1;
     BENCHMARK("x += x") {
         return x += x;
@@ -22,6 +22,7 @@ TEST_CASE("comparison_slow") {
     };
 }
 
+// NOLINTNEXTLINE(fuchsia-statically-constructed-objects,llvmlibc-implementation-in-namespace)
 TEST_CASE("comparison_fluctuating_v2") {
     std::random_device dev;
     std::mt19937_64 rng(dev());

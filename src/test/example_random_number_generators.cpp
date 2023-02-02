@@ -31,7 +31,7 @@ public:
         return UINT64_C(0xffffffffffffffff);
     }
 
-    WyRng(uint64_t seed) noexcept
+    explicit WyRng(uint64_t seed) noexcept
         : mState(seed) {}
 
     uint64_t operator()() noexcept {
@@ -45,8 +45,8 @@ public:
 private:
     // 128bit multiply a and b, xor high and low result
     static uint64_t mumx(uint64_t a, uint64_t b) noexcept {
-        uint64_t h;
-        uint64_t l = umul128(a, b, &h);
+        uint64_t h{};
+        uint64_t const l = umul128(a, b, &h);
         return h ^ l;
     }
 
@@ -64,20 +64,20 @@ private:
         return _umul128(a, b, high);
 #    endif
 #else
-        uint64_t ha = a >> 32U;
-        uint64_t hb = b >> 32U;
-        uint64_t la = static_cast<uint32_t>(a);
-        uint64_t lb = static_cast<uint32_t>(b);
+        uint64_t const ha = a >> 32U;
+        uint64_t const hb = b >> 32U;
+        uint64_t const la = static_cast<uint32_t>(a);
+        uint64_t const lb = static_cast<uint32_t>(b);
 
-        uint64_t rh = ha * hb;
-        uint64_t rm0 = ha * lb;
-        uint64_t rm1 = hb * la;
-        uint64_t rl = la * lb;
+        uint64_t const rh = ha * hb;
+        uint64_t const rm0 = ha * lb;
+        uint64_t const rm1 = hb * la;
+        uint64_t const rl = la * lb;
 
-        uint64_t t = rl + (rm0 << 32U);
-        uint64_t lo = t + (rm1 << 32U);
-        uint64_t c = t < rl;
-        c += lo < t;
+        uint64_t const t = rl + (rm0 << 32U);
+        uint64_t const lo = t + (rm1 << 32U);
+        auto c = static_cast<uint64_t>(static_cast<bool>(t < rl));
+        c += static_cast<uint64_t>(static_cast<bool>(lo < t));
         *high = rh + (rm0 >> 32U) + (rm1 >> 32U) + c;
         return lo;
 #endif
@@ -96,7 +96,7 @@ public:
         return UINT64_C(0xffffffffffffffff);
     }
 
-    NasamRng(uint64_t seed) noexcept
+    explicit NasamRng(uint64_t seed) noexcept
         : mState(seed) {}
 
     ANKERL_NANOBENCH_NO_SANITIZE("integer", "undefined")
@@ -106,9 +106,9 @@ public:
         // rotr(a, r) is a 64-bit rotation of a by r bits.
         x ^= rotr(x, 25) ^ rotr(x, 47);
         x *= 0x9E6C63D0676A9A99UL;
-        x ^= x >> 23 ^ x >> 51;
+        x ^= x >> 23U ^ x >> 51U;
         x *= 0x9E6D62D06F6A9A9BUL;
-        x ^= x >> 23 ^ x >> 51;
+        x ^= x >> 23U ^ x >> 51U;
 
         return x;
     }
@@ -135,7 +135,7 @@ public:
         return UINT64_C(0xffffffffffffffff);
     }
 
-    Sfc4(uint64_t seed) noexcept
+    explicit Sfc4(uint64_t seed) noexcept
         : mA(seed)
         , mB(seed)
         , mC(seed)
@@ -147,7 +147,7 @@ public:
 
     ANKERL_NANOBENCH_NO_SANITIZE("integer", "undefined")
     uint64_t operator()() noexcept {
-        uint64_t tmp = mA + mB + mCounter++;
+        uint64_t const tmp = mA + mB + mCounter++;
         mA = mB ^ (mB >> 11U);
         mB = mC + (mC << 3U);
         mC = rotl(mC, 24U) + tmp;
@@ -160,10 +160,10 @@ private:
         return (x << k) | (x >> (64U - k));
     }
 
-    uint64_t mA;
-    uint64_t mB;
-    uint64_t mC;
-    uint64_t mCounter;
+    uint64_t mA{};
+    uint64_t mB{};
+    uint64_t mC{};
+    uint64_t mCounter{};
 };
 
 class RomuTrio {
@@ -177,7 +177,7 @@ public:
         return UINT64_C(0xffffffffffffffff);
     }
 
-    RomuTrio(uint64_t seed) noexcept
+    explicit RomuTrio(uint64_t seed) noexcept
         : mX(seed)
         , mY(UINT64_C(0x9E6C63D0676A9A99))
         , mZ(UINT64_C(0xe7037ed1a0b428db)) {
@@ -185,9 +185,9 @@ public:
     }
 
     uint64_t operator()() noexcept {
-        uint64_t x = mX;
-        uint64_t y = mY;
-        uint64_t z = mZ;
+        uint64_t const x = mX;
+        uint64_t const y = mY;
+        uint64_t const z = mZ;
 
         mX = UINT64_C(15241094284759029579) * z;
         mY = rotl(y - x, 12);
@@ -202,9 +202,9 @@ private:
         return (x << k) | (x >> (64U - k));
     }
 
-    uint64_t mX;
-    uint64_t mY;
-    uint64_t mZ;
+    uint64_t mX{};
+    uint64_t mY{};
+    uint64_t mZ{};
 };
 
 class RomuDuo {
@@ -218,14 +218,14 @@ public:
         return UINT64_C(0xffffffffffffffff);
     }
 
-    RomuDuo(uint64_t seed) noexcept
+    explicit RomuDuo(uint64_t seed) noexcept
         : mX(seed)
         , mY(UINT64_C(0x9E6C63D0676A9A99)) {
         operator()();
     }
 
     uint64_t operator()() noexcept {
-        uint64_t x = mX;
+        uint64_t const x = mX;
 
         mX = UINT64_C(15241094284759029579) * mY;
         mY = rotl(mY, 36) + rotl(mY, 15) - x;
@@ -239,8 +239,8 @@ private:
         return (x << k) | (x >> (64U - k));
     }
 
-    uint64_t mX;
-    uint64_t mY;
+    uint64_t mX{};
+    uint64_t mY{};
 };
 
 class RomuDuoJr {
@@ -254,7 +254,7 @@ public:
         return UINT64_C(0xffffffffffffffff);
     }
 
-    RomuDuoJr(uint64_t seed) noexcept
+    explicit RomuDuoJr(uint64_t seed) noexcept
         : mX(seed)
         , mY(UINT64_C(0x9E6C63D0676A9A99)) {
         for (size_t i = 0; i < 10; ++i) {
@@ -263,7 +263,7 @@ public:
     }
 
     uint64_t operator()() noexcept {
-        uint64_t x = mX;
+        uint64_t const x = mX;
 
         mX = UINT64_C(15241094284759029579) * mY;
         mY = rotl(mY - x, 27);
@@ -277,8 +277,8 @@ private:
         return (x << k) | (x >> (64U - k));
     }
 
-    uint64_t mX;
-    uint64_t mY;
+    uint64_t mX{};
+    uint64_t mY{};
 };
 
 class Orbit {
@@ -292,7 +292,7 @@ public:
         return UINT64_C(0xffffffffffffffff);
     }
 
-    Orbit(uint64_t seed) noexcept
+    explicit Orbit(uint64_t seed) noexcept
         : stateA(seed)
         , stateB(UINT64_C(0x9E6C63D0676A9A99)) {
         for (size_t i = 0; i < 10; ++i) {
@@ -301,10 +301,11 @@ public:
     }
 
     uint64_t operator()() noexcept {
-        uint64_t s = (stateA += 0xC6BC279692B5C323u);
-        uint64_t t = ((s == 0u) ? stateB : (stateB += 0x9E3779B97F4A7C15u));
-        uint64_t z = (s ^ s >> 31) * ((t ^ t >> 22) | 1u);
-        return z ^ z >> 26;
+        uint64_t const s = (stateA += 0xC6BC279692B5C323U);
+        uint64_t const t =
+            ((s == 0U) ? stateB : (stateB += 0x9E3779B97F4A7C15U));
+        uint64_t const z = (s ^ s >> 31U) * ((t ^ t >> 22U) | 1U);
+        return z ^ z >> 26U;
     }
 
 private:
@@ -312,8 +313,8 @@ private:
         return (x << k) | (x >> (64U - k));
     }
 
-    uint64_t stateA;
-    uint64_t stateB;
+    uint64_t stateA{};
+    uint64_t stateB{};
 };
 
 namespace {
@@ -332,6 +333,7 @@ void bench(ankerl::nanobench::Bench* bench, char const* name) {
 
 } // namespace
 
+// NOLINTNEXTLINE
 TEST_CASE("example_random_number_generators") {
     // perform a few warmup calls, and since the runtime is not always stable
     // for each generator, increase the number of epochs to get more accurate
