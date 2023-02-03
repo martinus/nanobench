@@ -1034,7 +1034,7 @@ void doNotOptimizeAway(T const& val);
 
 // These assembly magic is directly from what Google Benchmark is doing. I have previously used what facebook's folly was doing, but
 // this seemed to have compilation problems in some cases. Google Benchmark seemed to be the most well tested anyways.
-// see https://github.com/google/benchmark/blob/master/include/benchmark/benchmark.h#L307
+// see https://github.com/google/benchmark/blob/v1.7.1/include/benchmark/benchmark.h#L443-L446
 template <typename T>
 void doNotOptimizeAway(T const& val) {
     // NOLINTNEXTLINE(hicpp-no-assembler)
@@ -1980,9 +1980,9 @@ PerformanceCounters& performanceCounters() {
 }
 
 // Windows version of doNotOptimizeAway
-// see https://github.com/google/benchmark/blob/master/include/benchmark/benchmark.h#L307
-// see https://github.com/facebook/folly/blob/master/folly/Benchmark.h#L280
-// see https://docs.microsoft.com/en-us/cpp/preprocessor/optimize
+// see https://github.com/google/benchmark/blob/v1.7.1/include/benchmark/benchmark.h#L514
+// see https://github.com/facebook/folly/blob/v2023.01.30.00/folly/lang/Hint-inl.h#L54-L58
+// see https://learn.microsoft.com/en-us/cpp/preprocessor/optimize
 #    if defined(_MSC_VER)
 #        pragma optimize("", off)
 void doNotOptimizeAwaySink(void const*) {}
@@ -3007,7 +3007,7 @@ double Result::medianAbsolutePercentError(Measure m) const {
     auto data = mNameToMeasurements[detail::u(m)];
 
     // calculates MdAPE which is the median of percentage error
-    // see https://www.spiderfinancial.com/support/documentation/numxl/reference-manual/forecasting-performance/mdape
+    // see https://support.numxl.com/hc/en-us/articles/115001223503-MdAPE-Median-Absolute-Percentage-Error
     auto med = calcMedian(data);
 
     // transform the data to absolute error
