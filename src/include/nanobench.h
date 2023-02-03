@@ -2695,19 +2695,22 @@ PerformanceCounters::PerformanceCounters()
     , mVal()
     , mHas() {
 
-    mHas.pageFaults = mPc->monitor(PERF_COUNT_SW_PAGE_FAULTS, LinuxPerformanceCounters::Target(&mVal.pageFaults, true, false));
+    // HW events
     mHas.cpuCycles = mPc->monitor(PERF_COUNT_HW_REF_CPU_CYCLES, LinuxPerformanceCounters::Target(&mVal.cpuCycles, true, false));
     if (!mHas.cpuCycles) {
         // Fallback to cycles counter, reference cycles not available in many systems.
         mHas.cpuCycles = mPc->monitor(PERF_COUNT_HW_CPU_CYCLES, LinuxPerformanceCounters::Target(&mVal.cpuCycles, true, false));
     }
-    mHas.contextSwitches =
-        mPc->monitor(PERF_COUNT_SW_CONTEXT_SWITCHES, LinuxPerformanceCounters::Target(&mVal.contextSwitches, true, false));
     mHas.instructions = mPc->monitor(PERF_COUNT_HW_INSTRUCTIONS, LinuxPerformanceCounters::Target(&mVal.instructions, true, true));
     mHas.branchInstructions =
         mPc->monitor(PERF_COUNT_HW_BRANCH_INSTRUCTIONS, LinuxPerformanceCounters::Target(&mVal.branchInstructions, true, false));
     mHas.branchMisses = mPc->monitor(PERF_COUNT_HW_BRANCH_MISSES, LinuxPerformanceCounters::Target(&mVal.branchMisses, true, false));
     // mHas.branchMisses = false;
+
+    // SW events
+    mHas.pageFaults = mPc->monitor(PERF_COUNT_SW_PAGE_FAULTS, LinuxPerformanceCounters::Target(&mVal.pageFaults, true, false));
+    mHas.contextSwitches =
+        mPc->monitor(PERF_COUNT_SW_CONTEXT_SWITCHES, LinuxPerformanceCounters::Target(&mVal.contextSwitches, true, false));
 
     mPc->start();
     mPc->calibrate([] {
