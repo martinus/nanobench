@@ -5,6 +5,7 @@
 #include <limits>
 #include <random>
 
+// NOLINTNEXTLINE
 TEST_CASE("example_random_uniform01") {
     ankerl::nanobench::Bench bench;
     bench.title("random double in [0, 1(").relative(true);

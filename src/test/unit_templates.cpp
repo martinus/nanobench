@@ -8,7 +8,7 @@
 namespace {
 
 std::string readFile(std::string const& filename) {
-    std::ifstream fin{filename};
+    std::ifstream fin{filename}; // NOLINT(misc-const-correctness)
     std::ostringstream buf;
     buf << fin.rdbuf();
     return buf.str();
@@ -24,6 +24,7 @@ std::string tplPath() {
 
 } // namespace
 
+// NOLINTNEXTLINE
 TEST_CASE("unit_templates_generate" * doctest::skip()) {
     {
         std::ofstream fout{tplPath() + "mustache.template.json"};
@@ -46,6 +47,7 @@ TEST_CASE("unit_templates_generate" * doctest::skip()) {
     }
 }
 
+// NOLINTNEXTLINE
 TEST_CASE("unit_templates") {
     REQUIRE(readFile(tplPath() + "mustache.template.json") ==
             std::string{ankerl::nanobench::templates::json()});

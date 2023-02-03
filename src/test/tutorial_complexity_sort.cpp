@@ -5,6 +5,7 @@
 #include <cmath>
 #include <iostream>
 
+// NOLINTNEXTLINE
 TEST_CASE("tutorial_complexity_sort") {
     ankerl::nanobench::Rng rng{123};
     ankerl::nanobench::Bench bench;

@@ -3,6 +3,7 @@
 
 #include <cmath>
 
+// NOLINTNEXTLINE
 TEST_CASE("string") {
     std::string shortString = "hello";
     ankerl::nanobench::Bench bench;
@@ -16,6 +17,7 @@ TEST_CASE("string") {
     });
 }
 
+// NOLINTNEXTLINE
 TEST_CASE("incorrect1") {
     // compiler optimizes sin() away, because it is unused
     ankerl::nanobench::Bench bench;
@@ -23,6 +25,8 @@ TEST_CASE("incorrect1") {
         (void)std::sin(2.32);
     });
 }
+
+// NOLINTNEXTLINE
 TEST_CASE("incorrect2") {
     // compiler can still calculate sin(2.32) at compile time and replace it
     // with the number. So we get a result, but it's still not what we want
@@ -32,6 +36,7 @@ TEST_CASE("incorrect2") {
     });
 }
 
+// NOLINTNEXTLINE
 TEST_CASE("incorrect3") {
     // we produce a side effect by always modifying x, but the result is never
     // used so the compiler might still optimize it away
@@ -42,6 +47,7 @@ TEST_CASE("incorrect3") {
     });
 }
 
+// NOLINTNEXTLINE
 TEST_CASE("simplest_api") {
     // correct: std::sin() produces a side effect, and after benchmark the
     // result is checked.
@@ -58,6 +64,7 @@ TEST_CASE("simplest_api") {
     });
 }
 
+// NOLINTNEXTLINE
 TEST_CASE("comparison") {
     double x = 1.321;
 
@@ -115,6 +122,7 @@ TEST_CASE("comparison") {
         .doNotOptimizeAway(x);
 }
 
+// NOLINTNEXTLINE
 TEST_CASE("unit_api") {
     std::string str(200000, 'x');
 

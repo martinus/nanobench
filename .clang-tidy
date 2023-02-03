@@ -1,33 +1,36 @@
 ---
-Checks: "*,\
-  -google-runtime-int,\
-  -google-explicit-constructor,\
-  -hicpp-no-malloc,\
-  -hicpp-vararg,\
-  -hicpp-invalid-access-moved,\
-  -hicpp-no-array-decay,\
-  -llvm-header-guard,\
-  -readability-magic-numbers,\
-  -cppcoreguidelines-avoid-magic-numbers,\
-  -cppcoreguidelines-pro-bounds-constant-array-index,\
-  -cppcoreguidelines-pro-bounds-pointer-arithmetic,\
-  -cppcoreguidelines-pro-type-reinterpret-cast,\
-  -cppcoreguidelines-no-malloc,\
-  -cppcoreguidelines-owning-memory,\
-  -cppcoreguidelines-macro-usage,\
-  -cppcoreguidelines-pro-type-vararg,\
-  -cppcoreguidelines-pro-bounds-array-to-pointer-decay,\
-  -fuchsia-overloaded-operator,\
-  -fuchsia-default-arguments,\  
-  -fuchsia-multiple-inheritance,\
-  -fuchsia-default-arguments-calls,\
-  -fuchsia-trailing-return,\
-  -modernize-use-trailing-return-type,\
-  -misc-definitions-in-headers,\
-  -cert-err58-cpp,\
-  -clang-diagnostic-padded,\
-  -modernize-concat-nested-namespaces
-WarningsAsErrors: "*"
+Checks: '*,
+-altera-id-dependent-backward-branch,
+-altera-struct-pack-align,
+-altera-unroll-loops,
+-bugprone-easily-swappable-parameters,
+-cert-err58-cpp,
+-clang-diagnostic-padded,
+-cppcoreguidelines-avoid-magic-numbers,
+-cppcoreguidelines-macro-usage,
+-fuchsia-default-arguments-calls,
+-fuchsia-default-arguments,  
+-fuchsia-multiple-inheritance,
+-fuchsia-overloaded-operator,
+-fuchsia-trailing-return,
+-google-explicit-constructor,
+-google-runtime-int,
+-hicpp-invalid-access-moved,
+-hicpp-no-array-decay,
+-hicpp-no-malloc,
+-hicpp-vararg,
+-llvm-header-guard,
+-llvmlibc-callee-namespace,
+-llvmlibc-implementation-in-namespace,
+-llvmlibc-restrict-system-libc-headers,
+-misc-definitions-in-headers,
+-modernize-concat-nested-namespaces,
+-modernize-macro-to-enum,
+-modernize-use-trailing-return-type,
+-readability-identifier-length,
+-readability-magic-numbers,
+'
+WarningsAsErrors: '*'
 HeaderFilterRegex: 'nanobench\.h'
 ...
 

@@ -5,6 +5,7 @@
 
 // Benchmarks insertion and removal in multiple different containers.
 // This uses a very fast random generator.
+// NOLINTNEXTLINE
 TEST_CASE("unit_timeunits") {
     auto bench = ankerl::nanobench::Bench();
 

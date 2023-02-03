@@ -4,6 +4,7 @@
 #include <iostream>
 #include <set>
 
+// NOLINTNEXTLINE
 TEST_CASE("tutorial_complexity_set_find") {
     // Create a single benchmark instance that is used in multiple benchmark
     // runs, with different settings for complexityN.

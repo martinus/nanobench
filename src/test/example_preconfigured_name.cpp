@@ -3,18 +3,20 @@
 
 #include <iostream>
 
+// NOLINTNEXTLINE
 TEST_CASE("preconfigured_name") {
     ankerl::nanobench::Bench bench;
     bench.name("start & stop 1").run([] {
-        std::vector<int> v = {{11, 5, 5, 5, 5, 5, 5, 5, 5, 6, 7}};
+        std::vector<int> const v = {{11, 5, 5, 5, 5, 5, 5, 5, 5, 6, 7}};
     });
 
     bench.name("run2");
     bench.run([] {
-        std::vector<int> v = {{11, 5, 5, 5, 5, 5, 5, 5, 5, 6, 7}};
+        std::vector<int> const v = {{11, 5, 5, 5, 5, 5, 5, 5, 5, 6, 7}};
     });
 }
 
+// NOLINTNEXTLINE
 TEST_CASE("keep_only_results") {
 
     std::vector<ankerl::nanobench::Result> results;

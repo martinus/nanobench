@@ -7,6 +7,7 @@
 #include <iostream>
 #include <set>
 
+//NOLINTNEXTLINE
 TEST_CASE("example_complexity_quadratic") {
     // create an ankerl::nanobench::Config object that is used in all the
     // benchmarks

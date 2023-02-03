@@ -1,22 +1,26 @@
 #include <nanobench.h>
 #include <thirdparty/doctest/doctest.h>
 
-#include <iostream>
 #include <cmath>
+#include <iostream>
 
 namespace {
 
-template<typename T>
+template <typename T>
 void fma() {
-    T x(1), y(2), z(3);
+    T x(1);
+    T y(2);
+    T z(3);
     z = std::fma(x, y, z);
     ankerl::nanobench::doNotOptimizeAway(z);
 }
 
-template<typename T>
+template <typename T>
 void plus_eq() {
-    T x(1), y(2), z(3);
-    z += x*y;
+    T x(1);
+    T y(2);
+    T z(3);
+    z += x * y;
     ankerl::nanobench::doNotOptimizeAway(z);
 }
 
@@ -28,16 +32,15 @@ char const* csv() {
 
 } // namespace
 
+// NOLINTNEXTLINE
 TEST_CASE("tutorial_context") {
     ankerl::nanobench::Bench bench;
     bench.title("Addition").output(nullptr);
-    bench
-        .context("scalar", "f32")
+    bench.context("scalar", "f32")
         .context("foo", "bar")
         .run("+=", plus_eq<float>)
         .run("fma", fma<float>);
-    bench
-        .context("scalar", "f64")
+    bench.context("scalar", "f64")
         .context("foo", "baz")
         .run("+=", plus_eq<double>)
         .run("fma", fma<double>);
@@ -50,5 +53,7 @@ TEST_CASE("tutorial_context") {
     // The context has to be reset manually, which causes render to fail:
     bench.title("Yet Another Title").clearContext();
     bench.run("+=", plus_eq<float>);
+
+    // NOLINTNEXTLINE(llvm-else-after-return,readability-else-after-return)
     CHECK_THROWS(bench.render(csv(), std::cout));
 }

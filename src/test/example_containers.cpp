@@ -6,6 +6,7 @@
 
 // Benchmarks insertion and removal in multiple different containers.
 // This uses a very fast random generator.
+// NOLINTNEXTLINE
 TEST_CASE("example_containers") {
     ankerl::nanobench::Bench bench;
     bench.title("random insert & erase in containers");

@@ -113,7 +113,7 @@ away because we never used the output. Thanks to ``doNotOptimizeAway``, this is 
    :language: c++
    :linenos:
    :caption: tutorial_fast_v2.cpp
-   :emphasize-lines: 7
+   :emphasize-lines: 8
 
 This time the benchmark runs for 2.2ms and we actually get reasonable data:
 
@@ -191,7 +191,7 @@ Let's use the suggestion and set the minimum number of iterations to 5000, and t
    :language: c++
    :linenos:
    :caption: tutorial_fluctuating_v2.cpp
-   :emphasize-lines: 9
+   :emphasize-lines: 10
 
 
 The fluctuations are much better:
@@ -322,7 +322,7 @@ The following example shows how to use the `CSV - Comma-Separated Values`_ templ
 .. literalinclude:: ../test/tutorial_render_simple.cpp
    :language: c++
    :linenos:
-   :emphasize-lines: 11,16
+   :emphasize-lines: 12,17
    :caption: tutorial_render_simple.cpp
 
 
