@@ -818,7 +818,7 @@ public:
      * Default is zero, so we are fully relying on clockResolutionMultiple(). In most cases this is exactly what you want. If you see
      * that the evaluation is unreliable with a high `err%`, you can increase either minEpochTime() or minEpochIterations().
      *
-     * @see maxEpochTim), minEpochIterations
+     * @see maxEpochTime, minEpochIterations
      *
      * @param t Minimum time each epoch should take.
      */
