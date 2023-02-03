@@ -2046,8 +2046,8 @@ void gatherStabilityInformation(std::vector<std::string>& warnings, std::vector<
             auto minFreq = parseFile<int64_t>(sysCpu + "/cpufreq/scaling_min_freq", nullptr);
             auto maxFreq = parseFile<int64_t>(sysCpu + "/cpufreq/scaling_max_freq", nullptr);
             if (minFreq != maxFreq) {
-                auto minMHz = static_cast<double>(minFreq) / 1000.0;
-                auto maxMHz = static_cast<double>(maxFreq) / 1000.0;
+                auto minMHz = d(minFreq) / 1000.0;
+                auto maxMHz = d(maxFreq) / 1000.0;
                 warnings.emplace_back("CPU frequency scaling enabled: CPU " + idStr + " between " +
                                       detail::fmt::Number(1, 1, minMHz).to_s() + " and " + detail::fmt::Number(1, 1, maxMHz).to_s() +
                                       " MHz");
@@ -2258,8 +2258,8 @@ struct IterationLogic::Impl {
             mNumIters = 0;
         }
 
-        ANKERL_NANOBENCH_LOG(mBench.name() << ": " << detail::fmt::Number(20, 3, static_cast<double>(elapsed.count())) << " elapsed, "
-                                           << detail::fmt::Number(20, 3, static_cast<double>(mTargetRuntimePerEpoch.count()))
+        ANKERL_NANOBENCH_LOG(mBench.name() << ": " << detail::fmt::Number(20, 3, d(elapsed.count())) << " elapsed, "
+                                           << detail::fmt::Number(20, 3, d(mTargetRuntimePerEpoch.count()))
                                            << " target. oldIters=" << oldIters << ", mNumIters=" << mNumIters
                                            << ", mState=" << static_cast<int>(mState));
     }
@@ -2365,7 +2365,7 @@ struct IterationLogic::Impl {
                 }
                 os << fmt::MarkDownCode(mBench.name());
                 if (showUnstable) {
-                    auto avgIters = static_cast<double>(mTotalNumIters) / static_cast<double>(mBench.epochs());
+                    auto avgIters = d(mTotalNumIters) / d(mBench.epochs());
                     // NOLINTNEXTLINE(bugprone-incorrect-roundings)
                     auto suggestedIters = static_cast<uint64_t>(avgIters * 10 + 0.5);
 
@@ -2804,7 +2804,7 @@ void StreamStateRestorer::restore() {
 Number::Number(int width, int precision, int64_t value)
     : mWidth(width)
     , mPrecision(precision)
-    , mValue(static_cast<double>(value)) {}
+    , mValue(d(value)) {}
 
 Number::Number(int width, int precision, double value)
     : mWidth(width)
@@ -3438,7 +3438,7 @@ BigO::BigO(std::string bigOName, RangeMeasure const& rangeMeasure)
         sumMeasure += rm.second;
     }
 
-    auto n = static_cast<double>(rangeMeasure.size());
+    auto n = detail::d(rangeMeasure.size());
     auto mean = sumMeasure / n;
     mNormalizedRootMeanSquare = std::sqrt(err / n) / mean;
 }
