@@ -157,7 +157,7 @@ public:
         return result;
     }
 
-    uint32_t state() const noexcept {
+    ANKERL_NANOBENCH(NODISCARD) uint32_t state() const noexcept {
         return mState;
     }
 

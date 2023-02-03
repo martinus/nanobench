@@ -600,7 +600,7 @@ public:
      *
      * @return Vector containing the full state:
      */
-    std::vector<uint64_t> state() const;
+    ANKERL_NANOBENCH(NODISCARD) std::vector<uint64_t> state() const;
 
 private:
     static constexpr uint64_t rotl(uint64_t x, unsigned k) noexcept;
@@ -1843,7 +1843,7 @@ class Number {
 public:
     Number(int width, int precision, double value);
     Number(int width, int precision, int64_t value);
-    std::string to_s() const;
+    ANKERL_NANOBENCH(NODISCARD) std::string to_s() const;
 
 private:
     friend std::ostream& operator<<(std::ostream& os, Number const& n);
@@ -1862,10 +1862,10 @@ std::ostream& operator<<(std::ostream& os, Number const& n);
 class MarkDownColumn {
 public:
     MarkDownColumn(int w, int prec, std::string tit, std::string suff, double val);
-    std::string title() const;
-    std::string separator() const;
-    std::string invalid() const;
-    std::string value() const;
+    ANKERL_NANOBENCH(NODISCARD) std::string title() const;
+    ANKERL_NANOBENCH(NODISCARD) std::string separator() const;
+    ANKERL_NANOBENCH(NODISCARD) std::string invalid() const;
+    ANKERL_NANOBENCH(NODISCARD) std::string value() const;
 
 private:
     int mWidth;
@@ -2443,7 +2443,7 @@ public:
     bool monitor(perf_sw_ids swId, Target target);
     bool monitor(perf_hw_id hwId, Target target);
 
-    bool hasError() const noexcept {
+    ANKERL_NANOBENCH(NODISCARD) bool hasError() const noexcept {
         return mHasError;
     }
 
