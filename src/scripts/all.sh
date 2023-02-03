@@ -42,6 +42,7 @@ function build() {
 ## DON'T MODIFY PAST HERE! Just copy&past above this line to test it before other stuff.
 
 build "clang++" "11" "OFF"
+build "g++" "20" "OFF"
 build "clang++" "11" "OFF" "-m32"
 build "clang++" "11" "ON"
 #build "clang++" "11" "ON" "-m32" # linker error in chrono

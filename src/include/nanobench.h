@@ -1861,7 +1861,7 @@ std::ostream& operator<<(std::ostream& os, Number const& n);
 
 class MarkDownColumn {
 public:
-    MarkDownColumn(int w, int prec, std::string tit, std::string suff, double val);
+    MarkDownColumn(int w, int prec, std::string tit, std::string suff, double val) noexcept;
     ANKERL_NANOBENCH(NODISCARD) std::string title() const;
     ANKERL_NANOBENCH(NODISCARD) std::string separator() const;
     ANKERL_NANOBENCH(NODISCARD) std::string invalid() const;
@@ -2259,9 +2259,8 @@ struct IterationLogic::Impl {
         }
 
         ANKERL_NANOBENCH_LOG(mBench.name() << ": " << detail::fmt::Number(20, 3, d(elapsed.count())) << " elapsed, "
-                                           << detail::fmt::Number(20, 3, d(mTargetRuntimePerEpoch.count()))
-                                           << " target. oldIters=" << oldIters << ", mNumIters=" << mNumIters
-                                           << ", mState=" << static_cast<int>(mState));
+                                           << detail::fmt::Number(20, 3, d(mTargetRuntimePerEpoch.count())) << " target. oldIters="
+                                           << oldIters << ", mNumIters=" << mNumIters << ", mState=" << static_cast<int>(mState));
     }
 
     // NOLINTNEXTLINE(readability-function-cognitive-complexity)
@@ -2838,7 +2837,7 @@ std::ostream& operator<<(std::ostream& os, Number const& n) {
     return n.write(os);
 }
 
-MarkDownColumn::MarkDownColumn(int w, int prec, std::string tit, std::string suff, double val)
+MarkDownColumn::MarkDownColumn(int w, int prec, std::string tit, std::string suff, double val) noexcept
     : mWidth(w)
     , mPrecision(prec)
     , mTitle(std::move(tit))
