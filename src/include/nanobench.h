@@ -1781,7 +1781,7 @@ bool isEndlessRunning(std::string const& name);
 bool isWarningsEnabled();
 
 template <typename T>
-T parseFile(std::string const& filename);
+T parseFile(std::string const& filename, bool* fail);
 
 void gatherStabilityInformation(std::vector<std::string>& warnings, std::vector<std::string>& recommendations);
 void printStabilityInformationOnce(std::ostream* outStream);
@@ -1986,10 +1986,13 @@ void doNotOptimizeAwaySink(void const*) {}
 #    endif
 
 template <typename T>
-T parseFile(std::string const& filename) {
+T parseFile(std::string const& filename, bool* fail) {
     std::ifstream fin(filename); // NOLINT(misc-const-correctness)
     T num{};
     fin >> num;
+    if (fail != nullptr) {
+        *fail = fin.fail();
+    }
     return num;
 }
 
@@ -2032,13 +2035,12 @@ void gatherStabilityInformation(std::vector<std::string>& warnings, std::vector<
     if (nprocs <= 0) {
         warnings.emplace_back("couldn't figure out number of processors - no governor, turbo check possible");
     } else {
-
         // check frequency scaling
         for (long id = 0; id < nprocs; ++id) {
             auto idStr = detail::fmt::to_s(static_cast<uint64_t>(id));
             auto sysCpu = "/sys/devices/system/cpu/cpu" + idStr;
-            auto minFreq = parseFile<int64_t>(sysCpu + "/cpufreq/scaling_min_freq");
-            auto maxFreq = parseFile<int64_t>(sysCpu + "/cpufreq/scaling_max_freq");
+            auto minFreq = parseFile<int64_t>(sysCpu + "/cpufreq/scaling_min_freq", nullptr);
+            auto maxFreq = parseFile<int64_t>(sysCpu + "/cpufreq/scaling_max_freq", nullptr);
             if (minFreq != maxFreq) {
                 auto minMHz = static_cast<double>(minFreq) / 1000.0;
                 auto maxMHz = static_cast<double>(maxFreq) / 1000.0;
@@ -2050,13 +2052,15 @@ void gatherStabilityInformation(std::vector<std::string>& warnings, std::vector<
             }
         }
 
-        auto currentGovernor = parseFile<std::string>("/sys/devices/system/cpu/cpu0/cpufreq/scaling_governor");
-        if ("performance" != currentGovernor) {
+        auto fail = false;
+        auto currentGovernor = parseFile<std::string>("/sys/devices/system/cpu/cpu0/cpufreq/scaling_governor", &fail);
+        if (!fail && "performance" != currentGovernor) {
             warnings.emplace_back("CPU governor is '" + currentGovernor + "' but should be 'performance'");
             recommendPyPerf = true;
         }
 
-        if (0 == parseFile<int>("/sys/devices/system/cpu/intel_pstate/no_turbo")) {
+        auto noTurbo = parseFile<int>("/sys/devices/system/cpu/intel_pstate/no_turbo", &fail);
+        if (!fail && noTurbo == 0) {
             warnings.emplace_back("Turbo is enabled, CPU frequency will fluctuate");
             recommendPyPerf = true;
         }
@@ -2691,15 +2695,22 @@ PerformanceCounters::PerformanceCounters()
     , mVal()
     , mHas() {
 
-    mHas.pageFaults = mPc->monitor(PERF_COUNT_SW_PAGE_FAULTS, LinuxPerformanceCounters::Target(&mVal.pageFaults, true, false));
+    // HW events
     mHas.cpuCycles = mPc->monitor(PERF_COUNT_HW_REF_CPU_CYCLES, LinuxPerformanceCounters::Target(&mVal.cpuCycles, true, false));
-    mHas.contextSwitches =
-        mPc->monitor(PERF_COUNT_SW_CONTEXT_SWITCHES, LinuxPerformanceCounters::Target(&mVal.contextSwitches, true, false));
+    if (!mHas.cpuCycles) {
+        // Fallback to cycles counter, reference cycles not available in many systems.
+        mHas.cpuCycles = mPc->monitor(PERF_COUNT_HW_CPU_CYCLES, LinuxPerformanceCounters::Target(&mVal.cpuCycles, true, false));
+    }
     mHas.instructions = mPc->monitor(PERF_COUNT_HW_INSTRUCTIONS, LinuxPerformanceCounters::Target(&mVal.instructions, true, true));
     mHas.branchInstructions =
         mPc->monitor(PERF_COUNT_HW_BRANCH_INSTRUCTIONS, LinuxPerformanceCounters::Target(&mVal.branchInstructions, true, false));
     mHas.branchMisses = mPc->monitor(PERF_COUNT_HW_BRANCH_MISSES, LinuxPerformanceCounters::Target(&mVal.branchMisses, true, false));
     // mHas.branchMisses = false;
+
+    // SW events
+    mHas.pageFaults = mPc->monitor(PERF_COUNT_SW_PAGE_FAULTS, LinuxPerformanceCounters::Target(&mVal.pageFaults, true, false));
+    mHas.contextSwitches =
+        mPc->monitor(PERF_COUNT_SW_CONTEXT_SWITCHES, LinuxPerformanceCounters::Target(&mVal.contextSwitches, true, false));
 
     mPc->start();
     mPc->calibrate([] {
