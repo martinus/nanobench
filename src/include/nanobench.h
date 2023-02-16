@@ -120,6 +120,10 @@
 #    define ANKERL_NANOBENCH_IS_TRIVIALLY_COPYABLE(...) std::is_trivially_copyable<__VA_ARGS__>::value
 #endif
 
+// noexcept may be missing for std::string.
+// See https://gcc.gnu.org/bugzilla/show_bug.cgi?id=58265
+#define ANKERL_NANOBENCH_PRIVATE_NOEXCEPT_STRING_MOVE() std::is_nothrow_move_assignable<std::string>::value
+
 // declarations ///////////////////////////////////////////////////////////////////////////////////
 
 namespace ankerl {
@@ -404,7 +408,7 @@ struct Config {
     Config();
     ~Config();
     Config& operator=(Config const& other);
-    Config& operator=(Config&& other) noexcept;
+    Config& operator=(Config&& other) noexcept(ANKERL_NANOBENCH(NOEXCEPT_STRING_MOVE));
     Config(Config const& other);
     Config(Config&& other) noexcept;
 };
@@ -430,7 +434,7 @@ public:
 
     ~Result();
     Result& operator=(Result const& other);
-    Result& operator=(Result&& other) noexcept;
+    Result& operator=(Result&& other) noexcept(ANKERL_NANOBENCH(NOEXCEPT_STRING_MOVE));
     Result(Result const& other);
     Result(Result&& other) noexcept;
 
@@ -628,7 +632,7 @@ public:
     Bench();
 
     Bench(Bench&& other) noexcept;
-    Bench& operator=(Bench&& other) noexcept;
+    Bench& operator=(Bench&& other) noexcept(ANKERL_NANOBENCH(NOEXCEPT_STRING_MOVE));
     Bench(Bench const& other);
     Bench& operator=(Bench const& other);
     ~Bench() noexcept;
@@ -2895,14 +2899,14 @@ std::ostream& operator<<(std::ostream& os, MarkDownCode const& mdCode) {
 Config::Config() = default;
 Config::~Config() = default;
 Config& Config::operator=(Config const&) = default;
-Config& Config::operator=(Config&&) noexcept = default;
+Config& Config::operator=(Config&&) noexcept(ANKERL_NANOBENCH(NOEXCEPT_STRING_MOVE)) = default;
 Config::Config(Config const&) = default;
 Config::Config(Config&&) noexcept = default;
 
 // provide implementation here so it's only generated once
 Result::~Result() = default;
 Result& Result::operator=(Result const&) = default;
-Result& Result::operator=(Result&&) noexcept = default;
+Result& Result::operator=(Result&&) noexcept(ANKERL_NANOBENCH(NOEXCEPT_STRING_MOVE)) = default;
 Result::Result(Result const&) = default;
 Result::Result(Result&&) noexcept = default;
 
@@ -3117,7 +3121,7 @@ Bench::Bench() {
 }
 
 Bench::Bench(Bench&&) noexcept = default;
-Bench& Bench::operator=(Bench&&) noexcept = default;
+Bench& Bench::operator=(Bench&&) noexcept(ANKERL_NANOBENCH(NOEXCEPT_STRING_MOVE)) = default;
 Bench::Bench(Bench const&) = default;
 Bench& Bench::operator=(Bench const&) = default;
 Bench::~Bench() noexcept = default;
