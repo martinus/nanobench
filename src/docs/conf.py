@@ -22,7 +22,7 @@
 project = 'nanobench'
 copyright = '2019-2023 Martin Leitner-Ankerl <martin.ankerl@gmail.com>'
 author = 'Martin Leitner-Ankerl'
-version = 'v4.3.10'
+version = 'v4.3.11'
 
 # -- General configuration ---------------------------------------------------
 
