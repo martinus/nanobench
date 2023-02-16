@@ -600,7 +600,7 @@ public:
      *
      * @return Vector containing the full state:
      */
-    std::vector<uint64_t> state() const;
+    ANKERL_NANOBENCH(NODISCARD) std::vector<uint64_t> state() const;
 
 private:
     static constexpr uint64_t rotl(uint64_t x, unsigned k) noexcept;
@@ -1034,7 +1034,7 @@ void doNotOptimizeAway(T const& val);
 
 // These assembly magic is directly from what Google Benchmark is doing. I have previously used what facebook's folly was doing, but
 // this seemed to have compilation problems in some cases. Google Benchmark seemed to be the most well tested anyways.
-// see https://github.com/google/benchmark/blob/master/include/benchmark/benchmark.h#L307
+// see https://github.com/google/benchmark/blob/v1.7.1/include/benchmark/benchmark.h#L443-L446
 template <typename T>
 void doNotOptimizeAway(T const& val) {
     // NOLINTNEXTLINE(hicpp-no-assembler)
@@ -1843,7 +1843,7 @@ class Number {
 public:
     Number(int width, int precision, double value);
     Number(int width, int precision, int64_t value);
-    std::string to_s() const;
+    ANKERL_NANOBENCH(NODISCARD) std::string to_s() const;
 
 private:
     friend std::ostream& operator<<(std::ostream& os, Number const& n);
@@ -1861,11 +1861,11 @@ std::ostream& operator<<(std::ostream& os, Number const& n);
 
 class MarkDownColumn {
 public:
-    MarkDownColumn(int w, int prec, std::string tit, std::string suff, double val);
-    std::string title() const;
-    std::string separator() const;
-    std::string invalid() const;
-    std::string value() const;
+    MarkDownColumn(int w, int prec, std::string tit, std::string suff, double val) noexcept;
+    ANKERL_NANOBENCH(NODISCARD) std::string title() const;
+    ANKERL_NANOBENCH(NODISCARD) std::string separator() const;
+    ANKERL_NANOBENCH(NODISCARD) std::string invalid() const;
+    ANKERL_NANOBENCH(NODISCARD) std::string value() const;
 
 private:
     int mWidth;
@@ -1980,9 +1980,9 @@ PerformanceCounters& performanceCounters() {
 }
 
 // Windows version of doNotOptimizeAway
-// see https://github.com/google/benchmark/blob/master/include/benchmark/benchmark.h#L307
-// see https://github.com/facebook/folly/blob/master/folly/Benchmark.h#L280
-// see https://docs.microsoft.com/en-us/cpp/preprocessor/optimize
+// see https://github.com/google/benchmark/blob/v1.7.1/include/benchmark/benchmark.h#L514
+// see https://github.com/facebook/folly/blob/v2023.01.30.00/folly/lang/Hint-inl.h#L54-L58
+// see https://learn.microsoft.com/en-us/cpp/preprocessor/optimize
 #    if defined(_MSC_VER)
 #        pragma optimize("", off)
 void doNotOptimizeAwaySink(void const*) {}
@@ -2046,8 +2046,8 @@ void gatherStabilityInformation(std::vector<std::string>& warnings, std::vector<
             auto minFreq = parseFile<int64_t>(sysCpu + "/cpufreq/scaling_min_freq", nullptr);
             auto maxFreq = parseFile<int64_t>(sysCpu + "/cpufreq/scaling_max_freq", nullptr);
             if (minFreq != maxFreq) {
-                auto minMHz = static_cast<double>(minFreq) / 1000.0;
-                auto maxMHz = static_cast<double>(maxFreq) / 1000.0;
+                auto minMHz = d(minFreq) / 1000.0;
+                auto maxMHz = d(maxFreq) / 1000.0;
                 warnings.emplace_back("CPU frequency scaling enabled: CPU " + idStr + " between " +
                                       detail::fmt::Number(1, 1, minMHz).to_s() + " and " + detail::fmt::Number(1, 1, maxMHz).to_s() +
                                       " MHz");
@@ -2258,10 +2258,9 @@ struct IterationLogic::Impl {
             mNumIters = 0;
         }
 
-        ANKERL_NANOBENCH_LOG(mBench.name() << ": " << detail::fmt::Number(20, 3, static_cast<double>(elapsed.count())) << " elapsed, "
-                                           << detail::fmt::Number(20, 3, static_cast<double>(mTargetRuntimePerEpoch.count()))
-                                           << " target. oldIters=" << oldIters << ", mNumIters=" << mNumIters
-                                           << ", mState=" << static_cast<int>(mState));
+        ANKERL_NANOBENCH_LOG(mBench.name() << ": " << detail::fmt::Number(20, 3, d(elapsed.count())) << " elapsed, "
+                                           << detail::fmt::Number(20, 3, d(mTargetRuntimePerEpoch.count())) << " target. oldIters="
+                                           << oldIters << ", mNumIters=" << mNumIters << ", mState=" << static_cast<int>(mState));
     }
 
     // NOLINTNEXTLINE(readability-function-cognitive-complexity)
@@ -2365,7 +2364,7 @@ struct IterationLogic::Impl {
                 }
                 os << fmt::MarkDownCode(mBench.name());
                 if (showUnstable) {
-                    auto avgIters = static_cast<double>(mTotalNumIters) / static_cast<double>(mBench.epochs());
+                    auto avgIters = d(mTotalNumIters) / d(mBench.epochs());
                     // NOLINTNEXTLINE(bugprone-incorrect-roundings)
                     auto suggestedIters = static_cast<uint64_t>(avgIters * 10 + 0.5);
 
@@ -2443,7 +2442,7 @@ public:
     bool monitor(perf_sw_ids swId, Target target);
     bool monitor(perf_hw_id hwId, Target target);
 
-    bool hasError() const noexcept {
+    ANKERL_NANOBENCH(NODISCARD) bool hasError() const noexcept {
         return mHasError;
     }
 
@@ -2804,7 +2803,7 @@ void StreamStateRestorer::restore() {
 Number::Number(int width, int precision, int64_t value)
     : mWidth(width)
     , mPrecision(precision)
-    , mValue(static_cast<double>(value)) {}
+    , mValue(d(value)) {}
 
 Number::Number(int width, int precision, double value)
     : mWidth(width)
@@ -2838,7 +2837,7 @@ std::ostream& operator<<(std::ostream& os, Number const& n) {
     return n.write(os);
 }
 
-MarkDownColumn::MarkDownColumn(int w, int prec, std::string tit, std::string suff, double val)
+MarkDownColumn::MarkDownColumn(int w, int prec, std::string tit, std::string suff, double val) noexcept
     : mWidth(w)
     , mPrecision(prec)
     , mTitle(std::move(tit))
@@ -3007,7 +3006,7 @@ double Result::medianAbsolutePercentError(Measure m) const {
     auto data = mNameToMeasurements[detail::u(m)];
 
     // calculates MdAPE which is the median of percentage error
-    // see https://www.spiderfinancial.com/support/documentation/numxl/reference-manual/forecasting-performance/mdape
+    // see https://support.numxl.com/hc/en-us/articles/115001223503-MdAPE-Median-Absolute-Percentage-Error
     auto med = calcMedian(data);
 
     // transform the data to absolute error
@@ -3438,7 +3437,7 @@ BigO::BigO(std::string bigOName, RangeMeasure const& rangeMeasure)
         sumMeasure += rm.second;
     }
 
-    auto n = static_cast<double>(rangeMeasure.size());
+    auto n = detail::d(rangeMeasure.size());
     auto mean = sumMeasure / n;
     mNormalizedRootMeanSquare = std::sqrt(err / n) / mean;
 }
