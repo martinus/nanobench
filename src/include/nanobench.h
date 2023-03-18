@@ -1158,7 +1158,7 @@ constexpr uint64_t(Rng::min)() {
 }
 
 constexpr uint64_t(Rng::max)() {
-    return (std::numeric_limits<uint64_t>::max)();
+    return std::numeric_limits<uint64_t>::max();
 }
 
 ANKERL_NANOBENCH_NO_SANITIZE("integer", "undefined")
