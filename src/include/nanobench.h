@@ -819,7 +819,7 @@ public:
     /**
      * @brief Minimum time each epoch should take.
      *
-     * Default is zero, so we are fully relying on clockResolutionMultiple(). In most cases this is exactly what you want. If you see
+     * Default is 1ms, so we are mostly relying on clockResolutionMultiple(). In most cases this is exactly what you want. If you see
      * that the evaluation is unreliable with a high `err%`, you can increase either minEpochTime() or minEpochIterations().
      *
      * @see maxEpochTime, minEpochIterations
