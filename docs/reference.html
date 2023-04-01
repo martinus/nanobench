@@ -12,10 +12,9 @@
     <script src="_static/js/html5shiv.min.js"></script>
   <![endif]-->
   
-        <script data-url_root="./" id="documentation_options" src="_static/documentation_options.js"></script>
         <script src="_static/jquery.js"></script>
-        <script src="_static/underscore.js"></script>
         <script src="_static/_sphinx_javascript_frameworks_compat.js"></script>
+        <script data-url_root="./" id="documentation_options" src="_static/documentation_options.js"></script>
         <script src="_static/doctools.js"></script>
         <script src="_static/sphinx_highlight.js"></script>
         <script async="async" src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
@@ -293,7 +292,7 @@ this has a small overhead.</p>
 <p>This may improve efficiency when using many context entries, or improve robustness by removing spurious context entries.</p>
 <p><div class="admonition seealso">
 <p class="admonition-title">See also</p>
-<p><a class="reference internal" href="#classankerl_1_1nanobench_1_1Bench_1a40c5016aca69c0c5208d43eca5862804"><span class="std std-ref">context</span></a> </p>
+<p><a class="reference internal" href="#classankerl_1_1nanobench_1_1Bench_1a40c5016aca69c0c5208d43eca5862804"><span class="std std-ref">context</span></a></p>
 </div>
 </p>
 </dd></dl>
@@ -509,8 +508,7 @@ this has a small overhead.</p>
 <dl class="cpp function">
 <dt class="sig sig-object cpp" id="_CPPv4I0EN6ankerl9nanobench5Bench17doNotOptimizeAwayER5BenchRR3Arg">
 <span id="_CPPv3I0EN6ankerl9nanobench5Bench17doNotOptimizeAwayERR3Arg"></span><span id="_CPPv2I0EN6ankerl9nanobench5Bench17doNotOptimizeAwayERR3Arg"></span><span class="k"><span class="pre">template</span></span><span class="p"><span class="pre">&lt;</span></span><span class="k"><span class="pre">typename</span></span><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">Arg</span></span></span><span class="p"><span class="pre">&gt;</span></span><br /><span class="target" id="classankerl_1_1nanobench_1_1Bench_1a777015f55cd397af8b76a2ff7b3ce707"></span><a class="reference internal" href="#_CPPv4N6ankerl9nanobench5BenchE" title="ankerl::nanobench::Bench"><span class="n"><span class="pre">Bench</span></span></a><span class="w"> </span><span class="p"><span class="pre">&amp;</span></span><span class="sig-name descname"><span class="n"><span class="pre">doNotOptimizeAway</span></span></span><span class="sig-paren">(</span><a class="reference internal" href="#_CPPv4I0EN6ankerl9nanobench5Bench17doNotOptimizeAwayER5BenchRR3Arg" title="ankerl::nanobench::Bench::doNotOptimizeAway::Arg"><span class="n"><span class="pre">Arg</span></span></a><span class="w"> </span><span class="p"><span class="pre">&amp;</span></span><span class="p"><span class="pre">&amp;</span></span><span class="n sig-param"><span class="pre">arg</span></span><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv4I0EN6ankerl9nanobench5Bench17doNotOptimizeAwayER5BenchRR3Arg" title="Permalink to this definition"></a><br /></dt>
-<dd><p><p>Convenience shortcut to <a class="reference internal" href="#_CPPv4I0EN6ankerl9nanobench17doNotOptimizeAwayEvRR3Arg" title="ankerl::nanobench::doNotOptimizeAway"><code class="xref cpp cpp-func docutils literal notranslate"><span class="pre">ankerl::nanobench::doNotOptimizeAway()</span></code></a>.</p>
- </p>
+<dd><p>Convenience shortcut to <a class="reference internal" href="#_CPPv4I0EN6ankerl9nanobench17doNotOptimizeAwayEvRR3Arg" title="ankerl::nanobench::doNotOptimizeAway"><code class="xref cpp cpp-func docutils literal notranslate"><span class="pre">ankerl::nanobench::doNotOptimizeAway()</span></code></a>.</p>
 </dd></dl>
 
 <dl class="cpp function">
@@ -536,7 +534,7 @@ this has a small overhead.</p>
 <dd><p>Calculates <a class="reference external" href="https://en.wikipedia.org/wiki/Big_O_notation&gt;">Big O</a> of the results with all preconfigured complexity functions. Currently these complexity functions are fitted into the benchmark results:</p>
 <p><span class="math notranslate nohighlight">\( \mathcal{O}(1) \)</span>, <span class="math notranslate nohighlight">\( \mathcal{O}(n) \)</span>, <span class="math notranslate nohighlight">\( \mathcal{O}(\log{}n) \)</span>, <span class="math notranslate nohighlight">\( \mathcal{O}(n\log{}n) \)</span>, <span class="math notranslate nohighlight">\( \mathcal{O}(n^2) \)</span>, <span class="math notranslate nohighlight">\( \mathcal{O}(n^3) \)</span>.</p>
 <p>If we e.g. evaluate the complexity of <code class="docutils literal notranslate"><span class="pre">std::sort</span></code>, this is the result of <code class="docutils literal notranslate"><span class="pre">std::cout</span> <span class="pre">&lt;&lt;</span> <span class="pre">bench.complexityBigO()</span></code>:</p>
-<p><div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="o">|</span>   <span class="n">coefficient</span> <span class="o">|</span>   <span class="n">err</span><span class="o">%</span> <span class="o">|</span> <span class="n">complexity</span>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="o">|</span>   <span class="n">coefficient</span> <span class="o">|</span>   <span class="n">err</span><span class="o">%</span> <span class="o">|</span> <span class="n">complexity</span>
 <span class="o">|--------------</span><span class="p">:</span><span class="o">|-------</span><span class="p">:</span><span class="o">|------------</span>
 <span class="o">|</span>   <span class="mf">5.08935e-09</span> <span class="o">|</span>   <span class="mf">2.6</span><span class="o">%</span> <span class="o">|</span> <span class="n">O</span><span class="p">(</span><span class="n">n</span> <span class="n">log</span> <span class="n">n</span><span class="p">)</span>
 <span class="o">|</span>   <span class="mf">6.10608e-08</span> <span class="o">|</span>   <span class="mf">8.0</span><span class="o">%</span> <span class="o">|</span> <span class="n">O</span><span class="p">(</span><span class="n">n</span><span class="p">)</span>
@@ -546,7 +544,6 @@ this has a small overhead.</p>
 <span class="o">|</span>   <span class="mf">5.98793e-05</span> <span class="o">|</span> <span class="mf">162.5</span><span class="o">%</span> <span class="o">|</span> <span class="n">O</span><span class="p">(</span><span class="mi">1</span><span class="p">)</span>
 </pre></div>
 </div>
-</p>
 <p>So in this case <span class="math notranslate nohighlight">\( \mathcal{O}(n\log{}n) \)</span> provides the best approximation.</p>
 <p><p>See the tutorial <a class="reference internal" href="tutorial.html#asymptotic-complexity"><span class="std std-ref">Asymptotic Complexity</span></a> for details.</p>
  </p>
@@ -562,17 +559,15 @@ this has a small overhead.</p>
 <span id="_CPPv3I0ENK6ankerl9nanobench5Bench14complexityBigOEPKc2Op"></span><span id="_CPPv2I0ENK6ankerl9nanobench5Bench14complexityBigOEPKc2Op"></span><span class="k"><span class="pre">template</span></span><span class="p"><span class="pre">&lt;</span></span><span class="k"><span class="pre">typename</span></span><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">Op</span></span></span><span class="p"><span class="pre">&gt;</span></span><br /><span class="target" id="classankerl_1_1nanobench_1_1Bench_1a55b41ee0ddec12d1697ef2a4d64d6cd6"></span><span class="n"><span class="pre">BigO</span></span><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">complexityBigO</span></span></span><span class="sig-paren">(</span><span class="kt"><span class="pre">char</span></span><span class="w"> </span><span class="k"><span class="pre">const</span></span><span class="w"> </span><span class="p"><span class="pre">*</span></span><span class="n sig-param"><span class="pre">name</span></span>, <a class="reference internal" href="#_CPPv4I0ENK6ankerl9nanobench5Bench14complexityBigOE4BigOPKc2Op" title="ankerl::nanobench::Bench::complexityBigO::Op"><span class="n"><span class="pre">Op</span></span></a><span class="w"> </span><span class="n sig-param"><span class="pre">op</span></span><span class="sig-paren">)</span><span class="w"> </span><span class="k"><span class="pre">const</span></span><a class="headerlink" href="#_CPPv4I0ENK6ankerl9nanobench5Bench14complexityBigOE4BigOPKc2Op" title="Permalink to this definition"></a><br /></dt>
 <dd><p>Calculates bigO for a custom function. </p>
 <p>E.g. to calculate the mean squared error for <span class="math notranslate nohighlight">\( \mathcal{O}(\log{}\log{}n) \)</span>, which is not part of the default set of <a class="reference internal" href="#classankerl_1_1nanobench_1_1Bench_1a752dc53d9157c4b17e2673a5b8e56fe1"><span class="std std-ref">complexityBigO()</span></a>, you can do this:</p>
-<p><div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">auto</span> <span class="n">logLogN</span> <span class="o">=</span> <span class="n">bench</span><span class="o">.</span><span class="n">complexityBigO</span><span class="p">(</span><span class="s2">&quot;O(log log n)&quot;</span><span class="p">,</span> <span class="p">[](</span><span class="n">double</span> <span class="n">n</span><span class="p">)</span> <span class="p">{</span>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">auto</span> <span class="n">logLogN</span> <span class="o">=</span> <span class="n">bench</span><span class="o">.</span><span class="n">complexityBigO</span><span class="p">(</span><span class="s2">&quot;O(log log n)&quot;</span><span class="p">,</span> <span class="p">[](</span><span class="n">double</span> <span class="n">n</span><span class="p">)</span> <span class="p">{</span>
     <span class="k">return</span> <span class="n">std</span><span class="p">::</span><span class="n">log2</span><span class="p">(</span><span class="n">std</span><span class="p">::</span><span class="n">log2</span><span class="p">(</span><span class="n">n</span><span class="p">));</span>
 <span class="p">});</span>
 </pre></div>
 </div>
-</p>
 <p>The resulting mean squared error can be printed with <code class="docutils literal notranslate"><span class="pre">std::cout</span> <span class="pre">&lt;&lt;</span> <span class="pre">logLogN</span></code>. E.g. it prints something like this:</p>
-<p><div class="highlight-text notranslate"><div class="highlight"><pre><span></span>2.46985e-05 * O(log log n), rms=1.48121
+<div class="highlight-text notranslate"><div class="highlight"><pre><span></span>2.46985e-05 * O(log log n), rms=1.48121
 </pre></div>
 </div>
-</p>
 <dl class="field-list simple">
 <dt class="field-odd">Template Parameters<span class="colon">:</span></dt>
 <dd class="field-odd"><p><strong>Op</strong> – Type of mapping operation. </p>
@@ -592,8 +587,7 @@ this has a small overhead.</p>
 <dl class="cpp function">
 <dt class="sig sig-object cpp" id="_CPPv4N6ankerl9nanobench5Bench6renderEPKcRNSt7ostreamE">
 <span id="_CPPv3N6ankerl9nanobench5Bench6renderEPKcRNSt7ostreamE"></span><span id="_CPPv2N6ankerl9nanobench5Bench6renderEPKcRNSt7ostreamE"></span><span id="ankerl::nanobench::Bench::render__cCP.osR"></span><span class="target" id="classankerl_1_1nanobench_1_1Bench_1ab50465d76051f2632cd88381b09657ac"></span><a class="reference internal" href="#_CPPv4N6ankerl9nanobench5BenchE" title="ankerl::nanobench::Bench"><span class="n"><span class="pre">Bench</span></span></a><span class="w"> </span><span class="p"><span class="pre">&amp;</span></span><span class="sig-name descname"><span class="n"><span class="pre">render</span></span></span><span class="sig-paren">(</span><span class="kt"><span class="pre">char</span></span><span class="w"> </span><span class="k"><span class="pre">const</span></span><span class="w"> </span><span class="p"><span class="pre">*</span></span><span class="n sig-param"><span class="pre">templateContent</span></span>, <span class="n"><span class="pre">std</span></span><span class="p"><span class="pre">::</span></span><span class="n"><span class="pre">ostream</span></span><span class="w"> </span><span class="p"><span class="pre">&amp;</span></span><span class="n sig-param"><span class="pre">os</span></span><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv4N6ankerl9nanobench5Bench6renderEPKcRNSt7ostreamE" title="Permalink to this definition"></a><br /></dt>
-<dd><p><p>Convenience shortcut to <a class="reference internal" href="#_CPPv4N6ankerl9nanobench6renderEPKcRK5BenchRNSt7ostreamE" title="ankerl::nanobench::render"><code class="xref cpp cpp-func docutils literal notranslate"><span class="pre">ankerl::nanobench::render()</span></code></a>.</p>
- </p>
+<dd><p>Convenience shortcut to <a class="reference internal" href="#_CPPv4N6ankerl9nanobench6renderEPKcRK5BenchRNSt7ostreamE" title="ankerl::nanobench::render"><code class="xref cpp cpp-func docutils literal notranslate"><span class="pre">ankerl::nanobench::render()</span></code></a>.</p>
 </dd></dl>
 
 </div>
@@ -857,8 +851,7 @@ generator becomes available, I will switch the implementation.</p>
 <span id="_CPPv3N6ankerl9nanobench9templates3csvEv"></span><span id="_CPPv2N6ankerl9nanobench9templates3csvEv"></span><span id="ankerl::nanobench::templates::csv"></span><span class="target" id="nanobench_8h_1a40fd50100aa2268c70a8a49bcd84e65a"></span><span class="kt"><span class="pre">char</span></span><span class="w"> </span><span class="k"><span class="pre">const</span></span><span class="w"> </span><span class="p"><span class="pre">*</span></span><span class="sig-prename descclassname"><span class="n"><span class="pre">ankerl</span></span><span class="p"><span class="pre">::</span></span><span class="n"><span class="pre">nanobench</span></span><span class="p"><span class="pre">::</span></span><span class="n"><span class="pre">templates</span></span><span class="p"><span class="pre">::</span></span></span><span class="sig-name descname"><span class="n"><span class="pre">csv</span></span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><span class="w"> </span><span class="k"><span class="pre">noexcept</span></span><a class="headerlink" href="#_CPPv4N6ankerl9nanobench9templates3csvEv" title="Permalink to this definition"></a><br /></dt>
 <dd><p>CSV data for the benchmark results. </p>
 <p>Generates a comma-separated values dataset. First line is the header, each following line is a summary of each benchmark run.</p>
-<p><p>See the tutorial at <a class="reference internal" href="tutorial.html#tutorial-template-csv"><span class="std std-ref">CSV - Comma-Separated Values</span></a> for an example.</p>
- </p>
+<p>See the tutorial at <a class="reference internal" href="tutorial.html#tutorial-template-csv"><span class="std std-ref">CSV - Comma-Separated Values</span></a> for an example.</p>
 </dd></dl>
 
 </section>
@@ -885,7 +878,7 @@ generator becomes available, I will switch the implementation.</p>
 <span id="_CPPv3N6ankerl9nanobench9templates4jsonEv"></span><span id="_CPPv2N6ankerl9nanobench9templates4jsonEv"></span><span id="ankerl::nanobench::templates::json"></span><span class="target" id="nanobench_8h_1a2a1d7bc4f6bcb1b398cbaabcd158b054"></span><span class="kt"><span class="pre">char</span></span><span class="w"> </span><span class="k"><span class="pre">const</span></span><span class="w"> </span><span class="p"><span class="pre">*</span></span><span class="sig-prename descclassname"><span class="n"><span class="pre">ankerl</span></span><span class="p"><span class="pre">::</span></span><span class="n"><span class="pre">nanobench</span></span><span class="p"><span class="pre">::</span></span><span class="n"><span class="pre">templates</span></span><span class="p"><span class="pre">::</span></span></span><span class="sig-name descname"><span class="n"><span class="pre">json</span></span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><span class="w"> </span><span class="k"><span class="pre">noexcept</span></span><a class="headerlink" href="#_CPPv4N6ankerl9nanobench9templates4jsonEv" title="Permalink to this definition"></a><br /></dt>
 <dd><p>Template to generate JSON data. </p>
 <p>The generated JSON data contains <em>all</em> data that has been generated. All times are as double values, in seconds. The output can get quite large. <p>See the tutorial at <a class="reference internal" href="tutorial.html#tutorial-template-json"><span class="std std-ref">JSON - JavaScript Object Notation</span></a> for an example.</p>
- </p>
+</p>
 </dd></dl>
 
 </section>
@@ -895,8 +888,7 @@ generator becomes available, I will switch the implementation.</p>
 <dt class="sig sig-object cpp" id="_CPPv4N6ankerl9nanobench9templates6pyperfEv">
 <span id="_CPPv3N6ankerl9nanobench9templates6pyperfEv"></span><span id="_CPPv2N6ankerl9nanobench9templates6pyperfEv"></span><span id="ankerl::nanobench::templates::pyperf"></span><span class="target" id="nanobench_8h_1a610d41405f43dc2d7eb2a687de297185"></span><span class="kt"><span class="pre">char</span></span><span class="w"> </span><span class="k"><span class="pre">const</span></span><span class="w"> </span><span class="p"><span class="pre">*</span></span><span class="sig-prename descclassname"><span class="n"><span class="pre">ankerl</span></span><span class="p"><span class="pre">::</span></span><span class="n"><span class="pre">nanobench</span></span><span class="p"><span class="pre">::</span></span><span class="n"><span class="pre">templates</span></span><span class="p"><span class="pre">::</span></span></span><span class="sig-name descname"><span class="n"><span class="pre">pyperf</span></span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><span class="w"> </span><span class="k"><span class="pre">noexcept</span></span><a class="headerlink" href="#_CPPv4N6ankerl9nanobench9templates6pyperfEv" title="Permalink to this definition"></a><br /></dt>
 <dd><p>Output in pyperf compatible JSON format, which can be used for more analyzation. </p>
-<p><p>See the tutorial at <a class="reference internal" href="tutorial.html#tutorial-template-pyperf"><span class="std std-ref">pyperf - Python pyperf module Output</span></a> for an example how to further analyze the output.</p>
- </p>
+<p>See the tutorial at <a class="reference internal" href="tutorial.html#tutorial-template-pyperf"><span class="std std-ref">pyperf - Python pyperf module Output</span></a> for an example how to further analyze the output.</p>
 </dd></dl>
 
 </section>

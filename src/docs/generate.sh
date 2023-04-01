@@ -14,5 +14,5 @@ set -e
 #rm -Rvf ../../docs
 mkdir -p _build/doxygen
 doxygen
-source ~/venv/bin/activate
+#source ~/venv/bin/activate
 python ~/venv/bin/sphinx-build -E . ../../docs
