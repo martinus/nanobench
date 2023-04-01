@@ -5,6 +5,9 @@ set -e
 #
 # Install breathe (assuming there's a venv in $HOME/venv/)
 #   source $HOME/venv/bin/activate
+#   pip install -r requirements.txt
+#
+# Or just install these:
 #   pip install -U sphinx breathe sphinx_rtd_theme recommonmark
 
 # rm should work, this should copy all files, but for safety reasons I'm not doing it...
