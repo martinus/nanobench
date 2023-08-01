@@ -82,7 +82,7 @@ if (NANOBENCH_STANDALONE_PROJECT)
 
 
     include(GNUInstallDirs)
-    set(NB_INSTALL_CONFIGDIR ${CMAKE_INSTALL_LIBDIR}/cmake/${PROJECT_NAME})
+    set(NANOBENCH_INSTALL_CONFIGDIR ${CMAKE_INSTALL_LIBDIR}/cmake/${PROJECT_NAME})
 
     # Install library target
     add_library(nanobench STATIC ${PROJECT_SOURCE_DIR}/src/test/app/nanobench.cpp)
@@ -104,7 +104,7 @@ if (NANOBENCH_STANDALONE_PROJECT)
       NAMESPACE
         ${PROJECT_NAME}::
       DESTINATION
-        ${INSTALL_CONFIGDIR}
+        ${NANOBENCH_INSTALL_CONFIGDIR}
     )
 
     # Install ${PROJECT_NAME}Config.cmake
@@ -112,11 +112,11 @@ if (NANOBENCH_STANDALONE_PROJECT)
     configure_package_config_file(
       ${CMAKE_CURRENT_SOURCE_DIR}/cmake/${PROJECT_NAME}Config.cmake.in
       ${CMAKE_CURRENT_BINARY_DIR}/${PROJECT_NAME}Config.cmake
-      INSTALL_DESTINATION ${INSTALL_CONFIGDIR}
+      INSTALL_DESTINATION ${NANOBENCH_INSTALL_CONFIGDIR}
     )
     install(FILES
       ${CMAKE_CURRENT_BINARY_DIR}/${PROJECT_NAME}Config.cmake
-      DESTINATION ${INSTALL_CONFIGDIR}
+      DESTINATION ${NANOBENCH_INSTALL_CONFIGDIR}
     )
 
     # Install headers
