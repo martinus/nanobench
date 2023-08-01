@@ -16,6 +16,8 @@ if (NANOBENCH_STANDALONE_PROJECT)
     set(CMAKE_CXX_STANDARD_REQUIRED ON)
     set(CMAKE_CXX_EXTENSIONS OFF)
 
+    option(NANOBENCH_BUILD_TEST "Build nanobench tests" ON)
+
     # configuration see .clang-tidy
     if(CMAKE_CXX_COMPILER_ID MATCHES "Clang")
         find_program(CLANG_TIDY_PROGRAM NAMES clang-tidy)
