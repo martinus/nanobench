@@ -86,7 +86,10 @@ if (NANOBENCH_STANDALONE_PROJECT)
 
 
     include(GNUInstallDirs)
-    set(NANOBENCH_INSTALL_CONFIGDIR ${CMAKE_INSTALL_LIBDIR}/cmake/${PROJECT_NAME})
+    set(
+      NANOBENCH_INSTALL_CONFIGDIR ${CMAKE_INSTALL_LIBDIR}/cmake/${PROJECT_NAME}
+      CACHE PATH "Installation directory for CMake configuration files"
+    )
 
     # Install library target
     add_library(nanobench STATIC ${PROJECT_SOURCE_DIR}/src/test/app/nanobench.cpp)
