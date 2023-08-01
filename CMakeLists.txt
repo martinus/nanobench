@@ -16,6 +16,8 @@ if (NANOBENCH_STANDALONE_PROJECT)
     set(CMAKE_CXX_STANDARD_REQUIRED ON)
     set(CMAKE_CXX_EXTENSIONS OFF)
 
+    option(NANOBENCH_BUILD_TEST "Build nanobench tests" ON)
+
     # clang-tidy is not wired into the build any more: it ran for every clang compile, with whatever
     # version happened to be installed, and "Checks: *" in .clang-tidy gains checks with every
     # release - so a new clang stopped people from building the tests at all. The "lint" job of
@@ -27,58 +29,62 @@ if (NANOBENCH_STANDALONE_PROJECT)
         SET(CMAKE_CXX_COMPILER_LAUNCHER "${CCACHE_PROGRAM}")
     endif(CCACHE_PROGRAM)
 
-    add_executable(nb "")
+    if (NANOBENCH_BUILD_TEST)
+        add_executable(nb "")
 
-    if (NB_sanitizer)
-        if (CMAKE_CXX_COMPILER_ID MATCHES "Clang")
-            # see https://clang.llvm.org/docs/UndefinedBehaviorSanitizer.html#silencing-unsigned-integer-overflow
-            # Compile with -g and -fno-omit-frame-pointer to get proper debug information in your binary
-            target_compile_options(nb PRIVATE -g)
-            target_compile_options(nb PRIVATE -O2)
-            target_compile_options(nb PRIVATE -fno-omit-frame-pointer)
+        if (NB_sanitizer)
+            if (CMAKE_CXX_COMPILER_ID MATCHES "Clang")
+                # see https://clang.llvm.org/docs/UndefinedBehaviorSanitizer.html#silencing-unsigned-integer-overflow
+                # Compile with -g and -fno-omit-frame-pointer to get proper debug information in your binary
+                target_compile_options(nb PRIVATE -g)
+                target_compile_options(nb PRIVATE -O2)
+                target_compile_options(nb PRIVATE -fno-omit-frame-pointer)
 
-            target_compile_options(nb PRIVATE -fsanitize=address)
-            target_link_libraries(nb PRIVATE -fsanitize=address)
+                target_compile_options(nb PRIVATE -fsanitize=address)
+                target_link_libraries(nb PRIVATE -fsanitize=address)
 
-            target_compile_options(nb PRIVATE -fsanitize=undefined,float-divide-by-zero)
-            target_link_libraries(nb PRIVATE -fsanitize=undefined,float-divide-by-zero)
+                target_compile_options(nb PRIVATE -fsanitize=undefined,float-divide-by-zero)
+                target_link_libraries(nb PRIVATE -fsanitize=undefined,float-divide-by-zero)
 
-            target_compile_options(nb PRIVATE -fsanitize=integer)
-            target_link_libraries(nb PRIVATE -fsanitize=integer)
+                target_compile_options(nb PRIVATE -fsanitize=integer)
+                target_link_libraries(nb PRIVATE -fsanitize=integer)
 
-            target_compile_options(nb PRIVATE -fsanitize=nullability)
-            target_link_libraries(nb PRIVATE -fsanitize=nullability)
+                target_compile_options(nb PRIVATE -fsanitize=nullability)
+                target_link_libraries(nb PRIVATE -fsanitize=nullability)
 
-            # we have to globally set the property here, so it actually works https://cmake.org/pipermail/cmake/2010-March/036020.html
-            set_source_files_properties(
-                src/test/tutorial_fast_v1.cpp
-                src/test/tutorial_fast_v2.cpp
-                PROPERTIES COMPILE_FLAGS "-fno-sanitize=integer")
+                # we have to globally set the property here, so it actually works https://cmake.org/pipermail/cmake/2010-March/036020.html
+                set_source_files_properties(
+                    src/test/tutorial_fast_v1.cpp
+                    src/test/tutorial_fast_v2.cpp
+                    PROPERTIES COMPILE_FLAGS "-fno-sanitize=integer")
 
-        endif()
-        if (CMAKE_CXX_COMPILER_ID MATCHES "GNU")
-            # need to use gold linker, otherwise travis gets '/usr/bin/ld: --push-state: unknown option' error
-            target_link_libraries(nb PRIVATE -fuse-ld=gold)
+            endif()
+            if (CMAKE_CXX_COMPILER_ID MATCHES "GNU")
+                # need to use gold linker, otherwise travis gets '/usr/bin/ld: --push-state: unknown option' error
+                target_link_libraries(nb PRIVATE -fuse-ld=gold)
 
-            target_compile_options(nb PRIVATE -g)
-            target_compile_options(nb PRIVATE -O2)
-            target_compile_options(nb PRIVATE -fno-omit-frame-pointer)
+                target_compile_options(nb PRIVATE -g)
+                target_compile_options(nb PRIVATE -O2)
+                target_compile_options(nb PRIVATE -fno-omit-frame-pointer)
 
-            target_compile_options(nb PRIVATE -fsanitize=undefined,float-divide-by-zero,float-cast-overflow)
-            target_link_libraries(nb PRIVATE -fsanitize=undefined,float-divide-by-zero,float-cast-overflow)
+                target_compile_options(nb PRIVATE -fsanitize=undefined,float-divide-by-zero,float-cast-overflow)
+                target_link_libraries(nb PRIVATE -fsanitize=undefined,float-divide-by-zero,float-cast-overflow)
 
-            target_compile_options(nb PRIVATE -fsanitize=pointer-compare,pointer-subtract)
-            target_link_libraries(nb PRIVATE -fsanitize=pointer-compare,pointer-subtract)
+                target_compile_options(nb PRIVATE -fsanitize=pointer-compare,pointer-subtract)
+                target_link_libraries(nb PRIVATE -fsanitize=pointer-compare,pointer-subtract)
 
-            target_compile_options(nb PRIVATE -fsanitize=address)
-            target_link_libraries(nb PRIVATE -fsanitize=address)
+                target_compile_options(nb PRIVATE -fsanitize=address)
+                target_link_libraries(nb PRIVATE -fsanitize=address)
+            endif()
         endif()
     endif()
 
     add_subdirectory(src)
-    add_compile_flags_target(nb)
 
-    target_sources_local(nb PUBLIC .clang-tidy)
+    if (NANOBENCH_BUILD_TEST)
+        add_compile_flags_target(nb)
+        target_sources_local(nb PUBLIC .clang-tidy)
+    endif()
 
 
     include(GNUInstallDirs)
