@@ -16,6 +16,8 @@ if (NANOBENCH_STANDALONE_PROJECT)
     set(CMAKE_CXX_STANDARD_REQUIRED ON)
     set(CMAKE_CXX_EXTENSIONS OFF)
 
+    option(NANOBENCH_BUILD_TEST "Build nanobench tests" ON)
+
     # configuration see .clang-tidy
     if(CMAKE_CXX_COMPILER_ID MATCHES "Clang")
         find_program(CLANG_TIDY_PROGRAM NAMES clang-tidy)
@@ -84,8 +86,10 @@ if (NANOBENCH_STANDALONE_PROJECT)
 
 
     include(GNUInstallDirs)
-    set(INSTALL_CONFIGDIR ${CMAKE_INSTALL_LIBDIR}/${PROJECT_NAME}/cmake)
-    set(INSTALL_LIBDIR ${CMAKE_INSTALL_LIBDIR}/${PROJECT_NAME})
+    set(
+      NANOBENCH_INSTALL_CONFIGDIR ${CMAKE_INSTALL_LIBDIR}/cmake/${PROJECT_NAME}
+      CACHE PATH "Installation directory for CMake configuration files"
+    )
 
     # Install library target
     add_library(nanobench STATIC ${PROJECT_SOURCE_DIR}/src/test/app/nanobench.cpp)
@@ -98,8 +102,6 @@ if (NANOBENCH_STANDALONE_PROJECT)
     install(
       TARGETS nanobench
       EXPORT install_targets
-      LIBRARY DESTINATION ${INSTALL_LIBDIR}
-      ARCHIVE DESTINATION ${INSTALL_LIBDIR}
     )
 
     # Install targets file
@@ -109,7 +111,7 @@ if (NANOBENCH_STANDALONE_PROJECT)
       NAMESPACE
         ${PROJECT_NAME}::
       DESTINATION
-        ${INSTALL_CONFIGDIR}
+        ${NANOBENCH_INSTALL_CONFIGDIR}
     )
 
     # Install ${PROJECT_NAME}Config.cmake
@@ -117,11 +119,11 @@ if (NANOBENCH_STANDALONE_PROJECT)
     configure_package_config_file(
       ${CMAKE_CURRENT_SOURCE_DIR}/cmake/${PROJECT_NAME}Config.cmake.in
       ${CMAKE_CURRENT_BINARY_DIR}/${PROJECT_NAME}Config.cmake
-      INSTALL_DESTINATION ${INSTALL_CONFIGDIR}
+      INSTALL_DESTINATION ${NANOBENCH_INSTALL_CONFIGDIR}
     )
     install(FILES
       ${CMAKE_CURRENT_BINARY_DIR}/${PROJECT_NAME}Config.cmake
-      DESTINATION ${INSTALL_CONFIGDIR}
+      DESTINATION ${NANOBENCH_INSTALL_CONFIGDIR}
     )
 
     # Install headers
