@@ -3260,7 +3260,7 @@ std::chrono::nanoseconds Bench::maxEpochTime() const noexcept {
     return mConfig.mMaxEpochTime;
 }
 
-// Sets the maximum time each epoch should take. Default is 100ms.
+// Sets the minimum time each epoch should take. Default is 1ms.
 Bench& Bench::minEpochTime(std::chrono::nanoseconds t) noexcept {
     mConfig.mMinEpochTime = t;
     return *this;
