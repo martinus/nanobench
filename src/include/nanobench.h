@@ -46,6 +46,11 @@
 #include <unordered_map> // holds context information of results
 #include <vector>        // holds all results
 
+#if __cplusplus >= 201606L
+#    include <string_view> // some names
+#    define ANKERL_NANOBENCH_PRIVATE_UTILIZE_STRING_VIEW __cpp_lib_string_view
+#endif // __cplusplus >= 201606L
+
 #define ANKERL_NANOBENCH(x) ANKERL_NANOBENCH_PRIVATE_##x()
 
 #define ANKERL_NANOBENCH_PRIVATE_CXX() __cplusplus
@@ -663,6 +668,12 @@ public:
     ANKERL_NANOBENCH(NOINLINE)
     Bench& run(std::string const& benchmarkName, Op&& op);
 
+#ifdef ANKERL_NANOBENCH_PRIVATE_UTILIZE_STRING_VIEW
+    template <typename Op>
+    ANKERL_NANOBENCH(NOINLINE)
+    Bench& run(std::string_view benchmarkName, Op&& op);
+#endif // ANKERL_NANOBENCH_PRIVATE_UTILIZE_STRING_VIEW
+
     /**
      * @brief Same as run(char const* benchmarkName, Op op), but instead uses the previously set name.
      * @tparam Op The code to benchmark.
@@ -687,6 +698,9 @@ public:
     /// Name of the benchmark, will be shown in the table row.
     Bench& name(char const* benchmarkName);
     Bench& name(std::string const& benchmarkName);
+#ifdef ANKERL_NANOBENCH_PRIVATE_UTILIZE_STRING_VIEW
+    Bench& name(std::string_view benchmarkName);
+#endif // ANKERL_NANOBENCH_PRIVATE_UTILIZE_STRING_VIEW
     ANKERL_NANOBENCH(NODISCARD) std::string const& name() const noexcept;
 
     /**
@@ -1241,6 +1255,14 @@ Bench& Bench::run(std::string const& benchmarkName, Op&& op) {
     name(benchmarkName);
     return run(std::forward<Op>(op));
 }
+
+#ifdef ANKERL_NANOBENCH_PRIVATE_UTILIZE_STRING_VIEW
+template <typename Op>
+Bench& Bench::run(std::string_view benchmarkName, Op&& op) {
+    name(benchmarkName);
+    return run(std::forward<Op>(op));
+}
+#endif // ANKERL_NANOBENCH_PRIVATE_UTILIZE_STRING_VIEW
 
 template <typename Op>
 BigO Bench::complexityBigO(char const* benchmarkName, Op op) const {
@@ -3213,6 +3235,13 @@ Bench& Bench::name(std::string const& benchmarkName) {
     mConfig.mBenchmarkName = benchmarkName;
     return *this;
 }
+
+#    ifdef ANKERL_NANOBENCH_PRIVATE_UTILIZE_STRING_VIEW
+Bench& Bench::name(std::string_view const benchmarkName) {
+    mConfig.mBenchmarkName = benchmarkName;
+    return *this;
+}
+#    endif // ANKERL_NANOBENCH_PRIVATE_UTILIZE_STRING_VIEW
 
 std::string const& Bench::name() const noexcept {
     return mConfig.mBenchmarkName;
