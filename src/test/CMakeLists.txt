@@ -25,12 +25,13 @@ target_sources_local(nb PRIVATE
     tutorial_fluctuating_v1.cpp
     tutorial_fluctuating_v2.cpp
     tutorial_mustache.cpp
-    tutorial_render_simple.cpp    
+    tutorial_render_simple.cpp
     tutorial_slow_v1.cpp
     tutorial_slow_v2.cpp
     unit_api.cpp
     unit_cold.cpp
     unit_exact_iters_and_epochs.cpp
+    unit_multi_bench.cpp
     unit_romutrio.cpp
     unit_templates.cpp
     unit_timeunit.cpp
