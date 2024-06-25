@@ -1318,6 +1318,7 @@ void doNotOptimizeAway(T const& val) {
 #    include <fstream>   // ifstream to parse proc files
 #    include <iomanip>   // setw, setprecision
 #    include <iostream>  // cout
+#    include <mutex>     // mutex, lock_guard
 #    include <numeric>   // accumulate
 #    include <random>    // random_device
 #    include <sstream>   // to_s in Number
@@ -1812,8 +1813,9 @@ T parseFile(std::string const& filename, bool* fail);
 void gatherStabilityInformation(std::vector<std::string>& warnings, std::vector<std::string>& recommendations);
 void printStabilityInformationOnce(std::ostream* outStream);
 
-// remembers the last table settings used. When it changes, a new table header is automatically written for the new entry.
-uint64_t& singletonHeaderHash() noexcept;
+// checks if table settings used for ostream has changed.
+// returns false hash value has changed
+bool checkAndAsignSingletonHeaderHash(std::ostream const& _out, uint64_t hash) noexcept;
 
 // determines resolution of the given clock. This is done by measuring multiple times and returning the minimum time difference.
 Clock::duration calcClockResolution(size_t numEvaluations) noexcept;
@@ -2129,10 +2131,14 @@ void printStabilityInformationOnce(std::ostream* outStream) {
     }
 }
 
-// remembers the last table settings used. When it changes, a new table header is automatically written for the new entry.
-uint64_t& singletonHeaderHash() noexcept {
-    static uint64_t sHeaderHash{};
-    return sHeaderHash;
+// checks if table settings used for ostream has changed.
+// returns false hash value has changed
+bool checkAndAsignSingletonHeaderHash(std::ostream const& _out, uint64_t hash) noexcept {
+    static std::mutex sMutex;
+    static std::unordered_map<std::ostream const*, uint64_t> sHeaderHashes;
+    std::lock_guard<std::mutex> guard{sMutex};
+
+    return sHeaderHashes[&_out] == hash;
 }
 
 ANKERL_NANOBENCH_NO_SANITIZE("integer", "undefined")
@@ -2373,9 +2379,7 @@ struct IterationLogic::Impl {
             hash = hash_combine(std::hash<bool>{}(mBench.relative()), hash);
             hash = hash_combine(std::hash<bool>{}(mBench.performanceCounters()), hash);
 
-            if (hash != singletonHeaderHash()) {
-                singletonHeaderHash() = hash;
-
+            if (!checkAndAsignSingletonHeaderHash(os, hash)) {
                 // no result yet, print header
                 os << std::endl;
                 for (auto const& col : columns) {
