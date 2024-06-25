@@ -1307,6 +1307,7 @@ void doNotOptimizeAway(T const& val) {
 #    include <fstream>   // ifstream to parse proc files
 #    include <iomanip>   // setw, setprecision
 #    include <iostream>  // cout
+#    include <mutex>     // mutex, lock_guard
 #    include <numeric>   // accumulate
 #    include <random>    // random_device
 #    include <sstream>   // to_s in Number
@@ -2105,7 +2106,10 @@ void printStabilityInformationOnce(std::ostream* outStream) {
 
 // remembers the last table settings used. When it changes, a new table header is automatically written for the new entry.
 uint64_t& singletonHeaderHash(std::ostream const& _out) noexcept {
+    static std::mutex sMutex;
     static std::unordered_map<std::ostream const*, uint64_t> sHeaderHashes;
+    std::lock_guard<std::mutex> guard{sMutex};
+
     return sHeaderHashes[&_out];
 }
 
