@@ -2,6 +2,7 @@
 
 #include <algorithm>
 #include <cstddef>
+#include <cstdint>
 #include <iostream> // needed in this test, see https://github.com/onqtam/doctest/issues/126#issuecomment-381746547
 #include <string>
 
