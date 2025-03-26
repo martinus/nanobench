@@ -1381,8 +1381,8 @@ inline Clock::duration clockResolution() noexcept;
 namespace templates {
 
 char const* csv() noexcept {
-    return R"DELIM("title";"name";"unit";"batch";"elapsed";"error %";"instructions";"branches";"branch misses";"total"
-{{#result}}"{{title}}";"{{name}}";"{{unit}}";{{batch}};{{median(elapsed)}};{{medianAbsolutePercentError(elapsed)}};{{median(instructions)}};{{median(branchinstructions)}};{{median(branchmisses)}};{{median(l1daccesses)}};{{median(l1dmisses)}};{{median(llcaccesses)}};{{median(llcmisses)}};{{sumProduct(iterations, elapsed)}}
+    return R"DELIM(title,name,unit,batch,elapsed,error %,instructions,branches,branch misses,total
+{{#result}}{{title}},{{name}},{{unit}},{{batch}},{{median(elapsed)}},{{medianAbsolutePercentError(elapsed)}},{{median(instructions)}},{{median(branchinstructions)}},{{median(branchmisses)}},{{median(l1daccesses)}},{{median(l1dmisses)}},{{median(llcaccesses)}},{{median(llcmisses)}},{{sumProduct(iterations, elapsed)}}
 {{/result}})DELIM";
 }
 
