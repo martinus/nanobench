@@ -254,6 +254,23 @@ jobs:
             UBSAN_OPTIONS=print_stacktrace=1:halt_on_error=1 /tmp/no-rtti
           done
 
+  # nanobench used to always throw a runtime_error for error cases, requiring the user to compile
+  # exception handling code. With -fno-exceptions all throws become aborts, exiting the early.
+  #
+  # Note: This will not report runtime_error information for any throw.
+  no-exceptions:
+    name: Consumer without Exceptions (gcc + clang)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - run: |
+          for cxx in g++ clang++; do
+            echo "--- $cxx -fno-exceptions"
+            $cxx -std=c++17 -O1 -g -fno-exceptions -fsanitize=address,undefined \
+              -Isrc/include src/docs/code/full_example_simple.cpp -o /tmp/no-exceptions
+            UBSAN_OPTIONS=print_stacktrace=1:halt_on_error=1 /tmp/no-exceptions
+          done
+
   # Every other Linux leg is glibc, and the two libcs disagree about ioctl(): glibc declares the
   # request parameter as unsigned long, musl as int. PERF_EVENT_IOC_ID does not fit into an int, so
   # nanobench did not compile on Alpine at all for three years and no job could see it (issue #92).
@@ -364,7 +381,7 @@ jobs:
   ci-green:
     name: CI green
     if: always()
-    needs: [lint, build, header, no-rtti, musl, clang-cl, mingw, consumer]
+    needs: [lint, build, header, no-rtti, no-exceptions, musl, clang-cl, mingw, consumer]
     runs-on: ubuntu-latest
     steps:
       - name: Check that every job succeeded
