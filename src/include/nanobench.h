@@ -1322,7 +1322,6 @@ void doNotOptimizeAway(T const& val) {
 #    include <random>    // random_device
 #    include <sstream>   // to_s in Number
 #    include <stdexcept> // throw for rendering templates
-#    include <tuple>     // std::tie
 #    if defined(__linux__)
 #        include <unistd.h> //sysconf
 #    endif
@@ -3543,7 +3542,8 @@ double BigO::normalizedRootMeanSquare() const noexcept {
 }
 
 bool BigO::operator<(BigO const& other) const noexcept {
-    return std::tie(mNormalizedRootMeanSquare, mName) < std::tie(other.mNormalizedRootMeanSquare, other.mName);
+    return (mNormalizedRootMeanSquare < other.mNormalizedRootMeanSquare)
+        || (!(mNormalizedRootMeanSquare > other.mNormalizedRootMeanSquare) && mName < other.mName);
 }
 
 std::ostream& operator<<(std::ostream& os, BigO const& bigO) {
