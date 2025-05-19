@@ -408,6 +408,9 @@ class PerformanceCounters;
 class LinuxPerformanceCounters;
 #endif
 
+auto defaultMinEpochTime() -> std::chrono::nanoseconds;
+auto defaultMinEpochIterations() -> uint64_t;
+
 } // namespace detail
 } // namespace nanobench
 } // namespace ankerl
@@ -441,8 +444,8 @@ struct Config {
     size_t mNumEpochs = 11;                                                  // NOLINT(misc-non-private-member-variables-in-classes)
     size_t mClockResolutionMultiple = static_cast<size_t>(1000);             // NOLINT(misc-non-private-member-variables-in-classes)
     std::chrono::nanoseconds mMaxEpochTime = std::chrono::milliseconds(100); // NOLINT(misc-non-private-member-variables-in-classes)
-    std::chrono::nanoseconds mMinEpochTime = std::chrono::milliseconds(1);   // NOLINT(misc-non-private-member-variables-in-classes)
-    uint64_t mMinEpochIterations{1};                                         // NOLINT(misc-non-private-member-variables-in-classes)
+    std::chrono::nanoseconds mMinEpochTime = detail::defaultMinEpochTime();  // NOLINT(misc-non-private-member-variables-in-classes)
+    uint64_t mMinEpochIterations = detail::defaultMinEpochIterations();      // NOLINT(misc-non-private-member-variables-in-classes)
     // If not 0, run *exactly* these number of iterations per epoch.
     uint64_t mEpochIterations{0};                                          // NOLINT(misc-non-private-member-variables-in-classes)
     uint64_t mWarmup = 0;                                                  // NOLINT(misc-non-private-member-variables-in-classes)
@@ -2364,6 +2367,30 @@ bool isEndlessRunning(std::string const& name) {
 bool isWarningsEnabled() {
     auto const* const suppression = getEnv("NANOBENCH_SUPPRESS_WARNINGS");
     return nullptr == suppression || suppression == std::string("0");
+}
+
+auto defaultMinEpochTime() -> std::chrono::nanoseconds {
+    // A static initialized value to avoid reparsing of strings.
+    static std::chrono::nanoseconds const defaultValue = []() {
+        auto const* const env = getEnv("NANOBENCH_MIN_EPOCH_TIME");
+        if (env == nullptr) {
+            return std::chrono::nanoseconds{1000000};
+        }
+        return std::chrono::nanoseconds{std::stoull(env)};
+    }();
+    return defaultValue;
+}
+
+auto defaultMinEpochIterations() -> uint64_t {
+    // A static initialized value to avoid reparsing of strings.
+    static uint64_t const defaultValue = []() -> uint64_t {
+        auto const* const env = getEnv("NANOBENCH_MIN_EPOCH_ITERATIONS");
+        if (env == nullptr) {
+            return uint64_t{1};
+        }
+        return std::stoull(env);
+    }();
+    return defaultValue;
 }
 
 void gatherStabilityInformation(std::vector<std::string>& warnings, std::vector<std::string>& recommendations) {

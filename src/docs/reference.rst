@@ -54,7 +54,7 @@
 --------------------------------------------------------------------------
 
 
-.. doxygenfunction:: ankerl::nanobench::render(char const *mustacheTemplate, Bench const &bench, std::ostream &out)
+.. doxygenfunction:: ankerl::nanobench::render(char const *mustacheTemplate, Bench const &bench, std::ostream &out)*
 
 
 :cpp:func:`templates::csv <ankerl::nanobench::templates::csv>`
@@ -129,3 +129,14 @@ Set ``NANOBENCH_SUPPRESS_WARNINGS=1`` to disable all warnings, or set it to 0 to
 
    NANOBENCH_SUPPRESS_WARNINGS=1 ./yourapp
 
+``NANOBENCH_MIN_EPOCH_TIME`` - Overwrite default minimum epoch time
+-------------------------------------------------------------------
+Overwrites the default minimum epoch time of the Bench class.
+The number set by this environment variable is expected to be in nanoseconds.
+For more information check Bench::minEpochTime.
+
+
+``NANOBENCH_MIN_EPOCH_ITERATIONS`` - Overwrite default number of minimum epoch iterations
+-----------------------------------------------------------------------------------------
+Overwrite the default minimum epoch iterations of the Bench class.
+For more information check Bench::minEpochIterations.
