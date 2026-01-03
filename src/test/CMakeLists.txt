@@ -36,6 +36,7 @@ target_sources_local(nb PRIVATE
     unit_mdape.cpp
     unit_relative_batch.cpp
     unit_romutrio.cpp
+    unit_setup.cpp
     unit_templates.cpp
     unit_timeunit.cpp
     unit_to_s.cpp
