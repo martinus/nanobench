@@ -2647,9 +2647,9 @@ private:
     std::map<uint64_t, Target> mIdToTarget{};
 
     // start with minimum size of 3 for read_format
-    std::vector<uint64_t> mCounters{3};
-    std::vector<uint64_t> mCalibratedOverhead{3};
-    std::vector<uint64_t> mLoopOverhead{3};
+    std::vector<uint64_t> mCounters = std::vector<uint64_t>(3);
+    std::vector<uint64_t> mCalibratedOverhead = std::vector<uint64_t>(3);
+    std::vector<uint64_t> mLoopOverhead = std::vector<uint64_t>(3);
 
     // PERF_EVENT_IOC_RESET resets the counters, but not time_enabled/time_running: those keep accumulating over the
     // whole lifetime of the event. So the times of a single measurement are the difference to the previous read.
