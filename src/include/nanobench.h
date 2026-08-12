@@ -112,6 +112,16 @@
 #    define ANKERL_NANOBENCH_PRIVATE_NOINLINE() __attribute__((noinline))
 #endif
 
+// Whether doNotOptimizeAway can use GCC-style inline assembly, which is both faster and a stronger barrier than the
+// function call it falls back to. Testing for _MSC_VER is not enough to rule it out: clang-cl and clang in MSVC
+// compatibility mode define _MSC_VER but not __GNUC__, even though they do understand the assembly.
+// See https://github.com/martinus/nanobench/issues/111
+#if defined(__clang__) || defined(__GNUC__)
+#    define ANKERL_NANOBENCH_PRIVATE_ASM_DONT_OPTIMIZE_AWAY() 1
+#else
+#    define ANKERL_NANOBENCH_PRIVATE_ASM_DONT_OPTIMIZE_AWAY() 0
+#endif
+
 // workaround missing "is_trivially_copyable" in g++ < 5.0
 // See https://stackoverflow.com/a/31798726/48181
 #if defined(__GNUC__) && __GNUC__ < 5
@@ -866,10 +876,11 @@ public:
     /**
      * @brief Marks the next run as the baseline.
      *
-     * Call `relative(true)` to mark the run as the baseline. Successive runs will be compared to this run. It is calculated by
+     * Call `relative(true)` to mark the run as the baseline. Successive runs will be compared to this run. Just like all the
+     * other columns, the comparison is per unit, so it stays meaningful when the runs use a different Bench::batch:
      *
      * @f[
-     * 100\% * \frac{baseline}{runtime}
+     * 100\% * \frac{baseline / baselineBatch}{runtime / batch}
      * @f]
      *
      *  * 100% means it is exactly as fast as the baseline
@@ -1024,7 +1035,7 @@ void doNotOptimizeAway(Arg&& arg);
 
 namespace detail {
 
-#if defined(_MSC_VER)
+#if !ANKERL_NANOBENCH(ASM_DONT_OPTIMIZE_AWAY)
 void doNotOptimizeAwaySink(void const*);
 
 template <typename T>
@@ -1282,7 +1293,7 @@ void doNotOptimizeAway(Arg&& arg) {
 
 namespace detail {
 
-#if defined(_MSC_VER)
+#if !ANKERL_NANOBENCH(ASM_DONT_OPTIMIZE_AWAY)
 template <typename T>
 void doNotOptimizeAway(T const& val) {
     doNotOptimizeAwaySink(&val);
@@ -1363,6 +1374,18 @@ inline double d(T t) noexcept {
 }
 inline double d(Clock::duration duration) noexcept {
     return std::chrono::duration_cast<std::chrono::duration<double>>(duration).count();
+}
+
+// Rounds to the nearest uint64_t. Casting a double that doesn't fit is undefined behavior, so the value is clamped
+// into a safe range first. The comparisons are written so that a NaN takes the same path as a negative value.
+inline uint64_t u64(double val) noexcept {
+    auto const maxVal = d((std::numeric_limits<uint64_t>::max)() / 2U);
+    if (!(val > 0.0)) {
+        return 0;
+    }
+    // +0.5 for correct rounding when casting
+    // NOLINTNEXTLINE(bugprone-incorrect-roundings)
+    return static_cast<uint64_t>((val < maxVal ? val : maxVal) + 0.5);
 }
 
 // Calculates clock resolution once, and remembers the result
@@ -1983,10 +2006,14 @@ PerformanceCounters& performanceCounters() {
 // see https://github.com/google/benchmark/blob/v1.7.1/include/benchmark/benchmark.h#L514
 // see https://github.com/facebook/folly/blob/v2023.01.30.00/folly/lang/Hint-inl.h#L54-L58
 // see https://learn.microsoft.com/en-us/cpp/preprocessor/optimize
-#    if defined(_MSC_VER)
-#        pragma optimize("", off)
+#    if !ANKERL_NANOBENCH(ASM_DONT_OPTIMIZE_AWAY)
+#        if defined(_MSC_VER)
+#            pragma optimize("", off)
+#        endif
 void doNotOptimizeAwaySink(void const*) {}
-#        pragma optimize("", on)
+#        if defined(_MSC_VER)
+#            pragma optimize("", on)
+#        endif
 #    endif
 
 template <typename T>
@@ -2160,8 +2187,7 @@ struct IterationLogic::Impl {
         } else if (0 != mBench.warmup()) {
             mNumIters = mBench.warmup();
             mState = State::warmup;
-        } else if (0 != mBench.epochIterations()) {
-            // exact number of iterations
+        } else if (hasExactNumIters()) {
             mNumIters = mBench.epochIterations();
             mState = State::measuring;
         } else {
@@ -2170,27 +2196,39 @@ struct IterationLogic::Impl {
         }
     }
 
-    // directly calculates new iters based on elapsed&iters, and adds a 10% noise. Makes sure we don't underflow.
+    // True when an exact number of iterations per epoch was requested, which overrides any calculated one.
+    ANKERL_NANOBENCH(NODISCARD) bool hasExactNumIters() const noexcept {
+        return 0 != mBench.epochIterations();
+    }
+
+    // The number of iterations the next epoch should run, honoring an exact count if one was requested.
+    ANKERL_NANOBENCH(NODISCARD) uint64_t calcNextNumIters(std::chrono::nanoseconds elapsed, uint64_t iters) noexcept {
+        return hasExactNumIters() ? mBench.epochIterations() : calcBestNumIters(elapsed, iters);
+    }
+
+    // directly calculates new iters based on elapsed&iters, and stretches the epoch by 0-20% of random noise so epochs
+    // don't get into lockstep with periodic disturbances. Makes sure we don't under- or overflow.
     ANKERL_NANOBENCH(NODISCARD) uint64_t calcBestNumIters(std::chrono::nanoseconds elapsed, uint64_t iters) noexcept {
         auto doubleElapsed = d(elapsed);
         auto doubleTargetRuntimePerEpoch = d(mTargetRuntimePerEpoch);
         auto doubleNewIters = doubleTargetRuntimePerEpoch / doubleElapsed * d(iters);
 
+        // An elapsed time of 0 (possible with a coarse clock) makes the division above produce infinity, or even NaN
+        // when the target runtime is 0 as well. Comparing with '!(a >= b)' instead of 'a < b' replaces NaN with the
+        // minimum too, so an epoch never ends up with a nonsensical number of iterations.
         auto doubleMinEpochIters = d(mBench.minEpochIterations());
-        if (doubleNewIters < doubleMinEpochIters) {
+        if (!(doubleNewIters >= doubleMinEpochIters)) {
             doubleNewIters = doubleMinEpochIters;
         }
         doubleNewIters *= 1.0 + 0.2 * mRng.uniform01();
 
-        // +0.5 for correct rounding when casting
-        // NOLINTNEXTLINE(bugprone-incorrect-roundings)
-        return static_cast<uint64_t>(doubleNewIters + 0.5);
+        return u64(doubleNewIters);
     }
 
     ANKERL_NANOBENCH_NO_SANITIZE("integer", "undefined") void upscale(std::chrono::nanoseconds elapsed) {
         if (elapsed * 10 < mTargetRuntimePerEpoch) {
             // we are far below the target runtime. Multiply iterations by 10 (with overflow check)
-            if (mNumIters * 10 < mNumIters) {
+            if (mNumIters > (std::numeric_limits<uint64_t>::max)() / 10) {
                 // overflow :-(
                 showResult("iterations overflow. Maybe your code got optimized away?");
                 mNumIters = 0;
@@ -2209,11 +2247,12 @@ struct IterationLogic::Impl {
 
         switch (mState) {
         case State::warmup:
-            if (isCloseEnoughForMeasurements(elapsed)) {
+            // an exact number of iterations makes upscaling pointless, so warmup is over either way
+            if (hasExactNumIters() || isCloseEnoughForMeasurements(elapsed)) {
                 // if elapsed is close enough, we can skip upscaling and go right to measurements
                 // still, we don't add the result to the measurements.
                 mState = State::measuring;
-                mNumIters = calcBestNumIters(elapsed, mNumIters);
+                mNumIters = calcNextNumIters(elapsed, mNumIters);
             } else {
                 // not close enough: switch to upscaling
                 mState = State::upscaling_runtime;
@@ -2228,7 +2267,7 @@ struct IterationLogic::Impl {
                 mTotalElapsed += elapsed;
                 mTotalNumIters += mNumIters;
                 mResult.add(elapsed, mNumIters, pc);
-                mNumIters = calcBestNumIters(mTotalElapsed, mTotalNumIters);
+                mNumIters = calcNextNumIters(mTotalElapsed, mTotalNumIters);
             } else {
                 upscale(elapsed);
             }
@@ -2240,11 +2279,7 @@ struct IterationLogic::Impl {
             mTotalElapsed += elapsed;
             mTotalNumIters += mNumIters;
             mResult.add(elapsed, mNumIters, pc);
-            if (0 != mBench.epochIterations()) {
-                mNumIters = mBench.epochIterations();
-            } else {
-                mNumIters = calcBestNumIters(mTotalElapsed, mTotalNumIters);
-            }
+            mNumIters = calcNextNumIters(mTotalElapsed, mTotalNumIters);
             break;
 
         case State::endless:
@@ -2276,7 +2311,14 @@ struct IterationLogic::Impl {
             if (mBench.relative()) {
                 double d = 100.0;
                 if (!mBench.results().empty()) {
-                    d = rMedian <= 0.0 ? 0.0 : mBench.results().front().median(Result::Measure::elapsed) / rMedian * 100.0;
+                    // Every other column is per unit, so this one has to be as well. Comparing the raw epoch times would
+                    // give a skewed percentage as soon as the baseline was run with a different batch size.
+                    // See https://github.com/martinus/nanobench/issues/131
+                    // This is (baseline / baselineBatch) / (rMedian / batch) as a single fraction, so one guard does.
+                    auto const& baseline = mBench.results().front();
+                    auto const num = baseline.median(Result::Measure::elapsed) * mBench.batch();
+                    auto const den = rMedian * baseline.config().mBatch;
+                    d = den <= 0.0 ? 0.0 : num / den * 100.0;
                 }
                 columns.emplace_back(11, 1, "relative", "%", d);
             }
@@ -2365,8 +2407,7 @@ struct IterationLogic::Impl {
                 os << fmt::MarkDownCode(mBench.name());
                 if (showUnstable) {
                     auto avgIters = d(mTotalNumIters) / d(mBench.epochs());
-                    // NOLINTNEXTLINE(bugprone-incorrect-roundings)
-                    auto suggestedIters = static_cast<uint64_t>(avgIters * 10 + 0.5);
+                    auto suggestedIters = u64(avgIters * 10);
 
                     os << " (Unstable with ~" << detail::fmt::Number(1, 1, avgIters)
                        << " iters. Increase `minEpochIterations` to e.g. " << suggestedIters << ")";
@@ -2477,6 +2518,9 @@ public:
         auto const numBytes = sizeof(uint64_t) * mCounters.size();
         auto ret = read(mFd, mCounters.data(), numBytes);
         mHasError = ret != static_cast<ssize_t>(numBytes);
+        if (!mHasError) {
+            scaleCounters();
+        }
     }
 
     void updateResults(uint64_t numIters);
@@ -2485,6 +2529,38 @@ public:
     template <typename T>
     static inline T divRounded(T a, T divisor) {
         return (a + divisor / 2) / divisor;
+    }
+
+    // Index of the i-th event's value in a PERF_FORMAT_GROUP | PERF_FORMAT_ID read: three header words
+    // (nr, time_enabled, time_running), then a value and an id per event.
+    static inline size_t valueIdx(uint64_t i) noexcept {
+        return static_cast<size_t>(3 + i * 2);
+    }
+
+    // Compensates the counters that were just read for multiplexing.
+    //
+    // When more events are monitored than the hardware can count at the same time, the kernel time-shares the counters
+    // between them. An event is then only active for a fraction of the measurement, and the value read back is just what
+    // happened while it was active. Scaling it up by enabled/running extrapolates to the whole measurement, which is
+    // exactly what `perf stat` does. Without this, cycles/instructions/branches are silently underreported - e.g. when
+    // the NMI watchdog occupies one of the counters, or in a VM that exposes a restricted PMU.
+    inline void scaleCounters() noexcept {
+        auto const timeEnabled = mCounters[1] - mTotalTimeEnabledNanos;
+        auto const timeRunning = mCounters[2] - mTotalTimeRunningNanos;
+        mTotalTimeEnabledNanos = mCounters[1];
+        mTotalTimeRunningNanos = mCounters[2];
+
+        if (0U == timeRunning || timeEnabled <= timeRunning) {
+            // all events were active the whole time, nothing to extrapolate
+            return;
+        }
+
+        auto const factor = d(timeEnabled) / d(timeRunning);
+        for (uint64_t i = 0; i < mCounters[0]; ++i) {
+            // uint64_t multiplication could overflow, and counts are far below 2^53 so double is exact enough here
+            auto const idx = valueIdx(i);
+            mCounters[idx] = u64(d(mCounters[idx]) * factor);
+        }
     }
 
     ANKERL_NANOBENCH_NO_SANITIZE("integer", "undefined")
@@ -2575,8 +2651,10 @@ private:
     std::vector<uint64_t> mCalibratedOverhead{3};
     std::vector<uint64_t> mLoopOverhead{3};
 
-    uint64_t mTimeEnabledNanos = 0;
-    uint64_t mTimeRunningNanos = 0;
+    // PERF_EVENT_IOC_RESET resets the counters, but not time_enabled/time_running: those keep accumulating over the
+    // whole lifetime of the event. So the times of a single measurement are the difference to the previous read.
+    uint64_t mTotalTimeEnabledNanos = 0;
+    uint64_t mTotalTimeRunningNanos = 0;
     int mFd = -1;
     bool mHasError = false;
 };
@@ -2608,11 +2686,9 @@ void LinuxPerformanceCounters::updateResults(uint64_t numIters) {
         return;
     }
 
-    mTimeEnabledNanos = mCounters[1] - mCalibratedOverhead[1];
-    mTimeRunningNanos = mCounters[2] - mCalibratedOverhead[2];
-
+    // mCounters has already been compensated for multiplexing in endMeasure(), and so has mCalibratedOverhead
     for (uint64_t i = 0; i < mCounters[0]; ++i) {
-        auto idx = static_cast<size_t>(3 + i * 2 + 0);
+        auto idx = valueIdx(i);
         auto id = mCounters[idx + 1U];
 
         auto it = mIdToTarget.find(id);
@@ -3009,8 +3085,17 @@ double Result::medianAbsolutePercentError(Measure m) const {
     // see https://support.numxl.com/hc/en-us/articles/115001223503-MdAPE-Median-Absolute-Percentage-Error
     auto med = calcMedian(data);
 
+    // The error is relative to the measurement itself, so a measurement of 0 has none that is finite: it is 0 when the
+    // median is 0 as well (they agree), and infinite otherwise, which is the limit of |(x - med) / x| for x -> 0.
+    // Calculating it directly would give NaN, and a NaN in the data breaks the ordering that calcMedian's sort needs.
+    auto const zeroError = med <= 0.0 ? 0.0 : std::numeric_limits<double>::infinity();
+
     // transform the data to absolute error
     for (auto& x : data) {
+        if (x <= 0.0) {
+            x = zeroError;
+            continue;
+        }
         x = (x - med) / x;
         if (x < 0) {
             x = -x;
