@@ -152,8 +152,10 @@ ours to reformat.
 Doc comments live in the header. The site at <https://nanobench.ankerl.com/> is built from them by
 `.github/workflows/docs.yml` (doxygen + sphinx + breathe) on every push and PR, and deployed from
 master, so `docs/` is **not** committed: `src/docs/generate.sh` writes it as a gitignored local
-preview and needs doxygen plus the pinned `src/docs/requirements.txt` (`pip install -r`, or Fedora's
-`python3-sphinx python3-breathe python3-sphinx_rtd_theme python3-recommonmark`). Cloudflare fronts
+preview and needs doxygen plus the pinned `src/docs/requirements.txt` — `pip install -r` into a venv,
+which is what CI does too. Fedora's `python3-sphinx` etc. still work for a look at the prose, but
+they are no longer equivalent: F44 packages Sphinx 8.2.3 against the pinned 9.1.0, whose rewritten
+search machinery changes `_static` and `searchindex.js`. Cloudflare fronts
 the site with a 24h TTL, so a finished deployment can still serve the old page until that expires or
 the cache is purged.
 
