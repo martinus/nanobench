@@ -3,7 +3,14 @@
 # floor on purpose rather than moved to something modern: nothing here needs newer, and a header-only
 # library has no business dictating the CMake version of the projects that consume it.
 cmake_minimum_required(VERSION 3.10)
-project(nanobench LANGUAGES CXX)
+# VERSION is checked against the macros in nanobench.h by src/scripts/lint/lint-version.py, so it
+# cannot drift from them silently.
+project(
+    nanobench
+    VERSION 4.4.0
+    DESCRIPTION "Simple, fast, accurate single-header microbenchmarking functionality for C++11/14/17/20"
+    HOMEPAGE_URL "https://github.com/martinus/nanobench"
+    LANGUAGES CXX)
 
 # determine whether this is a standalone project or included by other projects
 set(NANOBENCH_STANDALONE_PROJECT OFF)
@@ -30,23 +37,23 @@ if (NANOBENCH_STANDALONE_PROJECT)
     # .github/workflows/main.yml runs it with a pinned version instead. To get it back locally:
     #   cmake -S . -B build -DCMAKE_CXX_CLANG_TIDY=clang-tidy-18
 
-    find_program(CCACHE_PROGRAM ccache)
+    find_program(CCACHE_PROGRAM NAMES ccache)
     if(CCACHE_PROGRAM)
-        SET(CMAKE_CXX_COMPILER_LAUNCHER "${CCACHE_PROGRAM}")
-    endif(CCACHE_PROGRAM)
+        set(CMAKE_CXX_COMPILER_LAUNCHER "${CCACHE_PROGRAM}")
+    endif()
 
     if (NANOBENCH_BUILD_TEST)
         add_executable(nb "")
     endif()
 
     if (NB_sanitizer AND NANOBENCH_BUILD_TEST)
+        # Compile with -g and -fno-omit-frame-pointer to get proper debug information in your binary.
+        # The sanitizer sets below differ per compiler; these three do not.
+        target_compile_options(nb PRIVATE -g -O2 -fno-omit-frame-pointer)
+
+        # MATCHES rather than STREQUAL: AppleClang has to take this branch too.
         if (CMAKE_CXX_COMPILER_ID MATCHES "Clang")
             # see https://clang.llvm.org/docs/UndefinedBehaviorSanitizer.html#silencing-unsigned-integer-overflow
-            # Compile with -g and -fno-omit-frame-pointer to get proper debug information in your binary
-            target_compile_options(nb PRIVATE -g)
-            target_compile_options(nb PRIVATE -O2)
-            target_compile_options(nb PRIVATE -fno-omit-frame-pointer)
-
             target_compile_options(nb PRIVATE -fsanitize=address)
             target_link_libraries(nb PRIVATE -fsanitize=address)
 
@@ -69,10 +76,6 @@ if (NANOBENCH_STANDALONE_PROJECT)
         if (CMAKE_CXX_COMPILER_ID MATCHES "GNU")
             # need to use gold linker, otherwise travis gets '/usr/bin/ld: --push-state: unknown option' error
             target_link_libraries(nb PRIVATE -fuse-ld=gold)
-
-            target_compile_options(nb PRIVATE -g)
-            target_compile_options(nb PRIVATE -O2)
-            target_compile_options(nb PRIVATE -fno-omit-frame-pointer)
 
             target_compile_options(nb PRIVATE -fsanitize=undefined,float-divide-by-zero,float-cast-overflow)
             target_link_libraries(nb PRIVATE -fsanitize=undefined,float-divide-by-zero,float-cast-overflow)
@@ -121,8 +124,13 @@ if (NANOBENCH_STANDALONE_PROJECT)
         ${NANOBENCH_INSTALL_CONFIGDIR}
     )
 
-    # Install ${PROJECT_NAME}Config.cmake
+    # Install ${PROJECT_NAME}Config.cmake and ${PROJECT_NAME}ConfigVersion.cmake
     include(CMakePackageConfigHelpers)
+    write_basic_package_version_file(
+      ${CMAKE_CURRENT_BINARY_DIR}/${PROJECT_NAME}ConfigVersion.cmake
+      VERSION ${PROJECT_VERSION}
+      COMPATIBILITY SameMajorVersion
+    )
     configure_package_config_file(
       ${CMAKE_CURRENT_SOURCE_DIR}/cmake/${PROJECT_NAME}Config.cmake.in
       ${CMAKE_CURRENT_BINARY_DIR}/${PROJECT_NAME}Config.cmake
@@ -130,6 +138,7 @@ if (NANOBENCH_STANDALONE_PROJECT)
     )
     install(FILES
       ${CMAKE_CURRENT_BINARY_DIR}/${PROJECT_NAME}Config.cmake
+      ${CMAKE_CURRENT_BINARY_DIR}/${PROJECT_NAME}ConfigVersion.cmake
       DESTINATION ${NANOBENCH_INSTALL_CONFIGDIR}
     )
 
