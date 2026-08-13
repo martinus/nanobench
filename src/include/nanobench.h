@@ -205,6 +205,12 @@ class SetupRunner;
  *    `contextswitches`, `instructions`, `branchinstructions`, and `branchmisses`. All the measures (except `iterations`) are
  *    provided for a single iteration (so `elapsed` is the time a single iteration took). The following tags are available:
  *
+ *    `elapsed` is in **seconds**, which is rarely the unit a report wants. Since the template language has no arithmetic
+ *    to scale it afterwards, the time measure also comes in `elapsedms`, `elapsedus` and `elapsedns` — the same value in
+ *    milliseconds, microseconds and nanoseconds. So `{{minimum(elapsedms)}}` is the fastest iteration in milliseconds.
+ *    Note this is unrelated to Bench::timeUnit(), which only sets the unit of the `ns/op` column in the table.
+ *    `{{medianAbsolutePercentError(...)}}` is a relative error, so it is the same number whichever of them you ask for.
+ *
  *    * `{{median(<name>)}}` Calculate median of a measurement data set, e.g. `{{median(elapsed)}}`.
  *
  *    * `{{average(<name>)}}` Average (mean) calculation.
@@ -419,6 +425,10 @@ struct Config {
     bool mShowPerformanceCounters = true;                                  // NOLINT(misc-non-private-member-variables-in-classes)
     bool mIsRelative = false;                                              // NOLINT(misc-non-private-member-variables-in-classes)
     std::unordered_map<std::string, std::string> mContext{};               // NOLINT(misc-non-private-member-variables-in-classes)
+    // One bit per Column, set when that column is hidden - so the default of 0 shows everything and
+    // stays the table nanobench has always printed.
+    uint32_t mHiddenColumns{};                  // NOLINT(misc-non-private-member-variables-in-classes)
+    std::vector<std::string> mContextColumns{}; // NOLINT(misc-non-private-member-variables-in-classes)
 
     Config();
     ~Config();
@@ -622,6 +632,29 @@ private:
 
     uint64_t mX;
     uint64_t mY;
+};
+
+/**
+ * @brief A column of the markdown table, for Bench::hideColumn() and Bench::showColumn().
+ *
+ * The names in brackets are the headers the column is printed with; `op` follows Bench::unit(), and the
+ * time unit follows Bench::timeUnit().
+ *
+ * @see ankerl::nanobench::Bench::hideColumn()
+ */
+enum class Column : size_t {
+    relative,      ///< `relative` - only shown when Bench::relative() is set.
+    complexityN,   ///< `complexityN` - only shown when Bench::complexityN() is set.
+    timePerUnit,   ///< `ns/op` - time for one unit.
+    unitPerSecond, ///< `op/s` - units per second.
+    error,         ///< `err%` - median absolute percentage error over the epochs.
+    instructions,  ///< `ins/op` - retired instructions, Linux only.
+    cycles,        ///< `cyc/op` - CPU cycles, Linux only.
+    ipc,           ///< `IPC` - instructions per cycle, Linux only.
+    branches,      ///< `bra/op` - retired branch instructions, Linux only.
+    branchMisses,  ///< `miss%` - percentage of branches mispredicted, Linux only.
+    total,         ///< `total` - wall clock time spent measuring this row.
+    _size          ///< Not a column; the number of them.
 };
 
 /**
@@ -909,6 +942,51 @@ public:
      */
     Bench& performanceCounters(bool showPerformanceCounters) noexcept;
     ANKERL_NANOBENCH(NODISCARD) bool performanceCounters() const noexcept;
+
+    /**
+     * @brief Removes a column from the table.
+     *
+     * The full table is over 150 characters wide, which wraps in most terminals. Hide what you are not
+     * reading:
+     *
+     *     bench.hideColumn(Column::instructions)
+     *          .hideColumn(Column::cycles)
+     *          .hideColumn(Column::ipc);
+     *
+     * Hiding a column only changes what is printed - the measurement still happens, and results() and
+     * the render templates are unaffected. To stop *measuring* the performance counters as well, use
+     * performanceCounters(false), which hides all five of their columns at once.
+     *
+     * @param column The column to hide.
+     */
+    Bench& hideColumn(Column column) noexcept;
+
+    /// Shows a column hidden with hideColumn() again. @see hideColumn()
+    Bench& showColumn(Column column) noexcept;
+
+    /// True when @p column is not hidden. A column can still be absent from the table for other
+    /// reasons - `relative` without relative(), or the counter columns off Linux. @see hideColumn()
+    ANKERL_NANOBENCH(NODISCARD) bool isColumnVisible(Column column) const noexcept;
+
+    /**
+     * @brief Adds a column showing the value of a context variable.
+     *
+     * Context variables set with context() are otherwise only reachable from a render template, which
+     * makes parameterised benchmarks awkward to read on the console. This puts one in the table:
+     *
+     *     bench.context("threads", std::to_string(n))
+     *          .contextColumn("threads")
+     *          .run(...);
+     *
+     * The column is added once per name, in the order given, before the benchmark name. A row whose
+     * context does not have the variable is left blank.
+     *
+     * @param variableName Name of the context variable to show. @see context()
+     */
+    Bench& contextColumn(std::string const& variableName);
+
+    /// Removes all columns added with contextColumn(). @see contextColumn()
+    Bench& clearContextColumns() noexcept;
 
     /**
      * @brief Retrieves all benchmark results collected by the bench object so far.
@@ -1787,6 +1865,65 @@ static bool generateConfigTag(Node const& n, Config const& config, std::ostream&
 }
 
 // NOLINTNEXTLINE(readability-function-cognitive-complexity)
+// `elapsed` is seconds, which is rarely the unit anyone wants in a report, and the template language
+// has no arithmetic to fix that afterwards (issue #107). So a time measure may carry a unit suffix -
+// `elapsedms`, `elapsedus`, `elapsedns` - and this resolves it to the measure plus the factor to
+// multiply by. Plain `elapsed` keeps its meaning, so existing templates render byte for byte as
+// before.
+static Result::Measure measureFromString(std::string const& str, double& scale) {
+    scale = 1.0;
+    auto m = Result::fromString(str);
+    if (Result::Measure::_size != m) {
+        return m;
+    }
+
+    struct ScaledMeasure {
+        char const* name;
+        double scale;
+    };
+    // NOLINTNEXTLINE(cppcoreguidelines-avoid-c-arrays,hicpp-avoid-c-arrays,modernize-avoid-c-arrays)
+    static ScaledMeasure const scaled[] = {{"elapsedms", 1e3}, {"elapsedus", 1e6}, {"elapsedns", 1e9}};
+    for (auto const& s : scaled) {
+        if (str == s.name) {
+            scale = s.scale;
+            return Result::Measure::elapsed;
+        }
+    }
+    return Result::Measure::_size;
+}
+
+// The one-argument measure commands - {{median(elapsed)}} and friends. Split out of
+// generateResultTag so that adding the unit-scaled measures did not push its cognitive complexity
+// past what clang-tidy accepts.
+static bool generateMeasureTag(std::string const& command, Result const& r, Result::Measure m, double scale, std::ostream& out) {
+    if (command == "median") {
+        out << r.median(m) * scale;
+        return true;
+    }
+    if (command == "average") {
+        out << r.average(m) * scale;
+        return true;
+    }
+    if (command == "medianAbsolutePercentError") {
+        // a relative error is the same number whatever the unit, so this one is not scaled
+        out << r.medianAbsolutePercentError(m);
+        return true;
+    }
+    if (command == "sum") {
+        out << r.sum(m) * scale;
+        return true;
+    }
+    if (command == "minimum") {
+        out << r.minimum(m) * scale;
+        return true;
+    }
+    if (command == "maximum") {
+        out << r.maximum(m) * scale;
+        return true;
+    }
+    return false;
+}
+
 static std::ostream& generateResultTag(Node const& n, Result const& r, std::ostream& out) {
     if (generateConfigTag(n, r.config(), out)) {
         return out;
@@ -1803,38 +1940,25 @@ static std::ostream& generateResultTag(Node const& n, Result const& r, std::ostr
                 return out << r.context(matchResult[1]);
             }
 
-            auto m = Result::fromString(matchResult[1]);
+            double scale = 1.0;
+            auto m = measureFromString(matchResult[1], scale);
             if (m == Result::Measure::_size) {
                 return out << 0.0;
             }
-
-            if (matchResult[0] == "median") {
-                return out << r.median(m);
-            }
-            if (matchResult[0] == "average") {
-                return out << r.average(m);
-            }
-            if (matchResult[0] == "medianAbsolutePercentError") {
-                return out << r.medianAbsolutePercentError(m);
-            }
-            if (matchResult[0] == "sum") {
-                return out << r.sum(m);
-            }
-            if (matchResult[0] == "minimum") {
-                return out << r.minimum(m);
-            }
-            if (matchResult[0] == "maximum") {
-                return out << r.maximum(m);
+            if (generateMeasureTag(matchResult[0], r, m, scale, out)) {
+                return out;
             }
         } else if (matchResult.size() == 3) {
-            auto m1 = Result::fromString(matchResult[1]);
-            auto m2 = Result::fromString(matchResult[2]);
+            double scale1 = 1.0;
+            double scale2 = 1.0;
+            auto m1 = measureFromString(matchResult[1], scale1);
+            auto m2 = measureFromString(matchResult[2], scale2);
             if (m1 == Result::Measure::_size || m2 == Result::Measure::_size) {
                 return out << 0.0;
             }
 
             if (matchResult[0] == "sumProduct") {
-                return out << r.sumProduct(m1, m2);
+                return out << r.sumProduct(m1, m2) * scale1 * scale2;
             }
         }
     }
@@ -1862,11 +1986,12 @@ static void generateResultMeasurement(std::vector<Node> const& nodes, size_t idx
                 throw std::runtime_error("got a section inside measurement");
 
             case Node::Type::tag: {
-                auto m = Result::fromString(std::string(n.begin, n.end));
+                double scale = 1.0;
+                auto m = measureFromString(std::string(n.begin, n.end), scale);
                 if (m == Result::Measure::_size || !r.has(m)) {
                     out << 0.0;
                 } else {
-                    out << r.get(idx, m);
+                    out << r.get(idx, m) * scale;
                 }
                 break;
             }
@@ -1980,9 +2105,12 @@ std::string to_s(uint64_t n);
 
 std::ostream& operator<<(std::ostream& os, Number const& n);
 
+ANKERL_NANOBENCH(IGNORE_PADDED_PUSH)
 class MarkDownColumn {
 public:
     MarkDownColumn(int w, int prec, std::string tit, std::string suff, double val) noexcept;
+    // a column holding text instead of a number, for the context columns
+    MarkDownColumn(int w, std::string tit, std::string text) noexcept;
     ANKERL_NANOBENCH(NODISCARD) std::string title() const;
     ANKERL_NANOBENCH(NODISCARD) std::string separator() const;
     ANKERL_NANOBENCH(NODISCARD) std::string invalid() const;
@@ -1994,7 +2122,10 @@ private:
     std::string mTitle;
     std::string mSuffix;
     double mValue;
+    std::string mText{};
+    bool mIsText{false};
 };
+ANKERL_NANOBENCH(IGNORE_PADDED_POP)
 
 // Formats any text as markdown code, escaping backticks.
 class MarkDownCode {
@@ -2435,7 +2566,7 @@ struct IterationLogic::Impl {
 
             auto rMedian = mResult.median(Result::Measure::elapsed);
 
-            if (mBench.relative()) {
+            if (mBench.relative() && mBench.isColumnVisible(Column::relative)) {
                 double d = 100.0;
                 if (!mBench.results().empty()) {
                     // Every other column is per unit, so this one has to be as well. Comparing the raw epoch times would
@@ -2450,35 +2581,57 @@ struct IterationLogic::Impl {
                 columns.emplace_back(11, 1, "relative", "%", d);
             }
 
-            if (mBench.complexityN() > 0) {
+            if (mBench.complexityN() > 0 && mBench.isColumnVisible(Column::complexityN)) {
                 columns.emplace_back(14, 0, "complexityN", "", mBench.complexityN());
             }
 
-            columns.emplace_back(22, 2, mBench.timeUnitName() + "/" + mBench.unit(), "",
-                                 rMedian / (mBench.timeUnit().count() * mBench.batch()));
-            columns.emplace_back(22, 2, mBench.unit() + "/s", "", rMedian <= 0.0 ? 0.0 : mBench.batch() / rMedian);
+            // context columns come before the measurements: they say which benchmark this row is, and
+            // that reads better on the left. A row without the variable gets a blank cell rather than
+            // a missing column, so the table stays rectangular.
+            for (auto const& variableName : mBench.config().mContextColumns) {
+                auto const& ctx = mResult.config().mContext;
+                auto it = ctx.find(variableName);
+                auto const width = static_cast<int>((std::max)(variableName.size() + 3, static_cast<size_t>(11)));
+                columns.emplace_back(width, variableName, it == ctx.end() ? std::string() : it->second);
+            }
+
+            if (mBench.isColumnVisible(Column::timePerUnit)) {
+                columns.emplace_back(22, 2, mBench.timeUnitName() + "/" + mBench.unit(), "",
+                                     rMedian / (mBench.timeUnit().count() * mBench.batch()));
+            }
+            if (mBench.isColumnVisible(Column::unitPerSecond)) {
+                columns.emplace_back(22, 2, mBench.unit() + "/s", "", rMedian <= 0.0 ? 0.0 : mBench.batch() / rMedian);
+            }
 
             double const rErrorMedian = mResult.medianAbsolutePercentError(Result::Measure::elapsed);
-            columns.emplace_back(10, 1, "err%", "%", rErrorMedian * 100.0);
+            if (mBench.isColumnVisible(Column::error)) {
+                columns.emplace_back(10, 1, "err%", "%", rErrorMedian * 100.0);
+            }
 
             double rInsMedian = -1.0;
             if (mBench.performanceCounters() && mResult.has(Result::Measure::instructions)) {
                 rInsMedian = mResult.median(Result::Measure::instructions);
-                columns.emplace_back(18, 2, "ins/" + mBench.unit(), "", rInsMedian / mBench.batch());
+                if (mBench.isColumnVisible(Column::instructions)) {
+                    columns.emplace_back(18, 2, "ins/" + mBench.unit(), "", rInsMedian / mBench.batch());
+                }
             }
 
             double rCycMedian = -1.0;
             if (mBench.performanceCounters() && mResult.has(Result::Measure::cpucycles)) {
                 rCycMedian = mResult.median(Result::Measure::cpucycles);
-                columns.emplace_back(18, 2, "cyc/" + mBench.unit(), "", rCycMedian / mBench.batch());
+                if (mBench.isColumnVisible(Column::cycles)) {
+                    columns.emplace_back(18, 2, "cyc/" + mBench.unit(), "", rCycMedian / mBench.batch());
+                }
             }
-            if (rInsMedian > 0.0 && rCycMedian > 0.0) {
+            if (rInsMedian > 0.0 && rCycMedian > 0.0 && mBench.isColumnVisible(Column::ipc)) {
                 columns.emplace_back(9, 3, "IPC", "", rCycMedian <= 0.0 ? 0.0 : rInsMedian / rCycMedian);
             }
             if (mBench.performanceCounters() && mResult.has(Result::Measure::branchinstructions)) {
                 double const rBraMedian = mResult.median(Result::Measure::branchinstructions);
-                columns.emplace_back(17, 2, "bra/" + mBench.unit(), "", rBraMedian / mBench.batch());
-                if (mResult.has(Result::Measure::branchmisses)) {
+                if (mBench.isColumnVisible(Column::branches)) {
+                    columns.emplace_back(17, 2, "bra/" + mBench.unit(), "", rBraMedian / mBench.batch());
+                }
+                if (mResult.has(Result::Measure::branchmisses) && mBench.isColumnVisible(Column::branchMisses)) {
                     double p = 0.0;
                     if (rBraMedian >= 1e-9) {
                         p = 100.0 * mResult.median(Result::Measure::branchmisses) / rBraMedian;
@@ -2487,7 +2640,9 @@ struct IterationLogic::Impl {
                 }
             }
 
-            columns.emplace_back(12, 2, "total", "", mResult.sumProduct(Result::Measure::iterations, Result::Measure::elapsed));
+            if (mBench.isColumnVisible(Column::total)) {
+                columns.emplace_back(12, 2, "total", "", mResult.sumProduct(Result::Measure::iterations, Result::Measure::elapsed));
+            }
 
             // write everything
             auto& os = *mBench.output();
@@ -2500,6 +2655,12 @@ struct IterationLogic::Impl {
             hash = hash_combine(std::hash<double>{}(mBench.timeUnit().count()), hash);
             hash = hash_combine(std::hash<bool>{}(mBench.relative()), hash);
             hash = hash_combine(std::hash<bool>{}(mBench.performanceCounters()), hash);
+            // hiding a column or adding a context one changes the shape of the table, so it needs a
+            // fresh header - otherwise the rows below the old one no longer line up with it
+            hash = hash_combine(std::hash<uint32_t>{}(mBench.config().mHiddenColumns), hash);
+            for (auto const& variableName : mBench.config().mContextColumns) {
+                hash = hash_combine(std::hash<std::string>{}(variableName), hash);
+            }
 
             if (hash != singletonHeaderHash()) {
                 singletonHeaderHash() = hash;
@@ -3089,6 +3250,15 @@ MarkDownColumn::MarkDownColumn(int w, int prec, std::string tit, std::string suf
     , mSuffix(std::move(suff))
     , mValue(val) {}
 
+MarkDownColumn::MarkDownColumn(int w, std::string tit, std::string text) noexcept
+    : mWidth(w)
+    , mPrecision(0)
+    , mTitle(std::move(tit))
+    , mSuffix()
+    , mValue(0.0)
+    , mText(std::move(text))
+    , mIsText(true) {}
+
 std::string MarkDownColumn::title() const {
     std::stringstream ss;
     ss << '|' << std::setw(mWidth - 2) << std::right << mTitle << ' ';
@@ -3111,6 +3281,11 @@ std::string MarkDownColumn::invalid() const {
 
 std::string MarkDownColumn::value() const {
     std::stringstream ss;
+    if (mIsText) {
+        // right aligned like every other column, so the ':' the separator puts on the right stays honest
+        ss << '|' << std::setw(mWidth - 2) << std::right << mText << ' ';
+        return ss.str();
+    }
     auto width = mWidth - 2 - static_cast<int>(mSuffix.size());
     ss << '|' << Number(width, mPrecision, mValue) << mSuffix << ' ';
     return ss.str();
@@ -3403,6 +3578,47 @@ Bench& Bench::performanceCounters(bool showPerformanceCounters) noexcept {
 }
 bool Bench::performanceCounters() const noexcept {
     return mConfig.mShowPerformanceCounters;
+}
+
+namespace detail {
+
+// One bit of mHiddenColumns per Column, so there had better be at most 32 of them.
+static_assert(static_cast<size_t>(Column::_size) <= 32, "Column no longer fits in Config::mHiddenColumns");
+
+ANKERL_NANOBENCH(NODISCARD) inline uint32_t columnBit(Column column) noexcept {
+    return UINT32_C(1) << static_cast<uint32_t>(column);
+}
+
+} // namespace detail
+
+Bench& Bench::hideColumn(Column column) noexcept {
+    mConfig.mHiddenColumns |= detail::columnBit(column);
+    return *this;
+}
+
+Bench& Bench::showColumn(Column column) noexcept {
+    mConfig.mHiddenColumns &= ~detail::columnBit(column);
+    return *this;
+}
+
+bool Bench::isColumnVisible(Column column) const noexcept {
+    return 0 == (mConfig.mHiddenColumns & detail::columnBit(column));
+}
+
+Bench& Bench::contextColumn(std::string const& variableName) {
+    // adding the same name twice would print the same column twice
+    for (auto const& existing : mConfig.mContextColumns) {
+        if (existing == variableName) {
+            return *this;
+        }
+    }
+    mConfig.mContextColumns.push_back(variableName);
+    return *this;
+}
+
+Bench& Bench::clearContextColumns() noexcept {
+    mConfig.mContextColumns.clear();
+    return *this;
 }
 
 // Operation unit. Defaults to "op", could be e.g. "byte" for string processing.
