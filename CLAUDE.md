@@ -40,8 +40,9 @@ cmake --build build --parallel 4 && ./build/nb        # run from the repo root
 ```
 
 It covers gcc/clang × C++11..20, 32 bit, libc++, sanitizers, ARM64, macOS, MSVC, clang-cl and
-MinGW, plus a `lint` job (pinned clang-format-18 / clang-tidy-18) and a CMake consumer job. Before
-pushing it is still worth running the quick local sweep:
+MinGW, plus a `lint` job (pinned clang-format-18 / clang-tidy-18) and a CMake consumer job. What it
+cannot cover is the pre-gcc-5 half of `src/scripts/all.sh`, which is what that script is still for.
+Before pushing it is worth running the quick local sweep:
 
 ```sh
 # 1. both compilers, all standards, warning-free. src/test/app/nanobench.cpp is the whole

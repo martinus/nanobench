@@ -1,7 +1,9 @@
 add_subdirectory(app)
 add_subdirectory(thirdparty)
 
-target_include_directories(nb PRIVATE ${CMAKE_CURRENT_LIST_DIR})
+# SYSTEM, so that -Weverything does not report the vendored thirdparty/doctest/doctest.h. Suppressing
+# those warnings one -Wno- at a time would also blind nanobench.h itself to them, forever.
+target_include_directories(nb SYSTEM PRIVATE ${CMAKE_CURRENT_LIST_DIR})
 
 target_sources_local(nb PRIVATE
     example_always_the_same.cpp
