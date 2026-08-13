@@ -237,6 +237,32 @@ jobs:
               -Wshadow -Wdouble-promotion
           done
 
+  # Every other Linux leg is glibc, and the two libcs disagree about ioctl(): glibc declares the
+  # request parameter as unsigned long, musl as int. PERF_EVENT_IOC_ID does not fit into an int, so
+  # nanobench did not compile on Alpine at all for three years and no job could see it (issue #92).
+  #
+  # Run inside a container rather than with `container:` - actions/checkout needs a glibc node, so
+  # the standard job-level container support cannot be used on Alpine. Pinned for the same reason
+  # the lint tools are: this leg is here to catch nanobench regressions, not to track musl. Bump it
+  # when a new Alpine is out.
+  musl:
+    name: musl libc (Alpine, gcc)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - name: Build and test against musl
+        run: |
+          docker run --rm -v "$PWD:/src" -w /src alpine:3.20 sh -c '
+            set -e
+            # linux-headers is not in the base image: perf_event.h and version.h come from it.
+            apk add --no-cache g++ cmake make linux-headers
+            cmake -S . -B build-musl -DCMAKE_BUILD_TYPE=Release
+            cmake --build build-musl --parallel 4
+            # From the repository root, like every other leg: unit_templates resolves
+            # src/docs/_generated through a path derived from __FILE__.
+            ./build-musl/nb
+          '
+
   # clang in MSVC mode picks a different doNotOptimizeAway than clang everywhere else, and that
   # difference is where issue #111 hid for two years with no job able to see it. Built without the
   # project's strict flag set on purpose: the question here is whether the header works on this

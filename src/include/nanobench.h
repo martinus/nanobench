@@ -2453,6 +2453,34 @@ void IterationLogic::moveResultTo(std::vector<Result>& results) noexcept {
 
 #    if ANKERL_NANOBENCH(PERF_COUNTERS)
 
+// glibc declares ioctl()'s request parameter as unsigned long, musl as int. PERF_EVENT_IOC_ID and
+// friends carry the direction bits in the high end, so they don't fit into an int and passing one
+// straight through is a value-changing conversion that -Werror rejects on musl (issue #92). Deduce
+// the declared parameter type from ioctl() itself, so the same cast is right for either libc.
+template <typename T>
+struct IoctlRequestType;
+
+template <typename Ret, typename Fd, typename Request>
+struct IoctlRequestType<Ret (*)(Fd, Request, ...)> {
+    using type = Request;
+};
+
+#        if defined(__cpp_noexcept_function_type)
+// Since C++17 noexcept is part of a function's type, and glibc declares ioctl() with __THROW - so
+// without this second specialization the deduction above stops matching at -std=c++17.
+template <typename Ret, typename Fd, typename Request>
+struct IoctlRequestType<Ret (*)(Fd, Request, ...) noexcept> {
+    using type = Request;
+};
+#        endif
+
+template <typename Arg>
+int perfIoctl(int fd, unsigned long request, Arg arg) {
+    using Request = typename IoctlRequestType<decltype(&::ioctl)>::type;
+    // NOLINTNEXTLINE(hicpp-signed-bitwise,cppcoreguidelines-pro-type-vararg)
+    return ioctl(fd, static_cast<Request>(request), arg);
+}
+
 ANKERL_NANOBENCH(IGNORE_PADDED_PUSH)
 class LinuxPerformanceCounters {
 public:
@@ -2493,14 +2521,12 @@ public:
             return;
         }
 
-        // NOLINTNEXTLINE(hicpp-signed-bitwise,cppcoreguidelines-pro-type-vararg)
-        mHasError = -1 == ioctl(mFd, PERF_EVENT_IOC_RESET, PERF_IOC_FLAG_GROUP);
+        mHasError = -1 == perfIoctl(mFd, PERF_EVENT_IOC_RESET, PERF_IOC_FLAG_GROUP);
         if (mHasError) {
             return;
         }
 
-        // NOLINTNEXTLINE(hicpp-signed-bitwise,cppcoreguidelines-pro-type-vararg)
-        mHasError = -1 == ioctl(mFd, PERF_EVENT_IOC_ENABLE, PERF_IOC_FLAG_GROUP);
+        mHasError = -1 == perfIoctl(mFd, PERF_EVENT_IOC_ENABLE, PERF_IOC_FLAG_GROUP);
     }
 
     inline void endMeasure() {
@@ -2508,8 +2534,7 @@ public:
             return;
         }
 
-        // NOLINTNEXTLINE(hicpp-signed-bitwise,cppcoreguidelines-pro-type-vararg)
-        mHasError = (-1 == ioctl(mFd, PERF_EVENT_IOC_DISABLE, PERF_IOC_FLAG_GROUP));
+        mHasError = (-1 == perfIoctl(mFd, PERF_EVENT_IOC_DISABLE, PERF_IOC_FLAG_GROUP));
         if (mHasError) {
             return;
         }
@@ -2750,8 +2775,7 @@ bool LinuxPerformanceCounters::monitor(uint32_t type, uint64_t eventid, Target t
         mFd = fd;
     }
     uint64_t id = 0;
-    // NOLINTNEXTLINE(hicpp-signed-bitwise,cppcoreguidelines-pro-type-vararg)
-    if (-1 == ioctl(fd, PERF_EVENT_IOC_ID, &id)) {
+    if (-1 == perfIoctl(fd, PERF_EVENT_IOC_ID, &id)) {
         // couldn't get id
         return false;
     }
