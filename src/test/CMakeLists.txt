@@ -32,6 +32,7 @@ target_sources_local(nb PRIVATE
     tutorial_slow_v2.cpp
     unit_api.cpp
     unit_cold.cpp
+    unit_columns.cpp
     unit_exact_iters_and_epochs.cpp
     unit_mdape.cpp
     unit_number_format.cpp

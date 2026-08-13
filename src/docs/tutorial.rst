@@ -140,6 +140,69 @@ is added that compares each row against the first one.
    allocations yourself and report them with :cpp:func:`context() <ankerl::nanobench::Bench::context()>`.
 
 
+Choosing the Columns
+--------------------
+
+The full table is over 150 characters wide and wraps in most terminals. Hide what you are not reading
+with :cpp:func:`hideColumn() <ankerl::nanobench::Bench::hideColumn()>`, which takes an
+:cpp:enum:`ankerl::nanobench::Column`:
+
+.. code-block:: c++
+
+   ankerl::nanobench::Bench()
+       .hideColumn(ankerl::nanobench::Column::instructions)
+       .hideColumn(ankerl::nanobench::Column::cycles)
+       .hideColumn(ankerl::nanobench::Column::ipc)
+       .run("narrow", [] { /* ... */ });
+
+Hiding only changes what is printed - the measurement still happens, and
+:cpp:func:`results() <ankerl::nanobench::Bench::results()>` and the render templates are unaffected.
+:cpp:func:`showColumn() <ankerl::nanobench::Bench::showColumn()>` puts one back.
+
+Columns that are redundant for your benchmark are worth dropping too. With
+:cpp:func:`unit() <ankerl::nanobench::Bench::unit()>` set to something like ``MFlop``, ``MFlop/s`` is the
+number you read and ``ns/MFlop`` is the same information inverted:
+
+.. code-block:: c++
+
+   bench.unit("MFlop").hideColumn(ankerl::nanobench::Column::timePerUnit);
+
+.. tip::
+
+   :cpp:func:`performanceCounters(false) <ankerl::nanobench::Bench::performanceCounters()>` hides all five
+   counter columns at once *and* stops measuring them, which is usually what you want if you never look
+   at them.
+
+
+Showing Context as Columns
+--------------------------
+
+Context variables set with :cpp:func:`context() <ankerl::nanobench::Bench::context()>` are otherwise only
+reachable from a render template, which makes parameterised benchmarks hard to read on the console.
+:cpp:func:`contextColumn() <ankerl::nanobench::Bench::contextColumn()>` puts one in the table:
+
+.. code-block:: c++
+
+   ankerl::nanobench::Bench bench;
+   bench.performanceCounters(false).contextColumn("threads");
+
+   for (int threads : {1, 4, 16}) {
+       bench.context("threads", std::to_string(threads))
+            .run("parallel sum", [&] { /* ... */ });
+   }
+
+.. code-block:: text
+
+   |  threads |               ns/op |                op/s |    err% |     total | benchmark
+   |---------:|--------------------:|--------------------:|--------:|----------:|:----------
+   |        1 |               95.32 |       10,490,357.51 |    0.4% |      0.00 | `parallel sum`
+   |        4 |               27.11 |       36,886,742.02 |    0.7% |      0.00 | `parallel sum`
+   |       16 |               11.80 |       84,745,762.71 |    1.2% |      0.00 | `parallel sum`
+
+Context columns come before the measurements, in the order you name them. A row whose context does not
+have the variable gets an empty cell rather than a missing column, so the table stays rectangular.
+
+
 Examples
 ========
 
@@ -459,6 +522,34 @@ Nanobench allows to specify further context information, which may be accessed u
 .. literalinclude:: ../test/tutorial_context.cpp
    :language: c++
    :linenos:
+
+
+Time Units in Templates
+-----------------------
+
+``elapsed`` is in **seconds**, which is rarely what a report should contain, and the template language has
+no arithmetic to rescale it. So the time measure also comes in ``elapsedms``, ``elapsedus`` and
+``elapsedns``:
+
+.. code-block:: text
+
+   "name";"min_ms";"median_ns"
+   {{#result}}"{{name}}";{{minimum(elapsedms)}};{{median(elapsedns)}}
+   {{/result}}
+
+All of them are per iteration, exactly like ``elapsed``. ``{{medianAbsolutePercentError(...)}}`` is a
+relative error, so it is the same number whichever you ask for.
+
+.. note::
+
+   Two things that are easy to mix up here:
+
+   * ``{{unit}}`` renders :cpp:func:`Bench::unit() <ankerl::nanobench::Bench::unit()>`, which is what a
+     *batch* counts - ``op`` by default, or ``byte``, ``MFlop`` and so on. It is not a time unit, which is
+     why it prints ``op`` next to a value in seconds.
+   * :cpp:func:`Bench::timeUnit() <ankerl::nanobench::Bench::timeUnit()>` only changes the ``ns/op``
+     column of the console table. It does not affect what templates render; use the suffixed measures
+     above for that.
 
 .. _tutorial-template-csv:
 
