@@ -35,6 +35,7 @@ target_sources_local(nb PRIVATE
     unit_columns.cpp
     unit_exact_iters_and_epochs.cpp
     unit_mdape.cpp
+    unit_multi_output.cpp
     unit_number_format.cpp
     unit_relative_batch.cpp
     unit_romutrio.cpp
