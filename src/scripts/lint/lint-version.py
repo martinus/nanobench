@@ -17,6 +17,10 @@ file_pattern_count = [
         f"{root}/src/docs/conf.py",
         r"version = 'v(\d+)\.(\d+)\.(\d+)'",
         1),
+    (
+        f"{root}/CMakeLists.txt",
+        r"VERSION (\d+)\.(\d+)\.(\d+)$",
+        1),
 ]
 
 # let's parse the reference from nanobench.h
