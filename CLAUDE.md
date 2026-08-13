@@ -16,19 +16,26 @@ ninja -C build
 ./build/nb                     # all tests;  -ltc lists them,  -tc=<name> runs one,  -s shows detail
 ```
 
-Options: `-DNB_cxx_standard=17` (default 11), `-DNB_sanitizer=ON` (clang only).
+Options: `-DNB_cxx_standard=17` (default 11), `-DNB_sanitizer=ON` (gcc and clang both supported).
 
 **Build gotchas**
 
-- clang builds use `-Weverything -Werror`, so a new clang release can add a warning that breaks
-  the build; the two that already did are switched off in `src/cmake/CMakeLists.txt`.
-  clang-tidy is *not* part of the build (it broke every clang build whenever it gained a check,
+- clang builds use `-Weverything -Werror`, which opts in to warnings that don't exist yet, so a new
+  clang can break the build. Version-guarding each `-Wno-` doesn't work — AppleClang's version
+  numbers don't map to upstream clang's — so `src/cmake/CMakeLists.txt` uses
+  `-Wno-unknown-warning-option` plus a list. Put only nanobench's *own* warnings in that list:
+  warnings from the vendored `doctest.h` are handled by including `src/test` as a `SYSTEM` directory,
+  which suppresses them as a class instead of blinding `nanobench.h` to them too.
+- clang-tidy is *not* part of the build (it broke every clang build whenever it gained a check,
   issue #108) — the `lint` CI job runs it pinned. Locally: `-DCMAKE_CXX_CLANG_TIDY=clang-tidy-18`.
 - Running `./nb` writes example artifacts (`*.json`, `mustache.*`, `always_the_same.html`, …) into
   the *current* directory. Run it from the build dir, and check `git status` before `git add -A`.
 - `unit_templates` compares the built-in templates against `src/docs/_generated/*` using a path
   derived from `__FILE__`, so it only passes when `__FILE__` is absolute (cmake) or cwd is the repo
   root. A failure there after a manual compile is an artifact, not a real regression.
+- Don't name anything in `src/test/` after a `<cmath>` function. libc++ puts `::fma` in scope, so a
+  local `fma` template joins it in one overload set and `fma<float>` stops resolving — that broke
+  the libc++ leg until `tutorial_context.cpp`'s helper became `fma_bench`.
 
 ## Before pushing
 
@@ -42,37 +49,45 @@ cmake --build build --parallel 4 && ./build/nb        # run from the repo root
 It covers gcc/clang × C++11..20, 32 bit, libc++, sanitizers, ARM64, macOS, MSVC, clang-cl and
 MinGW, plus a `lint` job (pinned clang-format-18 / clang-tidy-18) and a CMake consumer job. What it
 cannot cover is the pre-gcc-5 half of `src/scripts/all.sh`, which is what that script is still for.
-Before pushing it is worth running the quick local sweep:
+
+Only the `build` legs compile the test suite with the project's flags. `header`, `clang-cl` and
+`mingw` build just the header plus a small consumer, because the strict flag set doesn't survive
+there: for clang-cl, CMake sets `CMAKE_CXX_COMPILER_ID` to `Clang` **and** `MSVC` to true, so a
+CMake build collects the `-Weverything` branch and the `/W4` one at once. Two more traps in that
+corner — MSVC forces `/std:c++latest` whatever `NB_cxx_standard` says, and clang-cl targets x64
+whatever `msvc-dev-cmd` selected, so its 32 bit leg needs `-m32`.
+
+The sweep worth running locally is the sanitizers and the linters:
 
 ```sh
-# 1. both compilers, all standards, warning-free. src/test/app/nanobench.cpp is the whole
-#    implementation in one TU, which is what the workflow's "header" job compiles too.
-for s in 11 14 17 20; do
-  clang++ -std=c++$s -Werror -Weverything -Wno-c++98-compat -Wno-c++98-compat-pedantic \
-          -Wno-unknown-warning-option -Wno-unsafe-buffer-usage -Wno-padded -Wno-switch-default \
-          -c -o /dev/null -Isrc/include src/test/app/nanobench.cpp
-  g++     -std=c++$s -Werror -Wall -Wextra -Wconversion -Wold-style-cast -Wfloat-equal \
-          -Wsign-conversion -c -o /dev/null -Isrc/include src/test/app/nanobench.cpp
-done
-
-# 2. sanitizers (run from the repo root, see unit_templates note above)
+# sanitizers - run from the repo root, see the unit_templates note above
 g++ -std=c++17 -O1 -g -fsanitize=address,undefined -Isrc/include -Isrc/test \
     -o /tmp/nb-san src/test/app/*.cpp src/test/*.cpp && /tmp/nb-san
 
-# 3. formatting and the version macros, the same two linters the CI lint job runs
-src/scripts/lint/lint-all.py
+# formatting and the version macros. lint-all.py runs every lint-* next to it; CI pins the
+# clang-format binary, so pass the same one or the check silently uses a different version.
+NANOBENCH_CLANG_FORMAT=clang-format-18 src/scripts/lint/lint-all.py
 ```
+
+Plus the header compiled warning-free for a consumer, both compilers × C++11..20 — copy those two
+commands out of the `header` job rather than duplicating the flag list here, as the copy this file
+used to keep drifted from the workflow twice.
 
 `-Wfloat-equal` is on, so never compare a double with `==`/`!=` — use `x <= 0.0` and friends.
 There are **two** clang-format configs: `src/include/.clang-format` (135 columns, the header) and
-`src/.clang-format` (80 columns, everything under `src/test/`).
+`src/.clang-format` (80 columns, everything under `src/test/`). `lint-clang-format.py` only looks at
+`src/include` and `src/test`, minus `thirdparty/` — so `src/scripts/` and `src/comparisons/` are not
+ours to reformat.
 
 Doc comments live in the header. The site at <https://nanobench.ankerl.com/> is built from them by
-`.github/workflows/docs.yml` (doxygen + sphinx + breathe) and deployed to GitHub Pages on every
-push to master, so there is nothing to regenerate by hand and `docs/` is **not** committed —
-`src/docs/generate.sh` writes it as a gitignored local preview. Install the toolchain with
-`dnf install doxygen python3-sphinx python3-breathe python3-sphinx_rtd_theme python3-recommonmark`,
-or `pip install -r src/docs/requirements.txt`.
+`.github/workflows/docs.yml` (doxygen + sphinx + breathe) on every push and PR, and deployed from
+master, so `docs/` is **not** committed: `src/docs/generate.sh` writes it as a gitignored local
+preview and needs doxygen plus the pinned `src/docs/requirements.txt` (`pip install -r`, or Fedora's
+`python3-sphinx python3-breathe python3-sphinx_rtd_theme python3-recommonmark`). Cloudflare fronts
+the site with a 24h TTL, so a finished deployment can still serve the old page until that expires or
+the cache is purged. `lint-version.py` keeps `src/docs/conf.py`
+in step with the version macros; the generated HTML carries no version any more, since
+sphinx-rtd-theme 3.x dropped `display_version`.
 
 ## How a measurement works
 
@@ -88,13 +103,17 @@ decides the next `n`; `numIters() == 0` ends the run.
 - The reported number is the **median over epochs** of (epoch elapsed / iterations); `err%` is the
   MdAPE of the same data. Epoch iteration counts are randomized 0–20% upward on purpose.
 - Only `measuring` (and the transition out of `upscaling_runtime`) records results; warmup never does.
+- An exact `epochIterations()` overrides any calculated count in every state — go through
+  `calcNextNumIters()`, never `calcBestNumIters()` directly, or the rule gets a fourth copy.
 
 Performance counters are Linux-only (`perf_event_open`, kernel ≥ 3.3). `read_format` is
 `GROUP|ID|TOTAL_TIME_ENABLED|TOTAL_TIME_RUNNING`, so `mCounters` is
-`[nr, time_enabled, time_running, (value, id) × nr]`. Two facts worth knowing:
+`[nr, time_enabled, time_running, (value, id) × nr]`. Three facts worth knowing:
 `PERF_EVENT_IOC_RESET` resets the counter values but **not** `time_enabled`/`time_running` (they
-accumulate for the event's lifetime — use deltas), and the calibrated overhead is a min over 100
-empty measurements, subtracted per epoch.
+accumulate for the event's lifetime — use deltas); the calibrated overhead is a min over 100
+empty measurements, subtracted per epoch; and `endMeasure()` scales the values by
+`enabled / running` before anyone reads them, so multiplexed counters are extrapolated the way
+`perf stat` does it, and the calibration data ends up in the same unit as the measurements.
 
 **Hardware counters are unavailable in most containers/VMs** (`perf_event_open` fails, `mHas` ends up
 all false), so changes to that code path cannot be exercised locally there — say so rather than
