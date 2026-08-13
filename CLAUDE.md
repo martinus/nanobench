@@ -33,6 +33,10 @@ Options: `-DNB_cxx_standard=17` (default 11), `-DNB_sanitizer=ON` (gcc and clang
 - `unit_templates` compares the built-in templates against `src/docs/_generated/*` using a path
   derived from `__FILE__`, so it only passes when `__FILE__` is absolute (cmake) or cwd is the repo
   root. A failure there after a manual compile is an artifact, not a real regression.
+- A test that parses the markdown table must give its `Bench` its own `title()`. The header is only
+  written when the table's shape changes, and that state lives on the output stream, so a second test
+  configuring the table identically gets **no header at all** — after which a helper that indexes the
+  header row crashes instead of failing. Keep such helpers total for the same reason.
 - Don't name anything in `src/test/` after a `<cmath>` function. libc++ puts `::fma` in scope, so a
   local `fma` template joins it in one overload set and `fma<float>` stops resolving — that broke
   the libc++ leg until `tutorial_context.cpp`'s helper became `fma_bench`.
@@ -112,7 +116,32 @@ Plus the header compiled warning-free for a consumer, both compilers × C++11..2
 commands out of the `header` job rather than duplicating the flag list here, as the copy this file
 used to keep drifted from the workflow twice.
 
-`-Wfloat-equal` is on, so never compare a double with `==`/`!=` — use `x <= 0.0` and friends.
+**Two gaps in that sweep, both of which have turned master red.** A syntax-only check over the header
+never instantiates a template that only the tests use, so `-Wpadded` and its neighbours stay silent
+until the *test suite* is compiled with clang. And this machine cannot do that: Fedora's clang is
+newer than the vendored `doctest.h` (`__COUNTER__` is "a C2y extension") and its libstdc++ is newer
+than clang-tidy-18 can parse, so both fail for reasons that have nothing to do with the change. Use a
+container for the clang legs and for clang-tidy:
+
+```sh
+podman run --rm -v "$PWD:/src" -w /src ubuntu:24.04 bash -c '
+  export DEBIAN_FRONTEND=noninteractive
+  apt-get update -qq && apt-get install -y -qq clang-18 clang-tidy-18 cmake make g++
+  ln -sf /usr/bin/clang++-18 /usr/bin/clang++
+  CXX=clang++ cmake -S . -B b -DCMAKE_BUILD_TYPE=Release && cmake --build b --parallel 4 && ./b/nb
+  clang-tidy-18 -p b src/test/app/nanobench.cpp'
+```
+
+Four rules for editing the header, each of which costs a round trip when forgotten:
+
+- `-Wfloat-equal` is on, so never compare a double with `==`/`!=` — use `x <= 0.0` and friends.
+- A new free function in the implementation block needs a declaration in the declarations block
+  above it, or `static`: `-Wmissing-declarations` is on.
+- clang-tidy caps cognitive complexity at 25, and `generateResultTag` sits just under it, so added
+  branches there have to be lifted into a helper.
+- clang-format realigns trailing comments when a value's width changes, which is why bumping the
+  version reformats the lines around it.
+
 There are **two** clang-format configs: `src/include/.clang-format` (135 columns, the header) and
 `src/.clang-format` (80 columns, everything under `src/test/`). `lint-clang-format.py` only looks at
 `src/include` and `src/test`, minus `thirdparty/` — so `src/scripts/` and `src/comparisons/` are not
@@ -124,9 +153,12 @@ master, so `docs/` is **not** committed: `src/docs/generate.sh` writes it as a g
 preview and needs doxygen plus the pinned `src/docs/requirements.txt` (`pip install -r`, or Fedora's
 `python3-sphinx python3-breathe python3-sphinx_rtd_theme python3-recommonmark`). Cloudflare fronts
 the site with a 24h TTL, so a finished deployment can still serve the old page until that expires or
-the cache is purged. `lint-version.py` keeps `src/docs/conf.py`
-in step with the version macros; the generated HTML carries no version any more, since
-sphinx-rtd-theme 3.x dropped `display_version`.
+the cache is purged.
+
+The version is written down in **three** places — the `ANKERL_NANOBENCH_VERSION_*` macros,
+`src/docs/conf.py`, and `project(VERSION)` in `CMakeLists.txt`. `lint-version.py` checks all three
+against the macros, so a release bump touches all of them or fails the lint. The generated HTML
+carries no version any more, since sphinx-rtd-theme 3.x dropped `display_version`.
 
 ## How a measurement works
 
