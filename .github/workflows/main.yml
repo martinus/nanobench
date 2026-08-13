@@ -246,7 +246,12 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        arch: [x64, x86]
+        include:
+          - arch: x64
+          # clang-cl targets x64 whatever msvc-dev-cmd set up, so without -m32 the objects are x64
+          # while the libraries on LIB are x86, and the link fails with 72 unresolved externals.
+          - arch: x86
+            target_flag: -m32
     steps:
       - uses: actions/checkout@v7
       - uses: ilammy/msvc-dev-cmd@v1
@@ -255,7 +260,7 @@ jobs:
       - name: Compile and run
         shell: cmd
         run: |
-          clang-cl /std:c++17 /EHsc /W3 /I src\include /Fe:consumer.exe ^
+          clang-cl ${{ matrix.target_flag }} /std:c++17 /EHsc /W3 /I src\include /Fe:consumer.exe ^
             src\test\app\nanobench.cpp src\test\cmake_consumer\consumer.cpp
           consumer.exe
 
