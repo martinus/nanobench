@@ -199,3 +199,58 @@ claiming it was tested.
 Any claim about accuracy needs numbers. A workable ground truth is the minimum of several long
 single-shot runs of the same op; compare nanobench's median against it. On a shared VM expect
 `err%` ≈ 1% and ~0.5% run-to-run spread of the reported median, so treat sub-1% differences as noise.
+
+## Tests
+
+`src/test/unit_*.cpp` are the tests that assert. `example_*.cpp` and `tutorial_*.cpp` are the samples
+the documentation is built from, and running them is what writes `src/docs/_generated`; they assert
+nothing on purpose. Leave them that way — the behaviour they demonstrate is covered by the unit
+files, and rewriting a sample changes what the site shows.
+
+**Coverage is not the bar — catching a regression is.** At 56 test cases and 88% line coverage this
+suite caught **4 of 24** deliberately injected one-line bugs in `nanobench.h`, and two of those four
+were caught by the compiler rather than by a test. Line coverage says a line ran, not that anything
+would notice it misbehaving. So when adding a test, break the thing it covers — flip a constant in
+the header, rebuild, and confirm that test goes red and the others do not. A test that survives that
+is decoration. A test that contains a *copy* of the code it checks, as `unit_to_s.cpp` once did,
+cannot fail at all.
+
+To measure coverage, build the suite in one go with `--coverage` (out of tree, so the `.gcda` files
+and the benchmark artifacts do not land in the repo) and merge it over every TU:
+
+```sh
+REPO=$PWD                                 # from the repo root
+mkdir -p /tmp/cov && cd /tmp/cov
+# absolute source paths on purpose: they make __FILE__ absolute, which is what unit_templates needs
+g++ -std=c++17 -O0 -g --coverage -I$REPO/src/include -I$REPO/src/test \
+    -o nb-cov $REPO/src/test/app/*.cpp $REPO/src/test/*.cpp && ./nb-cov
+# --ignore-errors mismatch is needed for the vendored doctest.h, not for anything of ours
+lcov --capture --directory . -o all.info --ignore-errors mismatch,unused,empty,negative,source
+lcov --extract all.info '*/nanobench.h' -o nb.info --ignore-errors unused,empty
+```
+
+Five traps, each of which has cost a round trip:
+
+- A test must not relate **two** timing measurements to each other, however obviously equal the work
+  is. Comparing the rows of two identical sleeps at different batch sizes passes on an idle Linux box
+  and fails elsewhere — macOS went red on it and MSVC reported half the expected ratio, because a
+  `sleep_for` overshoots by a platform-dependent and call-dependent amount. Compare a printed number
+  against **its own** `Result` instead: exact arithmetic, with only the table's two-decimal rounding
+  to allow for. Where a test really is about elapsed time, as in `unit_epoch_time.cpp`, assert a loose
+  one-sided bound — a broken clamp moves the runtime by orders of magnitude, so there is nothing to
+  gain by being tight and a flaky leg to lose.
+- Most of `Result`'s getters are `[[nodiscard]]`, and `ANKERL_NANOBENCH(NODISCARD)` expands to nothing
+  before C++17. So `CHECK_THROWS_AS(r.get(2, m), std::out_of_range)` builds clean at the default
+  C++11 and fails `-Werror` on every C++17 and C++20 leg. Call such a getter through a lambda inside
+  the assertion macros, and build one non-default standard locally before pushing.
+- The helpers below `ANKERL_NANOBENCH_IMPLEMENT` — `fmt::Number`, `MarkDownColumn`, the mustache
+  parser, `u64` — are visible only in `src/test/app/nanobench.cpp`, and that file is *also* the sole
+  source of the installed `nanobench` static library, so putting doctest cases in it would ship test
+  code to consumers. Cover them through their output, the way `unit_number_format.cpp` checks the
+  digit grouping by reading the rendered table.
+- `Result`'s per-measure storage has exactly `Measure::_size` entries, so `get(idx, Measure::_size)`
+  indexes one past the end. It is the enum's end marker, not a measure; never pass it.
+- The markdown table is not rectangular in the obvious sense. Only the measurement columns are fixed
+  width: the last cell holds the title on the header line and the benchmark name on a data line, and
+  the separator's last cell is a dash per title character, so it is one character wider than the
+  header. What lines up, and what a test should assert, is the offset of the **last** `|`.
