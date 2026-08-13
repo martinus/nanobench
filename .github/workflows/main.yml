@@ -36,21 +36,13 @@ jobs:
       - uses: actions/checkout@v7
       - run: sudo apt-get update && sudo apt-get install -y clang-format-18 clang-tidy-18 ninja-build
 
-      # There are two configs on purpose - src/include/.clang-format is 135 columns for the header,
-      # src/.clang-format is 80 for everything under src/test - and clang-format picks the closer one
-      # per file, so one pass over both trees is correct. The vendored doctest.h is not ours to
-      # reformat, and src/comparisons holds other projects' benchmark code.
-      - name: clang-format
-        run: |
-          status=0
-          for f in $(git ls-files 'src/*.cpp' 'src/*.h' ':!:src/test/thirdparty/*' ':!:src/comparisons/*'); do
-            n=$(clang-format-18 --output-replacements-xml "$f" | grep -c '<replacement ' || true)
-            if [ "$n" != "0" ]; then
-              echo "::error file=$f::clang-format wants $n change(s) here - run: clang-format -i $f"
-              status=1
-            fi
-          done
-          exit $status
+      # lint-all.py runs every src/scripts/lint/lint-* there is, which is how lint-version.py - a
+      # check that the version macros in nanobench.h match the ones in the generated docs - gets run
+      # at all. Spelling the clang-format check out here instead would have left it with no caller.
+      - name: lint
+        env:
+          NANOBENCH_CLANG_FORMAT: clang-format-18
+        run: src/scripts/lint/lint-all.py
 
       # Configured with clang on purpose: against a gcc compile database, clang-tidy reports every
       # gcc-only -W flag in the build as an unknown warning option.
@@ -227,9 +219,11 @@ jobs:
           set -e
           for std in 11 14 17 20; do
             echo "--- clang++ -std=c++$std"
+            # -Wno-unknown-warning-option for the same reason src/cmake/CMakeLists.txt has it: the
+            # -Wno- flags after it do not all exist in every clang, and -Weverything keeps adding more.
             clang++ -std=c++$std -O2 -c -o /dev/null -Isrc/include src/test/app/nanobench.cpp \
               -Werror -Weverything -Wno-c++98-compat -Wno-c++98-compat-pedantic \
-              -Wno-unsafe-buffer-usage -Wno-padded -Wno-switch-default
+              -Wno-unknown-warning-option -Wno-unsafe-buffer-usage -Wno-padded -Wno-switch-default
             echo "--- g++ -std=c++$std"
             g++ -std=c++$std -O2 -c -o /dev/null -Isrc/include src/test/app/nanobench.cpp \
               -Werror -Wall -Wextra -Wconversion -Wold-style-cast -Wfloat-equal -Wsign-conversion \

@@ -4,6 +4,7 @@ from glob import glob
 from pathlib import Path
 from subprocess import run
 from os import path
+import os
 import subprocess
 import sys
 from time import time
@@ -35,7 +36,11 @@ if len(files) == 0:
     print("could not find any files!")
     sys.exit(1)
 
-command = ['clang-format', '--dry-run', '-Werror'] + files
+# clang-format changes its output between releases, so CI pins the binary through this variable -
+# unpinned, a runner image bump turns into a red build over formatting nobody changed.
+clang_format = os.environ.get('NANOBENCH_CLANG_FORMAT', 'clang-format')
+
+command = [clang_format, '--dry-run', '-Werror'] + files
 p = subprocess.Popen(command,
                      stdout=subprocess.PIPE,
                      stderr=None,
@@ -44,7 +49,7 @@ p = subprocess.Popen(command,
 
 stdout, stderr = p.communicate()
 
-print(f"clang-format checked {len(files)} files")
+print(f"{clang_format} checked {len(files)} files")
 
 if p.returncode != 0:
     sys.exit(p.returncode)
