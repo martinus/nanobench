@@ -1812,6 +1812,9 @@ T parseFile(std::string const& filename, bool* fail);
 void gatherStabilityInformation(std::vector<std::string>& warnings, std::vector<std::string>& recommendations);
 void printStabilityInformationOnce(std::ostream* outStream);
 
+// Says so when the performance counter columns are missing because the kernel refused them.
+void printPerformanceCounterHintOnce(std::ostream* outStream, bool wantsPerformanceCounters);
+
 // remembers the last table settings used. When it changes, a new table header is automatically written for the new entry.
 uint64_t& singletonHeaderHash() noexcept;
 
@@ -2129,6 +2132,34 @@ void printStabilityInformationOnce(std::ostream* outStream) {
     }
 }
 
+// When perf_event_open is refused, the table simply comes out five columns narrower. That reads like a
+// nanobench bug rather than a setting of the machine, and people have gone looking for it more than once
+// (issues #106, #123). So say what happened - but only where those columns could have appeared at all:
+// on a platform that has no perf events in the first place nothing is wrong, and a note on every single
+// run would be pure noise.
+void printPerformanceCounterHintOnce(std::ostream* outStream, bool wantsPerformanceCounters) {
+#    if ANKERL_NANOBENCH(PERF_COUNTERS)
+    static bool shouldPrint = true;
+    if (!shouldPrint || !wantsPerformanceCounters || (nullptr == outStream) || !isWarningsEnabled()) {
+        return;
+    }
+    shouldPrint = false;
+
+    auto const& has = performanceCounters().has();
+    if (has.instructions || has.cpuCycles || has.branchInstructions || has.branchMisses) {
+        return;
+    }
+
+    *outStream << "Note: perf_event_open failed, so the ins/op, cyc/op, IPC, bra/op and miss% columns are missing." << std::endl
+               << "This is usually a container or VM without virtualized performance counters, or" << std::endl
+               << "/proc/sys/kernel/perf_event_paranoid being too restrictive." << std::endl
+               << std::endl;
+#    else
+    (void)outStream;
+    (void)wantsPerformanceCounters;
+#    endif
+}
+
 // remembers the last table settings used. When it changes, a new table header is automatically written for the new entry.
 uint64_t& singletonHeaderHash() noexcept {
     static uint64_t sHeaderHash{};
@@ -2169,6 +2200,7 @@ struct IterationLogic::Impl {
         : mBench(bench)
         , mResult(bench.config()) {
         printStabilityInformationOnce(mBench.output());
+        printPerformanceCounterHintOnce(mBench.output(), mBench.performanceCounters());
 
         // determine target runtime per epoch
         mTargetRuntimePerEpoch = detail::clockResolution() * mBench.clockResolutionMultiple();

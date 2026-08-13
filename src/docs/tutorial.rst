@@ -76,12 +76,68 @@ Usage
 Nanobench does not come with a test runner, so you can easily use it with any framework you like.  In the remaining examples, I'm
 using `doctest <https://github.com/onqtam/doctest>`_ as a unit test framework.
 
+.. important::
+
+   **The five columns you always get are** ``ns/op``, ``op/s``, ``err%``, ``total`` and ``benchmark``.
+   Everything between ``err%`` and ``total`` above - ``ins/op``, ``cyc/op``, ``IPC``, ``bra/op`` and ``miss%`` -
+   comes from CPU performance counters, which nanobench can only read **on Linux**, through
+   `perf events <http://web.eece.maine.edu/~vweaver/projects/perf_events/>`_. Elsewhere - and inside most
+   containers and virtual machines, even Linux ones - those columns are silently left out, and your table
+   looks like this instead:
+
+   .. code:: text
+
+      |               ns/op |                op/s |    err% |     total | benchmark
+      |--------------------:|--------------------:|--------:|----------:|:----------
+      |                5.63 |      177,595,338.98 |    0.0% |      0.00 | `compare_exchange_strong`
+
+   That is not a misconfiguration of your benchmark. On Linux you may be able to get the extra columns by
+   `changing permissions <https://www.kernel.org/doc/html/latest/admin-guide/perf-security.html#unprivileged-users>`_
+   through ``perf_event_paranoid`` or an ACL.
+
+
+Output Columns
+==============
+
+Each row is one benchmark. All measurements are the **median over the epochs** (11 by default), never a
+single reading, and ``op`` refers to whatever you set with :cpp:func:`unit() <ankerl::nanobench::Bench::unit()>`
+and :cpp:func:`batch() <ankerl::nanobench::Bench::batch()>` - by default a single call of your lambda.
+
+================ ========== =================================================================================
+Column           Platform   Meaning
+================ ========== =================================================================================
+``ns/op``        all        Wall-clock time for one operation. The header follows
+                            :cpp:func:`timeUnit() <ankerl::nanobench::Bench::timeUnit()>`, so it can also read
+                            ``ms/op``, ``us/op`` or ``ps/op``.
+``op/s``         all        Operations per second - simply the reciprocal of the time per operation.
+``err%``         all        `Median absolute percentage error <https://en.wikipedia.org/wiki/Mean_absolute_percentage_error>`_
+                            of the per-epoch timings: how much the individual epochs disagreed with each
+                            other. It is a stability measure of *this* run, not a confidence interval, and
+                            not a comparison against any other benchmark. Above 5% the row is flagged as
+                            unstable with a ``:wavy_dash:`` marker.
+``ins/op``       Linux only Retired CPU instructions per operation.
+``cyc/op``       Linux only CPU cycles per operation.
+``IPC``          Linux only Instructions per cycle, i.e. ``ins/op`` divided by ``cyc/op``. Higher is better;
+                            it says how well the operation keeps the pipeline busy.
+``bra/op``       Linux only Retired branch instructions per operation.
+``miss%``        Linux only Percentage of those branches that were mispredicted.
+``total``        all        **Total wall-clock time in seconds** that this row cost to measure - the sum over
+                            all epochs of iterations times elapsed time. It is the price you paid for the
+                            measurement, not a property of the code being benchmarked. Use it to find
+                            benchmarks that make your suite slow.
+``benchmark``    all        The name passed to :cpp:func:`run() <ankerl::nanobench::Bench::run()>`, or the
+                            title when :cpp:func:`relative() <ankerl::nanobench::Bench::relative()>` is used.
+================ ========== =================================================================================
+
+When :cpp:func:`relative() <ankerl::nanobench::Bench::relative()>` is enabled, a leading ``relative`` column
+is added that compares each row against the first one.
+
 .. note::
 
-   CPU statistics like instructions, cycles, branches, branch misses are only available on Linux, through
-   `perf events <http://web.eece.maine.edu/~vweaver/projects/perf_events/>`_. On some systems you might need to 
-   `change permissions <https://www.kernel.org/doc/html/latest/admin-guide/perf-security.html#unprivileged-users>`_
-   through ``perf_event_paranoid`` or use ACL.
+   Nanobench measures **time** and, where available, the CPU performance counters listed above. It does not
+   measure memory usage, allocations, or peak RSS - use a heap profiler such as
+   `heaptrack <https://github.com/KDE/heaptrack>`_ or ``valgrind --tool=massif`` for that, or count
+   allocations yourself and report them with :cpp:func:`context() <ankerl::nanobench::Bench::context()>`.
 
 
 Examples
