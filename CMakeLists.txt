@@ -16,13 +16,11 @@ if (NANOBENCH_STANDALONE_PROJECT)
     set(CMAKE_CXX_STANDARD_REQUIRED ON)
     set(CMAKE_CXX_EXTENSIONS OFF)
 
-    # configuration see .clang-tidy
-    if(CMAKE_CXX_COMPILER_ID MATCHES "Clang")
-        find_program(CLANG_TIDY_PROGRAM NAMES clang-tidy)
-        if(CLANG_TIDY_PROGRAM)
-            set(CMAKE_CXX_CLANG_TIDY "${CLANG_TIDY_PROGRAM}")
-        endif()
-    endif()
+    # clang-tidy is not wired into the build any more: it ran for every clang compile, with whatever
+    # version happened to be installed, and "Checks: *" in .clang-tidy gains checks with every
+    # release - so a new clang stopped people from building the tests at all. The "lint" job of
+    # .github/workflows/main.yml runs it with a pinned version instead. To get it back locally:
+    #   cmake -S . -B build -DCMAKE_CXX_CLANG_TIDY=clang-tidy-18
 
     find_program(CCACHE_PROGRAM ccache)
     if(CCACHE_PROGRAM)

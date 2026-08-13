@@ -115,6 +115,19 @@ function(add_compile_flags_target target)
         target_compile_options(${target} PRIVATE -Wno-c++98-compat-bind-to-temporary-copy)
         target_compile_options(${target} PRIVATE -Wno-c++98-compat-local-type-template-args)
         target_compile_options(${target} PRIVATE -Qunused-arguments -fcolor-diagnostics) # needed for ccache integration on travis
+
+        # -Weverything opts in to warnings that don't exist yet, so every clang release can break the
+        # build. These two arrived that way:
+        #   -Wunsafe-buffer-usage (clang 16) wants std::span, which a C++11 header can't use, and it
+        #    also fires throughout the vendored doctest.h.
+        #   -Wswitch-default (clang 18) is the warning that is deliberately switched off for gcc a few
+        #    lines above, so it is off here for the same reason.
+        if(NOT CMAKE_CXX_COMPILER_VERSION VERSION_LESS 16.0)
+            target_compile_options(${target} PRIVATE -Wno-unsafe-buffer-usage)
+        endif()
+        if(NOT CMAKE_CXX_COMPILER_VERSION VERSION_LESS 18.0)
+            target_compile_options(${target} PRIVATE -Wno-switch-default)
+        endif()
     endif()
 
     if(MSVC)
