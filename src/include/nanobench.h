@@ -48,7 +48,15 @@
 
 #define ANKERL_NANOBENCH(x) ANKERL_NANOBENCH_PRIVATE_##x()
 
-#define ANKERL_NANOBENCH_PRIVATE_CXX() __cplusplus
+// MSVC reports __cplusplus as 199711L whatever /std: says, unless /Zc:__cplusplus is passed - and it
+// is not passed by default. _MSVC_LANG carries the real value. Getting this wrong does not fail to
+// compile, it silently takes the pre-C++17 branch on MSVC, which is how [[nodiscard]] was missing
+// there.
+#if defined(_MSVC_LANG)
+#    define ANKERL_NANOBENCH_PRIVATE_CXX() _MSVC_LANG
+#else
+#    define ANKERL_NANOBENCH_PRIVATE_CXX() __cplusplus
+#endif
 #define ANKERL_NANOBENCH_PRIVATE_CXX98() 199711L
 #define ANKERL_NANOBENCH_PRIVATE_CXX11() 201103L
 #define ANKERL_NANOBENCH_PRIVATE_CXX14() 201402L
@@ -56,8 +64,14 @@
 
 #if ANKERL_NANOBENCH(CXX) >= ANKERL_NANOBENCH(CXX17)
 #    define ANKERL_NANOBENCH_PRIVATE_NODISCARD() [[nodiscard]]
+#    define ANKERL_NANOBENCH_PRIVATE_HAS_STRING_VIEW() 1
 #else
 #    define ANKERL_NANOBENCH_PRIVATE_NODISCARD()
+#    define ANKERL_NANOBENCH_PRIVATE_HAS_STRING_VIEW() 0
+#endif
+
+#if ANKERL_NANOBENCH(HAS_STRING_VIEW)
+#    include <string_view> // the name() and run() overloads
 #endif
 
 #if defined(__clang__)
@@ -711,6 +725,14 @@ public:
     ANKERL_NANOBENCH(NOINLINE)
     Bench& run(std::string const& benchmarkName, Op&& op);
 
+#if ANKERL_NANOBENCH(HAS_STRING_VIEW)
+    /// Same as run(char const* benchmarkName, Op op), for a std::string_view name. Only available
+    /// when compiling as C++17 or newer.
+    template <typename Op>
+    ANKERL_NANOBENCH(NOINLINE)
+    Bench& run(std::string_view benchmarkName, Op&& op);
+#endif
+
     /**
      * @brief Same as run(char const* benchmarkName, Op op), but instead uses the previously set name.
      * @tparam Op The code to benchmark.
@@ -735,6 +757,10 @@ public:
     /// Name of the benchmark, will be shown in the table row.
     Bench& name(char const* benchmarkName);
     Bench& name(std::string const& benchmarkName);
+#if ANKERL_NANOBENCH(HAS_STRING_VIEW)
+    /// Only available when compiling as C++17 or newer. @see name()
+    Bench& name(std::string_view benchmarkName);
+#endif
     ANKERL_NANOBENCH(NODISCARD) std::string const& name() const noexcept;
 
     /**
@@ -1437,6 +1463,14 @@ Bench& Bench::run(std::string const& benchmarkName, Op&& op) {
     name(benchmarkName);
     return run(std::forward<Op>(op));
 }
+
+#if ANKERL_NANOBENCH(HAS_STRING_VIEW)
+template <typename Op>
+Bench& Bench::run(std::string_view benchmarkName, Op&& op) {
+    name(benchmarkName);
+    return run(std::forward<Op>(op));
+}
+#endif
 
 template <typename Op>
 BigO Bench::complexityBigO(char const* benchmarkName, Op op) const {
@@ -3678,6 +3712,13 @@ Bench& Bench::name(std::string const& benchmarkName) {
     mConfig.mBenchmarkName = benchmarkName;
     return *this;
 }
+
+#    if ANKERL_NANOBENCH(HAS_STRING_VIEW)
+Bench& Bench::name(std::string_view benchmarkName) {
+    mConfig.mBenchmarkName.assign(benchmarkName.data(), benchmarkName.size());
+    return *this;
+}
+#    endif
 
 std::string const& Bench::name() const noexcept {
     return mConfig.mBenchmarkName;
