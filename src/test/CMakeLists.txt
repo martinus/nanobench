@@ -38,6 +38,8 @@ target_sources_local(nb PRIVATE
     unit_multi_output.cpp
     unit_number_format.cpp
     unit_relative_batch.cpp
+    unit_render_commands.cpp
+    unit_render_errors.cpp
     unit_result_statistics.cpp
     unit_rng.cpp
     unit_setup.cpp
