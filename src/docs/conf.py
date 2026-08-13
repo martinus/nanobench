@@ -61,9 +61,9 @@ exclude_patterns = ['_build', 'Thumbs.db', '.DS_Store']
 html_theme = 'sphinx_rtd_theme'
 
 # see https://sphinx-rtd-theme.readthedocs.io/en/stable/configuring.html
+# 'analytics_id' (UA-36863101-2) and 'display_version' were removed: the first is deprecated in
+# favor of the sphinxcontrib-googleanalytics extension, the second is gone in rtd-theme 3.x.
 html_theme_options = {
-    'analytics_id': 'UA-36863101-2',
-    'display_version': True,
     'sticky_navigation': True,
     'collapse_navigation': False,
     'navigation_depth': 4,
