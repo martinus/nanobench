@@ -264,6 +264,62 @@ The results are  more stable, with only 0.7% error.
 .. _Tutorial Comparing Results:
 
 
+Untimed Setup
+=============
+
+Some benchmarks consume the thing they operate on: sorting a vector leaves it sorted, so the second
+iteration measures sorting an already-sorted vector. :cpp:func:`setup() <ankerl::nanobench::Bench::setup()>`
+runs a lambda that is *not* measured, so the state can be restored without polluting the result:
+
+.. code-block:: c++
+
+   std::vector<uint64_t> data = makeRandomData();
+   std::vector<uint64_t> const pristine = data;
+
+   ankerl::nanobench::Bench().setup([&] { data = pristine; })
+                             .run("sort", [&] {
+                                 std::sort(data.begin(), data.end());
+                                 ankerl::nanobench::doNotOptimizeAway(data.data());
+                             });
+
+.. important::
+
+   **The setup runs once per epoch, not once per iteration.** An epoch calls your lambda many times in
+   a row, and the setup does not run again in between. The example above is therefore *not* fixed by
+   ``setup()`` alone: the first call in an epoch sorts random data, and every call after it re-sorts
+   already-sorted data.
+
+   ``setup()`` is the right tool when the operation can be repeated as-is and only the starting state
+   has to be established once - allocating a buffer, opening a file, warming a cache, restoring a
+   value that the operation reads but does not destroy.
+
+When every single call really does destroy the state, you have two honest options:
+
+#. **One iteration per epoch.** :cpp:func:`epochIterations(1) <ankerl::nanobench::Bench::epochIterations()>`
+   makes an epoch a single call, so the setup effectively runs per iteration:
+
+   .. code-block:: c++
+
+      bench.epochIterations(1).epochs(1000)
+           .setup([&] { data = pristine; })
+           .run("sort", [&] { std::sort(data.begin(), data.end()); });
+
+   The cost is accuracy: a single call is now timed against the clock's resolution, so this only
+   gives useful numbers when one call takes appreciably longer than that - roughly microseconds and
+   up. Expect a much larger ``err%``, and use many epochs.
+
+#. **Measure the setup separately and subtract it.** Benchmark just the restoration, then benchmark
+   restoration plus operation, and take the difference. More work, but it keeps the tight measurement
+   loop tight, and for fast operations it is the more accurate answer.
+
+.. note::
+
+   Nanobench deliberately does not offer a ``PauseTiming()``/``ResumeTiming()`` pair inside the
+   measurement loop. Starting and stopping the clock - and the Linux performance counters - around
+   every iteration costs more than most operations worth benchmarking, which quietly destroys exactly
+   the measurements it is meant to enable.
+
+
 Comparing Results
 =================
 To compare results, keep the `ankerl::nanobench::Bench` object around, enable `.relative(true)`, and `.run(...)` your benchmarks. All benchmarks will be automatically compared to the first one.

@@ -1023,10 +1023,44 @@ public:
     Bench& config(Config const& benchmarkConfig);
     ANKERL_NANOBENCH(NODISCARD) Config const& config() const noexcept;
 
-    /**
-     * @brief Configure an untimed setup step per epoch (fluent API).
-     *
-     * Example: `bench.setup(...).run(...);`
+    /*!
+      @brief Runs `setupOp()` once before each epoch, without measuring it.
+
+      Use this to restore whatever state your benchmark consumes, when that restoration would otherwise
+      pollute the measurement:
+
+      @code
+      bench.setup([&] { data = pristine; })
+           .run("consume data", [&] { consume(data); });
+      @endcode
+
+      @verbatim embed:rst
+      .. important::
+
+         The setup runs **once per epoch, not once per iteration**. An epoch calls ``op()`` many times
+         (see :cpp:func:`epochIterations() <ankerl::nanobench::Bench::epochIterations()>`), and the setup
+         does not run again in between. So this helps when your operation can be repeated as-is and only
+         the *starting* state has to be established - and it does **not** help when every single call
+         mutates the data such that the next call would measure something different.
+
+         For that second case, set :cpp:func:`epochIterations(1) <ankerl::nanobench::Bench::epochIterations()>`
+         so an epoch is a single call, which makes setup effectively per-iteration - at the cost of much
+         noisier results, since one call is then timed against the clock's resolution. The alternative,
+         and usually the better measurement, is to time the setup separately and subtract it.
+
+         Timers are deliberately not started and stopped around each iteration: for anything fast that
+         costs more than the thing being measured, and the performance counters would have to be
+         restarted too.
+
+      .. note::
+
+         The returned object keeps a reference to this ``Bench``, so don't let it outlive it - call
+         ``run()`` on the same expression, as above.
+
+      @endverbatim
+
+      @tparam SetupOp The untimed code to run before each epoch.
+      @param setupOp The setup to run.
      */
     template <typename SetupOp>
     detail::SetupRunner<SetupOp> setup(SetupOp setupOp);
@@ -1250,6 +1284,20 @@ public:
     ANKERL_NANOBENCH_NO_SANITIZE("integer")
     Bench& run(Op&& op) {
         return mBench.runImpl(mSetupOp, std::forward<Op>(op));
+    }
+
+    // Bench::run() takes a name, so setup().run() has to as well - otherwise adding a setup to an
+    // existing benchmark means rewriting its call site to use name() separately.
+    template <typename Op>
+    Bench& run(char const* benchmarkName, Op&& op) {
+        mBench.name(benchmarkName);
+        return run(std::forward<Op>(op));
+    }
+
+    template <typename Op>
+    Bench& run(std::string const& benchmarkName, Op&& op) {
+        mBench.name(benchmarkName);
+        return run(std::forward<Op>(op));
     }
 
 private:
