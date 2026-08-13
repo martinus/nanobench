@@ -20,9 +20,10 @@ Options: `-DNB_cxx_standard=17` (default 11), `-DNB_sanitizer=ON` (clang only).
 
 **Build gotchas**
 
-- With a clang compiler, `CMakeLists.txt` auto-enables `clang-tidy` plus `-Weverything -Werror`.
-  Both fail on *pre-existing* code and on the vendored `doctest.h` with modern clang/clang-tidy
-  (see issue #108). Use g++, or disable it: `-DCLANG_TIDY_PROGRAM= -DCMAKE_CXX_CLANG_TIDY=`.
+- clang builds use `-Weverything -Werror`, so a new clang release can add a warning that breaks
+  the build; the two that already did are switched off in `src/cmake/CMakeLists.txt`.
+  clang-tidy is *not* part of the build (it broke every clang build whenever it gained a check,
+  issue #108) — the `lint` CI job runs it pinned. Locally: `-DCMAKE_CXX_CLANG_TIDY=clang-tidy-18`.
 - Running `./nb` writes example artifacts (`*.json`, `mustache.*`, `always_the_same.html`, …) into
   the *current* directory. Run it from the build dir, and check `git status` before `git add -A`.
 - `unit_templates` compares the built-in templates against `src/docs/_generated/*` using a path
@@ -31,8 +32,16 @@ Options: `-DNB_cxx_standard=17` (default 11), `-DNB_sanitizer=ON` (clang only).
 
 ## Before pushing
 
-CI is thin (`.github/workflows/` only has codeql; `.cirrus.yml` does a release build + `./nb`), so
-verify locally:
+`.github/workflows/main.yml` builds every leg the same way, so any of them reproduces locally:
+
+```sh
+CXX=<compiler> cmake -S . -B build -DCMAKE_BUILD_TYPE=Release -DNB_cxx_standard=<std> <cmake_args>
+cmake --build build --parallel 4 && ./build/nb        # run from the repo root
+```
+
+It covers gcc/clang × C++11..20, 32 bit, libc++, sanitizers, ARM64, macOS, MSVC, clang-cl and
+MinGW, plus a `lint` job (pinned clang-format-18 / clang-tidy-18) and a CMake consumer job. Before
+pushing it is still worth running the quick local sweep:
 
 ```sh
 # 1. both compilers, all standards, warning-free.

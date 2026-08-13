@@ -1,3 +1,10 @@
+# Run by the "lint" job of .github/workflows/main.yml, against a compile database configured with
+# clang (a gcc one makes clang-tidy report every gcc-only -W flag as an unknown warning option).
+#
+# The tool version is pinned there, because "*" keeps gaining checks: an unpinned clang-tidy turns a
+# runner image bump into a red build for reasons that have nothing to do with a change. This is also
+# why clang-tidy is no longer wired into CMAKE_CXX_CLANG_TIDY - a compiler upgrade should not stop
+# anyone from building the tests.
 ---
 Checks: '*,
 -altera-id-dependent-backward-branch,
@@ -6,10 +13,14 @@ Checks: '*,
 -bugprone-easily-swappable-parameters,
 -cert-err58-cpp,
 -clang-diagnostic-padded,
+-cppcoreguidelines-avoid-const-or-ref-data-members,
+-cppcoreguidelines-avoid-do-while,
 -cppcoreguidelines-avoid-magic-numbers,
+-cppcoreguidelines-macro-to-enum,
 -cppcoreguidelines-macro-usage,
+-cppcoreguidelines-missing-std-forward,
 -fuchsia-default-arguments-calls,
--fuchsia-default-arguments,  
+-fuchsia-default-arguments,
 -fuchsia-multiple-inheritance,
 -fuchsia-overloaded-operator,
 -fuchsia-trailing-return,
@@ -22,15 +33,20 @@ Checks: '*,
 -llvm-header-guard,
 -llvmlibc-callee-namespace,
 -llvmlibc-implementation-in-namespace,
+-llvmlibc-inline-function-decl,
 -llvmlibc-restrict-system-libc-headers,
 -misc-definitions-in-headers,
+-misc-include-cleaner,
 -modernize-concat-nested-namespaces,
 -modernize-macro-to-enum,
 -modernize-use-trailing-return-type,
+-performance-avoid-endl,
+-performance-enum-size,
 -readability-identifier-length,
 -readability-magic-numbers,
+-readability-redundant-inline-specifier,
+-readability-redundant-member-init,
 '
 WarningsAsErrors: '*'
 HeaderFilterRegex: 'nanobench\.h'
 ...
-

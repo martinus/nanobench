@@ -1,5 +1,5 @@
-// g++ -O2 asymptotes-google.cpp -isystem ~/git/benchmark/include/ -L/home/martinus/git/benchmark/build/src -lbenchmark -lpthread -o
-// asymptotes
+// g++ -O2 asymptotes-google.cpp -isystem ~/git/benchmark/include/
+// -L/home/martinus/git/benchmark/build/src -lbenchmark -lpthread -o asymptotes
 #include <benchmark/benchmark.h>
 
 #include <set>
@@ -45,6 +45,9 @@ static void BM_StringCompare(benchmark::State& state) {
     }
     state.SetComplexityN(state.range(0));
 }
-BENCHMARK(BM_StringCompare)->RangeMultiplier(2)->Range(1 << 5, 1 << 22)->Complexity();
+BENCHMARK(BM_StringCompare)
+    ->RangeMultiplier(2)
+    ->Range(1 << 5, 1 << 22)
+    ->Complexity();
 
 BENCHMARK_MAIN();

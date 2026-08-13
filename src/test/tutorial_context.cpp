@@ -7,7 +7,7 @@
 namespace {
 
 template <typename T>
-void fma() {
+void fma_bench() {
     T x(1);
     T y(2);
     T z(3);
@@ -39,11 +39,11 @@ TEST_CASE("tutorial_context") {
     bench.context("scalar", "f32")
         .context("foo", "bar")
         .run("+=", plus_eq<float>)
-        .run("fma", fma<float>);
+        .run("fma", fma_bench<float>);
     bench.context("scalar", "f64")
         .context("foo", "baz")
         .run("+=", plus_eq<double>)
-        .run("fma", fma<double>);
+        .run("fma", fma_bench<double>);
     bench.render(csv(), std::cout);
     // Changing the title resets the results, but not the context:
     bench.title("New Title");

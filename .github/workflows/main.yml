@@ -1,0 +1,303 @@
+name: Build, Test, Lint
+
+# Until this file existed, nothing on GitHub compiled nanobench: .github/workflows held only CodeQL,
+# and the three configs that did build it (.travis.yml, .cirrus.yml, appveyor.yml) point at services
+# that no longer run for this repository. The matrix below is src/scripts/all.sh - the matrix that
+# was already being run by hand - plus the platforms the header branches on.
+#
+# The weekly run matters for a header-only library: the code stops changing while compilers keep
+# moving, and the last two commits before this one were exactly that kind of breakage.
+on:
+  push:
+    branches: [master]
+  pull_request:
+  schedule:
+    - cron: '23 5 * * 1'
+
+# A new push to a PR makes the previous run obsolete. Runs on master are never cancelled.
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+# Nothing here writes to the repository.
+permissions:
+  contents: read
+
+jobs:
+
+  # Both tools are pinned. .clang-tidy is "Checks: '*'", which gains checks with every release, and
+  # clang-format changes its output between releases too - unpinned, a runner image bump turns into
+  # a red build for reasons that have nothing to do with a change. This is also why clang-tidy is no
+  # longer wired into CMAKE_CXX_CLANG_TIDY: it used to run for every clang compile with whatever
+  # version was installed, so a new clang stopped people from building the tests at all (issue #108).
+  lint:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - run: sudo apt-get update && sudo apt-get install -y clang-format-18 clang-tidy-18 ninja-build
+
+      # There are two configs on purpose - src/include/.clang-format is 135 columns for the header,
+      # src/.clang-format is 80 for everything under src/test - and clang-format picks the closer one
+      # per file, so one pass over both trees is correct. The vendored doctest.h is not ours to
+      # reformat, and src/comparisons holds other projects' benchmark code.
+      - name: clang-format
+        run: |
+          status=0
+          for f in $(git ls-files 'src/*.cpp' 'src/*.h' ':!:src/test/thirdparty/*' ':!:src/comparisons/*'); do
+            n=$(clang-format-18 --output-replacements-xml "$f" | grep -c '<replacement ' || true)
+            if [ "$n" != "0" ]; then
+              echo "::error file=$f::clang-format wants $n change(s) here - run: clang-format -i $f"
+              status=1
+            fi
+          done
+          exit $status
+
+      # Configured with clang on purpose: against a gcc compile database, clang-tidy reports every
+      # gcc-only -W flag in the build as an unknown warning option.
+      - name: clang-tidy
+        env:
+          CXX: clang++
+        run: |
+          cmake -S . -B build-tidy -GNinja -DCMAKE_BUILD_TYPE=Release
+          clang-tidy-18 -p build-tidy src/test/app/nanobench.cpp
+
+  # The full test suite, built with the project's own strict flags.
+  build:
+    name: ${{ matrix.name }}
+    runs-on: ${{ matrix.os }}
+    strategy:
+      # One failing configuration should not hide the state of the others.
+      fail-fast: false
+      matrix:
+        include:
+          # The library advertises C++11..20 and NB_cxx_standard has always existed to test that,
+          # but nothing ever ran it. A header that quietly requires C++14 is the failure this catches.
+          - name: Linux (gcc, C++11)
+            os: ubuntu-latest
+            cxx: g++
+            cpp_std: '11'
+          - name: Linux (gcc, C++14)
+            os: ubuntu-latest
+            cxx: g++
+            cpp_std: '14'
+          - name: Linux (gcc, C++17)
+            os: ubuntu-latest
+            cxx: g++
+          - name: Linux (gcc, C++20)
+            os: ubuntu-latest
+            cxx: g++
+            cpp_std: '20'
+          - name: Linux (clang, C++11)
+            os: ubuntu-latest
+            cxx: clang++
+            cpp_std: '11'
+          - name: Linux (clang, C++14)
+            os: ubuntu-latest
+            cxx: clang++
+            cpp_std: '14'
+          - name: Linux (clang, C++17)
+            os: ubuntu-latest
+            cxx: clang++
+          - name: Linux (clang, C++20)
+            os: ubuntu-latest
+            cxx: clang++
+            cpp_std: '20'
+
+          # A benchmarking library is full of size_t, uint64_t and clock durations, so a different
+          # word size is real coverage. src/scripts/all.sh has always built -m32; nothing else did.
+          - name: Linux (gcc, C++17, 32bit)
+            os: ubuntu-latest
+            cxx: g++
+            apt: g++-multilib
+            cmake_args: -DCMAKE_CXX_FLAGS=-m32 -DCMAKE_EXE_LINKER_FLAGS=-m32
+          - name: Linux (clang, C++17, 32bit)
+            os: ubuntu-latest
+            cxx: clang++
+            apt: g++-multilib
+            cmake_args: -DCMAKE_CXX_FLAGS=-m32 -DCMAKE_EXE_LINKER_FLAGS=-m32
+
+          # The other standard library on Linux. Without it the only libc++ in CI is macOS, so
+          # anything that differs between libc++ versions is invisible.
+          - name: Linux (clang, C++17, libc++)
+            os: ubuntu-latest
+            cxx: clang++
+            apt: libc++-dev libc++abi-dev
+            cmake_args: -DCMAKE_CXX_FLAGS=-stdlib=libc++ -DCMAKE_EXE_LINKER_FLAGS=-stdlib=libc++
+
+          # NB_sanitizer=ON is the project's own option. halt_on_error is the point of running UBSan
+          # at all: without it the runtime prints the error and the test still exits 0, so the leg
+          # would be green whatever it found. src/scripts/all.sh gets this right by scanning a log
+          # file; halt_on_error says the same thing to the runtime directly.
+          - name: Linux Sanitizer (gcc, address+undefined)
+            os: ubuntu-latest
+            cxx: g++
+            cmake_args: -DNB_sanitizer=ON
+            sanitizers: true
+          - name: Linux Sanitizer (clang, address+undefined)
+            os: ubuntu-latest
+            cxx: clang++
+            cmake_args: -DNB_sanitizer=ON
+            sanitizers: true
+
+          # Everything perf_event_open touches disappears behind this define, and that is the
+          # configuration every non-Linux user compiles - worth building on purpose rather than
+          # only ever as a side effect of not being on Linux.
+          - name: Linux (gcc, C++17, no perf counters)
+            os: ubuntu-latest
+            cxx: g++
+            cmake_args: -DCMAKE_CXX_FLAGS=-DANKERL_NANOBENCH_DISABLE_PERF_COUNTERS
+
+          # Different clock source, no perf counters, different alignment rules. The arm runners are
+          # free for public repositories now.
+          - name: Linux ARM64 (gcc, C++17)
+            os: ubuntu-24.04-arm
+            cxx: g++
+          - name: Linux ARM64 (clang, C++17)
+            os: ubuntu-24.04-arm
+            cxx: clang++
+            apt: clang
+
+          # The oldest toolchains still available on a hosted runner. Note this does not reach the
+          # gcc < 5 branch in nanobench.h - see the README of this workflow in the PR that added it.
+          - name: Linux (gcc-9, C++17)
+            os: ubuntu-22.04
+            cxx: g++-9
+            apt: g++-9
+          - name: Linux (clang-14, C++17)
+            os: ubuntu-22.04
+            cxx: clang++-14
+            apt: clang-14
+
+          - name: macOS (AppleClang, C++17, arm64)
+            os: macos-latest
+            cxx: c++
+          - name: macOS (AppleClang, C++20, arm64)
+            os: macos-latest
+            cxx: c++
+            cpp_std: '20'
+
+          # The only Windows coverage nanobench ever had was appveyor. src/cmake/CMakeLists.txt
+          # forces /std:c++latest for MSVC regardless of NB_cxx_standard, so these two legs differ
+          # in architecture only - the standard in their name would not be true.
+          - name: Windows (MSVC, C++latest, 64bit)
+            os: windows-latest
+            cxx: cl
+            msvc_arch: x64
+            cmake_args: -G Ninja
+            bin: ./build/nb.exe
+          - name: Windows (MSVC, C++latest, 32bit)
+            os: windows-latest
+            cxx: cl
+            msvc_arch: x86
+            cmake_args: -G Ninja
+            bin: ./build/nb.exe
+    steps:
+      - uses: actions/checkout@v7
+      - name: Install apt packages
+        if: matrix.apt
+        run: sudo apt-get update && sudo apt-get install -y ${{ matrix.apt }}
+      - uses: ilammy/msvc-dev-cmd@v1
+        if: matrix.msvc_arch
+        with:
+          arch: ${{ matrix.msvc_arch }}
+      - name: Configure
+        env:
+          CXX: ${{ matrix.cxx }}
+        run: cmake -S . -B build -DCMAKE_BUILD_TYPE=Release -DNB_cxx_standard=${{ matrix.cpp_std || '17' }} ${{ matrix.cmake_args }}
+      - name: Build
+        run: cmake --build build --parallel 4
+      # Runs from the repository root: unit_templates finds src/docs/_generated through a path
+      # derived from __FILE__, and ./nb writes its example artifacts into the current directory.
+      - name: Test
+        shell: bash
+        env:
+          ASAN_OPTIONS: ${{ matrix.sanitizers && 'detect_stack_use_after_return=1' || '' }}
+          UBSAN_OPTIONS: ${{ matrix.sanitizers && format('print_stacktrace=1:halt_on_error=1:suppressions={0}/ubsan.supp', github.workspace) || '' }}
+        run: ${{ matrix.bin || './build/nb' }}
+
+  # The header compiled the way a *consumer* compiles it - their warning flags, not the project's -
+  # for every standard it claims to support. This is the check that speaks for the people who just
+  # drop nanobench.h into their project.
+  header:
+    name: Header warning-free (gcc + clang, C++11..20)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - run: |
+          set -e
+          for std in 11 14 17 20; do
+            echo "--- clang++ -std=c++$std"
+            clang++ -std=c++$std -O2 -c -o /dev/null -Isrc/include src/test/app/nanobench.cpp \
+              -Werror -Weverything -Wno-c++98-compat -Wno-c++98-compat-pedantic \
+              -Wno-unsafe-buffer-usage -Wno-padded -Wno-switch-default
+            echo "--- g++ -std=c++$std"
+            g++ -std=c++$std -O2 -c -o /dev/null -Isrc/include src/test/app/nanobench.cpp \
+              -Werror -Wall -Wextra -Wconversion -Wold-style-cast -Wfloat-equal -Wsign-conversion \
+              -Wshadow -Wdouble-promotion
+          done
+
+  # clang in MSVC mode picks a different doNotOptimizeAway than clang everywhere else, and that
+  # difference is where issue #111 hid for two years with no job able to see it. Built without the
+  # project's strict flag set on purpose: the question here is whether the header works on this
+  # toolchain, and the answer has to come from a binary that actually runs.
+  clang-cl:
+    name: clang-cl (${{ matrix.arch }})
+    runs-on: windows-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        arch: [x64, x86]
+    steps:
+      - uses: actions/checkout@v7
+      - uses: ilammy/msvc-dev-cmd@v1
+        with:
+          arch: ${{ matrix.arch }}
+      - name: Compile and run
+        shell: cmd
+        run: |
+          clang-cl /std:c++17 /EHsc /W3 /I src\include /Fe:consumer.exe ^
+            src\test\app\nanobench.cpp src\test\cmake_consumer\consumer.cpp
+          consumer.exe
+
+  # A Windows target where _MSC_VER is not defined - the other side of the same guard.
+  mingw:
+    name: MinGW (64bit)
+    runs-on: windows-latest
+    defaults:
+      run:
+        shell: msys2 {0}
+    steps:
+      - uses: actions/checkout@v7
+      - uses: msys2/setup-msys2@v2
+        with:
+          msystem: MINGW64
+          # Not update: true. That is a full pacman -Syuu on top of the runner image for packages
+          # this job does not use.
+          update: false
+          install: mingw-w64-x86_64-gcc
+      - run: |
+          g++ -std=c++17 -O2 -Isrc/include -o consumer.exe \
+            src/test/app/nanobench.cpp src/test/cmake_consumer/consumer.cpp
+          ./consumer.exe
+
+  # CMakeLists.txt is what consumers actually use, and its install/export/nanobenchConfig.cmake half
+  # was never built by any job at all.
+  consumer:
+    name: CMake consumer (add_subdirectory + find_package)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - name: add_subdirectory
+        run: |
+          cmake -S src/test/cmake_consumer -B build-subdir
+          cmake --build build-subdir --parallel 4
+          ./build-subdir/consumer
+      - name: install
+        run: |
+          cmake -S . -B build-install -DCMAKE_INSTALL_PREFIX="$PWD/prefix"
+          cmake --build build-install --parallel 4 --target install
+      - name: find_package
+        run: |
+          cmake -S src/test/cmake_consumer/installed -B build-find -DCMAKE_PREFIX_PATH="$PWD/prefix"
+          cmake --build build-find --parallel 4
+          ./build-find/consumer-installed
