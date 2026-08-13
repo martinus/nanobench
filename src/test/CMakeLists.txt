@@ -31,8 +31,10 @@ target_sources_local(nb PRIVATE
     tutorial_slow_v1.cpp
     tutorial_slow_v2.cpp
     unit_api.cpp
+    unit_bench_config.cpp
     unit_cold.cpp
     unit_columns.cpp
+    unit_epoch_time.cpp
     unit_exact_iters_and_epochs.cpp
     unit_mdape.cpp
     unit_multi_output.cpp
