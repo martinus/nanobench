@@ -3542,8 +3542,8 @@ double BigO::normalizedRootMeanSquare() const noexcept {
 }
 
 bool BigO::operator<(BigO const& other) const noexcept {
-    return (mNormalizedRootMeanSquare < other.mNormalizedRootMeanSquare)
-        || (!(mNormalizedRootMeanSquare > other.mNormalizedRootMeanSquare) && mName < other.mName);
+    return (mNormalizedRootMeanSquare < other.mNormalizedRootMeanSquare) ||
+           (!(mNormalizedRootMeanSquare > other.mNormalizedRootMeanSquare) && mName < other.mName);
 }
 
 std::ostream& operator<<(std::ostream& os, BigO const& bigO) {
