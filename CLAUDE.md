@@ -116,12 +116,14 @@ Plus the header compiled warning-free for a consumer, both compilers × C++11..2
 commands out of the `header` job rather than duplicating the flag list here, as the copy this file
 used to keep drifted from the workflow twice.
 
-**Two gaps in that sweep, both of which have turned master red.** A syntax-only check over the header
-never instantiates a template that only the tests use, so `-Wpadded` and its neighbours stay silent
-until the *test suite* is compiled with clang. And this machine cannot do that: Fedora's clang is
-newer than the vendored `doctest.h` (`__COUNTER__` is "a C2y extension") and its libstdc++ is newer
-than clang-tidy-18 can parse, so both fail for reasons that have nothing to do with the change. Use a
-container for the clang legs and for clang-tidy:
+**The gap in that sweep that has turned master red.** A syntax-only check over the header never
+instantiates a template that only the tests use, so `-Wpadded` and its neighbours stay silent until
+the *test suite* is compiled with clang — so build it that way, `CXX=clang++ cmake -S . -B build …`.
+That works on this machine since the vendored doctest moved to 2.5.3; with 2.4.11 Fedora's clang
+rejected `doctest.h` outright (`__COUNTER__` is "a C2y extension"), which is why this file used to
+say the check was impossible here. clang-tidy still is: Fedora's libstdc++ is newer than
+clang-tidy-18 can parse, so it fails for reasons that have nothing to do with the change. Use a
+container for it, and for a second opinion from the clang version CI pins:
 
 ```sh
 podman run --rm -v "$PWD:/src" -w /src ubuntu:24.04 bash -c '
