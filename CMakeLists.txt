@@ -1,4 +1,8 @@
-cmake_minimum_required(VERSION 3.8)
+# 3.10 is the lowest version current CMake still accepts without a deprecation warning, and that
+# warning shows up in the build of every project that pulls nanobench in (issue #137). Kept at the
+# floor on purpose rather than moved to something modern: nothing here needs newer, and a header-only
+# library has no business dictating the CMake version of the projects that consume it.
+cmake_minimum_required(VERSION 3.10)
 project(nanobench LANGUAGES CXX)
 
 # determine whether this is a standalone project or included by other projects
