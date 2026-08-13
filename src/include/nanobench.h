@@ -2083,8 +2083,8 @@ void printStabilityInformationOnce(std::ostream* outStream);
 // Says so when the performance counter columns are missing because the kernel refused them.
 void printPerformanceCounterHintOnce(std::ostream* outStream, bool wantsPerformanceCounters);
 
-// remembers the last table settings used. When it changes, a new table header is automatically written for the new entry.
-uint64_t& singletonHeaderHash() noexcept;
+// The last table settings written to this stream. When they change, a new header is written.
+uint64_t& streamHeaderHash(std::ostream& os);
 
 // determines resolution of the given clock. This is done by measuring multiple times and returning the minimum time difference.
 Clock::duration calcClockResolution(size_t numEvaluations) noexcept;
@@ -2424,10 +2424,47 @@ void printPerformanceCounterHintOnce(std::ostream* outStream, bool wantsPerforma
 #    endif
 }
 
-// remembers the last table settings used. When it changes, a new table header is automatically written for the new entry.
-uint64_t& singletonHeaderHash() noexcept {
-    static uint64_t sHeaderHash{};
-    return sHeaderHash;
+// Which index of the pword/iword array every stream carries is ours. Allocated once per process.
+static int streamHeaderHashIndex() {
+    static int const index = std::ios_base::xalloc();
+    return index;
+}
+
+// pword holds a raw void*, so what it points at has to be freed when the stream goes away.
+static void streamHeaderHashCallback(std::ios_base::event ev, std::ios_base& ios, int index) {
+    if (std::ios_base::erase_event == ev) {
+        // NOLINTNEXTLINE(cppcoreguidelines-owning-memory)
+        delete static_cast<uint64_t*>(ios.pword(index));
+        ios.pword(index) = nullptr;
+    } else if (std::ios_base::copyfmt_event == ev) {
+        // copyfmt just copied our pointer into this stream; only one of the two may own it
+        ios.pword(index) = nullptr;
+    }
+}
+
+// This used to be a single process-wide value, so two Bench objects writing to different streams
+// overwrote each other's settings and the second table came out with no header at all (issue #112).
+//
+// The obvious fix - a static map keyed on the ostream* - grows for the lifetime of the process and,
+// worse, hands a freshly constructed stream the state of a destroyed one that happened to be
+// allocated at the same address, which shows up as a header going missing at random. iostreams
+// already provide per-stream storage whose lifetime is exactly the stream's, which is what this
+// wants.
+uint64_t& streamHeaderHash(std::ostream& os) {
+    auto const index = streamHeaderHashIndex();
+    void*& slot = os.pword(index);
+    if (nullptr == slot) {
+        // iword is a separate array at the same index; it records that the callback is registered so
+        // a stream never registers it twice. copyfmt copies iword and the callbacks together, so a
+        // stream copied from another is already covered.
+        if (0 == os.iword(index)) {
+            os.iword(index) = 1;
+            os.register_callback(streamHeaderHashCallback, index);
+        }
+        // NOLINTNEXTLINE(cppcoreguidelines-owning-memory)
+        slot = new uint64_t{};
+    }
+    return *static_cast<uint64_t*>(slot);
 }
 
 ANKERL_NANOBENCH_NO_SANITIZE("integer", "undefined")
@@ -2695,8 +2732,9 @@ struct IterationLogic::Impl {
                 hash = hash_combine(std::hash<std::string>{}(variableName), hash);
             }
 
-            if (hash != singletonHeaderHash()) {
-                singletonHeaderHash() = hash;
+            auto& lastHeaderHash = streamHeaderHash(os);
+            if (hash != lastHeaderHash) {
+                lastHeaderHash = hash;
 
                 // no result yet, print header
                 os << std::endl;
