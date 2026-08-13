@@ -44,22 +44,22 @@ MinGW, plus a `lint` job (pinned clang-format-18 / clang-tidy-18) and a CMake co
 pushing it is still worth running the quick local sweep:
 
 ```sh
-# 1. both compilers, all standards, warning-free.
-#    tu.cpp is just: #define ANKERL_NANOBENCH_IMPLEMENT
-#                    #include <nanobench.h>
+# 1. both compilers, all standards, warning-free. src/test/app/nanobench.cpp is the whole
+#    implementation in one TU, which is what the workflow's "header" job compiles too.
 for s in 11 14 17 20; do
   clang++ -std=c++$s -Werror -Weverything -Wno-c++98-compat -Wno-c++98-compat-pedantic \
-          -Wno-unsafe-buffer-usage -Wno-padded -Wno-switch-default -c -o /dev/null -Isrc/include tu.cpp
+          -Wno-unknown-warning-option -Wno-unsafe-buffer-usage -Wno-padded -Wno-switch-default \
+          -c -o /dev/null -Isrc/include src/test/app/nanobench.cpp
   g++     -std=c++$s -Werror -Wall -Wextra -Wconversion -Wold-style-cast -Wfloat-equal \
-          -Wsign-conversion -c -o /dev/null -Isrc/include tu.cpp
+          -Wsign-conversion -c -o /dev/null -Isrc/include src/test/app/nanobench.cpp
 done
 
 # 2. sanitizers (run from the repo root, see unit_templates note above)
 g++ -std=c++17 -O1 -g -fsanitize=address,undefined -Isrc/include -Isrc/test \
     -o /tmp/nb-san src/test/app/*.cpp src/test/*.cpp && /tmp/nb-san
 
-# 3. formatting: 0 replacements == clean
-clang-format --output-replacements-xml <file> | grep -c "<replacement "
+# 3. formatting and the version macros, the same two linters the CI lint job runs
+src/scripts/lint/lint-all.py
 ```
 
 `-Wfloat-equal` is on, so never compare a double with `==`/`!=` — use `x <= 0.0` and friends.
