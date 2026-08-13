@@ -1,0 +1,81 @@
+name: Docs
+
+# The site at https://nanobench.ankerl.com/ used to be whatever HTML happened to be committed
+# under docs/: GitHub's legacy Pages builder just served that directory. That meant the site was
+# only as current as the last time someone remembered to run src/docs/generate.sh by hand, and a
+# doc comment in nanobench.h could sit unpublished for years. Here the site is built from the
+# header on every push instead, and docs/ is no longer committed at all.
+#
+# Pull requests build but do not deploy: the point on a PR is to find out that the doc build broke
+# before it reaches master, which is a thing that used to be discovered months later.
+on:
+  push:
+    branches: [master]
+  pull_request:
+  workflow_dispatch:
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+permissions:
+  contents: read
+
+jobs:
+
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+
+      # No graphviz and no java: the Doxyfile sets HAVE_DOT=NO and leaves PLANTUML_JAR_PATH empty,
+      # and the header contains no @startuml.
+      - name: Install doxygen
+        run: sudo apt-get update && sudo apt-get install -y doxygen
+
+      # requirements.txt is fully pinned, so the site does not change because Sphinx released a new
+      # version on a day nobody touched the docs.
+      - uses: actions/setup-python@v7
+        with:
+          python-version: '3.13'
+          cache: pip
+          cache-dependency-path: src/docs/requirements.txt
+      - name: Install sphinx and breathe
+        run: pip install -r src/docs/requirements.txt
+
+      # generate.sh is the same script used for a local preview - CI running something else is how
+      # the two drift apart.
+      - name: Build
+        working-directory: src/docs
+        run: ./generate.sh
+
+      # docs/CNAME used to be committed. The custom domain is also stored in the repository's Pages
+      # settings, but Pages rewrites that setting from the artifact, so leaving it out would drop
+      # the domain on the first deployment.
+      - name: Custom domain
+        run: echo nanobench.ankerl.com > docs/CNAME
+
+      - uses: actions/upload-pages-artifact@v5
+        with:
+          path: docs
+
+  deploy:
+    # Only master publishes. A pull request from a fork cannot reach the github-pages environment
+    # anyway, and this way the condition is stated rather than relied upon.
+    if: github.event_name != 'pull_request'
+    needs: build
+    runs-on: ubuntu-latest
+    permissions:
+      pages: write
+      id-token: write
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    # Two deployments racing would be resolved by whichever finishes last, not by whichever commit
+    # is newer. Not cancel-in-progress: a half-finished deployment is worse than a queued one.
+    concurrency:
+      group: pages
+      cancel-in-progress: false
+    steps:
+      - id: deployment
+        uses: actions/deploy-pages@v5
