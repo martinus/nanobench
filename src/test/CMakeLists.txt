@@ -36,6 +36,7 @@ target_sources_local(nb PRIVATE
     unit_columns.cpp
     unit_epoch_time.cpp
     unit_exact_iters_and_epochs.cpp
+    unit_markdown_output.cpp
     unit_mdape.cpp
     unit_multi_output.cpp
     unit_number_format.cpp
