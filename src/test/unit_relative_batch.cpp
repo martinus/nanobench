@@ -30,6 +30,14 @@ double relativeOf(std::string const& markdown, std::string const& name) {
 // different batch size than the run compared against it, the percentage was
 // off by exactly the ratio of the batch sizes.
 // See https://github.com/martinus/nanobench/issues/131
+//
+// The expected percentage is derived from the two medians rather than assumed
+// to be 100%. Both benchmarks do the same work per item, but that only makes
+// them equally fast on an idle machine: on a CI runner the first one pays for
+// the frequency ramp and the second one does not, which produced a 38% gap
+// between two measurements that were individually stable at err% 0.5. The bug
+// this guards against halves the percentage whatever the timings are, so
+// deriving the expectation costs nothing in sensitivity.
 // NOLINTNEXTLINE
 TEST_CASE("relative_takes_batch_into_account") {
     ankerl::nanobench::Rng rng(123);
@@ -56,7 +64,18 @@ TEST_CASE("relative_takes_batch_into_account") {
     INFO(markdown);
     REQUIRE(relativeOf(markdown, "baseline") == doctest::Approx(100.0));
 
-    // Without taking the batch into account this would be ~50%.
+    // Every column of the row is per unit, so the percentage has to be the
+    // ratio of the per unit medians. Comparing the raw epoch times instead -
+    // the bug - gives exactly half of that here, because the batch is twice as
+    // large, so a 1% tolerance for the rounding in the table is plenty.
+    auto const& results = bench.results();
+    REQUIRE(results.size() == 2);
+    auto perItem = [](ankerl::nanobench::Result const& r) {
+        return r.median(ankerl::nanobench::Result::Measure::elapsed) /
+               r.config().mBatch;
+    };
+    auto const expected = 100.0 * perItem(results[0]) / perItem(results[1]);
+
     REQUIRE(relativeOf(markdown, "twice the batch") ==
-            doctest::Approx(100.0).epsilon(0.25));
+            doctest::Approx(expected).epsilon(0.01));
 }
