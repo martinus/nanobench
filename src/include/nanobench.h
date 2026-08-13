@@ -1273,6 +1273,10 @@ constexpr uint64_t Rng::rotl(uint64_t x, unsigned k) noexcept {
 
 namespace detail {
 
+// A setup lambda that captures little - or nothing - is smaller than the alignment of the Bench
+// reference next to it, so this pads. That is unavoidable here and harmless, but a consumer building
+// with -Weverything sees it as an error in nanobench's own header.
+ANKERL_NANOBENCH(IGNORE_PADDED_PUSH)
 template <typename SetupOp>
 class SetupRunner {
 public:
@@ -1304,6 +1308,7 @@ private:
     SetupOp mSetupOp;
     Bench& mBench;
 };
+ANKERL_NANOBENCH(IGNORE_PADDED_POP)
 } // namespace detail
 
 template <typename Op>
