@@ -1,10 +1,5 @@
-# Run by the "lint" job of .github/workflows/main.yml, against a compile database configured with
-# clang (a gcc one makes clang-tidy report every gcc-only -W flag as an unknown warning option).
-#
-# The tool version is pinned there, because "*" keeps gaining checks: an unpinned clang-tidy turns a
-# runner image bump into a red build for reasons that have nothing to do with a change. This is also
-# why clang-tidy is no longer wired into CMAKE_CXX_CLANG_TIDY - a compiler upgrade should not stop
-# anyone from building the tests.
+# Run by the "lint" job of .github/workflows/main.yml with a pinned clang-tidy; see the comment in
+# CMakeLists.txt for why it is no longer part of the build.
 ---
 Checks: '*,
 -altera-id-dependent-backward-branch,

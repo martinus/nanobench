@@ -122,18 +122,14 @@ function(add_compile_flags_target target)
         # are simply ignored, which keeps the list below working on every clang.
         target_compile_options(${target} PRIVATE -Wno-unknown-warning-option)
 
-        # Warnings that arrived that way, none of them actionable here:
-        #   -Wunsafe-buffer-usage        wants std::span, which a C++11 header cannot use, and fires
-        #                                throughout the vendored doctest.h
+        # Warnings that arrived that way and are nanobench's own, so they cannot be dealt with by
+        # including someone else's header as a system one:
+        #   -Wunsafe-buffer-usage        wants std::span, which a C++11 header cannot use
         #   -Wswitch-default             the warning deliberately switched off for gcc a few lines up
-        #   -Wthread-safety-negative     an opt-in analysis, on doctest.h's mutexes
-        #   -Wnrvo                       doctest.h returning a local by value
         #   -Wpoison-system-directories  /usr/local/include being in the default search path on the
-        #                                macOS runners; it is about cross-compilation, not this code
+        #                                macOS runners; it is about cross-compilation, not any code
         target_compile_options(${target} PRIVATE -Wno-unsafe-buffer-usage)
         target_compile_options(${target} PRIVATE -Wno-switch-default)
-        target_compile_options(${target} PRIVATE -Wno-thread-safety-negative)
-        target_compile_options(${target} PRIVATE -Wno-nrvo)
         target_compile_options(${target} PRIVATE -Wno-poison-system-directories)
     endif()
 

@@ -6,7 +6,7 @@ name: Build, Test, Lint
 # was already being run by hand - plus the platforms the header branches on.
 #
 # The weekly run matters for a header-only library: the code stops changing while compilers keep
-# moving, and the last two commits before this one were exactly that kind of breakage.
+# moving - "include <cstdint> to fix compilation w/ GCC 14" is the shape of it.
 on:
   push:
     branches: [master]
@@ -34,7 +34,12 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v7
-      - run: sudo apt-get update && sudo apt-get install -y clang-format-18 clang-tidy-18 ninja-build
+      # The runner image already carries both, so this normally does nothing; it is here so the job
+      # still works on the day the image stops shipping 18, rather than silently linting with 19.
+      - name: Install the pinned tools if the image does not have them
+        run: |
+          command -v clang-format-18 >/dev/null && command -v clang-tidy-18 >/dev/null && exit 0
+          sudo apt-get update && sudo apt-get install -y clang-format-18 clang-tidy-18
 
       # lint-all.py runs every src/scripts/lint/lint-* there is, which is how lint-version.py - a
       # check that the version macros in nanobench.h match the ones in the generated docs - gets run
@@ -45,12 +50,13 @@ jobs:
         run: src/scripts/lint/lint-all.py
 
       # Configured with clang on purpose: against a gcc compile database, clang-tidy reports every
-      # gcc-only -W flag in the build as an unknown warning option.
+      # gcc-only -W flag in the build as an unknown warning option. Nothing is built here, only the
+      # compile database is wanted, so the generator does not matter.
       - name: clang-tidy
         env:
           CXX: clang++
         run: |
-          cmake -S . -B build-tidy -GNinja -DCMAKE_BUILD_TYPE=Release
+          cmake -S . -B build-tidy -DCMAKE_BUILD_TYPE=Release
           clang-tidy-18 -p build-tidy src/test/app/nanobench.cpp
 
   # The full test suite, built with the project's own strict flags.
@@ -124,12 +130,10 @@ jobs:
             os: ubuntu-latest
             cxx: g++
             cmake_args: -DNB_sanitizer=ON
-            sanitizers: true
           - name: Linux Sanitizer (clang, address+undefined)
             os: ubuntu-latest
             cxx: clang++
             cmake_args: -DNB_sanitizer=ON
-            sanitizers: true
 
           # Everything perf_event_open touches disappears behind this define, and that is the
           # configuration every non-Linux user compiles - worth building on purpose rather than
@@ -149,8 +153,9 @@ jobs:
             cxx: clang++
             apt: clang
 
-          # The oldest toolchains still available on a hosted runner. Note this does not reach the
-          # gcc < 5 branch in nanobench.h - see the README of this workflow in the PR that added it.
+          # The oldest toolchains still available on a hosted runner. Note that the oldest gcc here
+          # is 9, so the __GNUC__ < 5 branch in nanobench.h stays untested; reaching it needs a
+          # container with archived apt repositories.
           - name: Linux (gcc-9, C++17)
             os: ubuntu-22.04
             cxx: g++-9
@@ -202,9 +207,12 @@ jobs:
       # derived from __FILE__, and ./nb writes its example artifacts into the current directory.
       - name: Test
         shell: bash
+        # Set unconditionally: only a sanitizer runtime reads these, so on a leg that is not built
+        # with -fsanitize they do nothing. halt_on_error is the point of running UBSan at all -
+        # without it the runtime prints the error and the test still exits 0.
         env:
-          ASAN_OPTIONS: ${{ matrix.sanitizers && 'detect_stack_use_after_return=1' || '' }}
-          UBSAN_OPTIONS: ${{ matrix.sanitizers && format('print_stacktrace=1:halt_on_error=1:suppressions={0}/ubsan.supp', github.workspace) || '' }}
+          ASAN_OPTIONS: detect_stack_use_after_return=1
+          UBSAN_OPTIONS: print_stacktrace=1:halt_on_error=1:suppressions=ubsan.supp
         run: ${{ matrix.bin || './build/nb' }}
 
   # The header compiled the way a *consumer* compiles it - their warning flags, not the project's -
@@ -216,16 +224,15 @@ jobs:
     steps:
       - uses: actions/checkout@v7
       - run: |
-          set -e
           for std in 11 14 17 20; do
             echo "--- clang++ -std=c++$std"
             # -Wno-unknown-warning-option for the same reason src/cmake/CMakeLists.txt has it: the
             # -Wno- flags after it do not all exist in every clang, and -Weverything keeps adding more.
-            clang++ -std=c++$std -O2 -c -o /dev/null -Isrc/include src/test/app/nanobench.cpp \
+            clang++ -std=c++$std -fsyntax-only -Isrc/include src/test/app/nanobench.cpp \
               -Werror -Weverything -Wno-c++98-compat -Wno-c++98-compat-pedantic \
               -Wno-unknown-warning-option -Wno-unsafe-buffer-usage -Wno-padded -Wno-switch-default
             echo "--- g++ -std=c++$std"
-            g++ -std=c++$std -O2 -c -o /dev/null -Isrc/include src/test/app/nanobench.cpp \
+            g++ -std=c++$std -fsyntax-only -Isrc/include src/test/app/nanobench.cpp \
               -Werror -Wall -Wextra -Wconversion -Wold-style-cast -Wfloat-equal -Wsign-conversion \
               -Wshadow -Wdouble-promotion
           done
@@ -294,7 +301,10 @@ jobs:
       - name: install
         run: |
           cmake -S . -B build-install -DCMAKE_INSTALL_PREFIX="$PWD/prefix"
-          cmake --build build-install --parallel 4 --target install
+          # --target install would depend on "all" and build the whole 36 TU test suite to install
+          # a header and a one TU static library.
+          cmake --build build-install --parallel 4 --target nanobench
+          cmake --install build-install
       - name: find_package
         run: |
           cmake -S src/test/cmake_consumer/installed -B build-find -DCMAKE_PREFIX_PATH="$PWD/prefix"
