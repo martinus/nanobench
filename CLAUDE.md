@@ -37,8 +37,34 @@ Options: `-DNB_cxx_standard=17` (default 11), `-DNB_sanitizer=ON` (gcc and clang
   local `fma` template joins it in one overload set and `fma<float>` stops resolving — that broke
   the libc++ leg until `tutorial_context.cpp`'s helper became `fma_bench`.
 
-## Before pushing
+## Landing a change
 
+Every change reaches `master` through a pull request that is green — one-line fixes, docs edits and
+lint reformats included. This is enforced rather than agreed: `master` requires the `CI green` status
+check with `enforce_admins` on, so a direct push is rejected with `GH006: Protected branch update
+failed`. Rebase merge is the only method the repository allows, so `gh pr merge <n> --rebase` is the
+call. Merging someone else's PR is fine once its checks pass.
+
+The rule is here because local verification cannot stand in for the matrix, however thorough it
+looks. It was introduced after a commit pushed straight to `master` turned eleven clang and macOS
+legs red: a new test whose empty-capture lambda instantiated `SetupRunner` for the first time tripped
+`-Wpadded`, and the pre-push check had only run clang over the header — where that template never
+gets instantiated at all.
+
+`CI green` is a gate job at the end of `main.yml` that `needs:` every other job in the workflow, so
+protection requires one check instead of thirty job names that silently stop being required as legs
+get renamed or added. Two parts of it are load-bearing: `if: always()`, because a job whose
+dependency failed is *skipped* rather than failed, and the explicit result test, because GitHub
+counts a skipped required check as **satisfied** — without both, the gate would go green exactly when
+the matrix did not. `lint-ci-gate.py` fails the build if a job is missing from its `needs:`, if an
+entry is stale, or if `if: always()` disappears.
+
+Old PRs still carry red and green checks from Travis, Cirrus and AppVeyor. All three are dead for
+this repository and their results mean nothing — read the GitHub Actions checks instead.
+
+## Verifying locally
+
+Nothing below replaces the PR: it is how you arrive with a change that has a chance of being green.
 `.github/workflows/main.yml` builds every leg the same way, so any of them reproduces locally:
 
 ```sh
@@ -49,6 +75,19 @@ cmake --build build --parallel 4 && ./build/nb        # run from the repo root
 It covers gcc/clang × C++11..20, 32 bit, libc++, sanitizers, ARM64, macOS, MSVC, clang-cl and
 MinGW, plus a `lint` job (pinned clang-format-18 / clang-tidy-18) and a CMake consumer job. What it
 cannot cover is the pre-gcc-5 half of `src/scripts/all.sh`, which is what that script is still for.
+
+Two legs exist because a bug hid for years behind everything else being alike, and both need a
+container to reproduce:
+
+- `musl libc (Alpine, gcc)` — glibc declares `ioctl()`'s request parameter as `unsigned long`, musl
+  as `int`, and `PERF_EVENT_IOC_ID` does not fit in an `int`, so nanobench did not compile on Alpine
+  from 2023 until issue #92 was fixed. Every other Linux leg is glibc. It runs Alpine inside a
+  container step rather than through the job-level `container:`, because `actions/checkout` needs a
+  glibc node.
+- `Consumer without RTTI (gcc + clang)` — installing a `std::numpunct` facet goes through
+  `__dynamic_cast`, which reads through a null pointer under `-fno-rtti` (issue #122). The number
+  formatting groups digits by hand for that reason; keep `std::locale` out of it. The failure was at
+  runtime, so the leg runs the binary rather than only compiling it.
 
 Only the `build` legs compile the test suite with the project's flags. `header`, `clang-cl` and
 `mingw` build just the header plus a small consumer, because the strict flag set doesn't survive
