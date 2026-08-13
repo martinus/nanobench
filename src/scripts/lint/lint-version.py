@@ -8,22 +8,18 @@ import re
 root = os.path.abspath(pathlib.Path(__file__).parent.parent.parent.parent)
 
 # filename, pattern, number of occurrences
+#
+# Only files that carry a hand-written version belong here. The generated docs/*.html used to show
+# one in the sidebar and were checked too, but sphinx-rtd-theme 3.x removed 'display_version' (see
+# src/docs/conf.py), so no generated page contains the version any more.
 file_pattern_count = [
     (
         f"{root}/src/docs/conf.py",
         r"version = 'v(\d+)\.(\d+)\.(\d+)'",
         1),
-    (f"{root}/docs/CODE_OF_CONDUCT.html", r"^\s*v(\d+)\.(\d+)\.(\d+)$", 1),
-    (f"{root}/docs/comparison.html", r"^\s*v(\d+)\.(\d+)\.(\d+)$", 1),
-    (f"{root}/docs/genindex.html", r"^\s*v(\d+)\.(\d+)\.(\d+)$", 1),
-    (f"{root}/docs/index.html", r"^\s*v(\d+)\.(\d+)\.(\d+)$", 1),
-    (f"{root}/docs/license.html", r"^\s*v(\d+)\.(\d+)\.(\d+)$", 1),
-    (f"{root}/docs/reference.html", r"^\s*v(\d+)\.(\d+)\.(\d+)$", 1),
-    (f"{root}/docs/search.html", r"^\s*v(\d+)\.(\d+)\.(\d+)$", 1),
-    (f"{root}/docs/tutorial.html", r"^\s*v(\d+)\.(\d+)\.(\d+)$", 1),
 ]
 
-# let's parse the reference from svector.h
+# let's parse the reference from nanobench.h
 major = "??"
 minor = "??"
 patch = "??"
