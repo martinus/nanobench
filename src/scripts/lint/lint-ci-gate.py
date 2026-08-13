@@ -42,7 +42,7 @@ expected = [name for name in jobs if name != GATE]
 missing = [name for name in expected if name not in needs]
 if missing:
     print(f"{workflow}: '{GATE}' does not depend on {', '.join(missing)}")
-    print(f"  add them to its `needs:`, otherwise those jobs can fail without blocking a merge")
+    print("  add them to its `needs:`, otherwise those jobs can fail without blocking a merge")
     exit_code = 1
 
 stale = [name for name in needs if name not in jobs]
@@ -54,7 +54,7 @@ if stale:
 # skipped, and GitHub treats a skipped required check as satisfied.
 if jobs[GATE].get("if") != "always()":
     print(f"{workflow}: '{GATE}' needs `if: always()`, or it is skipped when a job fails")
-    print(f"  a skipped required check counts as satisfied, so the merge would not be blocked")
+    print("  a skipped required check counts as satisfied, so the merge would not be blocked")
     exit_code = 1
 
 if exit_code == 0:

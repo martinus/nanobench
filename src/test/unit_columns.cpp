@@ -1,53 +1,62 @@
 #include <nanobench.h>
 #include <thirdparty/doctest/doctest.h>
 
+#include <algorithm>
 #include <sstream>
 #include <string>
 #include <vector>
 
 namespace {
 
+// A table line is a row of cells; the one made of dashes is the separator
+// between the header and the data.
+bool isTableLine(std::string const& line) {
+    return line.size() > 1 && '|' == line[0];
+}
+
+bool isSeparatorLine(std::string const& line) {
+    return isTableLine(line) && std::string::npos != line.find("--");
+}
+
+// "|  a |  b |" -> {"a", "b"}
+std::vector<std::string> splitCells(std::string const& line) {
+    std::vector<std::string> cells;
+    std::istringstream cellStream(line);
+    std::string cell;
+    std::getline(cellStream, cell, '|'); // before the first '|'
+    while (std::getline(cellStream, cell, '|')) {
+        auto const first = cell.find_first_not_of(' ');
+        cells.push_back(
+            first == std::string::npos
+                ? std::string()
+                : cell.substr(first, cell.find_last_not_of(' ') - first + 1));
+    }
+    return cells;
+}
+
 // The header line of the table, split into trimmed cell names.
 std::vector<std::string> headerCells(std::string const& markdown) {
     std::istringstream lines(markdown);
     std::string line;
     while (std::getline(lines, line)) {
-        if (line.size() > 1 && '|' == line[0] &&
-            std::string::npos == line.find("--")) {
-            std::vector<std::string> cells;
-            std::istringstream cellStream(line);
-            std::string cell;
-            std::getline(cellStream, cell, '|'); // before the first '|'
-            while (std::getline(cellStream, cell, '|')) {
-                auto const first = cell.find_first_not_of(' ');
-                cells.push_back(
-                    first == std::string::npos
-                        ? std::string()
-                        : cell.substr(first,
-                                      cell.find_last_not_of(' ') - first + 1));
-            }
-            return cells;
+        if (isTableLine(line) && !isSeparatorLine(line)) {
+            return splitCells(line);
         }
     }
     return {};
 }
 
-// first cell, or "" - the helpers must never index an empty vector, or a
+// first cell, or a marker - the helpers must never index an empty vector, or a
 // missing table turns a failed CHECK into a crashed test case.
 std::string firstCell(std::vector<std::string> const& cells) {
     return cells.empty() ? std::string("<no row>") : cells.front();
 }
 
 bool hasCell(std::vector<std::string> const& cells, std::string const& name) {
-    for (auto const& c : cells) {
-        if (c == name) {
-            return true;
-        }
-    }
-    return false;
+    return cells.end() != std::find(cells.begin(), cells.end(), name);
 }
 
-// Rows are everything after the separator line.
+// Rows are the table lines after the separator.
 std::vector<std::string> dataCells(std::string const& markdown,
                                    size_t rowIndex) {
     std::istringstream lines(markdown);
@@ -55,30 +64,11 @@ std::vector<std::string> dataCells(std::string const& markdown,
     bool seenSeparator = false;
     size_t seen = 0;
     while (std::getline(lines, line)) {
-        if (line.size() > 1 && '|' == line[0] &&
-            std::string::npos != line.find("--")) {
+        if (isSeparatorLine(line)) {
             seenSeparator = true;
-            continue;
+        } else if (seenSeparator && isTableLine(line) && seen++ == rowIndex) {
+            return splitCells(line);
         }
-        if (!seenSeparator || line.empty() || '|' != line[0]) {
-            continue;
-        }
-        if (seen++ != rowIndex) {
-            continue;
-        }
-        std::vector<std::string> cells;
-        std::istringstream cellStream(line);
-        std::string cell;
-        std::getline(cellStream, cell, '|');
-        while (std::getline(cellStream, cell, '|')) {
-            auto const first = cell.find_first_not_of(' ');
-            cells.push_back(
-                first == std::string::npos
-                    ? std::string()
-                    : cell.substr(first,
-                                  cell.find_last_not_of(' ') - first + 1));
-        }
-        return cells;
     }
     return {};
 }
@@ -164,13 +154,8 @@ TEST_CASE("unit_columns_context") {
     auto const markdown = oss.str();
     INFO(markdown);
     auto const header = headerCells(markdown);
-    size_t threadColumns = 0;
-    for (auto const& c : header) {
-        if (c == "threads") {
-            ++threadColumns;
-        }
-    }
-    CHECK(threadColumns == 1);
+    CHECK(std::count(header.begin(), header.end(), std::string("threads")) ==
+          1);
     CHECK(firstCell(header) == "threads");
     CHECK(firstCell(dataCells(markdown, 0)) == "8");
 }
@@ -192,7 +177,6 @@ TEST_CASE("unit_columns_context_missing_is_blank") {
     CHECK(firstCell(dataCells(markdown, 0)) == "8");
     CHECK(firstCell(dataCells(markdown, 1)).empty());
 
-    bench.clearContextColumns();
     std::ostringstream after;
     ankerl::nanobench::Bench cleared;
     configure(cleared, after, "context_cleared");
