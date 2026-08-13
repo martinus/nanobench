@@ -1448,7 +1448,9 @@ struct TableInfo;
 // formatting utilities
 namespace fmt {
 
-class NumSep;
+// groups the integer digits of an already formatted number in threes
+std::string addThousandsSeparators(std::string str, char sep);
+
 class StreamStateRestorer;
 class Number;
 class MarkDownColumn;
@@ -1925,19 +1927,6 @@ Clock::duration calcClockResolution(size_t numEvaluations) noexcept;
 
 // formatting utilities
 namespace fmt {
-
-// adds thousands separator to numbers
-ANKERL_NANOBENCH(IGNORE_PADDED_PUSH)
-class NumSep : public std::numpunct<char> {
-public:
-    explicit NumSep(char sep);
-    char do_thousands_sep() const override;
-    std::string do_grouping() const override;
-
-private:
-    char mSep;
-};
-ANKERL_NANOBENCH(IGNORE_PADDED_POP)
 
 // RAII to save & restore a stream's state
 ANKERL_NANOBENCH(IGNORE_PADDED_PUSH)
@@ -2999,18 +2988,6 @@ ANKERL_NANOBENCH(NODISCARD) PerfCountSet<bool> const& PerformanceCounters::has()
 // formatting utilities
 namespace fmt {
 
-// adds thousands separator to numbers
-NumSep::NumSep(char sep)
-    : mSep(sep) {}
-
-char NumSep::do_thousands_sep() const {
-    return mSep;
-}
-
-std::string NumSep::do_grouping() const {
-    return "\003";
-}
-
 // RAII to save & restore a stream's state
 StreamStateRestorer::StreamStateRestorer(std::ostream& s)
     : mStream(s)
@@ -3043,10 +3020,40 @@ Number::Number(int width, int precision, double value)
     , mPrecision(precision)
     , mValue(value) {}
 
+// Groups the integer digits of an already formatted number in threes: "1234.50" -> "1,234.50".
+//
+// This used to be a std::numpunct facet imbued into the stream, which is the idiomatic way and works
+// right up until someone builds with -fno-rtti: installing a facet goes through __dynamic_cast, which
+// without RTTI reads through a null pointer and takes the process with it (issue #122). Grouping the
+// digits by hand costs a few lines, produces the same output for everyone, and drops an allocation
+// per formatted number along the way.
+//
+// Only a run of digits is touched, so "inf" and "nan" pass through unchanged.
+std::string addThousandsSeparators(std::string str, char sep) {
+    size_t const start = (!str.empty() && ('-' == str[0] || '+' == str[0])) ? 1U : 0U;
+    size_t end = start;
+    while (end < str.size() && str[end] >= '0' && str[end] <= '9') {
+        ++end;
+    }
+
+    // insert from the right, so the positions still to be visited stay valid
+    for (size_t pos = end; pos > start + 3;) {
+        pos -= 3;
+        str.insert(pos, 1, sep);
+    }
+    return str;
+}
+
 std::ostream& Number::write(std::ostream& os) const {
     StreamStateRestorer const restorer(os);
-    os.imbue(std::locale(os.getloc(), new NumSep(',')));
-    os << std::setw(mWidth) << std::setprecision(mPrecision) << std::fixed << mValue;
+
+    // format without the stream's locale, so a global locale that already groups digits cannot group
+    // them a second time
+    std::stringstream ss;
+    ss.imbue(std::locale::classic());
+    ss << std::setprecision(mPrecision) << std::fixed << mValue;
+
+    os << std::setw(mWidth) << addThousandsSeparators(ss.str(), ',');
     return os;
 }
 

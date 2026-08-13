@@ -237,6 +237,23 @@ jobs:
               -Wshadow -Wdouble-promotion
           done
 
+  # nanobench used to install a std::numpunct facet to get the thousands separators, and installing a
+  # facet goes through __dynamic_cast - which reads through a null pointer when the consumer builds
+  # with -fno-rtti, taking the process with it (issue #122). Every other leg has RTTI on, so nothing
+  # could see it. The failure was at runtime and not at compile time, so this runs the binary.
+  no-rtti:
+    name: Consumer without RTTI (gcc + clang)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - run: |
+          for cxx in g++ clang++; do
+            echo "--- $cxx -fno-rtti"
+            $cxx -std=c++17 -O1 -g -fno-rtti -fsanitize=address,undefined \
+              -Isrc/include src/docs/code/full_example_simple.cpp -o /tmp/no-rtti
+            UBSAN_OPTIONS=print_stacktrace=1:halt_on_error=1 /tmp/no-rtti
+          done
+
   # Every other Linux leg is glibc, and the two libcs disagree about ioctl(): glibc declares the
   # request parameter as unsigned long, musl as int. PERF_EVENT_IOC_ID does not fit into an int, so
   # nanobench did not compile on Alpine at all for three years and no job could see it (issue #92).
