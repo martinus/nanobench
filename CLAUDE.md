@@ -67,8 +67,12 @@ src/scripts/lint/lint-all.py
 There are **two** clang-format configs: `src/include/.clang-format` (135 columns, the header) and
 `src/.clang-format` (80 columns, everything under `src/test/`).
 
-`docs/` is generated (doxygen + sphinx + breathe, via `src/docs/generate.sh`) and regenerated in its
-own commit — never hand-edit it. Doc comments live in the header.
+Doc comments live in the header. The site at <https://nanobench.ankerl.com/> is built from them by
+`.github/workflows/docs.yml` (doxygen + sphinx + breathe) and deployed to GitHub Pages on every
+push to master, so there is nothing to regenerate by hand and `docs/` is **not** committed —
+`src/docs/generate.sh` writes it as a gitignored local preview. Install the toolchain with
+`dnf install doxygen python3-sphinx python3-breathe python3-sphinx_rtd_theme python3-recommonmark`,
+or `pip install -r src/docs/requirements.txt`.
 
 ## How a measurement works
 

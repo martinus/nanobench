@@ -12,9 +12,12 @@ set -e
 #   pip install -r requirements.txt
 #
 # requirements.txt matches what Fedora 44 packages, so both routes produce the same output.
-
-# rm should work, this should copy all files, but for safety reasons I'm not doing it...
-#rm -Rvf ../../docs
+#
+# The output is a local preview: ../../docs is gitignored, and the published site is built by
+# .github/workflows/docs.yml. Deleting it first is safe for that reason, and it is what keeps the
+# preview honest - while docs/ was committed, files the theme had stopped referencing survived
+# every regeneration and accumulated for years.
+rm -Rf ../../docs
 mkdir -p _build/doxygen
 doxygen
 sphinx-build -E . ../../docs

@@ -5,3 +5,6 @@
 **/perf.data
 **/perf.data.old
 /src/docs/_build
+# The published site is built and deployed by .github/workflows/docs.yml, so the output of
+# src/docs/generate.sh is a local preview artifact now, not something to commit.
+/docs/
