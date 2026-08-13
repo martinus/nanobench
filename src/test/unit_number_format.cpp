@@ -13,34 +13,28 @@
 // instead: every number in it still has to be grouped, and grouped correctly.
 namespace {
 
-// "1,234,567.00" -> true, "1,23,4567" -> false, "1234.00" -> false once it is
-// long enough to need a separator.
+// "1,234,567.00" -> true, "1,23,4567" -> false, and "1000.00" -> false once it
+// is long enough to need a separator. The rule is purely positional: counting
+// from the right of the integer part, every 4th character is a comma and the
+// rest are digits.
 bool isGroupedCorrectly(std::string const& number) {
-    auto const dot = number.find('.');
-    auto const integerPart =
-        number.substr(0, dot == std::string::npos ? number.size() : dot);
+    // substr treats npos as "to the end", so this is the whole integer part
+    auto const integerPart = number.substr(0, number.find('.'));
+    if (integerPart.empty() || ',' == integerPart[0]) {
+        return false;
+    }
 
-    std::size_t digitsSinceSeparator = 0;
-    bool seenSeparator = false;
-    for (std::size_t i = integerPart.size(); i > 0; --i) {
-        char const c = integerPart[i - 1];
-        if (',' == c) {
-            if (digitsSinceSeparator != 3) {
-                return false; // a group that is not exactly three digits long
-            }
-            digitsSinceSeparator = 0;
-            seenSeparator = true;
-        } else if (c >= '0' && c <= '9') {
-            ++digitsSinceSeparator;
-            if (digitsSinceSeparator > 3) {
-                return false; // four digits in a row, so a separator is missing
-            }
-        } else {
-            return false; // not a number we know how to check
+    for (std::size_t i = 0; i < integerPart.size(); ++i) {
+        bool const wantComma = 0 == ((integerPart.size() - i) % 4);
+        char const c = integerPart[i];
+        if (wantComma != (',' == c)) {
+            return false;
+        }
+        if (!wantComma && (c < '0' || c > '9')) {
+            return false;
         }
     }
-    // the leading group may be shorter, but must not be empty when there is one
-    return !seenSeparator || digitsSinceSeparator > 0;
+    return true;
 }
 
 } // namespace

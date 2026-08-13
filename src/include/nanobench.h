@@ -1877,17 +1877,17 @@ static Result::Measure measureFromString(std::string const& str, double& scale) 
         return m;
     }
 
-    struct ScaledMeasure {
-        char const* name;
-        double scale;
-    };
-    // NOLINTNEXTLINE(cppcoreguidelines-avoid-c-arrays,hicpp-avoid-c-arrays,modernize-avoid-c-arrays)
-    static ScaledMeasure const scaled[] = {{"elapsedms", 1e3}, {"elapsedus", 1e6}, {"elapsedns", 1e9}};
-    for (auto const& s : scaled) {
-        if (str == s.name) {
-            scale = s.scale;
-            return Result::Measure::elapsed;
-        }
+    if (str == "elapsedms") {
+        scale = 1e3;
+        return Result::Measure::elapsed;
+    }
+    if (str == "elapsedus") {
+        scale = 1e6;
+        return Result::Measure::elapsed;
+    }
+    if (str == "elapsedns") {
+        scale = 1e9;
+        return Result::Measure::elapsed;
     }
     return Result::Measure::_size;
 }
@@ -2117,6 +2117,9 @@ public:
     ANKERL_NANOBENCH(NODISCARD) std::string value() const;
 
 private:
+    // the column's padding convention, stated once: right aligned in mWidth, one trailing space
+    ANKERL_NANOBENCH(NODISCARD) std::string padded(std::string const& text) const;
+
     int mWidth;
     int mPrecision;
     std::string mTitle;
@@ -2564,9 +2567,19 @@ struct IterationLogic::Impl {
             // prepare column data ///////
             std::vector<fmt::MarkDownColumn> columns;
 
+            // Whether a column *can* be shown (is the counter available, is relative() on) and whether
+            // the caller *wants* it are different questions, and interleaving them at every site made it
+            // easy to answer one where the other was meant. The availability checks stay below; the
+            // visibility policy lives here.
+            auto addColumn = [&](Column column, int width, int precision, std::string title, std::string suffix, double value) {
+                if (mBench.isColumnVisible(column)) {
+                    columns.emplace_back(width, precision, std::move(title), std::move(suffix), value);
+                }
+            };
+
             auto rMedian = mResult.median(Result::Measure::elapsed);
 
-            if (mBench.relative() && mBench.isColumnVisible(Column::relative)) {
+            if (mBench.relative()) {
                 double d = 100.0;
                 if (!mBench.results().empty()) {
                     // Every other column is per unit, so this one has to be as well. Comparing the raw epoch times would
@@ -2578,71 +2591,57 @@ struct IterationLogic::Impl {
                     auto const den = rMedian * baseline.config().mBatch;
                     d = den <= 0.0 ? 0.0 : num / den * 100.0;
                 }
-                columns.emplace_back(11, 1, "relative", "%", d);
+                addColumn(Column::relative, 11, 1, "relative", "%", d);
             }
 
-            if (mBench.complexityN() > 0 && mBench.isColumnVisible(Column::complexityN)) {
-                columns.emplace_back(14, 0, "complexityN", "", mBench.complexityN());
+            if (mBench.complexityN() > 0) {
+                addColumn(Column::complexityN, 14, 0, "complexityN", "", mBench.complexityN());
             }
 
             // context columns come before the measurements: they say which benchmark this row is, and
             // that reads better on the left. A row without the variable gets a blank cell rather than
             // a missing column, so the table stays rectangular.
-            for (auto const& variableName : mBench.config().mContextColumns) {
-                auto const& ctx = mResult.config().mContext;
+            auto const& ctx = mResult.config().mContext;
+            for (auto const& variableName : mResult.config().mContextColumns) {
                 auto it = ctx.find(variableName);
                 auto const width = static_cast<int>((std::max)(variableName.size() + 3, static_cast<size_t>(11)));
                 columns.emplace_back(width, variableName, it == ctx.end() ? std::string() : it->second);
             }
 
-            if (mBench.isColumnVisible(Column::timePerUnit)) {
-                columns.emplace_back(22, 2, mBench.timeUnitName() + "/" + mBench.unit(), "",
-                                     rMedian / (mBench.timeUnit().count() * mBench.batch()));
-            }
-            if (mBench.isColumnVisible(Column::unitPerSecond)) {
-                columns.emplace_back(22, 2, mBench.unit() + "/s", "", rMedian <= 0.0 ? 0.0 : mBench.batch() / rMedian);
-            }
+            addColumn(Column::timePerUnit, 22, 2, mBench.timeUnitName() + "/" + mBench.unit(), "",
+                      rMedian / (mBench.timeUnit().count() * mBench.batch()));
+            addColumn(Column::unitPerSecond, 22, 2, mBench.unit() + "/s", "", rMedian <= 0.0 ? 0.0 : mBench.batch() / rMedian);
 
             double const rErrorMedian = mResult.medianAbsolutePercentError(Result::Measure::elapsed);
-            if (mBench.isColumnVisible(Column::error)) {
-                columns.emplace_back(10, 1, "err%", "%", rErrorMedian * 100.0);
-            }
+            addColumn(Column::error, 10, 1, "err%", "%", rErrorMedian * 100.0);
 
             double rInsMedian = -1.0;
             if (mBench.performanceCounters() && mResult.has(Result::Measure::instructions)) {
                 rInsMedian = mResult.median(Result::Measure::instructions);
-                if (mBench.isColumnVisible(Column::instructions)) {
-                    columns.emplace_back(18, 2, "ins/" + mBench.unit(), "", rInsMedian / mBench.batch());
-                }
+                addColumn(Column::instructions, 18, 2, "ins/" + mBench.unit(), "", rInsMedian / mBench.batch());
             }
 
             double rCycMedian = -1.0;
             if (mBench.performanceCounters() && mResult.has(Result::Measure::cpucycles)) {
                 rCycMedian = mResult.median(Result::Measure::cpucycles);
-                if (mBench.isColumnVisible(Column::cycles)) {
-                    columns.emplace_back(18, 2, "cyc/" + mBench.unit(), "", rCycMedian / mBench.batch());
-                }
+                addColumn(Column::cycles, 18, 2, "cyc/" + mBench.unit(), "", rCycMedian / mBench.batch());
             }
-            if (rInsMedian > 0.0 && rCycMedian > 0.0 && mBench.isColumnVisible(Column::ipc)) {
-                columns.emplace_back(9, 3, "IPC", "", rCycMedian <= 0.0 ? 0.0 : rInsMedian / rCycMedian);
+            if (rInsMedian > 0.0 && rCycMedian > 0.0) {
+                addColumn(Column::ipc, 9, 3, "IPC", "", rCycMedian <= 0.0 ? 0.0 : rInsMedian / rCycMedian);
             }
             if (mBench.performanceCounters() && mResult.has(Result::Measure::branchinstructions)) {
                 double const rBraMedian = mResult.median(Result::Measure::branchinstructions);
-                if (mBench.isColumnVisible(Column::branches)) {
-                    columns.emplace_back(17, 2, "bra/" + mBench.unit(), "", rBraMedian / mBench.batch());
-                }
-                if (mResult.has(Result::Measure::branchmisses) && mBench.isColumnVisible(Column::branchMisses)) {
+                addColumn(Column::branches, 17, 2, "bra/" + mBench.unit(), "", rBraMedian / mBench.batch());
+                if (mResult.has(Result::Measure::branchmisses)) {
                     double p = 0.0;
                     if (rBraMedian >= 1e-9) {
                         p = 100.0 * mResult.median(Result::Measure::branchmisses) / rBraMedian;
                     }
-                    columns.emplace_back(10, 1, "miss%", "%", p);
+                    addColumn(Column::branchMisses, 10, 1, "miss%", "%", p);
                 }
             }
 
-            if (mBench.isColumnVisible(Column::total)) {
-                columns.emplace_back(12, 2, "total", "", mResult.sumProduct(Result::Measure::iterations, Result::Measure::elapsed));
-            }
+            addColumn(Column::total, 12, 2, "total", "", mResult.sumProduct(Result::Measure::iterations, Result::Measure::elapsed));
 
             // write everything
             auto& os = *mBench.output();
@@ -2746,26 +2745,20 @@ void IterationLogic::moveResultTo(std::vector<Result>& results) noexcept {
 // friends carry the direction bits in the high end, so they don't fit into an int and passing one
 // straight through is a value-changing conversion that -Werror rejects on musl (issue #92). Deduce
 // the declared parameter type from ioctl() itself, so the same cast is right for either libc.
-template <typename T>
-struct IoctlRequestType;
-
+// Never defined - only ever asked for its return type.
 template <typename Ret, typename Fd, typename Request>
-struct IoctlRequestType<Ret (*)(Fd, Request, ...)> {
-    using type = Request;
-};
+Request ioctlRequestType(Ret (*)(Fd, Request, ...));
 
 #        if defined(__cpp_noexcept_function_type)
 // Since C++17 noexcept is part of a function's type, and glibc declares ioctl() with __THROW - so
-// without this second specialization the deduction above stops matching at -std=c++17.
+// without this second overload the deduction above stops matching at -std=c++17.
 template <typename Ret, typename Fd, typename Request>
-struct IoctlRequestType<Ret (*)(Fd, Request, ...) noexcept> {
-    using type = Request;
-};
+Request ioctlRequestType(Ret (*)(Fd, Request, ...) noexcept);
 #        endif
 
 template <typename Arg>
 int perfIoctl(int fd, unsigned long request, Arg arg) {
-    using Request = typename IoctlRequestType<decltype(&::ioctl)>::type;
+    using Request = decltype(ioctlRequestType(&::ioctl));
     // NOLINTNEXTLINE(hicpp-signed-bitwise,cppcoreguidelines-pro-type-vararg)
     return ioctl(fd, static_cast<Request>(request), arg);
 }
@@ -3211,7 +3204,8 @@ std::string addThousandsSeparators(std::string str, char sep) {
 }
 
 std::ostream& Number::write(std::ostream& os) const {
-    StreamStateRestorer const restorer(os);
+    // No StreamStateRestorer: the only thing this used to change on os was the imbued locale, and
+    // std::setw below is consumed by the very next insertion.
 
     // format without the stream's locale, so a global locale that already groups digits cannot group
     // them a second time
@@ -3259,10 +3253,14 @@ MarkDownColumn::MarkDownColumn(int w, std::string tit, std::string text) noexcep
     , mText(std::move(text))
     , mIsText(true) {}
 
-std::string MarkDownColumn::title() const {
+std::string MarkDownColumn::padded(std::string const& text) const {
     std::stringstream ss;
-    ss << '|' << std::setw(mWidth - 2) << std::right << mTitle << ' ';
+    ss << '|' << std::setw(mWidth - 2) << std::right << text << ' ';
     return ss.str();
+}
+
+std::string MarkDownColumn::title() const {
+    return padded(mTitle);
 }
 
 std::string MarkDownColumn::separator() const {
@@ -3280,12 +3278,11 @@ std::string MarkDownColumn::invalid() const {
 }
 
 std::string MarkDownColumn::value() const {
-    std::stringstream ss;
     if (mIsText) {
-        // right aligned like every other column, so the ':' the separator puts on the right stays honest
-        ss << '|' << std::setw(mWidth - 2) << std::right << mText << ' ';
-        return ss.str();
+        // aligned like the header, so the ':' the separator puts on the right stays honest
+        return padded(mText);
     }
+    std::stringstream ss;
     auto width = mWidth - 2 - static_cast<int>(mSuffix.size());
     ss << '|' << Number(width, mPrecision, mValue) << mSuffix << ' ';
     return ss.str();
@@ -3607,10 +3604,8 @@ bool Bench::isColumnVisible(Column column) const noexcept {
 
 Bench& Bench::contextColumn(std::string const& variableName) {
     // adding the same name twice would print the same column twice
-    for (auto const& existing : mConfig.mContextColumns) {
-        if (existing == variableName) {
-            return *this;
-        }
+    if (mConfig.mContextColumns.end() != std::find(mConfig.mContextColumns.begin(), mConfig.mContextColumns.end(), variableName)) {
+        return *this;
     }
     mConfig.mContextColumns.push_back(variableName);
     return *this;
