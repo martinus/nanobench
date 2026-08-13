@@ -11,9 +11,7 @@ set -e
 #   python3 -m venv $HOME/venv && source $HOME/venv/bin/activate
 #   pip install -r requirements.txt
 #
-# Note that requirements.txt pins Sphinx 6.1.3, which needs python <= 3.11. The build also
-# works with current Sphinx (tested with 8.2.3 / breathe 4.36.0 / rtd-theme 3.1.0), but
-# rtd-theme 3.x restyles every page, so that regenerates all of docs/.
+# requirements.txt matches what Fedora 44 packages, so both routes produce the same output.
 
 # rm should work, this should copy all files, but for safety reasons I'm not doing it...
 #rm -Rvf ../../docs
