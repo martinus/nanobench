@@ -148,6 +148,19 @@
 // See https://gcc.gnu.org/bugzilla/show_bug.cgi?id=58265
 #define ANKERL_NANOBENCH_PRIVATE_NOEXCEPT_STRING_MOVE() std::is_nothrow_move_assignable<std::string>::value
 
+// nanobench throws only for programming errors in a render template - a tag that does not exist, a
+// section in the wrong place. With exceptions turned off there is nothing sensible left to do but
+// stop, so the argument is never evaluated and the message building disappears entirely.
+//
+// std::abort() rather than a per-compiler intrinsic on purpose: the branch that would pick one is
+// the branch no CI leg can reach, and an untested call into CRT internals is exactly the kind of
+// thing that turns out not to compile the first time someone actually needs it.
+#if defined(__cpp_exceptions) || defined(__EXCEPTIONS) || defined(_CPPUNWIND)
+#    define ANKERL_NANOBENCH_THROW(...) throw __VA_ARGS__
+#else
+#    define ANKERL_NANOBENCH_THROW(...) std::abort()
+#endif
+
 // declarations ///////////////////////////////////////////////////////////////////////////////////
 
 namespace ankerl {
@@ -2001,7 +2014,7 @@ static std::ostream& generateResultTag(Node const& n, Result const& r, std::ostr
     // static std::regex const regOpArg2("^([a-zA-Z]+)\\(([a-zA-Z]*)\\s*,\\s+([a-zA-Z]*)\\)$");
 
     // nothing matches :(
-    throw std::runtime_error("command '" + std::string(n.begin, n.end) + "' not understood");
+    ANKERL_NANOBENCH_THROW(std::runtime_error("command '" + std::string(n.begin, n.end) + "' not understood"));
 }
 
 static void generateResultMeasurement(std::vector<Node> const& nodes, size_t idx, Result const& r, std::ostream& out) {
@@ -2014,10 +2027,10 @@ static void generateResultMeasurement(std::vector<Node> const& nodes, size_t idx
                 break;
 
             case Node::Type::inverted_section:
-                throw std::runtime_error("got a inverted section inside measurement");
+                ANKERL_NANOBENCH_THROW(std::runtime_error("got a inverted section inside measurement"));
 
             case Node::Type::section:
-                throw std::runtime_error("got a section inside measurement");
+                ANKERL_NANOBENCH_THROW(std::runtime_error("got a section inside measurement"));
 
             case Node::Type::tag: {
                 double scale = 1.0;
@@ -2045,7 +2058,7 @@ static void generateResult(std::vector<Node> const& nodes, size_t idx, std::vect
                 break;
 
             case Node::Type::inverted_section:
-                throw std::runtime_error("got a inverted section inside result");
+                ANKERL_NANOBENCH_THROW(std::runtime_error("got a inverted section inside result"));
 
             case Node::Type::section:
                 if (n == "measurement") {
@@ -2053,7 +2066,7 @@ static void generateResult(std::vector<Node> const& nodes, size_t idx, std::vect
                         generateResultMeasurement(n.children, i, r, out);
                     }
                 } else {
-                    throw std::runtime_error("got a section inside result");
+                    ANKERL_NANOBENCH_THROW(std::runtime_error("got a section inside result"));
                 }
                 break;
 
@@ -2203,7 +2216,7 @@ void render(char const* mustacheTemplate, std::vector<Result> const& results, st
             break;
 
         case templates::Node::Type::inverted_section:
-            throw std::runtime_error("unknown list '" + std::string(n.begin, n.end) + "'");
+            ANKERL_NANOBENCH_THROW(std::runtime_error("unknown list '" + std::string(n.begin, n.end) + "'"));
 
         case templates::Node::Type::section:
             if (n == "result") {
@@ -2213,9 +2226,9 @@ void render(char const* mustacheTemplate, std::vector<Result> const& results, st
                 }
             } else if (n == "measurement") {
                 if (results.size() != 1) {
-                    throw std::runtime_error(
+                    ANKERL_NANOBENCH_THROW(std::runtime_error(
                         "render: can only use section 'measurement' here if there is a single result, but there are " +
-                        detail::fmt::to_s(results.size()));
+                        detail::fmt::to_s(results.size())));
                 }
                 // when we only have a single result, we can immediately go into its measurement.
                 auto const& r = results.front();
@@ -2223,7 +2236,7 @@ void render(char const* mustacheTemplate, std::vector<Result> const& results, st
                     generateResultMeasurement(n.children, i, r, out);
                 }
             } else {
-                throw std::runtime_error("render: unknown section '" + std::string(n.begin, n.end) + "'");
+                ANKERL_NANOBENCH_THROW(std::runtime_error("render: unknown section '" + std::string(n.begin, n.end) + "'"));
             }
             break;
 
@@ -2234,7 +2247,7 @@ void render(char const* mustacheTemplate, std::vector<Result> const& results, st
             } else {
                 // This just uses the last result's config.
                 if (!generateConfigTag(n, results.back().config(), out)) {
-                    throw std::runtime_error("unknown tag '" + std::string(n.begin, n.end) + "'");
+                    ANKERL_NANOBENCH_THROW(std::runtime_error("unknown tag '" + std::string(n.begin, n.end) + "'"));
                 }
             }
             break;
@@ -3934,8 +3947,8 @@ Rng::Rng(std::vector<uint64_t> const& data)
     : mX(0)
     , mY(0) {
     if (data.size() != 2) {
-        throw std::runtime_error("ankerl::nanobench::Rng::Rng: needed exactly 2 entries in data, but got " +
-                                 detail::fmt::to_s(data.size()));
+        ANKERL_NANOBENCH_THROW(std::runtime_error("ankerl::nanobench::Rng::Rng: needed exactly 2 entries in data, but got " +
+                                                  detail::fmt::to_s(data.size())));
     }
     mX = data[0];
     mY = data[1];
