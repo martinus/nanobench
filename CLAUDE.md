@@ -103,9 +103,16 @@ whatever `msvc-dev-cmd` selected, so its 32 bit leg needs `-m32`.
 The sweep worth running locally is the sanitizers and the linters:
 
 ```sh
-# sanitizers - run from the repo root, see the unit_templates note above
-g++ -std=c++17 -O1 -g -fsanitize=address,undefined -Isrc/include -Isrc/test \
-    -o /tmp/nb-san src/test/app/*.cpp src/test/*.cpp && /tmp/nb-san
+# sanitizers - the project's own option, which is exactly what the two CI legs pass. Do not
+# hand-roll `-fsanitize=address,undefined` instead: it is a *weaker* set than this, and the gap is
+# not theoretical. float-divide-by-zero is only in the CMake set, and a 0/0 in BigO went green
+# locally and red on both sanitizer legs because of precisely that.
+# halt_on_error is what makes UBSan fail the run rather than print and exit 0.
+# Use gcc here: the clang set adds -fsanitize=integer, which Fedora's libstdc++ 16 trips inside
+# stl_uninitialized.h on master as well - a local artifact, not a finding. Container for that leg.
+CXX=g++ cmake -S . -B build-san -DCMAKE_BUILD_TYPE=Release -DNB_sanitizer=ON
+cmake --build build-san --parallel 4
+UBSAN_OPTIONS=print_stacktrace=1:halt_on_error=1 ./build-san/nb
 
 # formatting and the version macros. lint-all.py runs every lint-* next to it; CI pins the
 # clang-format binary, so pass the same one or the check silently uses a different version.

@@ -4019,6 +4019,15 @@ BigO::RangeMeasure BigO::collectRangeMeasure(std::vector<Result> const& results)
 BigO::BigO(std::string bigOName, RangeMeasure const& rangeMeasure)
     : mName(std::move(bigOName)) {
 
+    // Nothing to fit against: leave the constant and the error at 0 rather than dividing by zero
+    // three times over. complexityBigO() reaches this whenever it is called on a Bench where no
+    // complexityN was ever set, since collectRangeMeasure() then returns nothing - the six models
+    // used to come out all-NaN, which prints as "nan" and, being unordered, is a poor thing to hand
+    // to std::sort.
+    if (rangeMeasure.empty()) {
+        return;
+    }
+
     // estimate the constant factor
     double sumRangeMeasure = 0.0;
     double sumRangeRange = 0.0;
@@ -4027,7 +4036,8 @@ BigO::BigO(std::string bigOName, RangeMeasure const& rangeMeasure)
         sumRangeMeasure += rm.first * rm.second;
         sumRangeRange += rm.first * rm.first;
     }
-    mConstant = sumRangeMeasure / sumRangeRange;
+    // a sum of squares, so this is only 0 when every n is
+    mConstant = sumRangeRange <= 0.0 ? 0.0 : sumRangeMeasure / sumRangeRange;
 
     // calculate root mean square
     double err = 0.0;
@@ -4041,7 +4051,9 @@ BigO::BigO(std::string bigOName, RangeMeasure const& rangeMeasure)
 
     auto n = detail::d(rangeMeasure.size());
     auto mean = sumMeasure / n;
-    mNormalizedRootMeanSquare = std::sqrt(err / n) / mean;
+    // the error is relative to the mean measurement, so there is no relative error to report when
+    // everything measured as 0 - and 0/0 is not it
+    mNormalizedRootMeanSquare = mean <= 0.0 ? 0.0 : std::sqrt(err / n) / mean;
 }
 
 BigO::BigO(const char* bigOName, RangeMeasure const& rangeMeasure)
