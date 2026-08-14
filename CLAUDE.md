@@ -141,7 +141,7 @@ podman run --rm -v "$PWD:/src" -w /src ubuntu:24.04 bash -c '
   clang-tidy-18 -p b src/test/app/nanobench.cpp'
 ```
 
-Four rules for editing the header, each of which costs a round trip when forgotten:
+Six rules for editing the header, each of which costs a round trip when forgotten:
 
 - `-Wfloat-equal` is on, so never compare a double with `==`/`!=` — use `x <= 0.0` and friends.
 - A new free function in the implementation block needs a declaration in the declarations block
@@ -150,6 +150,15 @@ Four rules for editing the header, each of which costs a round trip when forgott
   branches there have to be lifted into a helper.
 - clang-format realigns trailing comments when a value's width changes, which is why bumping the
   version reformats the lines around it.
+- gcc's `-Wnoexcept` fails the build on a constructor that only moves members whose own move
+  constructors are `noexcept` but is not itself declared so — it shows up as an error inside
+  `stl_construct.h` on the vector growth path, not at the constructor. It only fires once the code is
+  a plain function: a template instantiated solely in the test TU stays silent, so *moving* a body out
+  of a template can surface it. `CompareResult::Entry` cost a leg this way.
+- Sphinx roles like `:ref:` and `:cpp:func:` are inert in ordinary doxygen prose — breathe renders
+  the text verbatim, so the reader sees the literal characters `:ref:`. They only work inside a
+  `@verbatim embed:rst` block, which must **not** be asterisk-prefixed. Grep the built HTML for
+  `:cpp:` and `:ref:` after touching a doc comment; there is no warning.
 
 There are **two** clang-format configs: `src/include/.clang-format` (135 columns, the header) and
 `src/.clang-format` (80 columns, everything under `src/test/`). `lint-clang-format.py` only looks at
@@ -165,6 +174,14 @@ they are no longer equivalent: F44 packages Sphinx 8.2.3 against the pinned 9.1.
 search machinery changes `_static` and `searchindex.js`. Cloudflare fronts
 the site with a 24h TTL, so a finished deployment can still serve the old page until that expires or
 the cache is purged.
+
+`generate.sh` deletes `docs/` and rebuilds it, so a preview server started against the old directory
+keeps serving a deleted inode — restart it after every regeneration, and note that `sphinx-build`
+succeeding says nothing about the page being *readable*. Two things it will not warn about: the
+inert-role trap above, and `sphinx_rtd_theme`'s `white-space: nowrap` on every table cell, which
+turns any table with a sentence in it into a horizontal scrollbar. The second is overridden in
+`src/docs/_static/css/custom.css`, registered through `html_css_files` — the numeric tables are
+unaffected because their cells hold single tokens with nowhere to break.
 
 The version is written down in **three** places — the `ANKERL_NANOBENCH_VERSION_*` macros,
 `src/docs/conf.py`, and `project(VERSION)` in `CMakeLists.txt`. `lint-version.py` checks all three
@@ -236,7 +253,20 @@ lcov --capture --directory . -o all.info --ignore-errors mismatch,unused,empty,n
 lcov --extract all.info '*/nanobench.h' -o nb.info --ignore-errors unused,empty
 ```
 
-Five traps, each of which has cost a round trip:
+Seven traps, each of which has cost a round trip:
+
+- A test of `compare()` needs **more rounds than the default**, and the more alternatives it compares
+  the more. Bonferroni builds each interval at `1 - 0.05/(N-1)`, and a stricter confidence reaches
+  further out into the order statistics: at 12 rounds and three comparisons the interval spans the
+  middle **75%** of the paired data, so three rounds of the machine misbehaving make it straddle 1.0.
+  A clear 2x difference went unresolved on a CI runner for exactly that reason, with the ratio itself
+  sitting at 0.51. At 40 rounds the interval spans 38%. Where a test asserts that a difference *is*
+  resolved, give it rounds in proportion to the correction, not the default 11.
+- Diagnose a red leg from the numbers before fixing it. The failure above looks exactly like
+  zero-length epochs being dropped by `pairedLogRatios`, and that reading survives until you check
+  the arithmetic: the shortest epoch involved is 25µs against a 20ns clock, so a zero was never
+  possible. A fix built on the wrong mechanism is worse than no fix — it adds a permanent guard
+  against something that cannot happen, and leaves the real cause in place.
 
 - A test must not relate **two** timing measurements to each other, however obviously equal the work
   is. Comparing the rows of two identical sleeps at different batch sizes passes on an idle Linux box
