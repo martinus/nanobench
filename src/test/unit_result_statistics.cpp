@@ -180,9 +180,33 @@ TEST_CASE("unit_result_get_out_of_range") {
     };
     CHECK_NOTHROW(read(1));
     CHECK_THROWS_AS(read(2), std::out_of_range);
+}
 
-    // Measure::_size is the enum's end marker, not a measure: the per-measure
-    // storage has exactly _size entries, so it is deliberately not passed here.
+// NOLINTNEXTLINE
+TEST_CASE("unit_result_measure_size_reads_as_no_data") {
+    // fromString() returns _size for a name it does not know, so it arrives
+    // here whenever a caller resolves a measure from user input. That has to
+    // read as "this was never measured" rather than one slot past the end of
+    // the storage - which is what it used to be.
+    auto const r = resultOf({10, 20});
+    auto const unknown = Result::fromString("no such measure");
+    REQUIRE(unknown == Result::Measure::_size);
+
+    CHECK_FALSE(r.has(unknown));
+    CHECK(r.median(unknown) == doctest::Approx(0.0));
+    CHECK(r.average(unknown) == doctest::Approx(0.0));
+    CHECK(r.minimum(unknown) == doctest::Approx(0.0));
+    CHECK(r.maximum(unknown) == doctest::Approx(0.0));
+    CHECK(r.sum(unknown) == doctest::Approx(0.0));
+    CHECK(r.medianAbsolutePercentError(unknown) == doctest::Approx(0.0));
+    CHECK(r.sumProduct(unknown, Result::Measure::elapsed) ==
+          doctest::Approx(0.0));
+
+    // and reading an entry of it is out of range, like any empty measure
+    auto read = [&r, unknown] {
+        return r.get(0, unknown);
+    };
+    CHECK_THROWS_AS(read(), std::out_of_range);
 }
 
 // NOLINTNEXTLINE
