@@ -252,33 +252,30 @@ that dies half way cannot leave a mutated library behind, and it refuses to scor
 suite is green first.
 
 ```sh
-src/scripts/mutate/mutate.py --replace 'OLD CODE' 'NEW CODE'   # one bug, ~13s
-src/scripts/mutate/mutate.py --bugs bugs.txt --lanes 4          # a batch, in parallel
-src/scripts/mutate/mutate.py --reverse HEAD                     # undo a fix, keep its tests
-src/scripts/mutate/mutate.py --diff HEAD~1                      # what did this change leave uncovered
+src/scripts/mutate/mutate.py --replace 'OLD CODE' 'NEW CODE'   # does a test catch this bug?
+src/scripts/mutate/mutate.py --diff HEAD~1                      # what did my change leave uncovered?
 ```
 
-A bug file is a `# name` then a `<<< old === new >>>` block per bug; old text must match exactly
-once, so disambiguate with a surrounding line. `--test-filter 'unit_*'` roughly halves the runtime
-(4.7s → 0.8s per run here) at the cost of missing a mutant that only an example would have caught by
-crashing. `--cmake-arg=-DNB_sanitizer=ON` asks whether a different leg catches it.
+`--bugs` takes a file of them and runs the batch in parallel, `--reverse REF` undoes a whole fix
+while keeping its tests, and `--cmake-arg` asks whether some other leg catches it. `--help` has the
+grammar and the rest; do not copy it here, or the copies drift.
 
 Four things about it are worth knowing before trusting a number:
 
 - **Every way this tool has been wrong so far flattered the tests** — it reported "nothing caught it"
   when the fault was its own. That is why the baseline must be green before scoring and why a bug
   block that fails to apply aborts the run rather than substituting nothing and reporting a survivor.
-  Distrust an UNCAUGHT you cannot explain before distrusting the test.
+  Distrust a `survived` you cannot explain before distrusting the test.
 - **Without performance counters the counter verdicts are meaningless.** Where `perf_event_open` is
   refused — most VMs and containers — nanobench records nothing, so every bug in the `ins`/`cyc`/
-  `IPC`/`bra`/`miss` columns comes back UNCAUGHT however good the tests are. The run prints its
-  environment for this reason; read it. This is also why it is not a CI gate.
+  `IPC`/`bra`/`miss` columns comes back `survived` however good the tests are. Every run prints the
+  environment it could observe, and says so outright when the counters are missing; read it. This is
+  also why it is not a CI gate.
 - **It varies configuration, not platform.** The musl, bionic, MSVC and ARM64 questions still need
   the container or CI. On this machine the clang sanitizer leg cannot even baseline, for the
   libstdc++ reason above.
-- **The full sweep is ~2,300 mutants and roughly 45 minutes**; `--diff` against your own change is
-  the version worth running every time. `--dry-run` sizes it, though its estimate is calibrated to
-  one machine.
+- **A full sweep is tens of minutes**; `--diff` against your own change is the version worth running
+  every time. `--dry-run` sizes either, though its estimate is calibrated to one machine.
 
 What it found when it was written is the standing example of why the distinction matters: the
 comparison table's performance counters could be deleted outright and the whole suite stayed green,
