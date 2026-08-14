@@ -405,12 +405,21 @@ TEST_CASE("unit_compare_more_than_two_alternatives") {
     Work b;
     Work c;
     Work d;
+    // Two things this test learned the hard way, both on legs this machine
+    // cannot reproduce:
+    //
     // 40 rounds, not the default 11. Three comparisons means each interval is
     // built at 98.3% rather than 95%, and at 12 rounds that interval spans the
-    // middle 75% of the data - three rounds of the machine misbehaving are
-    // enough to make it straddle 1.0 and report a real 2x difference as
-    // unresolved, which is how this went red on a loaded CI runner. At 40 it
-    // spans 38%, which needs thirteen.
+    // middle 75% of the paired data - three rounds of the machine misbehaving
+    // are enough to make it straddle 1.0 and report a real difference as
+    // unresolved. At 40 it spans 38%, which needs thirteen.
+    //
+    // And the alternatives are spread wide apart, rather than the 2x and 8x
+    // this used to compare. The 32 bit leg measures these tiny operations with
+    // an error approaching 2x - it reported doing the work *twice* as 1.02x,
+    // i.e. marginally faster than doing it once - so an assertion that 2x is
+    // resolvable is an assertion that leg cannot keep. Ordering assertions need
+    // gaps wider than the noise, and 5x/25x clears it with room to spare.
     auto bench = quiet(40);
     auto const result = bench.compare(
         "baseline",
@@ -421,21 +430,22 @@ TEST_CASE("unit_compare_more_than_two_alternatives") {
         [&] {
             b.step();
         },
-        "twice",
+        "five times",
         [&] {
-            c.step();
-            c.step();
+            for (int i = 0; i < 5; ++i) {
+                c.step();
+            }
         },
-        "eight times",
+        "twenty five times",
         [&] {
-            for (int i = 0; i < 8; ++i) {
+            for (int i = 0; i < 25; ++i) {
                 d.step();
             }
         });
 
     REQUIRE(result.size() == 4U);
     CHECK(result[0].name == "baseline");
-    CHECK(result[3].name == "eight times");
+    CHECK(result[3].name == "twenty five times");
 
     // one comparison per alternative besides the baseline
     CHECK(result.comparisons() == 3U);
@@ -456,8 +466,8 @@ TEST_CASE("unit_compare_more_than_two_alternatives") {
 
     // doing the work more times is resolvably slower, and more times is slower
     // still
-    INFO("twice " << result[2].relative << ", eight times "
-                  << result[3].relative);
+    INFO("five times " << result[2].relative << ", twenty five times "
+                       << result[3].relative);
     CHECK(result.isSignificant(2));
     CHECK(result.isSignificant(3));
     CHECK(result[2].relative < 1.0);
