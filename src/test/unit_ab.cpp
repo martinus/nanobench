@@ -20,6 +20,8 @@ namespace nb = ankerl::nanobench::detail;
 // something the compiler cannot fold away or hoist out of the measuring loop
 struct Work {
     uint64_t state = 1;
+    // the multiply wraps on purpose, which -fsanitize=integer flags
+    ANKERL_NANOBENCH_NO_SANITIZE("integer")
     void step() {
         state = state * UINT64_C(6364136223846793005) + 1U;
         ankerl::nanobench::doNotOptimizeAway(state);
@@ -175,22 +177,30 @@ TEST_CASE("unit_ab_resolves_a_real_difference") {
         [&] {
             a.step();
         },
-        "twice",
+        "eight times",
         [&] {
-            b.step();
-            b.step();
+            for (int i = 0; i < 8; ++i) {
+                b.step();
+            }
         });
 
     INFO("speedup " << result.speedup() << " CI [" << result.speedupLow()
                     << ", " << result.speedupHigh() << "]");
     CHECK(result.isSignificant());
-    // B does twice the work, so it is the slower one: the ratio is below 1
+    // B does the work eight times over, so it is the slower one: the ratio is
+    // below 1, and the whole interval is
     CHECK(result.speedup() < 1.0);
     CHECK(result.speedupHigh() < 1.0);
-    // loosely, because the point is the direction and the order of magnitude,
-    // not the exact factor
-    CHECK(result.speedup() < 0.9);
-    CHECK(result.speedup() > 0.2);
+
+    // Deliberately no assertion on *how much* slower. Eight times the
+    // arithmetic is not eight times the time: the measuring loop and the
+    // doNotOptimizeAway store are paid once per iteration either way, and how
+    // far they dominate is a property of the machine. An earlier version
+    // asserted a factor and failed on the 32 bit leg, which measured 0.95
+    // where x86-64 measured 0.50 - both correct. What the feature promises is
+    // the direction and that the interval resolved it, and that is what is
+    // checked.
+    CHECK(result.speedup() > 0.05);
 }
 
 // NOLINTNEXTLINE
