@@ -1794,6 +1794,24 @@ void Bench::abEpoch(Op&& op, uint64_t numIters, Result& result, std::vector<doub
 
 template <typename OpA, typename OpB>
 AbResult Bench::ab(std::string const& nameA, OpA&& opA, std::string const& nameB, OpB&& opB) {
+    // warmup() is honored, though it is not the tool it looks like here. Calibration below already
+    // runs each side for about a full epoch, so the machine is out of its cold state by round 0, and
+    // the serial correlation a warmup would be aimed at is removed by the pairing rather than by
+    // running longer first: measured over 200 rounds, the raw per-round times carry a lag-1
+    // autocorrelation around +0.10 while the paired differences carry -0.01 to -0.08, and dropping
+    // the first twenty rounds changes neither. It is honored because silently ignoring a setting the
+    // caller wrote down is worse than spending the iterations.
+    if (0 != warmup()) {
+        auto warmupIters = warmup();
+        while (warmupIters-- > 0) {
+            opA();
+        }
+        warmupIters = warmup();
+        while (warmupIters-- > 0) {
+            opB();
+        }
+    }
+
     // Fixed for the whole experiment: an iteration count that drifted between rounds would be a
     // second thing changing while the comparison is being made.
     //

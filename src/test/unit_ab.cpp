@@ -389,6 +389,45 @@ TEST_CASE("unit_ab_orders_the_epochs_abba") {
 }
 
 // NOLINTNEXTLINE
+TEST_CASE("unit_ab_runs_the_warmup_it_was_given") {
+    // warmup() used to be read by run() and silently ignored by ab(). It does
+    // not buy much here - calibration already runs each side for about an
+    // epoch, and the correlation a warmup would target is removed by the
+    // pairing - but a setting the caller wrote down has to do something.
+    auto callsFor = [](uint64_t warmupIters) {
+        uint64_t calls = 0;
+        Work w;
+        ankerl::nanobench::Bench bench;
+        bench.output(nullptr)
+            .epochs(8)
+            .performanceCounters(false)
+            .warmup(warmupIters)
+            .minEpochTime(std::chrono::microseconds(100));
+        bench.ab(
+            "a",
+            [&] {
+                ++calls;
+                w.step();
+            },
+            "b",
+            [&] {
+                w.step();
+            });
+        return calls;
+    };
+
+    uint64_t const warmupIters = 5000000;
+    auto const without = callsFor(0);
+    auto const with = callsFor(warmupIters);
+    INFO("without " << without << ", with " << with);
+    // calibration and the rounds vary a little between runs, so this only asks
+    // that most of the warmup actually happened - if it were ignored the two
+    // would be the same
+    CHECK(with > without);
+    CHECK(with - without > warmupIters * 4U / 5U);
+}
+
+// NOLINTNEXTLINE
 TEST_CASE("unit_ab_rounds_up_to_whole_blocks") {
     // The default epochs() is 11, which is not a multiple of 4 - a partial
     // block gives one side the first position more often than the other, which
