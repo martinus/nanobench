@@ -1647,6 +1647,7 @@ Bench& Bench::runImpl(SetupOp& setupOp, Op&& op) {
 }
 
 template <typename Op>
+ANKERL_NANOBENCH_NO_SANITIZE("integer")
 uint64_t Bench::abCalibrate(Op&& op) const {
     // An epoch of the same length a normal run would use. Only the min/max bounds are consulted, not
     // the clock-resolution multiple, because that one is below minEpochTime on every platform where
@@ -1691,6 +1692,7 @@ uint64_t Bench::abCalibrate(Op&& op) const {
 }
 
 template <typename Op>
+ANKERL_NANOBENCH_NO_SANITIZE("integer")
 void Bench::abEpoch(Op&& op, uint64_t numIters, Result& result, std::vector<double>& perRound) {
     auto& pc = detail::performanceCounters();
 
@@ -3833,7 +3835,7 @@ double medianOf(std::vector<double> values) {
 std::pair<double, double> bootstrapMedianInterval(std::vector<double> const& values, uint64_t seed, size_t resamples,
                                                   double confidence) {
     if (values.empty() || 0U == resamples) {
-        return std::pair<double, double>(0.0, 0.0);
+        return {0.0, 0.0};
     }
 
     Rng rng(seed);
@@ -3858,7 +3860,7 @@ std::pair<double, double> bootstrapMedianInterval(std::vector<double> const& val
         }
         return medians[idx];
     };
-    return std::pair<double, double>(at(tail), at(1.0 - tail));
+    return {at(tail), at(1.0 - tail)};
 }
 
 } // namespace detail
