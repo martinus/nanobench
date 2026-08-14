@@ -242,10 +242,48 @@ files, and rewriting a sample changes what the site shows.
 **Coverage is not the bar — catching a regression is.** At 56 test cases and 88% line coverage this
 suite caught **4 of 24** deliberately injected one-line bugs in `nanobench.h`, and two of those four
 were caught by the compiler rather than by a test. Line coverage says a line ran, not that anything
-would notice it misbehaving. So when adding a test, break the thing it covers — flip a constant in
-the header, rebuild, and confirm that test goes red and the others do not. A test that survives that
-is decoration. A test that contains a *copy* of the code it checks, as `unit_to_s.cpp` once did,
-cannot fail at all.
+would notice it misbehaving. So when adding a test, break the thing it covers and confirm that test
+goes red and the others do not. A test that survives that is decoration. A test that contains a
+*copy* of the code it checks, as `unit_to_s.cpp` once did, cannot fail at all.
+
+`src/scripts/mutate/mutate.py` is that check, and it is where the injected-bug campaign above now
+lives. Do not hand-roll it with `sed` on the real header: it builds in a throwaway copy, so a run
+that dies half way cannot leave a mutated library behind, and it refuses to score anything until the
+suite is green first.
+
+```sh
+src/scripts/mutate/mutate.py --replace 'OLD CODE' 'NEW CODE'   # one bug, ~13s
+src/scripts/mutate/mutate.py --bugs bugs.txt --lanes 4          # a batch, in parallel
+src/scripts/mutate/mutate.py --reverse HEAD                     # undo a fix, keep its tests
+src/scripts/mutate/mutate.py --diff HEAD~1                      # what did this change leave uncovered
+```
+
+A bug file is a `# name` then a `<<< old === new >>>` block per bug; old text must match exactly
+once, so disambiguate with a surrounding line. `--test-filter 'unit_*'` roughly halves the runtime
+(4.7s → 0.8s per run here) at the cost of missing a mutant that only an example would have caught by
+crashing. `--cmake-arg=-DNB_sanitizer=ON` asks whether a different leg catches it.
+
+Four things about it are worth knowing before trusting a number:
+
+- **Every way this tool has been wrong so far flattered the tests** — it reported "nothing caught it"
+  when the fault was its own. That is why the baseline must be green before scoring and why a bug
+  block that fails to apply aborts the run rather than substituting nothing and reporting a survivor.
+  Distrust an UNCAUGHT you cannot explain before distrusting the test.
+- **Without performance counters the counter verdicts are meaningless.** Where `perf_event_open` is
+  refused — most VMs and containers — nanobench records nothing, so every bug in the `ins`/`cyc`/
+  `IPC`/`bra`/`miss` columns comes back UNCAUGHT however good the tests are. The run prints its
+  environment for this reason; read it. This is also why it is not a CI gate.
+- **It varies configuration, not platform.** The musl, bionic, MSVC and ARM64 questions still need
+  the container or CI. On this machine the clang sanitizer leg cannot even baseline, for the
+  libstdc++ reason above.
+- **The full sweep is ~2,300 mutants and roughly 45 minutes**; `--diff` against your own change is
+  the version worth running every time. `--dry-run` sizes it, though its estimate is calibrated to
+  one machine.
+
+What it found when it was written is the standing example of why the distinction matters: the
+comparison table's performance counters could be deleted outright and the whole suite stayed green,
+because the test asserted that a comparison shows *the same* columns as an ordinary table — true
+either way once both lose them.
 
 To measure coverage, build the suite in one go with `--coverage` (out of tree, so the `.gcda` files
 and the benchmark artifacts do not land in the repo) and merge it over every TU:
