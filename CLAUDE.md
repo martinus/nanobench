@@ -80,21 +80,29 @@ It covers gcc/clang × C++11..20, 32 bit, libc++, sanitizers, ARM64, macOS, MSVC
 MinGW, plus a `lint` job (pinned clang-format-18 / clang-tidy-18) and a CMake consumer job. What it
 cannot cover is the pre-gcc-5 half of `src/scripts/all.sh`, which is what that script is still for.
 
-Two legs exist because a bug hid for years behind everything else being alike, and both need a
-container to reproduce:
+Three legs exist because a bug hid for years behind everything else being alike:
 
 - `musl libc (Alpine, gcc)` — glibc declares `ioctl()`'s request parameter as `unsigned long`, musl
   as `int`, and `PERF_EVENT_IOC_ID` does not fit in an `int`, so nanobench did not compile on Alpine
   from 2023 until issue #92 was fixed. Every other Linux leg is glibc. It runs Alpine inside a
   container step rather than through the job-level `container:`, because `actions/checkout` needs a
   glibc node.
+- `Android NDK (bionic, cross-compile)` — the third libc, and the third answer to the same `ioctl()`
+  question. bionic declares `ioctl()` *twice*, taking `int` and taking `unsigned`, so `&::ioctl` is
+  an overload set and the deduction that settles glibc against musl deduces nothing at all;
+  nanobench 4.5.0 built for no Android ABI in vcpkg (microsoft/vcpkg#53422). `__BIONIC__` names
+  `unsigned` outright instead — bionic's own header points at doing that. The leg cross-compiles all
+  four ABIs and does not run them; the runners have no Android, and the failure was a compile error.
+  Reproducing it locally needs the NDK, which the runner image ships and this machine does not:
+  `curl -LO https://dl.google.com/android/repository/android-ndk-r27c-linux.zip`, unzip, and the
+  compilers are `toolchains/llvm/prebuilt/linux-x86_64/bin/<triple><api>-clang++`.
 - `Consumer without RTTI (gcc + clang)` — installing a `std::numpunct` facet goes through
   `__dynamic_cast`, which reads through a null pointer under `-fno-rtti` (issue #122). The number
   formatting groups digits by hand for that reason; keep `std::locale` out of it. The failure was at
   runtime, so the leg runs the binary rather than only compiling it.
 
-Only the `build` legs compile the test suite with the project's flags. `header`, `clang-cl` and
-`mingw` build just the header plus a small consumer, because the strict flag set doesn't survive
+Only the `build` legs compile the test suite with the project's flags. `header`, `android`,
+`clang-cl` and `mingw` build just the header plus a small consumer, because the strict flag set doesn't survive
 there: for clang-cl, CMake sets `CMAKE_CXX_COMPILER_ID` to `Clang` **and** `MSVC` to true, so a
 CMake build collects the `-Weverything` branch and the `/W4` one at once. Two more traps in that
 corner — MSVC forces `/std:c++latest` whatever `NB_cxx_standard` says, and clang-cl targets x64

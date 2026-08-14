@@ -3218,22 +3218,33 @@ double correctBranchMisses(uint64_t rawBranchMisses, double correctedBranchInstr
 // friends carry the direction bits in the high end, so they don't fit into an int and passing one
 // straight through is a value-changing conversion that -Werror rejects on musl (issue #92). Deduce
 // the declared parameter type from ioctl() itself, so the same cast is right for either libc.
+#        if defined(__BIONIC__)
+// Except on bionic, which declares ioctl() *twice* - once taking int and once taking unsigned - for
+// exactly the reason above, so that either signedness compiles without a cast. Its header says out
+// loud that the overload breaks anyone taking ioctl()'s address, and points at naming a concrete
+// type instead: &::ioctl is an overload set, and nothing can be deduced from one. That deduction
+// failure is the whole of issue microsoft/vcpkg#53422 - nanobench built for no Android ABI at all.
+// unsigned is the overload to name, since it is the one PERF_EVENT_IOC_ID fits into.
+using IoctlRequest = unsigned;
+#        else
 // Never defined - only ever asked for its return type.
 template <typename Ret, typename Fd, typename Request>
 Request ioctlRequestType(Ret (*)(Fd, Request, ...));
 
-#        if defined(__cpp_noexcept_function_type)
+#            if defined(__cpp_noexcept_function_type)
 // Since C++17 noexcept is part of a function's type, and glibc declares ioctl() with __THROW - so
 // without this second overload the deduction above stops matching at -std=c++17.
 template <typename Ret, typename Fd, typename Request>
 Request ioctlRequestType(Ret (*)(Fd, Request, ...) noexcept);
+#            endif
+
+using IoctlRequest = decltype(ioctlRequestType(&::ioctl));
 #        endif
 
 template <typename Arg>
 int perfIoctl(int fd, unsigned long request, Arg arg) {
-    using Request = decltype(ioctlRequestType(&::ioctl));
     // NOLINTNEXTLINE(hicpp-signed-bitwise,cppcoreguidelines-pro-type-vararg)
-    return ioctl(fd, static_cast<Request>(request), arg);
+    return ioctl(fd, static_cast<IoctlRequest>(request), arg);
 }
 
 ANKERL_NANOBENCH(IGNORE_PADDED_PUSH)
