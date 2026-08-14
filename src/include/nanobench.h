@@ -554,15 +554,43 @@ public:
     /**
      * @brief How many times faster B is than A: 1.25 means B does the same work in 80% of the time.
      *
-     * The median of the per-round ratios, not the ratio of the medians - a paired statistic, so a
-     * disturbance that hit one round is one bad ratio rather than a shifted result.
+     * Exactly the median of the per-round ratios `tA / tB`, and not the ratio of the two medians. It
+     * is computed as `exp(median(ln tA - ln tB))`, which is the same number: `ln` is monotonic, so
+     * the median commutes with it. Working in logs is what makes a speedup - a multiplicative thing -
+     * into a difference, and puts "twice as fast" and "half as fast" the same distance from no
+     * change.
+     *
+     * A paired statistic, so a disturbance that hit one round is one bad ratio rather than a shifted
+     * result, and the median's 50% breakdown point means half the rounds can be arbitrarily
+     * corrupted before this moves.
      */
     ANKERL_NANOBENCH(NODISCARD) double speedup() const noexcept;
 
-    /// Lower end of the 95% confidence interval of speedup(), from a bootstrap over the paired rounds.
+    /**
+     * @brief Lower end of the 95% confidence interval of speedup().
+     *
+     * A distribution-free interval - the sign test. With `n` rounds it is the k-th smallest and k-th
+     * largest of the per-round log ratios, where `k` is the largest one whose binomial tail still
+     * fits in 2.5%, exponentiated back into a ratio. It assumes the rounds are independent and
+     * nothing else: no distribution shape, no symmetry, no finite variance, no asymptotics. It is
+     * exact at every `n` rather than asymptotically right, and there is no resampling in it, so the
+     * same measurements always produce the same interval.
+     *
+     * Slightly conservative, because the order statistics are discrete: the true coverage is the
+     * first one at or above 95%, not exactly 95%.
+     *
+     * @verbatim embed:rst
+     .. note::
+
+        The independence assumption is the one to be careful with. Thermal and frequency state
+        persist across rounds, and interleaving removes drift from each paired difference without
+        making the differences independent. Positive autocorrelation makes any such interval narrower
+        than it should be. See :ref:`ab-comparison` for what was measured.
+     @endverbatim
+     */
     ANKERL_NANOBENCH(NODISCARD) double speedupLow() const noexcept;
 
-    /// Upper end of the 95% confidence interval of speedup().
+    /// Upper end of the 95% confidence interval of speedup(). See speedupLow() for what the interval is.
     ANKERL_NANOBENCH(NODISCARD) double speedupHigh() const noexcept;
 
     /// Number of paired rounds the comparison is based on.
@@ -580,8 +608,14 @@ public:
     /**
      * @brief True when the confidence interval excludes 1, i.e. the measurement can tell the two apart.
      *
+     * Equivalent to a two-sided test at the 5% level. Reported as an interval rather than a p-value
+     * because the interval also says how large the difference is, which is usually the question that
+     * was being asked.
+     *
      * False does not mean "the same speed", it means "this experiment did not resolve a difference" -
-     * usually a reason to raise epochs() rather than to conclude anything.
+     * usually a reason to raise epochs() rather than to conclude anything. Check tiedRounds() before
+     * reading much into it: a comparison where the clock could not separate the two rounds produces
+     * a zero-width interval around 1, which is not the same as having measured them to be equal.
      */
     ANKERL_NANOBENCH(NODISCARD) bool isSignificant() const noexcept;
 
@@ -852,8 +886,24 @@ public:
      * @endcode
      *
      @verbatim embed:rst
-     A worked example with output, and how to read the interval, is in the tutorial at
+     A worked example with output, and the reasoning behind each choice below, is in the tutorial at
      :ref:`ab-comparison`.
+
+     What it does, in order:
+
+     #. Calibrates an iteration count once, up front, and uses the **same** count for both sides for
+        the whole run. An epoch's fixed overhead is divided by that count, so two different counts
+        would amortize it differently and bias the ratio - 1.2% on 200us epochs, and no amount of
+        pairing removes it.
+     #. Runs one epoch of each per round, interleaved, so drift is common to the pair.
+     #. Orders each block of four rounds ABBA or BAAB, chosen at random. ABBA gives the two A
+        positions and the two B positions the same mean time, cancelling a linear drift exactly;
+        randomizing the orientation keeps a periodic disturbance from lining up with it. Rounds are
+        rounded up to whole blocks, and never fewer than eight.
+     #. Reduces each round to ``ln(tA) - ln(tB)``, dropping rounds where either side measured zero.
+     #. Reports the median of those as the ratio, and a sign-test interval around it. See
+        :cpp:func:`speedup() <ankerl::nanobench::AbResult::speedup()>` and
+        :cpp:func:`speedupLow() <ankerl::nanobench::AbResult::speedupLow()>`.
 
      .. note::
 

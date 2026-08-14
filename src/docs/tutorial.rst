@@ -490,31 +490,120 @@ statement at all, so ``ab()`` always runs at least eight.
 How it works
 ------------
 
-Four things are doing the work, and each of them is there for a reason that showed up in measurement:
+Everything below is a choice, and each one is there because leaving it out changes the answer. They
+fall into three groups: what gets run, how a round is reduced to one number, and how those numbers
+become an interval.
 
-#. **Pairing.** Each round contributes ``ln(tA) - ln(tB)``. A speedup is multiplicative, so logs turn
-   it into a difference; a disturbance that hit one round is then one bad ratio rather than a shifted
-   result.
+Designing the experiment
+~~~~~~~~~~~~~~~~~~~~~~~~
 
-#. **ABBA ordering, randomized per block.** Within each block of four rounds the order is ABBA or its
-   mirror, chosen at random. ABBA cancels a drift that is *linear* over the block exactly, because the
-   two A positions and the two B positions have the same mean time; randomizing the orientation keeps
-   a periodic disturbance from lining up with the pattern.
+#. **A fixed iteration count, calibrated once up front.** :cpp:func:`run() <ankerl::nanobench::Bench::run()>`
+   adapts the count as it goes; ``ab()`` does not. An iteration count that drifted between rounds
+   would be a second thing changing while the comparison is being made.
 
-#. **One iteration count for both sides.** An epoch carries a fixed overhead, and what gets compared
-   is time per iteration - so calibrating each side separately would amortize that overhead
-   differently between them. It measured as a 1.2% systematic bias on 200µs epochs, which no amount
-   of pairing removes.
+#. **The same count for both sides.** An epoch carries a fixed overhead - two clock reads and the
+   performance counter ioctls - and what gets compared is time *per iteration*, so that overhead is
+   divided by the count. Calibrating each side separately gives them slightly different counts and
+   amortizes the overhead differently between them. That is a systematic bias in the ratio, which no
+   amount of pairing removes: it measured 1.2% on 200µs epochs. The smaller of the two counts is
+   used, so neither side runs an epoch longer than it was asked for.
 
-#. **The sign test for the interval.** It assumes the rounds are independent and nothing else: no
-   distribution shape, no symmetry, no finite variance, no asymptotics, and it is exact at every
-   number of rounds. A t-interval would want normality; a bootstrap wants its own asymptotics and
-   converges slowly for a median; Wilcoxon wants the differences symmetric about their median, which
-   is exactly what timings do not give you - an operation can be arbitrarily slower but never faster
-   than its floor.
+#. **Interleaving.** One epoch of each per round, adjacent in time, rather than all of A and then all
+   of B. Anything that affects both - a frequency ramp, a noisy neighbour, thermal throttling - is
+   then common to the pair and cancels out of the difference.
 
-The point estimate is the median of the per-round ratios, which has a 50% breakdown point: half the
-rounds can be arbitrarily corrupted before it moves.
+#. **ABBA order within each block of four rounds.** The two A positions and the two B positions then
+   have the same mean time, so a drift that is *linear* over the block cancels exactly. Simply
+   alternating would leave one side always first.
+
+#. **The block orientation randomized.** ABBA or BAAB, chosen per block. A fixed pattern can line up
+   with a periodic disturbance; randomizing the phase stops that without giving up the balance.
+
+#. **Rounds rounded up to whole blocks, and never fewer than eight.** A partial block hands one side
+   the first position more often than the other, which is the imbalance ABBA exists to remove. Eight
+   is the floor because fewer than six rounds cannot support a 95% statement at all - see the sign
+   test below - and reporting one anyway would be inventing confidence rather than measuring it.
+
+Reducing a round to one number
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+#. **The log ratio,** ``ln(tA) - ln(tB)``. A speedup is multiplicative, and logs turn that into a
+   difference, which is what every statistic below assumes. It also makes the scale symmetric: twice
+   as fast and half as fast are the same distance from zero, where the raw ratios 2.0 and 0.5 are
+   not. Because ``ln`` is monotonic the median commutes with it, so exponentiating at the end gives
+   back *exactly* the median of the per-round ratios - the transform costs nothing in
+   interpretation.
+
+#. **Rounds where either side measured zero are dropped.** The logarithm of zero is not a large
+   number, it is negative infinity, and a single one of those makes every statistic downstream
+   meaningless. A round with no measurable time carries no ratio, so it carries no information.
+
+Estimating and reporting
+~~~~~~~~~~~~~~~~~~~~~~~~
+
+#. **The median as the point estimate.** Its breakdown point is 50%: half the rounds can be
+   arbitrarily corrupted before it moves at all. A mean has a breakdown point of zero - one
+   descheduled round is enough to shift it - and benchmark timings are exactly the kind of data that
+   produces the occasional wild value. This is the same reasoning behind nanobench reporting a median
+   and an ``err%`` rather than a mean and a standard deviation.
+
+#. **The sign test for the interval.** The interval is a pair of order statistics: with *n* rounds,
+   the k-th smallest and k-th largest log ratios, where *k* is the largest one whose binomial tail
+   still fits in 2.5%. It assumes the rounds are independent and nothing else - no distribution
+   shape, no symmetry, no finite variance, no asymptotics - and it is exact at every *n* rather than
+   approximately right for large ones. It is also deterministic: there is no resampling anywhere, so
+   the same measurements always give the same interval.
+
+#. **Significance is the interval excluding 1.** :cpp:func:`isSignificant() <ankerl::nanobench::AbResult::isSignificant()>`
+   asks only that, which is the same thing as a two-sided test at 5% - and it is reported as an
+   interval rather than a p-value because the interval says how big the difference is as well as
+   whether there is one.
+
+#. **Tied rounds are counted and reported.** When both sides land on the same tick, that round says
+   the clock could not tell them apart, which is different information from the two being equally
+   fast. Any median-based interval collapses to zero width when most rounds tie, so the count is what
+   distinguishes a real ``1.00x .. 1.00x`` from a measurement that never had the resolution.
+
+What was rejected
+~~~~~~~~~~~~~~~~~
+
+The interval was the hard choice. Measured on right-skewed differences whose true median is exactly
+zero - which is what paired timings look like when one side has the heavier tail, since an operation
+can be arbitrarily slower but never faster than its floor:
+
+.. list-table::
+   :header-rows: 1
+   :widths: 22 14 64
+
+   * - Method
+     - Coverage
+     - 
+   * - **sign test**
+     - **96.7%**
+     - Used. Assumes independence and nothing else. Slightly conservative, and about 10% wider than
+       the bootstrap - which is the right direction to err for a number that ends up in a pull
+       request.
+   * - percentile bootstrap
+     - 95.0%
+     - Wants its own asymptotics, converges slowly for a median in particular, and collapses to zero
+       width once a majority of rounds tie. Needs a seed, so the reported number depends on it.
+   * - Wilcoxon / Hodges-Lehmann
+     - 91.5%
+     - Narrowest, and wrong here: it wants the differences symmetric about their median, which is
+       precisely what skewed timings do not give. It also estimates the *pseudomedian*, so its
+       interval would not be an interval for the number being reported.
+   * - t-interval
+     - n/a
+     - Wants normality and a finite variance, and has a breakdown point of zero.
+
+.. note::
+
+   The one assumption every method above shares is that the rounds are independent, and strictly they
+   are not: thermal and frequency state persist across them. Interleaving removes drift from each
+   paired difference but does not make the differences independent, and positive autocorrelation
+   makes any such interval narrower than it should be. In practice the measured false-positive rate
+   lands slightly *below* the nominal 5% rather than above it, but it is worth knowing about before
+   trusting a very tight interval. A block bootstrap would address it properly.
 
 .. warning::
 
