@@ -149,10 +149,13 @@ TEST_CASE("unit_markdown_table_is_rectangular_with_counters") {
     bench.epochIterations(123).run("nothing much", [&] {
         ++x;
     });
+    // counts up rather than doubling: `y += y` wraps, and -fsanitize=integer
+    // fails the run on that even though the wrap is well defined
     bench.epochIterations(1).run("something", [] {
         uint64_t y = 1234;
         for (size_t i = 0; i < 100; ++i) {
-            ankerl::nanobench::doNotOptimizeAway(y += y);
+            ++y;
+            ankerl::nanobench::doNotOptimizeAway(y);
         }
     });
 
