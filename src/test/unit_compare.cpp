@@ -807,3 +807,51 @@ TEST_CASE("unit_compare_honors_clock_resolution_multiple") {
 
     CHECK(countFor(10000) > countFor(1) * 10.0);
 }
+
+// NOLINTNEXTLINE
+TEST_CASE("unit_compare_resolves_a_two_fold_difference") {
+    // The question a comparison exists to answer: is a 2x difference resolved,
+    // and reported as a 2x difference?
+    //
+    // unit_compare_more_than_two_alternatives used to ask this with one step
+    // against two, and the 32 bit leg answered 1.02x - no difference at all.
+    // The reason is not that the leg cannot resolve 2x; it is that one step
+    // against two is not a 2x difference in wall time there. Each iteration
+    // carries a fixed cost - the loop, the doNotOptimizeAway barrier - and
+    // where that cost is comparable to one step, (fixed + 1) against
+    // (fixed + 2) is nowhere near double.
+    //
+    // So the work is amortized instead: 20 steps against 40. The fixed cost is
+    // divided by twenty, the ratio is a genuine 2x on any platform, and what is
+    // being tested is the statistics rather than the platform's ability to time
+    // a single multiply.
+    Work a;
+    Work b;
+    auto const result = quiet(52).compare(
+        "twenty steps",
+        [&] {
+            for (int i = 0; i < 20; ++i) {
+                a.step();
+            }
+        },
+        "forty steps",
+        [&] {
+            for (int i = 0; i < 40; ++i) {
+                b.step();
+            }
+        });
+
+    INFO("relative " << result[1].relative << ", CI [" << result[1].relativeLow
+                     << " .. " << result[1].relativeHigh << "]");
+
+    // resolved: the whole interval sits below the baseline, so the measurement
+    // separated them rather than merely ranking them
+    CHECK(result.isSignificant(1));
+    CHECK(result[1].relativeHigh < 1.0);
+
+    // and it is the difference that is really there. Loose on purpose - the
+    // point is that a 2x difference reads as roughly 2x rather than as noise,
+    // not that any leg reproduces 0.5 exactly.
+    CHECK(result[1].relative < 0.8);
+    CHECK(result[1].relative > 0.25);
+}
