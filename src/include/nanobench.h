@@ -2841,6 +2841,102 @@ Clock::duration clockResolution() noexcept {
     return sResolution;
 }
 
+// The performance counter columns of a row, empty when the counters are switched off or the kernel
+// refused them. Split out of measurementColumns() below only to keep both of them under clang-tidy's
+// cognitive complexity limit - the two are read as one list.
+static std::vector<fmt::MarkDownColumn> counterColumns(Config const& config, Result const& result) {
+    std::vector<fmt::MarkDownColumn> columns;
+    if (!config.mShowPerformanceCounters) {
+        return columns;
+    }
+
+    auto addColumn = [&](Column column, int width, int precision, std::string title, std::string suffix, double value) {
+        if (isColumnVisible(config, column)) {
+            columns.emplace_back(width, precision, std::move(title), std::move(suffix), value);
+        }
+    };
+
+    auto const hasIns = result.has(Result::Measure::instructions);
+    auto const hasCyc = result.has(Result::Measure::cpucycles);
+    double const rInsMedian = hasIns ? result.median(Result::Measure::instructions) : 0.0;
+    double const rCycMedian = hasCyc ? result.median(Result::Measure::cpucycles) : 0.0;
+
+    if (hasIns) {
+        addColumn(Column::instructions, 18, 2, "ins/" + config.mUnit, "", rInsMedian / config.mBatch);
+    }
+    if (hasCyc) {
+        addColumn(Column::cycles, 18, 2, "cyc/" + config.mUnit, "", rCycMedian / config.mBatch);
+    }
+
+    // Which columns a row has must depend only on what the machine can measure, never on what it
+    // measured: keying IPC off the values instead meant a row whose op reported zero instructions
+    // came out one cell short of the header it sits under, and the rest of the table with it.
+    if (hasIns && hasCyc) {
+        addColumn(Column::ipc, 9, 3, "IPC", "", rCycMedian <= 0.0 ? 0.0 : rInsMedian / rCycMedian);
+    }
+
+    if (result.has(Result::Measure::branchinstructions)) {
+        double const rBraMedian = result.median(Result::Measure::branchinstructions);
+        addColumn(Column::branches, 17, 2, "bra/" + config.mUnit, "", rBraMedian / config.mBatch);
+        if (result.has(Result::Measure::branchmisses)) {
+            double const misses = result.median(Result::Measure::branchmisses);
+            addColumn(Column::branchMisses, 10, 1, "miss%", "%", rBraMedian < 1e-9 ? 0.0 : 100.0 * misses / rBraMedian);
+        }
+    }
+    return columns;
+}
+
+// The columns that describe what was measured, as opposed to how one row relates to another. Both
+// table writers are built out of these: IterationLogic prepends `relative`, a comparison prepends
+// `relative` and `95% CI`, and everything from here on is the same table in both.
+//
+// It is one function because it used to be two copies, and the copies drifted exactly the way copies
+// do: the comparison table silently lost the performance counters it collects anyway and the context
+// columns, and hideColumn() went inert there until it was patched separately. Adding a column here
+// adds it to both.
+//
+// Takes the Config rather than the Bench because a comparison has no Bench to ask - every Result
+// carries a copy of the config it was measured under, which is the same object either way.
+static std::vector<fmt::MarkDownColumn> measurementColumns(Config const& config, Result const& result) {
+    std::vector<fmt::MarkDownColumn> columns;
+
+    // Whether a column *can* be shown (is the counter available at all) and whether the caller
+    // *wants* it are different questions, and interleaving them at every site made it easy to answer
+    // one where the other was meant. The availability checks stay in counterColumns(); the visibility
+    // policy is here.
+    auto addColumn = [&](Column column, int width, int precision, std::string title, std::string suffix, double value) {
+        if (isColumnVisible(config, column)) {
+            columns.emplace_back(width, precision, std::move(title), std::move(suffix), value);
+        }
+    };
+
+    auto const median = result.median(Result::Measure::elapsed);
+
+    if (config.mComplexityN > 0.0) {
+        addColumn(Column::complexityN, 14, 0, "complexityN", "", config.mComplexityN);
+    }
+
+    // context columns come before the measurements: they say which benchmark this row is, and that
+    // reads better on the left. A row without the variable gets a blank cell rather than a missing
+    // column, so the table stays rectangular.
+    for (auto const& variableName : config.mContextColumns) {
+        auto it = config.mContext.find(variableName);
+        auto const width = static_cast<int>((std::max)(variableName.size() + 3, static_cast<size_t>(11)));
+        columns.emplace_back(width, variableName, it == config.mContext.end() ? std::string() : it->second);
+    }
+
+    addColumn(Column::timePerUnit, 22, 2, config.mTimeUnitName + "/" + config.mUnit, "",
+              median / (config.mTimeUnit.count() * config.mBatch));
+    addColumn(Column::unitPerSecond, 22, 2, config.mUnit + "/s", "", median <= 0.0 ? 0.0 : config.mBatch / median);
+    addColumn(Column::error, 10, 1, "err%", "%", result.medianAbsolutePercentError(Result::Measure::elapsed) * 100.0);
+
+    auto const counters = counterColumns(config, result);
+    columns.insert(columns.end(), counters.begin(), counters.end());
+
+    addColumn(Column::total, 12, 2, "total", "", result.sumProduct(Result::Measure::iterations, Result::Measure::elapsed));
+    return columns;
+}
+
 ANKERL_NANOBENCH(IGNORE_PADDED_PUSH)
 struct IterationLogic::Impl {
     enum class State { warmup, upscaling_runtime, measuring, endless };
@@ -2980,10 +3076,6 @@ struct IterationLogic::Impl {
             // prepare column data ///////
             std::vector<fmt::MarkDownColumn> columns;
 
-            // Whether a column *can* be shown (is the counter available, is relative() on) and whether
-            // the caller *wants* it are different questions, and interleaving them at every site made it
-            // easy to answer one where the other was meant. The availability checks stay below; the
-            // visibility policy lives here.
             auto addColumn = [&](Column column, int width, int precision, std::string title, std::string suffix, double value) {
                 if (mBench.isColumnVisible(column)) {
                     columns.emplace_back(width, precision, std::move(title), std::move(suffix), value);
@@ -3007,54 +3099,11 @@ struct IterationLogic::Impl {
                 addColumn(Column::relative, 11, 1, "relative", "%", d);
             }
 
-            if (mBench.complexityN() > 0) {
-                addColumn(Column::complexityN, 14, 0, "complexityN", "", mBench.complexityN());
-            }
-
-            // context columns come before the measurements: they say which benchmark this row is, and
-            // that reads better on the left. A row without the variable gets a blank cell rather than
-            // a missing column, so the table stays rectangular.
-            auto const& ctx = mResult.config().mContext;
-            for (auto const& variableName : mResult.config().mContextColumns) {
-                auto it = ctx.find(variableName);
-                auto const width = static_cast<int>((std::max)(variableName.size() + 3, static_cast<size_t>(11)));
-                columns.emplace_back(width, variableName, it == ctx.end() ? std::string() : it->second);
-            }
-
-            addColumn(Column::timePerUnit, 22, 2, mBench.timeUnitName() + "/" + mBench.unit(), "",
-                      rMedian / (mBench.timeUnit().count() * mBench.batch()));
-            addColumn(Column::unitPerSecond, 22, 2, mBench.unit() + "/s", "", rMedian <= 0.0 ? 0.0 : mBench.batch() / rMedian);
+            // everything a comparison table shows too
+            auto const measurements = measurementColumns(mResult.config(), mResult);
+            columns.insert(columns.end(), measurements.begin(), measurements.end());
 
             double const rErrorMedian = mResult.medianAbsolutePercentError(Result::Measure::elapsed);
-            addColumn(Column::error, 10, 1, "err%", "%", rErrorMedian * 100.0);
-
-            double rInsMedian = -1.0;
-            if (mBench.performanceCounters() && mResult.has(Result::Measure::instructions)) {
-                rInsMedian = mResult.median(Result::Measure::instructions);
-                addColumn(Column::instructions, 18, 2, "ins/" + mBench.unit(), "", rInsMedian / mBench.batch());
-            }
-
-            double rCycMedian = -1.0;
-            if (mBench.performanceCounters() && mResult.has(Result::Measure::cpucycles)) {
-                rCycMedian = mResult.median(Result::Measure::cpucycles);
-                addColumn(Column::cycles, 18, 2, "cyc/" + mBench.unit(), "", rCycMedian / mBench.batch());
-            }
-            if (rInsMedian > 0.0 && rCycMedian > 0.0) {
-                addColumn(Column::ipc, 9, 3, "IPC", "", rCycMedian <= 0.0 ? 0.0 : rInsMedian / rCycMedian);
-            }
-            if (mBench.performanceCounters() && mResult.has(Result::Measure::branchinstructions)) {
-                double const rBraMedian = mResult.median(Result::Measure::branchinstructions);
-                addColumn(Column::branches, 17, 2, "bra/" + mBench.unit(), "", rBraMedian / mBench.batch());
-                if (mResult.has(Result::Measure::branchmisses)) {
-                    double p = 0.0;
-                    if (rBraMedian >= 1e-9) {
-                        p = 100.0 * mResult.median(Result::Measure::branchmisses) / rBraMedian;
-                    }
-                    addColumn(Column::branchMisses, 10, 1, "miss%", "%", p);
-                }
-            }
-
-            addColumn(Column::total, 12, 2, "total", "", mResult.sumProduct(Result::Measure::iterations, Result::Measure::elapsed));
 
             // write everything
             auto& os = *mBench.output();
@@ -3986,23 +4035,16 @@ static void writeCompareTable(std::ostream& os, CompareResult const& compareResu
         return ss.str();
     };
 
+    // The two extra columns are the comparison itself, so they are not hideable - without them this
+    // is just a table. Everything after them is the same set an ordinary table shows, performance
+    // counters included: a comparison collects them around every epoch either way, so leaving them
+    // out was paying for them and showing nothing.
     auto columnsFor = [&](CompareResult::Entry const& entry, bool isBaseline) {
         std::vector<detail::fmt::MarkDownColumn> columns;
-        auto const median = entry.result.median(Result::Measure::elapsed);
-        // hideColumn() applies here the same as it does to an ordinary table. The two extra columns
-        // are the comparison itself, so they are not hideable - without them this is just a table.
-        auto addColumn = [&](Column column, int width, int precision, std::string title, std::string suffix, double value) {
-            if (detail::isColumnVisible(config, column)) {
-                columns.emplace_back(width, precision, std::move(title), std::move(suffix), value);
-            }
-        };
         columns.emplace_back(11, 1, "relative", "%", entry.relative * 100.0);
         columns.emplace_back(22, "95% CI", isBaseline ? std::string() : ratioText(entry.relativeLow, entry.relativeHigh));
-        addColumn(Column::timePerUnit, 22, 2, config.mTimeUnitName + "/" + config.mUnit, "",
-                  median / (config.mTimeUnit.count() * config.mBatch));
-        addColumn(Column::unitPerSecond, 22, 2, config.mUnit + "/s", "", median <= 0.0 ? 0.0 : config.mBatch / median);
-        addColumn(Column::error, 10, 1, "err%", "%", entry.result.medianAbsolutePercentError(Result::Measure::elapsed) * 100.0);
-        addColumn(Column::total, 12, 2, "total", "", entry.result.sumProduct(Result::Measure::iterations, Result::Measure::elapsed));
+        auto const measurements = detail::measurementColumns(entry.result.config(), entry.result);
+        columns.insert(columns.end(), measurements.begin(), measurements.end());
         return columns;
     };
 

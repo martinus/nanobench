@@ -461,17 +461,22 @@ confidence interval for it as the first two columns:
 
 .. code-block:: text
 
-   | relative |              95% CI |               ns/op |                op/s |    err% |     total | benchmark
-   |---------:|--------------------:|--------------------:|--------------------:|--------:|----------:|:----------
-   |   100.0% |                     |                2.44 |      409,836,065.57 |    0.0% |      0.00 | `murmurhash3`
-   |   241.0% |    239.3% .. 241.0% |                1.01 |      990,099,009.90 |    0.1% |      0.00 | `cheap`
+   | relative |              95% CI |               ns/op |                op/s |    err% |          ins/op |          cyc/op |    IPC |         bra/op |   miss% |     total | benchmark
+   |---------:|--------------------:|--------------------:|--------------------:|--------:|----------------:|----------------:|-------:|---------------:|--------:|----------:|:----------
+   |   100.0% |                     |                2.44 |      410,603,027.53 |    0.1% |           12.00 |           10.91 |  1.100 |           0.00 |   66.7% |      0.05 | `murmurhash3`
+   |   240.8% |    239.1% .. 241.0% |                1.02 |      984,999,958.21 |    0.5% |            5.00 |            4.55 |  1.099 |           0.00 |  100.0% |      0.02 | `cheap`
 
      Summary
        `cheap` ran 2.41x faster than `murmurhash3`
        95% CI [2.39 .. 2.41], 52 paired rounds, interleaved
 
+The measurement columns are the ones an ordinary table has, performance counters included - a
+comparison collects them around every epoch anyway. Here they answer the *why*: ``cheap`` retires 5
+instructions where ``murmurhash3`` retires 12, which is most of the 2.4x.
+
 More than two alternatives works the same way - the first is still the baseline, and every other row
-is measured against it in the same rounds:
+is measured against it in the same rounds. The counter columns are cut from this one to keep it
+narrow:
 
 .. code-block:: text
 

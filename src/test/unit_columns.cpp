@@ -2,6 +2,7 @@
 #include <thirdparty/doctest/doctest.h>
 
 #include <algorithm>
+#include <cstdint>
 #include <sstream>
 #include <string>
 #include <vector>
@@ -85,6 +86,30 @@ void configure(ankerl::nanobench::Bench& bench, std::ostream& os,
         .epochs(2)
         .epochIterations(1)
         .performanceCounters(false);
+}
+
+// Same, but leaving the performance counters at their default. Whether they are
+// actually available is a property of the machine, so no test may require the
+// counter columns to be there - only that both tables agree about them.
+void configureWithCounters(ankerl::nanobench::Bench& bench, std::ostream& os,
+                           char const* title) {
+    bench.output(&os).title(title).warmup(0).epochs(2).epochIterations(1);
+}
+
+// The columns a comparison shares with an ordinary table: everything except the
+// title and the two cells that *are* the comparison.
+std::vector<std::string> measurementCells(std::string const& markdown) {
+    auto cells = headerCells(markdown);
+    if (!cells.empty()) {
+        cells.pop_back(); // the title, which differs between the two tables
+    }
+    std::vector<std::string> measurements;
+    for (auto const& cell : cells) {
+        if (cell != "relative" && cell != "95% CI") {
+            measurements.push_back(cell);
+        }
+    }
+    return measurements;
 }
 
 } // namespace
@@ -182,4 +207,79 @@ TEST_CASE("unit_columns_context_missing_is_blank") {
     configure(cleared, after, "context_cleared");
     cleared.contextColumn("threads").clearContextColumns().run("none", [] {});
     CHECK_FALSE(hasCell(headerCells(after.str()), "threads"));
+}
+
+// NOLINTNEXTLINE
+TEST_CASE("unit_columns_default_set") {
+    // The default table, pinned in order. Not a style assertion: the columns
+    // are assembled by hand, and a refactoring that reorders, renames or drops
+    // one is otherwise invisible until somebody reads a table and finds op/s
+    // where ns/op used to be.
+    std::ostringstream oss;
+    ankerl::nanobench::Bench bench;
+    configure(bench, oss, "default_set");
+    bench.run("plain", [] {});
+
+    INFO(oss.str());
+    CHECK(measurementCells(oss.str()) ==
+          std::vector<std::string>{"ns/op", "op/s", "err%", "total"});
+}
+
+// NOLINTNEXTLINE
+TEST_CASE("unit_columns_compare_shows_the_same_measurements") {
+    // A comparison measures exactly what an ordinary run measures - including
+    // the performance counters, which it collects around every epoch either
+    // way. Whatever an ordinary table shows for a config, the comparison table
+    // for that same config has to show too.
+    //
+    // Deliberately not a list of expected column titles: the counters are only
+    // available on some machines, and hardcoding them would make this test
+    // assert the machine rather than the library.
+    auto op = [] {
+        uint64_t x = 1;
+        ankerl::nanobench::doNotOptimizeAway(x += x);
+    };
+
+    std::ostringstream normal;
+    ankerl::nanobench::Bench single;
+    configureWithCounters(single, normal, "same_measurements_run");
+    single.run("one", op);
+
+    std::ostringstream compared;
+    ankerl::nanobench::Bench pair;
+    configureWithCounters(pair, compared, "same_measurements_compare");
+    pair.compare("a", op, "b", op);
+
+    INFO("run:\n" << normal.str() << "\ncompare:\n" << compared.str());
+    auto const expected = measurementCells(normal.str());
+    REQUIRE_FALSE(expected.empty());
+    CHECK(measurementCells(compared.str()) == expected);
+
+    // and the two comparison-only columns are still there, in front
+    auto const header = headerCells(compared.str());
+    REQUIRE(header.size() >= 2U);
+    CHECK(header[0] == "relative");
+    CHECK(header[1] == "95% CI");
+}
+
+// NOLINTNEXTLINE
+TEST_CASE("unit_columns_compare_context") {
+    // contextColumn() said nothing about being for run() only, and a comparison
+    // of the same benchmark across a context variable is exactly what it is
+    // for.
+    auto op = [] {
+        uint64_t x = 1;
+        ankerl::nanobench::doNotOptimizeAway(x += x);
+    };
+
+    std::ostringstream oss;
+    ankerl::nanobench::Bench bench;
+    configure(bench, oss, "compare_context");
+    bench.contextColumn("threads").context("threads", "8");
+    bench.compare("a", op, "b", op);
+
+    auto const markdown = oss.str();
+    INFO(markdown);
+    CHECK(hasCell(headerCells(markdown), "threads"));
+    CHECK(dataCells(markdown, 0).size() > 2U);
 }

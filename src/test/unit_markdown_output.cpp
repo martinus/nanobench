@@ -2,6 +2,7 @@
 #include <thirdparty/doctest/doctest.h>
 
 #include <algorithm>
+#include <cstdint>
 #include <sstream>
 #include <string>
 #include <vector>
@@ -116,6 +117,57 @@ TEST_CASE("unit_markdown_table_is_rectangular") {
     // The header and the separator are built from the column widths alone, with
     // no measured value in them, so those two line up whatever the machine did.
     CHECK(lines[1].rfind('|') == lines[0].rfind('|'));
+}
+
+// NOLINTNEXTLINE
+TEST_CASE("unit_markdown_table_is_rectangular_with_counters") {
+    // Same property as above, with the performance counters left on. Which
+    // counter columns appear is a property of the machine, so this asserts
+    // alignment rather than any particular column - on a machine that has no
+    // counters it simply degenerates to the case above.
+    //
+    // The trap it guards is a row losing a cell for what it *measured*: IPC
+    // used to be emitted only when the instruction and cycle medians were both
+    // above zero, so a benchmark that measured no instructions at all came out
+    // one cell short, and every column after it shifted left by one under a
+    // header that still had it.
+    std::ostringstream oss;
+    ankerl::nanobench::Bench bench;
+    bench.output(&oss)
+        .title("rectangular_counters")
+        .warmup(0)
+        .epochs(7)
+        // unbounded width on a loaded machine - see the test above
+        .hideColumn(ankerl::nanobench::Column::error);
+
+    // An op small enough that the calibrated counter overhead accounts for all
+    // of it, so its instruction median comes out at exactly zero - the same
+    // shape as test_exact_iters_and_epochs, which is where this was first seen.
+    // Whether it really reaches zero depends on the machine, so the assertions
+    // below are about alignment and hold either way.
+    size_t x = 0;
+    bench.epochIterations(123).run("nothing much", [&] {
+        ++x;
+    });
+    bench.epochIterations(1).run("something", [] {
+        uint64_t y = 1234;
+        for (size_t i = 0; i < 100; ++i) {
+            ankerl::nanobench::doNotOptimizeAway(y += y);
+        }
+    });
+
+    auto const lines = tableLines(oss.str());
+    INFO(oss.str());
+    REQUIRE(lines.size() >= 4U); // header, separator, two rows
+
+    auto const expected = countOf(lines.front(), '|');
+    auto const lastBar = lines.front().rfind('|');
+    REQUIRE(lastBar != std::string::npos);
+    for (auto const& line : lines) {
+        INFO("line: " << line);
+        CHECK(countOf(line, '|') == expected);
+        CHECK(line.rfind('|') == lastBar);
+    }
 }
 
 // NOLINTNEXTLINE
