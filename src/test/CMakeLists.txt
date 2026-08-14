@@ -19,7 +19,7 @@ target_sources_local(nb PRIVATE
     example_random_uniform01.cpp
     example_random2.cpp
     example_shuffle.cpp
-    tutorial_ab.cpp
+    tutorial_compare.cpp
     tutorial_complexity_set.cpp
     tutorial_complexity_sort.cpp
     tutorial_context.cpp
@@ -31,7 +31,7 @@ target_sources_local(nb PRIVATE
     tutorial_render_simple.cpp    
     tutorial_slow_v1.cpp
     tutorial_slow_v2.cpp
-    unit_ab.cpp
+    unit_compare.cpp
     unit_api.cpp
     unit_bench_config.cpp
     unit_cold.cpp

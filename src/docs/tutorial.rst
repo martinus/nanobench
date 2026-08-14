@@ -438,8 +438,8 @@ seconds are possible. To the left we show relative performance compared to ``std
 
 .. _ab-comparison:
 
-A/B Comparison
-==============
+Comparing Alternatives
+======================
 
 :cpp:func:`relative() <ankerl::nanobench::Bench::relative()>` runs one benchmark to completion, then
 the next, and divides the two medians. That measures the machine as much as the code. Nanobench's own
@@ -447,34 +447,56 @@ test suite records the failure: two **identical** workloads came out 38% apart o
 each reported an ``err%`` of 0.5. ``err%`` is the spread *within* one benchmark; the comparison
 depends on the spread *between* them, and nothing in that table tells you anything about it.
 
-:cpp:func:`ab() <ankerl::nanobench::Bench::ab()>` compares two alternatives against each other inside
+:cpp:func:`compare() <ankerl::nanobench::Bench::compare()>` compares two alternatives against each other inside
 the same slice of time. A frequency ramp, a noisy neighbour or thermal throttling then hits both and
 cancels out of the ratio, and what comes back is a ratio with a confidence interval:
 
-.. literalinclude:: ../test/tutorial_ab.cpp
+.. literalinclude:: ../test/tutorial_compare.cpp
    :language: c++
    :linenos:
-   :caption: tutorial_ab.cpp
+   :caption: tutorial_compare.cpp
 
-Takes about 200ms and prints:
+Takes about 200ms and prints an ordinary nanobench table, with the ratio to the baseline and a
+confidence interval for it as the first two columns:
 
 .. code-block:: text
 
-   A/B comparison, 52 paired rounds, ABBA interleaved
-     `murmurhash3`          2.44 ns/op  err   0.0%  (min 2.43, max 2.48)
-     `cheap`                1.01 ns/op  err   0.1%  (min 1.01, max 1.03)
+   | relative |              95% CI |               ns/op |                op/s |    err% |     total | benchmark
+   |---------:|--------------------:|--------------------:|--------------------:|--------:|----------:|:----------
+   |   100.0% |                     |                2.44 |      409,836,065.57 |    0.0% |      0.00 | `murmurhash3`
+   |   241.0% |    239.3% .. 241.0% |                1.01 |      990,099,009.90 |    0.1% |      0.00 | `cheap`
 
      Summary
        `cheap` ran 2.41x faster than `murmurhash3`
-       95% CI [2.39 .. 2.41]
+       95% CI [2.39 .. 2.41], 52 paired rounds, interleaved
 
-   A/B comparison, 52 paired rounds, ABBA interleaved
-     `murmurhash3`          2.44 ns/op  err   0.1%  (min 2.43, max 2.62)
-     `splitmix64`           2.44 ns/op  err   0.1%  (min 2.43, max 2.57)
+More than two alternatives works the same way - the first is still the baseline, and every other row
+is measured against it in the same rounds:
+
+.. code-block:: text
+
+   | relative |              95% CI |         ns/uint64_t |          uint64_t/s |    err% |     total | random number generators
+   |---------:|--------------------:|--------------------:|--------------------:|--------:|----------:|:-------------------------
+   |   100.0% |                     |                1.71 |      585,550,044.56 |    0.5% |      0.04 | `std::mt19937`
+   |    89.9% |      89.5% .. 90.2% |                1.90 |      526,080,588.04 |    0.5% |      0.04 | `std::mt19937_64`
+   |    45.1% |      44.8% .. 45.3% |                3.79 |      263,924,311.10 |    0.4% |      0.08 | `std::minstd_rand`
+   |   348.5% |    345.8% .. 349.7% |                0.49 |    2,044,545,305.41 |    0.5% |      0.01 | `nanobench::Rng`
+   |    86.6% |      85.5% .. 88.3% |                1.97 |      507,383,045.80 |    2.2% |      0.04 | `lcg by hand`
 
      Summary
-       no difference resolved between `murmurhash3` and `splitmix64`
-       ratio 1.00x, 95% CI [1.00 .. 1.00]
+       `nanobench::Rng` is fastest of 5, 3.48x ahead of `std::mt19937`
+       95% CI [3.46 .. 3.50], intervals corrected for 4 comparisons, 55 paired rounds, interleaved
+
+The interval column is the thing to read. ``std::mt19937_64`` at 89.9% has an interval of
+``89.5% .. 90.2%``, which excludes 100% - it really is slower. An interval that *contains* 100%
+means this experiment did not tell that row apart from the baseline, whatever its percentage says.
+
+.. note::
+
+   Picking the winner out of many is a selection rather than a test: whichever came out on top is
+   flattered by the same luck that put it there. So the summary does not claim a winner on its own -
+   it says how far ahead of the *runner-up* it is, with an interval on that, and says plainly when
+   the top two were not separated.
 
 Reading the output
 ------------------
@@ -491,7 +513,7 @@ estimate would still say 1.3x, and it would still mean nothing.
 
 **"No difference resolved" is not "the same speed."** It says this experiment did not separate them,
 which is usually a reason to raise :cpp:func:`epochs() <ankerl::nanobench::Bench::epochs()>` rather
-than a conclusion. :cpp:func:`isSignificant() <ankerl::nanobench::AbResult::isSignificant()>` is
+than a conclusion. :cpp:func:`isSignificant() <ankerl::nanobench::CompareResult::isSignificant()>` is
 exactly the question of whether the interval excludes 1.
 
 **Watch for tied rounds.** When the verdict says ``(38 tied at the clock's resolution)``, both sides
@@ -501,7 +523,7 @@ fast, it is the clock running out of resolution, and the fix is a longer epoch v
 
 **Use more rounds than the default.** An epoch is about a millisecond, so ``epochs(51)`` costs a tenth
 of a second and buys an interval narrow enough to act on. Fewer than six rounds cannot support a 95%
-statement at all, so ``ab()`` always runs at least eight.
+statement at all, so ``compare()`` always runs at least eight.
 
 How it works
 ------------
@@ -514,7 +536,7 @@ Designing the experiment
 ~~~~~~~~~~~~~~~~~~~~~~~~
 
 #. **A fixed iteration count, calibrated once up front.** :cpp:func:`run() <ankerl::nanobench::Bench::run()>`
-   adapts the count as it goes; ``ab()`` does not. An iteration count that drifted between rounds
+   adapts the count as it goes; ``compare()`` does not. An iteration count that drifted between rounds
    would be a second thing changing while the comparison is being made.
 
 #. **The same count for both sides.** An epoch carries a fixed overhead - two clock reads and the
@@ -570,7 +592,7 @@ Estimating and reporting
    approximately right for large ones. It is also deterministic: there is no resampling anywhere, so
    the same measurements always give the same interval.
 
-#. **Significance is the interval excluding 1.** :cpp:func:`isSignificant() <ankerl::nanobench::AbResult::isSignificant()>`
+#. **Significance is the interval excluding 1.** :cpp:func:`isSignificant() <ankerl::nanobench::CompareResult::isSignificant()>`
    asks only that, which is the same thing as a two-sided test at 5% - and it is reported as an
    interval rather than a p-value because the interval says how big the difference is as well as
    whether there is one.
@@ -640,7 +662,7 @@ consistent with the false-positive rate measured below the nominal 5% rather tha
    This is also why :cpp:func:`warmup() <ankerl::nanobench::Bench::warmup()>` is not the fix it looks
    like. Discarding the first twenty rounds - a warmup by another name - moves none of the numbers
    above, because calibration has already run each side for about a full epoch before the first round
-   starts. ``ab()`` does honor ``warmup()`` if you set it, but do not expect it to buy an honest
+   starts. ``compare()`` does honor ``warmup()`` if you set it, but do not expect it to buy an honest
    interval that pairing has not already bought.
 
    The measurements above are one machine and one workload. A laptop that thermally throttles under

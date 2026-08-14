@@ -41,14 +41,14 @@
 
 
 
------------------------------------------------------------------------------
-:cpp:class:`AbResult <ankerl::nanobench::AbResult>` - A/B Comparison Outcome
------------------------------------------------------------------------------
+---------------------------------------------------------------------------------------
+:cpp:class:`CompareResult <ankerl::nanobench::CompareResult>` - Comparison Outcome
+---------------------------------------------------------------------------------------
 
-Returned by :cpp:func:`Bench::ab() <ankerl::nanobench::Bench::ab()>`. See the tutorial at
+Returned by :cpp:func:`Bench::compare() <ankerl::nanobench::Bench::compare()>`. See the tutorial at
 :ref:`ab-comparison` for a worked example and how to read the interval.
 
-.. doxygenclass:: ankerl::nanobench::AbResult
+.. doxygenclass:: ankerl::nanobench::CompareResult
     :members:
 
 
