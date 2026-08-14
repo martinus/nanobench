@@ -581,8 +581,10 @@ public:
     /// One alternative: its measurements, and how it compares to the baseline.
     ANKERL_NANOBENCH(IGNORE_PADDED_PUSH)
     struct Entry {
+        // noexcept because it only moves, and both std::string's and Result's move constructors are:
+        // gcc's -Wnoexcept fails the build over the vector growth path otherwise.
         Entry(std::string entryName, Result entryResult, double entryRelative, double entryRelativeLow, double entryRelativeHigh,
-              size_t entryTiedRounds);
+              size_t entryTiedRounds) noexcept;
 
         std::string name;    // NOLINT(misc-non-private-member-variables-in-classes)
         Result result;       // NOLINT(misc-non-private-member-variables-in-classes)
@@ -1378,11 +1380,16 @@ private:
     ANKERL_NANOBENCH(NODISCARD)
     CompareResult compareImpl(std::vector<std::string> const& names, std::vector<detail::ErasedOp> const& ops);
 
-    // Number of iterations that makes one epoch of `op` last about as long as a normal epoch would.
-    // compare() keeps this fixed for the whole experiment: an iteration count that drifted between
-    // rounds would be a second thing changing while the comparison is being made.
+    // Number of iterations of `op` that makes one epoch last at least `target`.
     ANKERL_NANOBENCH(NODISCARD)
-    uint64_t compareCalibrate(detail::ErasedOp const& op) const;
+    uint64_t compareCalibrate(detail::ErasedOp const& op, Clock::duration target) const;
+
+    // The one iteration count the whole experiment runs at. Fixed for every alternative and every
+    // round: a count that drifted between them would be a second thing changing while the comparison
+    // is being made, and an epoch's fixed overhead is divided by it, so two different counts amortize
+    // that overhead differently and bias the ratio.
+    ANKERL_NANOBENCH(NODISCARD)
+    uint64_t compareIterations(std::vector<detail::ErasedOp> const& ops) const;
 
     // Runs `numIters` iterations of `op` as one epoch, appending the measurement to `result`.
     static void compareEpoch(detail::ErasedOp const& op, uint64_t numIters, Result& result);
@@ -3907,7 +3914,7 @@ std::pair<double, double> medianInterval(std::vector<double> values, double conf
 } // namespace detail
 
 CompareResult::Entry::Entry(std::string entryName, Result entryResult, double entryRelative, double entryRelativeLow,
-                            double entryRelativeHigh, size_t entryTiedRounds)
+                            double entryRelativeHigh, size_t entryTiedRounds) noexcept
     : name(std::move(entryName))
     , result(std::move(entryResult))
     , relative(entryRelative)
@@ -4112,16 +4119,24 @@ std::ostream& operator<<(std::ostream& os, CompareResult const& compareResult) {
     return os;
 }
 
-uint64_t Bench::compareCalibrate(detail::ErasedOp const& op) const {
+uint64_t Bench::compareIterations(std::vector<detail::ErasedOp> const& ops) const {
     // An exact epochIterations() overrides any calculated count, exactly as it does in a normal run.
     if (0 != epochIterations()) {
         return epochIterations();
     }
 
-    // An epoch of the same length a normal run would use - the same rule, from the same function, so
-    // the two cannot drift apart.
+    // The count that fills a normal epoch, per alternative, and then the smallest of them - so the
+    // slowest alternative does not run an epoch longer than maxEpochTime asked for. Every faster one
+    // then runs a shorter epoch than it could have, which is the price of them sharing a count.
     auto const target = detail::targetRuntimePerEpoch(*this);
+    auto iters = (std::numeric_limits<uint64_t>::max)();
+    for (auto const& op : ops) {
+        iters = (std::min)(iters, compareCalibrate(op, target));
+    }
+    return iters;
+}
 
+uint64_t Bench::compareCalibrate(detail::ErasedOp const& op, Clock::duration target) const {
     uint64_t numIters = minEpochIterations();
     for (size_t attempt = 0; attempt < 64; ++attempt) {
         Clock::time_point const before = Clock::now();
@@ -4165,14 +4180,8 @@ CompareResult Bench::compareImpl(std::vector<std::string> const& names, std::vec
         op.run(op.op, warmup());
     }
 
-    // The same count for every alternative, which matters more than it looks. An epoch carries a
-    // fixed overhead, and what gets compared is time per iteration, so that overhead is divided by
-    // the count. Calibrating each separately amortizes it differently between them: a systematic bias
-    // in the ratio that no amount of pairing removes. It measured 1.2% on 200us epochs.
-    auto iters = (std::numeric_limits<uint64_t>::max)();
-    for (auto const& op : ops) {
-        iters = (std::min)(iters, compareCalibrate(op));
-    }
+    // One count for every alternative - see compareIterations() for why that matters so much.
+    auto const iters = compareIterations(ops);
 
     std::vector<Result> results;
     results.reserve(numOps);

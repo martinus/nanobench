@@ -405,7 +405,13 @@ TEST_CASE("unit_compare_more_than_two_alternatives") {
     Work b;
     Work c;
     Work d;
-    auto bench = quiet(12);
+    // 40 rounds, not the default 11. Three comparisons means each interval is
+    // built at 98.3% rather than 95%, and at 12 rounds that interval spans the
+    // middle 75% of the data - three rounds of the machine misbehaving are
+    // enough to make it straddle 1.0 and report a real 2x difference as
+    // unresolved, which is how this went red on a loaded CI runner. At 40 it
+    // spans 38%, which needs thirteen.
+    auto bench = quiet(40);
     auto const result = bench.compare(
         "baseline",
         [&] {
