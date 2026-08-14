@@ -912,41 +912,42 @@ private:
     // The pack is walked rather than stored: the operations all have different types, so a container
     // of them would need std::function, and that would put an indirect call in the *inner* measuring
     // loop. Walking to the wanted one costs a few predictable branches once per epoch instead.
-    void compareNames(std::vector<std::string>&) const {}
+    static void compareNames(std::vector<std::string>& /*names*/) {}
 
     template <typename Name, typename Op, typename... Rest>
-    void compareNames(std::vector<std::string>& names, Name&& name, Op&&, Rest&&... rest) const {
+    void compareNames(std::vector<std::string>& names, Name&& name, Op&& /*op*/, Rest&&... rest) const {
         names.emplace_back(std::forward<Name>(name));
         compareNames(names, std::forward<Rest>(rest)...);
     }
 
-    ANKERL_NANOBENCH(NODISCARD) uint64_t compareCalibrateAll() const {
+    ANKERL_NANOBENCH(NODISCARD) static uint64_t compareCalibrateAll() {
         return (std::numeric_limits<uint64_t>::max)();
     }
 
     template <typename Name, typename Op, typename... Rest>
     ANKERL_NANOBENCH(NODISCARD)
-    uint64_t compareCalibrateAll(Name&&, Op&& op, Rest&&... rest) const {
+    uint64_t compareCalibrateAll(Name&& /*name*/, Op&& op, Rest&&... rest) const {
         auto const here = compareCalibrate(op);
         auto const others = compareCalibrateAll(std::forward<Rest>(rest)...);
         return (std::min)(here, others);
     }
 
-    void compareWarmupAll(uint64_t) {}
+    static void compareWarmupAll(uint64_t /*numIters*/) {}
 
     template <typename Name, typename Op, typename... Rest>
-    void compareWarmupAll(uint64_t numIters, Name&&, Op&& op, Rest&&... rest) {
+    void compareWarmupAll(uint64_t numIters, Name&& /*name*/, Op&& op, Rest&&... rest) {
         for (uint64_t i = 0; i < numIters; ++i) {
             op();
         }
         compareWarmupAll(numIters, std::forward<Rest>(rest)...);
     }
 
-    void compareEpochNth(size_t, size_t, uint64_t, std::vector<Result>&, std::vector<std::vector<double>>&) {}
+    static void compareEpochNth(size_t /*wanted*/, size_t /*current*/, uint64_t /*numIters*/, std::vector<Result>& /*results*/,
+                                std::vector<std::vector<double>>& /*perRound*/) {}
 
     template <typename Name, typename Op, typename... Rest>
     void compareEpochNth(size_t wanted, size_t current, uint64_t numIters, std::vector<Result>& results,
-                         std::vector<std::vector<double>>& perRound, Name&&, Op&& op, Rest&&... rest) {
+                         std::vector<std::vector<double>>& perRound, Name&& /*name*/, Op&& op, Rest&&... rest) {
         if (wanted == current) {
             compareEpoch(op, numIters, results[current], perRound[current]);
             return;
@@ -1874,7 +1875,7 @@ CompareResult Bench::compare(Args&&... args) {
 
     std::vector<CompareResult::Entry> entries;
     entries.reserve(numOps);
-    entries.emplace_back(names[0], std::move(results[0]), 1.0, 1.0, 1.0, size_t(0));
+    entries.emplace_back(names[0], std::move(results[0]), 1.0, 1.0, 1.0, static_cast<size_t>(0));
     for (size_t i = 1; i < numOps; ++i) {
         // ln(t_baseline) - ln(t_i), so a positive difference means the alternative was quicker and
         // the ratio comes out above 1 - the same direction relative() reports.
@@ -4050,16 +4051,10 @@ size_t CompareResult::fastest() const {
     return best;
 }
 
-std::ostream& operator<<(std::ostream& os, CompareResult const& compareResult) {
-    detail::fmt::StreamStateRestorer const restorer(os);
-    if (0U == compareResult.size()) {
-        return os;
-    }
-
-    // The same table an ordinary benchmark prints, plus the ratio to the baseline and an interval for
-    // it. A ratio with no scale beside it cannot be told from the same ratio on a completely
-    // different scale, and a side that was wildly unstable is invisible in one - so the absolute
-    // numbers come first and the verdict after.
+// The table half of a comparison: an ordinary benchmark table with the ratio to the baseline and an
+// interval for it in front. Split out of operator<< because clang-tidy caps cognitive complexity at
+// 25 and the two halves together sat well over it.
+static void writeCompareTable(std::ostream& os, CompareResult const& compareResult) {
     auto const& config = compareResult[0].result.config();
     auto ratioText = [](double low, double high) {
         std::ostringstream ss;
@@ -4098,79 +4093,97 @@ std::ostream& operator<<(std::ostream& os, CompareResult const& compareResult) {
         }
         os << "| " << detail::fmt::MarkDownCode(compareResult[i].name) << std::endl;
     }
+}
+
+// Two alternatives read better as a sentence than as a row to look up.
+static void writeComparePair(std::ostream& os, CompareResult const& compareResult) {
+    auto const baseline = detail::fmt::MarkDownCode(compareResult[0].name);
+    auto const& entry = compareResult[1];
+    auto const other = detail::fmt::MarkDownCode(entry.name);
+
+    if (!compareResult.isSignificant(1)) {
+        os << "    no difference resolved between " << baseline << " and " << other << std::endl
+           << "    ratio " << detail::fmt::Number(1, 2, entry.relative) << "x, 95% CI ["
+           << detail::fmt::Number(1, 2, entry.relativeLow) << " .. " << detail::fmt::Number(1, 2, entry.relativeHigh) << "]";
+        return;
+    }
+    if (entry.relative > 1.0) {
+        os << "    " << other << " ran " << detail::fmt::Number(1, 2, entry.relative) << "x faster than " << baseline << std::endl
+           << "    95% CI [" << detail::fmt::Number(1, 2, entry.relativeLow) << " .. " << detail::fmt::Number(1, 2, entry.relativeHigh)
+           << "]";
+        return;
+    }
+    // stated the way round the reader asked the question, so the interval inverts with it
+    os << "    " << other << " ran " << detail::fmt::Number(1, 2, 1.0 / entry.relative) << "x slower than " << baseline << std::endl
+       << "    95% CI [" << detail::fmt::Number(1, 2, 1.0 / entry.relativeHigh) << " .. "
+       << detail::fmt::Number(1, 2, 1.0 / entry.relativeLow) << "]";
+}
+
+// Picking the winner out of many is a selection, not a test: whichever came first is flattered by the
+// same luck that made it first. So the claim is not "this one is fastest" on its own, it is how far
+// ahead of the *runner-up* it is - and if that interval contains 1, the top two were not separated.
+static void writeCompareWinner(std::ostream& os, CompareResult const& compareResult) {
+    auto const best = compareResult.fastest();
+    size_t runnerUp = best;
+    auto runnerUpMedian = std::numeric_limits<double>::infinity();
+    for (size_t i = 0; i < compareResult.size(); ++i) {
+        if (i == best) {
+            continue;
+        }
+        auto const median = compareResult[i].result.median(Result::Measure::elapsed);
+        if (median < runnerUpMedian) {
+            runnerUpMedian = median;
+            runnerUp = i;
+        }
+    }
+
+    // The rounds are paired for every alternative, not only against the baseline, so the top two can
+    // be compared to each other after the fact from the per-round measurements.
+    auto perRoundOf = [](Result const& result) {
+        std::vector<double> values;
+        values.reserve(result.size());
+        for (size_t r = 0; r < result.size(); ++r) {
+            values.push_back(result.get(r, Result::Measure::elapsed));
+        }
+        return values;
+    };
+    auto const logRatios = detail::pairedLogRatios(perRoundOf(compareResult[runnerUp].result), perRoundOf(compareResult[best].result));
+    auto const confidence = 1.0 - 0.05 / detail::d((std::max)(compareResult.comparisons(), static_cast<size_t>(1)));
+    auto const interval = detail::medianInterval(logRatios, confidence);
+    auto const lead = std::exp(detail::medianOf(logRatios));
+    auto const leadLow = std::exp(interval.first);
+    auto const leadHigh = std::exp(interval.second);
+
+    auto const bestCode = detail::fmt::MarkDownCode(compareResult[best].name);
+    auto const runnerUpCode = detail::fmt::MarkDownCode(compareResult[runnerUp].name);
+    if (leadLow > 1.0) {
+        os << "    " << bestCode << " is fastest of " << compareResult.size() << ", " << detail::fmt::Number(1, 2, lead)
+           << "x ahead of " << runnerUpCode << std::endl;
+    } else {
+        os << "    " << bestCode << " and " << runnerUpCode << " are the two fastest of " << compareResult.size()
+           << ", and were not separated" << std::endl;
+    }
+    os << "    95% CI [" << detail::fmt::Number(1, 2, leadLow) << " .. " << detail::fmt::Number(1, 2, leadHigh)
+       << "], intervals corrected for " << compareResult.comparisons() << " comparisons";
+}
+
+std::ostream& operator<<(std::ostream& os, CompareResult const& compareResult) {
+    detail::fmt::StreamStateRestorer const restorer(os);
+    if (0U == compareResult.size()) {
+        return os;
+    }
+
+    // The same table an ordinary benchmark prints, plus the ratio to the baseline and an interval for
+    // it. A ratio with no scale beside it cannot be told from the same ratio on a completely
+    // different scale, and a side that was wildly unstable is invisible in one - so the absolute
+    // numbers come first and the verdict after.
+    writeCompareTable(os, compareResult);
 
     os << std::endl << "  Summary" << std::endl;
-    auto const baseline = detail::fmt::MarkDownCode(compareResult[0].name);
     if (2U == compareResult.size()) {
-        // Two alternatives read better as a sentence than as a row to look up.
-        auto const& entry = compareResult[1];
-        auto const other = detail::fmt::MarkDownCode(entry.name);
-        if (!compareResult.isSignificant(1)) {
-            os << "    no difference resolved between " << baseline << " and " << other << std::endl
-               << "    ratio " << detail::fmt::Number(1, 2, entry.relative) << "x, 95% CI ["
-               << detail::fmt::Number(1, 2, entry.relativeLow) << " .. " << detail::fmt::Number(1, 2, entry.relativeHigh) << "]";
-        } else if (entry.relative > 1.0) {
-            os << "    " << other << " ran " << detail::fmt::Number(1, 2, entry.relative) << "x faster than " << baseline << std::endl
-               << "    95% CI [" << detail::fmt::Number(1, 2, entry.relativeLow) << " .. "
-               << detail::fmt::Number(1, 2, entry.relativeHigh) << "]";
-        } else {
-            // stated the way round the reader asked the question, so the interval inverts with it
-            os << "    " << other << " ran " << detail::fmt::Number(1, 2, 1.0 / entry.relative) << "x slower than " << baseline
-               << std::endl
-               << "    95% CI [" << detail::fmt::Number(1, 2, 1.0 / entry.relativeHigh) << " .. "
-               << detail::fmt::Number(1, 2, 1.0 / entry.relativeLow) << "]";
-        }
+        writeComparePair(os, compareResult);
     } else {
-        // Picking the winner out of many is a selection, not a test: whichever came first is
-        // flattered by the same luck that made it first. So the claim is not "this one is fastest"
-        // on its own, it is how far ahead of the *runner-up* it is, with an interval on that - and
-        // if that interval contains 1, the measurement did not actually separate the top two.
-        auto const best = compareResult.fastest();
-        size_t runnerUp = best;
-        auto runnerUpMedian = std::numeric_limits<double>::infinity();
-        for (size_t i = 0; i < compareResult.size(); ++i) {
-            if (i == best) {
-                continue;
-            }
-            auto const median = compareResult[i].result.median(Result::Measure::elapsed);
-            if (median < runnerUpMedian) {
-                runnerUpMedian = median;
-                runnerUp = i;
-            }
-        }
-
-        // The rounds are paired for every alternative, not only against the baseline, so the top two
-        // can be compared to each other after the fact from the per-round measurements.
-        auto perRoundOf = [](Result const& result) {
-            std::vector<double> values;
-            values.reserve(result.size());
-            for (size_t r = 0; r < result.size(); ++r) {
-                values.push_back(result.get(r, Result::Measure::elapsed));
-            }
-            return values;
-        };
-        auto const logRatios =
-            detail::pairedLogRatios(perRoundOf(compareResult[runnerUp].result), perRoundOf(compareResult[best].result));
-        auto const confidence = 1.0 - 0.05 / detail::d((std::max)(compareResult.comparisons(), size_t(1)));
-        auto const interval = detail::medianInterval(logRatios, confidence);
-        auto const lead = std::exp(detail::medianOf(logRatios));
-        auto const leadLow = std::exp(interval.first);
-        auto const leadHigh = std::exp(interval.second);
-
-        auto const bestCode = detail::fmt::MarkDownCode(compareResult[best].name);
-        auto const runnerUpCode = detail::fmt::MarkDownCode(compareResult[runnerUp].name);
-        if (leadLow > 1.0) {
-            os << "    " << bestCode << " is fastest of " << compareResult.size() << ", " << detail::fmt::Number(1, 2, lead)
-               << "x ahead of " << runnerUpCode << std::endl
-               << "    95% CI [" << detail::fmt::Number(1, 2, leadLow) << " .. " << detail::fmt::Number(1, 2, leadHigh)
-               << "], intervals corrected for " << compareResult.comparisons() << " comparisons";
-        } else {
-            os << "    " << bestCode << " and " << runnerUpCode << " are the two fastest of " << compareResult.size()
-               << ", and were not separated" << std::endl
-               << "    ratio " << detail::fmt::Number(1, 2, lead) << "x, 95% CI [" << detail::fmt::Number(1, 2, leadLow) << " .. "
-               << detail::fmt::Number(1, 2, leadHigh) << "], intervals corrected for " << compareResult.comparisons()
-               << " comparisons";
-        }
+        writeCompareWinner(os, compareResult);
     }
     os << ", " << compareResult.rounds() << " paired rounds, interleaved" << std::endl;
 

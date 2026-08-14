@@ -246,6 +246,10 @@ Five traps, each of which has cost a round trip:
   to allow for. Where a test really is about elapsed time, as in `unit_epoch_time.cpp`, assert a loose
   one-sided bound — a broken clamp moves the runtime by orders of magnitude, so there is nothing to
   gain by being tight and a flaky leg to lose.
+- Run the clang-tidy container **before** pushing a header change, not after CI says so. The command
+  below takes a couple of minutes from cold and catches what nothing on this machine can: unnamed
+  parameters, C-style functional casts like `size_t(0)`, a member that could be `static`, and the
+  cognitive-complexity cap. Skipping it has cost two round trips on `lint` alone.
 - A new loop written as `while (n-- > 0)` wraps to `UINT64_MAX` on its last turn. That is defined
   behaviour, but `-fsanitize=integer` flags it, so the enclosing function needs
   `ANKERL_NANOBENCH_NO_SANITIZE("integer")` the way `runImpl` has it. Only the *measuring* loops are
