@@ -174,7 +174,7 @@ struct Config;
 class Result;
 class Rng;
 class BigO;
-class AbResult;
+class CompareResult;
 
 namespace detail {
 template <typename SetupOp>
@@ -526,113 +526,79 @@ private:
 ANKERL_NANOBENCH(IGNORE_PADDED_POP)
 
 /**
- * @brief The outcome of a paired A/B comparison, see Bench::ab().
+ * @brief The outcome of a paired comparison, see Bench::compare().
  *
- * `relative()` compares the median of one benchmark run entirely before another, which measures the
- * machine's drift as much as the code: nanobench's own test suite has a case where two *identical*
- * workloads came out 38% apart on a CI runner, while each reported an `err%` of 0.5. Whatever `err%`
- * is measuring there, it is not the uncertainty of the comparison.
+ * :cpp:func:`relative() <ankerl::nanobench::Bench::relative()>` compares the median of one benchmark
+ * run entirely before another, which measures the machine's drift as much as the code: nanobench's
+ * own test suite has a case where two *identical* workloads came out 38% apart on a CI runner, while
+ * each reported an `err%` of 0.5. Whatever `err%` is measuring there, it is not the uncertainty of
+ * the comparison.
  *
- * A paired comparison measures the two alternatives against each other within the same slice of
- * time, so anything that affects both - a frequency ramp, a noisy neighbour, thermal throttling -
- * cancels out of the difference. What is reported is therefore an uncertainty about *the ratio*,
- * which is the number the caller actually wanted.
+ * A paired comparison measures the alternatives against each other within the same slice of time, so
+ * anything that affects all of them - a frequency ramp, a noisy neighbour, thermal throttling -
+ * cancels out of the ratios. What is reported is therefore an uncertainty about *the ratio*, which is
+ * the number the caller actually wanted.
+ *
+ * Entry 0 is the baseline that everything else is measured against.
  */
 ANKERL_NANOBENCH(IGNORE_PADDED_PUSH)
-class AbResult {
+class CompareResult {
 public:
-    AbResult(std::string nameA, std::string nameB, Result resultA, Result resultB, double speedup, double speedupLow,
-             double speedupHigh, size_t tiedRounds);
+    /// One alternative: its measurements, and how it compares to the baseline.
+    ANKERL_NANOBENCH(IGNORE_PADDED_PUSH)
+    struct Entry {
+        Entry(std::string entryName, Result entryResult, double entryRelative, double entryRelativeLow, double entryRelativeHigh,
+              size_t entryTiedRounds);
 
-    ANKERL_NANOBENCH(NODISCARD) std::string const& nameA() const noexcept;
-    ANKERL_NANOBENCH(NODISCARD) std::string const& nameB() const noexcept;
+        std::string name;    // NOLINT(misc-non-private-member-variables-in-classes)
+        Result result;       // NOLINT(misc-non-private-member-variables-in-classes)
+        double relative;     // NOLINT(misc-non-private-member-variables-in-classes)
+        double relativeLow;  // NOLINT(misc-non-private-member-variables-in-classes)
+        double relativeHigh; // NOLINT(misc-non-private-member-variables-in-classes)
+        size_t tiedRounds;   // NOLINT(misc-non-private-member-variables-in-classes)
+    };
+    ANKERL_NANOBENCH(IGNORE_PADDED_POP)
 
-    /// The full measurements of each side, for callers who want to do their own arithmetic.
-    ANKERL_NANOBENCH(NODISCARD) Result const& resultA() const noexcept;
-    ANKERL_NANOBENCH(NODISCARD) Result const& resultB() const noexcept;
+    CompareResult(std::vector<Entry> entries, size_t numRounds);
 
-    /**
-     * @brief How many times faster B is than A: 1.25 means B does the same work in 80% of the time.
-     *
-     * Exactly the median of the per-round ratios `tA / tB`, and not the ratio of the two medians. It
-     * is computed as `exp(median(ln tA - ln tB))`, which is the same number: `ln` is monotonic, so
-     * the median commutes with it. Working in logs is what makes a speedup - a multiplicative thing -
-     * into a difference, and puts "twice as fast" and "half as fast" the same distance from no
-     * change.
-     *
-     * A paired statistic, so a disturbance that hit one round is one bad ratio rather than a shifted
-     * result, and the median's 50% breakdown point means half the rounds can be arbitrarily
-     * corrupted before this moves.
-     */
-    ANKERL_NANOBENCH(NODISCARD) double speedup() const noexcept;
+    /// Number of alternatives compared, including the baseline.
+    ANKERL_NANOBENCH(NODISCARD) size_t size() const noexcept;
 
-    /**
-     * @brief Lower end of the 95% confidence interval of speedup().
-     *
-     * A distribution-free interval - the sign test. With `n` rounds it is the k-th smallest and k-th
-     * largest of the per-round log ratios, where `k` is the largest one whose binomial tail still
-     * fits in 2.5%, exponentiated back into a ratio. It assumes the rounds are independent and
-     * nothing else: no distribution shape, no symmetry, no finite variance, no asymptotics. It is
-     * exact at every `n` rather than asymptotically right, and there is no resampling in it, so the
-     * same measurements always produce the same interval.
-     *
-     * Slightly conservative, because the order statistics are discrete: the true coverage is the
-     * first one at or above 95%, not exactly 95%.
-     *
-     * @verbatim embed:rst
-     .. note::
+    /// Entry 0 is the baseline.
+    ANKERL_NANOBENCH(NODISCARD) Entry const& operator[](size_t idx) const;
 
-        The independence assumption is the one to be careful with. Thermal and frequency state
-        persist across rounds, and interleaving removes drift from each paired difference without
-        making the differences independent. Positive autocorrelation makes any such interval narrower
-        than it should be. See :ref:`ab-comparison` for what was measured.
-     @endverbatim
-     */
-    ANKERL_NANOBENCH(NODISCARD) double speedupLow() const noexcept;
-
-    /// Upper end of the 95% confidence interval of speedup(). See speedupLow() for what the interval is.
-    ANKERL_NANOBENCH(NODISCARD) double speedupHigh() const noexcept;
-
-    /// Number of paired rounds the comparison is based on.
+    /// Number of paired rounds each alternative was measured over.
     ANKERL_NANOBENCH(NODISCARD) size_t rounds() const noexcept;
 
     /**
-     * @brief Rounds in which both sides measured the same time to the last tick the clock can report.
+     * @brief How many comparisons the intervals were corrected for: one per alternative besides the
+     *        baseline.
      *
-     * Not evidence that they are equally fast - evidence that the clock ran out of resolution. A
-     * comparison that is mostly ties is measuring nothing, and the fix is a longer epoch
-     * (`minEpochTime`) rather than more rounds.
+     * With ten alternatives there are nine chances to be wrong at 5% each, so the intervals are
+     * widened to keep the *whole table* at 95% rather than each row separately. See
+     * :ref:`ab-comparison` for what that costs - less than it sounds, because the binomial tail is
+     * steep.
      */
-    ANKERL_NANOBENCH(NODISCARD) size_t tiedRounds() const noexcept;
+    ANKERL_NANOBENCH(NODISCARD) size_t comparisons() const noexcept;
 
     /**
-     * @brief True when the confidence interval excludes 1, i.e. the measurement can tell the two apart.
-     *
-     * Equivalent to a two-sided test at the 5% level. Reported as an interval rather than a p-value
-     * because the interval also says how large the difference is, which is usually the question that
-     * was being asked.
-     *
-     * False does not mean "the same speed", it means "this experiment did not resolve a difference" -
-     * usually a reason to raise epochs() rather than to conclude anything. Check tiedRounds() before
-     * reading much into it: a comparison where the clock could not separate the two rounds produces
-     * a zero-width interval around 1, which is not the same as having measured them to be equal.
+     * @brief True when this alternative's interval excludes the baseline, i.e. the measurement told
+     *        them apart. Always false for the baseline itself.
      */
-    ANKERL_NANOBENCH(NODISCARD) bool isSignificant() const noexcept;
+    ANKERL_NANOBENCH(NODISCARD) bool isSignificant(size_t idx) const;
+
+    /// Index of the alternative with the lowest median time.
+    ANKERL_NANOBENCH(NODISCARD) size_t fastest() const;
 
 private:
-    std::string mNameA{};
-    std::string mNameB{};
-    Result mResultA;
-    Result mResultB;
-    double mSpeedup{};
-    double mSpeedupLow{};
-    double mSpeedupHigh{};
-    size_t mTiedRounds{};
+    std::vector<Entry> mEntries{};
+    size_t mRounds{};
 };
 ANKERL_NANOBENCH(IGNORE_PADDED_POP)
 
-/// Writes the verdict of a paired comparison, e.g. "`b` is 1.24x faster than `a` (95% CI 1.19..1.28, 51 rounds)".
-std::ostream& operator<<(std::ostream& os, AbResult const& abResult);
+/// Writes the comparison as a markdown table, in the same shape as an ordinary benchmark table, with
+/// a summary line under it.
+std::ostream& operator<<(std::ostream& os, CompareResult const& compareResult);
 
 /**
  * An extremely fast random generator. Currently, this implements *RomuDuoJr*, developed by Mark Overton. Source:
@@ -869,21 +835,23 @@ public:
     Bench& run(Op&& op);
 
     /**
-     * @brief Compares two alternatives against each other, paired and interleaved.
+     * @brief Compares alternatives against each other, paired and interleaved.
      *
-     * Runs both in the same slice of time rather than one after the other, so that drift the machine
-     * introduces - a frequency ramp, a noisy neighbour, thermal throttling - hits both alike and
-     * cancels out of the ratio. The order within each block of four rounds is ABBA or BAAB, chosen at
-     * random: ABBA cancels a *linear* drift exactly, since the two A positions and the two B positions
-     * have the same mean time, and randomizing the orientation keeps a periodic disturbance from
-     * lining up with the pattern.
+     * Takes `name, op` pairs - two or more of them. The first is the baseline everything else is
+     * measured against, exactly as with :cpp:func:`relative() <ankerl::nanobench::Bench::relative()>`,
+     * but measured against it *at the same time* rather than one after the other. Drift the machine
+     * introduces - a frequency ramp, a noisy neighbour, thermal throttling - then hits every
+     * alternative alike and cancels out of the ratios.
      *
      * @code
-     * auto ab = ankerl::nanobench::Bench().epochs(51).ab(
-     *     "std::sort", [&] { ... },
-     *     "pdqsort",   [&] { ... });
-     * std::cout << ab;   // `pdqsort` is 1.24x faster than `std::sort` (95% CI 1.19..1.28, 51 rounds)
+     * ankerl::nanobench::Bench().epochs(52).compare(
+     *     "std::mt19937", [&] { ... },     // the baseline
+     *     "sfc4",         [&] { ... },
+     *     "romu",         [&] { ... });
      * @endcode
+     *
+     * Prints an ordinary nanobench table with two extra columns - the ratio to the baseline and a
+     * confidence interval for it - and a summary line underneath.
      *
      @verbatim embed:rst
      A worked example with output, and the reasoning behind each choice below, is in the tutorial at
@@ -891,60 +859,100 @@ public:
 
      What it does, in order:
 
-     #. Calibrates an iteration count once, up front, and uses the **same** count for both sides for
-        the whole run. An epoch's fixed overhead is divided by that count, so two different counts
-        would amortize it differently and bias the ratio - 1.2% on 200us epochs, and no amount of
-        pairing removes it.
-     #. Runs one epoch of each per round, interleaved, so drift is common to the pair.
-     #. Orders each block of four rounds ABBA or BAAB, chosen at random. ABBA gives the two A
-        positions and the two B positions the same mean time, cancelling a linear drift exactly;
-        randomizing the orientation keeps a periodic disturbance from lining up with it. Rounds are
-        rounded up to whole blocks, and never fewer than eight.
-     #. Reduces each round to ``ln(tA) - ln(tB)``, dropping rounds where either side measured zero.
-     #. Reports the median of those as the ratio, and a sign-test interval around it. See
-        :cpp:func:`speedup() <ankerl::nanobench::AbResult::speedup()>` and
-        :cpp:func:`speedupLow() <ankerl::nanobench::AbResult::speedupLow()>`.
+     #. Calibrates an iteration count once, up front, and uses the **same** count for every
+        alternative for the whole run. An epoch's fixed overhead is divided by that count, so two
+        different counts would amortize it differently and bias the ratio - 1.2% on 200us epochs, and
+        no amount of pairing removes it.
+     #. Runs one epoch of each per round, interleaved, so drift is common to the round.
+     #. Orders each block of N rounds as a randomly chosen cyclic Latin square, so every alternative
+        occupies every position exactly once per block and their mean positions are equal - which is
+        what cancels a drift that is linear over the block. For two alternatives this is exactly
+        ABBA/BAAB.
+     #. Reduces each round to ``ln(t_baseline) - ln(t_alternative)``, dropping rounds where either
+        side measured zero.
+     #. Reports the median of those as the ratio, with a sign-test interval around it, widened to
+        keep the whole table at 95% rather than each row separately.
 
      .. note::
 
-        Use more rounds than the default 11. An epoch is about a millisecond, so ``epochs(51)`` costs
-        a tenth of a second and buys a confidence interval narrow enough to act on. Fewer than six
-        rounds cannot support a 95% statement at all, so this always runs at least eight.
+        Use more rounds than the default 11. An epoch is about a millisecond, so ``epochs(52)`` costs
+        a tenth of a second per alternative and buys an interval narrow enough to act on. The count is
+        rounded up to a whole number of blocks, and raised if it is too small to support an interval
+        at all.
 
      .. warning::
 
-        Interleaving means each alternative runs with the other's cache and branch predictor state.
-        That is usually the more honest measurement, but it is a different measurement from running
-        either alone - if what you want is the cold, undisturbed cost of one of them, use
-        :cpp:func:`run() <ankerl::nanobench::Bench::run()>`.
+        Interleaving means each alternative runs with the others' cache and branch predictor state.
+        That is usually the more honest measurement for "which should I ship", but it is a different
+        measurement from running one alone - use :cpp:func:`run() <ankerl::nanobench::Bench::run()>`
+        for that.
 
      @endverbatim
      *
-     * @tparam OpA The first alternative.
-     * @tparam OpB The second alternative.
-     * @param nameA Name of the first alternative.
-     * @param opA The first alternative.
-     * @param nameB Name of the second alternative.
-     * @param opB The second alternative.
-     * @return The ratio and its confidence interval; also written to output() unless that is nullptr.
+     * @tparam Args Alternating names and operations.
+     * @param args `name, op` pairs; at least two.
+     * @return The ratios and their intervals; also written to output() unless that is nullptr.
      */
-    template <typename OpA, typename OpB>
+    template <typename... Args>
     ANKERL_NANOBENCH(NOINLINE)
-    AbResult ab(std::string const& nameA, OpA&& opA, std::string const& nameB, OpB&& opB);
+    CompareResult compare(Args&&... args);
 
 private:
-    // Runs `rounds` epochs of `op`, each of `numIters` iterations, appending the per-iteration time of
-    // each to `perRound`. Split out so ab() can hand it the two operations in whatever order the
-    // block pattern asks for.
+    // Runs `numIters` iterations of `op` as one epoch, appending the per-iteration time to `perRound`.
     template <typename Op>
-    void abEpoch(Op&& op, uint64_t numIters, Result& result, std::vector<double>& perRound);
+    void compareEpoch(Op&& op, uint64_t numIters, Result& result, std::vector<double>& perRound);
 
     // Number of iterations that makes one epoch of `op` last about as long as a normal epoch would.
-    // A/B keeps this fixed for the whole experiment: an iteration count that drifted between rounds
-    // would be a second thing changing while the comparison is being made.
+    // compare() keeps this fixed for the whole experiment: an iteration count that drifted between
+    // rounds would be a second thing changing while the comparison is being made.
     template <typename Op>
     ANKERL_NANOBENCH(NODISCARD)
-    uint64_t abCalibrate(Op&& op) const;
+    uint64_t compareCalibrate(Op&& op) const;
+
+    // The pack is walked rather than stored: the operations all have different types, so a container
+    // of them would need std::function, and that would put an indirect call in the *inner* measuring
+    // loop. Walking to the wanted one costs a few predictable branches once per epoch instead.
+    void compareNames(std::vector<std::string>&) const {}
+
+    template <typename Name, typename Op, typename... Rest>
+    void compareNames(std::vector<std::string>& names, Name&& name, Op&&, Rest&&... rest) const {
+        names.emplace_back(std::forward<Name>(name));
+        compareNames(names, std::forward<Rest>(rest)...);
+    }
+
+    ANKERL_NANOBENCH(NODISCARD) uint64_t compareCalibrateAll() const {
+        return (std::numeric_limits<uint64_t>::max)();
+    }
+
+    template <typename Name, typename Op, typename... Rest>
+    ANKERL_NANOBENCH(NODISCARD)
+    uint64_t compareCalibrateAll(Name&&, Op&& op, Rest&&... rest) const {
+        auto const here = compareCalibrate(op);
+        auto const others = compareCalibrateAll(std::forward<Rest>(rest)...);
+        return (std::min)(here, others);
+    }
+
+    void compareWarmupAll(uint64_t) {}
+
+    template <typename Name, typename Op, typename... Rest>
+    void compareWarmupAll(uint64_t numIters, Name&&, Op&& op, Rest&&... rest) {
+        for (uint64_t i = 0; i < numIters; ++i) {
+            op();
+        }
+        compareWarmupAll(numIters, std::forward<Rest>(rest)...);
+    }
+
+    void compareEpochNth(size_t, size_t, uint64_t, std::vector<Result>&, std::vector<std::vector<double>>&) {}
+
+    template <typename Name, typename Op, typename... Rest>
+    void compareEpochNth(size_t wanted, size_t current, uint64_t numIters, std::vector<Result>& results,
+                         std::vector<std::vector<double>>& perRound, Name&&, Op&& op, Rest&&... rest) {
+        if (wanted == current) {
+            compareEpoch(op, numIters, results[current], perRound[current]);
+            return;
+        }
+        compareEpochNth(wanted, current + 1U, numIters, results, perRound, std::forward<Rest>(rest)...);
+    }
 
 public:
     /**
@@ -1512,7 +1520,7 @@ uint64_t loopOverheadPerIteration(uint64_t single, uint64_t doubled, uint64_t me
 // it, from a raw branch count.
 uint64_t correctBranchInstructions(uint64_t rawBranchInstructions, uint64_t numIters) noexcept;
 
-// Paired statistics, for Bench::ab(). Pure functions over the per-round measurements, so they are
+// Paired statistics, for Bench::compare(). Pure functions over the per-round measurements, so they are
 // testable without running a benchmark at all - which matters, because the alternative is judging a
 // confidence interval by looking at it.
 
@@ -1729,7 +1737,7 @@ Bench& Bench::runImpl(SetupOp& setupOp, Op&& op) {
 
 template <typename Op>
 ANKERL_NANOBENCH_NO_SANITIZE("integer")
-uint64_t Bench::abCalibrate(Op&& op) const {
+uint64_t Bench::compareCalibrate(Op&& op) const {
     // An epoch of the same length a normal run would use. Only the min/max bounds are consulted, not
     // the clock-resolution multiple, because that one is below minEpochTime on every platform where
     // the clock is any good - and it is not reachable from here.
@@ -1774,7 +1782,7 @@ uint64_t Bench::abCalibrate(Op&& op) const {
 
 template <typename Op>
 ANKERL_NANOBENCH_NO_SANITIZE("integer")
-void Bench::abEpoch(Op&& op, uint64_t numIters, Result& result, std::vector<double>& perRound) {
+void Bench::compareEpoch(Op&& op, uint64_t numIters, Result& result, std::vector<double>& perRound) {
     auto& pc = detail::performanceCounters();
 
     auto n = numIters;
@@ -1792,102 +1800,95 @@ void Bench::abEpoch(Op&& op, uint64_t numIters, Result& result, std::vector<doub
     perRound.push_back(seconds / static_cast<double>(numIters));
 }
 
-template <typename OpA, typename OpB>
-AbResult Bench::ab(std::string const& nameA, OpA&& opA, std::string const& nameB, OpB&& opB) {
-    // warmup() is honored, though it is not the tool it looks like here. Calibration below already
-    // runs each side for about a full epoch, so the machine is out of its cold state by round 0, and
-    // the serial correlation a warmup would be aimed at is removed by the pairing rather than by
-    // running longer first: measured over 200 rounds, the raw per-round times carry a lag-1
-    // autocorrelation around +0.10 while the paired differences carry -0.01 to -0.08, and dropping
-    // the first twenty rounds changes neither. It is honored because silently ignoring a setting the
-    // caller wrote down is worse than spending the iterations.
-    // Counting up rather than the `while (n-- > 0)` the measuring loops use. That idiom wraps to
-    // UINT64_MAX on its last turn, which needs ANKERL_NANOBENCH_NO_SANITIZE("integer") on the
-    // enclosing function - and putting that on ab() would stop the sanitizer checking the arithmetic
-    // further down, which is the part actually worth checking. Nothing here is being timed, so the
-    // tighter form buys nothing.
-    for (uint64_t i = 0; i < warmup(); ++i) {
-        opA();
+template <typename... Args>
+CompareResult Bench::compare(Args&&... args) {
+    static_assert(sizeof...(args) % 2 == 0, "compare() takes `name, op` pairs");
+    static_assert(sizeof...(args) >= 4, "compare() needs at least two alternatives to compare");
+    auto const numOps = sizeof...(args) / 2;
+
+    std::vector<std::string> names;
+    names.reserve(numOps);
+    compareNames(names, std::forward<Args>(args)...);
+
+    // Honored, though it is not the tool it looks like here: calibration below already runs each side
+    // for about a full epoch, and the serial correlation a warmup would be aimed at is removed by the
+    // pairing rather than by running longer first. Measured over 200 rounds, the raw per-round times
+    // carry a lag-1 autocorrelation around +0.10 while the paired differences carry -0.01 to -0.08,
+    // and dropping the first twenty rounds changes neither.
+    compareWarmupAll(warmup(), std::forward<Args>(args)...);
+
+    // The same count for every alternative, which matters more than it looks. An epoch carries a
+    // fixed overhead, and what gets compared is time per iteration, so that overhead is divided by
+    // the count. Calibrating each separately amortizes it differently between them: a systematic bias
+    // in the ratio that no amount of pairing removes. It measured 1.2% on 200us epochs.
+    auto const iters = compareCalibrateAll(std::forward<Args>(args)...);
+
+    std::vector<Result> results;
+    std::vector<std::vector<double>> perRound(numOps);
+    results.reserve(numOps);
+    for (auto const& name : names) {
+        Config entryConfig = mConfig;
+        entryConfig.mBenchmarkName = name;
+        results.emplace_back(entryConfig);
     }
-    for (uint64_t i = 0; i < warmup(); ++i) {
-        opB();
+
+    // Every alternative besides the baseline is one more chance to be wrong, so the intervals are
+    // widened to keep the whole table at 95% rather than each row separately. Bonferroni: simple,
+    // assumption-free, and conservative here because the comparisons share a baseline and are
+    // therefore correlated.
+    auto const numComparisons = numOps - 1U;
+    auto const confidence = 1.0 - 0.05 / static_cast<double>(numComparisons);
+
+    // Rounds come in blocks of one epoch per alternative, and the count is raised until the interval
+    // is possible at all - with many alternatives the corrected confidence needs more rounds before
+    // any pair of order statistics reaches it.
+    auto numRounds = ((epochs() + numOps - 1U) / numOps) * numOps;
+    while (true) {
+        auto const indices = detail::medianIntervalIndices(numRounds, confidence);
+        if (indices.first <= indices.second) {
+            break;
+        }
+        numRounds += numOps;
     }
 
-    // Fixed for the whole experiment: an iteration count that drifted between rounds would be a
-    // second thing changing while the comparison is being made.
-    //
-    // And the *same* count for both sides, which matters more than it looks. An epoch carries a fixed
-    // overhead - two clock reads and the performance counter ioctls - and what gets compared is time
-    // per iteration, so that overhead is divided by the iteration count. Calibrating each side
-    // separately gives them slightly different counts, and the overhead then amortizes differently
-    // between them: a systematic bias, in the ratio, that no amount of pairing removes. It measured
-    // 1.2% on 200us epochs, which is larger than plenty of differences worth finding.
-    //
-    // The smaller of the two counts is the one the slower operation needs, so neither side runs an
-    // epoch longer than it was asked for; the faster one simply finishes sooner.
-    auto const iters = (std::min)(abCalibrate(opA), abCalibrate(opB));
-    auto const itersA = iters;
-    auto const itersB = iters;
-
-    Config configA = mConfig;
-    configA.mBenchmarkName = nameA;
-    Config configB = mConfig;
-    configB.mBenchmarkName = nameB;
-
-    Result resultA{configA};
-    Result resultB{configB};
-    std::vector<double> perRoundA;
-    std::vector<double> perRoundB;
-
-    // Seeded from the machine, on purpose: the order is what protects against a disturbance that
-    // repeats. The bootstrap below is seeded fixed instead, so the interval does not jitter.
     Rng orderRng;
-    bool flipped = false;
+    std::vector<uint32_t> order(numOps);
+    for (size_t i = 0; i < numOps; ++i) {
+        order[i] = static_cast<uint32_t>(i);
+    }
 
-    // Rounded up to a whole number of ABBA blocks. A partial block leaves one side running first
-    // more often than the other, which is exactly the imbalance the pattern exists to remove - and
-    // the default epochs() of 11 is not a multiple of 4.
-    //
-    // At least two blocks, because fewer than six rounds cannot support a 95% interval at all - the
-    // widest statement the order statistics allow is weaker than that, and reporting one anyway
-    // would be inventing confidence rather than measuring it.
-    auto const wholeBlocks = ((epochs() + 3U) / 4U) * 4U;
-    auto const numRounds = wholeBlocks < 8U ? 8U : wholeBlocks;
     for (size_t round = 0; round < numRounds; ++round) {
-        // ABBA over each block of four rounds: the two A positions and the two B positions then have
-        // the same mean time, so a drift that is linear over the block cancels exactly.
-        if (0 == round % 4) {
-            flipped = 0 != orderRng.bounded(2);
+        auto const positionInBlock = round % numOps;
+        if (0 == positionInBlock) {
+            // A fresh random permutation per block, then rotated one step per round: every
+            // alternative occupies every position exactly once over the block, so their mean
+            // positions are equal and a drift that is linear over the block cancels. For two
+            // alternatives this produces exactly ABBA or BAAB.
+            orderRng.shuffle(order);
         }
-        bool const abba = (0 == round % 4) || (3 == round % 4);
-        bool const aFirst = abba != flipped;
-
-        if (aFirst) {
-            abEpoch(opA, itersA, resultA, perRoundA);
-            abEpoch(opB, itersB, resultB, perRoundB);
-        } else {
-            abEpoch(opB, itersB, resultB, perRoundB);
-            abEpoch(opA, itersA, resultA, perRoundA);
+        for (size_t slot = 0; slot < numOps; ++slot) {
+            auto const which = order[(slot + positionInBlock) % numOps];
+            compareEpochNth(which, 0U, iters, results, perRound, std::forward<Args>(args)...);
         }
     }
 
-    // ln(tA) - ln(tB), so a positive difference means A took longer and B is the faster one
-    auto const logRatios = detail::pairedLogRatios(perRoundA, perRoundB);
-    // ln is monotonic, so the median commutes with it: this is exactly the median of the per-round
-    // ratios, and the same quantity the interval below is an interval for.
-    auto const speedup = std::exp(detail::medianOf(logRatios));
-    auto const interval = detail::medianInterval(logRatios, 0.95);
+    std::vector<CompareResult::Entry> entries;
+    entries.reserve(numOps);
+    entries.emplace_back(names[0], std::move(results[0]), 1.0, 1.0, 1.0, size_t(0));
+    for (size_t i = 1; i < numOps; ++i) {
+        // ln(t_baseline) - ln(t_i), so a positive difference means the alternative was quicker and
+        // the ratio comes out above 1 - the same direction relative() reports.
+        auto const logRatios = detail::pairedLogRatios(perRound[0], perRound[i]);
+        auto const interval = detail::medianInterval(logRatios, confidence);
+        entries.emplace_back(names[i], std::move(results[i]), std::exp(detail::medianOf(logRatios)), std::exp(interval.first),
+                             std::exp(interval.second), detail::countTiedRounds(logRatios));
+    }
 
-    // A reader looking at an interval of 1.00x .. 1.00x deserves to be told whether that is two
-    // operations that really are equally fast, or a clock that could not tell them apart.
-    auto const tied = detail::countTiedRounds(logRatios);
-
-    AbResult abResult{
-        nameA, nameB, std::move(resultA), std::move(resultB), speedup, std::exp(interval.first), std::exp(interval.second), tied};
+    CompareResult compareResult{std::move(entries), numRounds};
     if (nullptr != output()) {
-        *output() << abResult;
+        *output() << compareResult;
     }
-    return abResult;
+    return compareResult;
 }
 
 template <typename SetupOp>
@@ -3998,107 +3999,188 @@ std::pair<double, double> medianInterval(std::vector<double> values, double conf
 
 } // namespace detail
 
-AbResult::AbResult(std::string nameA, std::string nameB, Result resultA, Result resultB, double speedup, double speedupLow,
-                   double speedupHigh, size_t tiedRounds)
-    : mNameA(std::move(nameA))
-    , mNameB(std::move(nameB))
-    , mResultA(std::move(resultA))
-    , mResultB(std::move(resultB))
-    , mSpeedup(speedup)
-    , mSpeedupLow(speedupLow)
-    , mSpeedupHigh(speedupHigh)
-    , mTiedRounds(tiedRounds) {}
+CompareResult::Entry::Entry(std::string entryName, Result entryResult, double entryRelative, double entryRelativeLow,
+                            double entryRelativeHigh, size_t entryTiedRounds)
+    : name(std::move(entryName))
+    , result(std::move(entryResult))
+    , relative(entryRelative)
+    , relativeLow(entryRelativeLow)
+    , relativeHigh(entryRelativeHigh)
+    , tiedRounds(entryTiedRounds) {}
 
-std::string const& AbResult::nameA() const noexcept {
-    return mNameA;
-}
-std::string const& AbResult::nameB() const noexcept {
-    return mNameB;
-}
-Result const& AbResult::resultA() const noexcept {
-    return mResultA;
-}
-Result const& AbResult::resultB() const noexcept {
-    return mResultB;
-}
-double AbResult::speedup() const noexcept {
-    return mSpeedup;
-}
-double AbResult::speedupLow() const noexcept {
-    return mSpeedupLow;
-}
-double AbResult::speedupHigh() const noexcept {
-    return mSpeedupHigh;
-}
-size_t AbResult::rounds() const noexcept {
-    return (std::min)(mResultA.size(), mResultB.size());
-}
-size_t AbResult::tiedRounds() const noexcept {
-    return mTiedRounds;
-}
-bool AbResult::isSignificant() const noexcept {
-    // the interval excludes "exactly as fast", so the experiment resolved a direction
-    return mSpeedupLow > 1.0 || mSpeedupHigh < 1.0;
+CompareResult::CompareResult(std::vector<Entry> entries, size_t numRounds)
+    : mEntries(std::move(entries))
+    , mRounds(numRounds) {}
+
+size_t CompareResult::size() const noexcept {
+    return mEntries.size();
 }
 
-std::ostream& operator<<(std::ostream& os, AbResult const& abResult) {
+CompareResult::Entry const& CompareResult::operator[](size_t idx) const {
+    return mEntries.at(idx);
+}
+
+size_t CompareResult::rounds() const noexcept {
+    return mRounds;
+}
+
+size_t CompareResult::comparisons() const noexcept {
+    return mEntries.empty() ? 0U : mEntries.size() - 1U;
+}
+
+bool CompareResult::isSignificant(size_t idx) const {
+    if (0U == idx) {
+        // the baseline is not compared against itself
+        return false;
+    }
+    auto const& entry = mEntries.at(idx);
+    return entry.relativeLow > 1.0 || entry.relativeHigh < 1.0;
+}
+
+size_t CompareResult::fastest() const {
+    size_t best = 0;
+    auto bestMedian = mEntries.empty() ? 0.0 : mEntries[0].result.median(Result::Measure::elapsed);
+    for (size_t i = 1; i < mEntries.size(); ++i) {
+        auto const median = mEntries[i].result.median(Result::Measure::elapsed);
+        if (median < bestMedian) {
+            bestMedian = median;
+            best = i;
+        }
+    }
+    return best;
+}
+
+std::ostream& operator<<(std::ostream& os, CompareResult const& compareResult) {
     detail::fmt::StreamStateRestorer const restorer(os);
+    if (0U == compareResult.size()) {
+        return os;
+    }
 
-    auto const codeA = detail::fmt::MarkDownCode(abResult.nameA());
-    auto const codeB = detail::fmt::MarkDownCode(abResult.nameB());
-    auto const speedup = abResult.speedup();
-
-    // The ratio is the answer, but it is not the whole report: without the two absolute numbers next
-    // to it there is no way to tell 2.4x on a nanosecond from 2.4x on a minute, and no way to see
-    // that one side was wildly unstable. Measurements first and the verdict after, the way hyperfine
-    // and criterion lay it out.
-    auto const nameWidth = static_cast<int>((std::max)(abResult.nameA().size(), abResult.nameB().size()) + 2U);
-
-    // captured by reference throughout: a closure holding a pointer and an int pads out to the next
-    // alignment boundary, and -Wpadded is an error in this project's clang builds
-    auto writeSide = [&](std::string const& name, Result const& result) {
-        auto const& config = result.config();
-        auto const scale = config.mTimeUnit.count() * config.mBatch;
-        auto perUnit = [scale](double seconds) {
-            return scale <= 0.0 ? 0.0 : seconds / scale;
-        };
-
-        std::ostringstream nameCell;
-        nameCell << detail::fmt::MarkDownCode(name);
-
-        os << "  " << std::left << std::setw(nameWidth) << nameCell.str() << std::right
-           << detail::fmt::Number(14, 2, perUnit(result.median(Result::Measure::elapsed))) << ' ' << config.mTimeUnitName << '/'
-           << config.mUnit << "  err "
-           << detail::fmt::Number(5, 1, result.medianAbsolutePercentError(Result::Measure::elapsed) * 100.0) << "%  (min "
-           << detail::fmt::Number(1, 2, perUnit(result.minimum(Result::Measure::elapsed))) << ", max "
-           << detail::fmt::Number(1, 2, perUnit(result.maximum(Result::Measure::elapsed))) << ")" << std::endl;
+    // The same table an ordinary benchmark prints, plus the ratio to the baseline and an interval for
+    // it. A ratio with no scale beside it cannot be told from the same ratio on a completely
+    // different scale, and a side that was wildly unstable is invisible in one - so the absolute
+    // numbers come first and the verdict after.
+    auto const& config = compareResult[0].result.config();
+    auto ratioText = [](double low, double high) {
+        std::ostringstream ss;
+        ss << detail::fmt::Number(1, 1, low * 100.0) << "% .. " << detail::fmt::Number(1, 1, high * 100.0) << "%";
+        return ss.str();
     };
 
-    os << std::endl << "A/B comparison, " << abResult.rounds() << " paired rounds, ABBA interleaved" << std::endl;
-    writeSide(abResult.nameA(), abResult.resultA());
-    writeSide(abResult.nameB(), abResult.resultB());
+    auto columnsFor = [&](CompareResult::Entry const& entry, bool isBaseline) {
+        std::vector<detail::fmt::MarkDownColumn> columns;
+        auto const median = entry.result.median(Result::Measure::elapsed);
+        columns.emplace_back(11, 1, "relative", "%", entry.relative * 100.0);
+        columns.emplace_back(22, "95% CI", isBaseline ? std::string() : ratioText(entry.relativeLow, entry.relativeHigh));
+        columns.emplace_back(22, 2, config.mTimeUnitName + "/" + config.mUnit, "",
+                             median / (config.mTimeUnit.count() * config.mBatch));
+        columns.emplace_back(22, 2, config.mUnit + "/s", "", median <= 0.0 ? 0.0 : config.mBatch / median);
+        columns.emplace_back(10, 1, "err%", "%", entry.result.medianAbsolutePercentError(Result::Measure::elapsed) * 100.0);
+        columns.emplace_back(12, 2, "total", "", entry.result.sumProduct(Result::Measure::iterations, Result::Measure::elapsed));
+        return columns;
+    };
+
+    os << std::endl;
+    auto const header = columnsFor(compareResult[0], true);
+    for (auto const& col : header) {
+        os << col.title();
+    }
+    os << "| " << config.mBenchmarkTitle << std::endl;
+    for (auto const& col : header) {
+        os << col.separator();
+    }
+    os << "|:" << std::string(config.mBenchmarkTitle.size() + 1U, '-') << std::endl;
+
+    for (size_t i = 0; i < compareResult.size(); ++i) {
+        auto const columns = columnsFor(compareResult[i], 0U == i);
+        for (auto const& col : columns) {
+            os << col.value();
+        }
+        os << "| " << detail::fmt::MarkDownCode(compareResult[i].name) << std::endl;
+    }
 
     os << std::endl << "  Summary" << std::endl;
-    if (!abResult.isSignificant()) {
-        // Not "they are the same speed" - this experiment did not resolve a difference, which is
-        // usually a reason to run more rounds rather than a conclusion.
-        os << "    no difference resolved between " << codeA << " and " << codeB << std::endl
-           << "    ratio " << detail::fmt::Number(1, 2, speedup) << "x, 95% CI [" << detail::fmt::Number(1, 2, abResult.speedupLow())
-           << " .. " << detail::fmt::Number(1, 2, abResult.speedupHigh()) << "]";
-    } else if (speedup > 1.0) {
-        os << "    " << codeB << " ran " << detail::fmt::Number(1, 2, speedup) << "x faster than " << codeA << std::endl
-           << "    95% CI [" << detail::fmt::Number(1, 2, abResult.speedupLow()) << " .. "
-           << detail::fmt::Number(1, 2, abResult.speedupHigh()) << "]";
+    auto const baseline = detail::fmt::MarkDownCode(compareResult[0].name);
+    if (2U == compareResult.size()) {
+        // Two alternatives read better as a sentence than as a row to look up.
+        auto const& entry = compareResult[1];
+        auto const other = detail::fmt::MarkDownCode(entry.name);
+        if (!compareResult.isSignificant(1)) {
+            os << "    no difference resolved between " << baseline << " and " << other << std::endl
+               << "    ratio " << detail::fmt::Number(1, 2, entry.relative) << "x, 95% CI ["
+               << detail::fmt::Number(1, 2, entry.relativeLow) << " .. " << detail::fmt::Number(1, 2, entry.relativeHigh) << "]";
+        } else if (entry.relative > 1.0) {
+            os << "    " << other << " ran " << detail::fmt::Number(1, 2, entry.relative) << "x faster than " << baseline << std::endl
+               << "    95% CI [" << detail::fmt::Number(1, 2, entry.relativeLow) << " .. "
+               << detail::fmt::Number(1, 2, entry.relativeHigh) << "]";
+        } else {
+            // stated the way round the reader asked the question, so the interval inverts with it
+            os << "    " << other << " ran " << detail::fmt::Number(1, 2, 1.0 / entry.relative) << "x slower than " << baseline
+               << std::endl
+               << "    95% CI [" << detail::fmt::Number(1, 2, 1.0 / entry.relativeHigh) << " .. "
+               << detail::fmt::Number(1, 2, 1.0 / entry.relativeLow) << "]";
+        }
     } else {
-        // stated the way round the reader asked the question, so the interval is inverted with it
-        os << "    " << codeB << " ran " << detail::fmt::Number(1, 2, 1.0 / speedup) << "x slower than " << codeA << std::endl
-           << "    95% CI [" << detail::fmt::Number(1, 2, 1.0 / abResult.speedupHigh()) << " .. "
-           << detail::fmt::Number(1, 2, 1.0 / abResult.speedupLow()) << "]";
+        // Picking the winner out of many is a selection, not a test: whichever came first is
+        // flattered by the same luck that made it first. So the claim is not "this one is fastest"
+        // on its own, it is how far ahead of the *runner-up* it is, with an interval on that - and
+        // if that interval contains 1, the measurement did not actually separate the top two.
+        auto const best = compareResult.fastest();
+        size_t runnerUp = best;
+        auto runnerUpMedian = std::numeric_limits<double>::infinity();
+        for (size_t i = 0; i < compareResult.size(); ++i) {
+            if (i == best) {
+                continue;
+            }
+            auto const median = compareResult[i].result.median(Result::Measure::elapsed);
+            if (median < runnerUpMedian) {
+                runnerUpMedian = median;
+                runnerUp = i;
+            }
+        }
+
+        // The rounds are paired for every alternative, not only against the baseline, so the top two
+        // can be compared to each other after the fact from the per-round measurements.
+        auto perRoundOf = [](Result const& result) {
+            std::vector<double> values;
+            values.reserve(result.size());
+            for (size_t r = 0; r < result.size(); ++r) {
+                values.push_back(result.get(r, Result::Measure::elapsed));
+            }
+            return values;
+        };
+        auto const logRatios =
+            detail::pairedLogRatios(perRoundOf(compareResult[runnerUp].result), perRoundOf(compareResult[best].result));
+        auto const confidence = 1.0 - 0.05 / detail::d((std::max)(compareResult.comparisons(), size_t(1)));
+        auto const interval = detail::medianInterval(logRatios, confidence);
+        auto const lead = std::exp(detail::medianOf(logRatios));
+        auto const leadLow = std::exp(interval.first);
+        auto const leadHigh = std::exp(interval.second);
+
+        auto const bestCode = detail::fmt::MarkDownCode(compareResult[best].name);
+        auto const runnerUpCode = detail::fmt::MarkDownCode(compareResult[runnerUp].name);
+        if (leadLow > 1.0) {
+            os << "    " << bestCode << " is fastest of " << compareResult.size() << ", " << detail::fmt::Number(1, 2, lead)
+               << "x ahead of " << runnerUpCode << std::endl
+               << "    95% CI [" << detail::fmt::Number(1, 2, leadLow) << " .. " << detail::fmt::Number(1, 2, leadHigh)
+               << "], intervals corrected for " << compareResult.comparisons() << " comparisons";
+        } else {
+            os << "    " << bestCode << " and " << runnerUpCode << " are the two fastest of " << compareResult.size()
+               << ", and were not separated" << std::endl
+               << "    ratio " << detail::fmt::Number(1, 2, lead) << "x, 95% CI [" << detail::fmt::Number(1, 2, leadLow) << " .. "
+               << detail::fmt::Number(1, 2, leadHigh) << "], intervals corrected for " << compareResult.comparisons()
+               << " comparisons";
+        }
     }
-    if (0U != abResult.tiedRounds()) {
-        os << ", " << abResult.tiedRounds() << " of " << abResult.rounds() << " rounds tied at the clock's resolution";
+    os << ", " << compareResult.rounds() << " paired rounds, interleaved" << std::endl;
+
+    size_t tied = 0;
+    for (size_t i = 1; i < compareResult.size(); ++i) {
+        tied = (std::max)(tied, compareResult[i].tiedRounds);
     }
-    os << std::endl;
+    if (0U != tied) {
+        os << "    up to " << tied << " of " << compareResult.rounds() << " rounds tied at the clock's resolution" << std::endl;
+    }
     return os;
 }
 

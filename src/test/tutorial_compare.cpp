@@ -38,14 +38,14 @@ uint64_t cheapFinalizer(uint64_t h) {
 } // namespace
 
 // NOLINTNEXTLINE
-TEST_CASE("tutorial_ab") {
+TEST_CASE("tutorial_compare") {
     uint64_t x = 1;
 
     // 52 rounds rather than the default 11. An epoch is about a millisecond, so
     // this costs a tenth of a second and buys an interval narrow enough to act
     // on. A multiple of four, because rounds are grouped into ABBA blocks and a
     // number that is not one gets rounded up to the next.
-    auto const cheaper = ankerl::nanobench::Bench().epochs(52).ab(
+    auto const cheaper = ankerl::nanobench::Bench().epochs(52).compare(
         "murmurhash3",
         [&] {
             x = murmurHash3Finalizer(x);
@@ -58,7 +58,7 @@ TEST_CASE("tutorial_ab") {
     // Two finalizers of the same shape. The interesting answer here is usually
     // that the measurement cannot tell them apart, which is a thing worth being
     // told rather than a percentage to argue over.
-    auto const sameShape = ankerl::nanobench::Bench().epochs(52).ab(
+    auto const sameShape = ankerl::nanobench::Bench().epochs(52).compare(
         "murmurhash3",
         [&] {
             x = murmurHash3Finalizer(x);
@@ -72,13 +72,13 @@ TEST_CASE("tutorial_ab") {
     // ab() prints the verdict itself. Everything behind it is available as data
     // too, which is what a script gating a pull request would look at.
     for (auto const* result : {&cheaper, &sameShape}) {
-        if (result->isSignificant()) {
-            std::cout << result->nameB() << " vs " << result->nameA() << ": "
-                      << result->speedup() << "x (95% CI "
-                      << result->speedupLow() << " .. " << result->speedupHigh()
-                      << ")" << std::endl;
+        if (result->isSignificant(1)) {
+            std::cout << (*result)[1].name << " vs " << (*result)[0].name
+                      << ": " << (*result)[1].relative << "x (95% CI "
+                      << (*result)[1].relativeLow << " .. "
+                      << (*result)[1].relativeHigh << ")" << std::endl;
         } else {
-            std::cout << result->nameB() << " vs " << result->nameA()
+            std::cout << (*result)[1].name << " vs " << (*result)[0].name
                       << ": no difference resolved" << std::endl;
         }
     }

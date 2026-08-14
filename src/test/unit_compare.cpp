@@ -7,8 +7,8 @@
 #include <string>
 #include <vector>
 
-// Bench::ab() compares two alternatives paired and interleaved, and reports a
-// ratio with a confidence interval instead of a bare percentage.
+// Bench::compare() compares two alternatives paired and interleaved, and
+// reports a ratio with a confidence interval instead of a bare percentage.
 //
 // The statistics are checked here as pure functions, against inputs whose
 // answer is known. The end-to-end behaviour is checked for the two things that
@@ -40,7 +40,7 @@ ankerl::nanobench::Bench quiet(size_t rounds) {
 } // namespace
 
 // NOLINTNEXTLINE
-TEST_CASE("unit_ab_paired_log_ratios") {
+TEST_CASE("unit_compare_paired_log_ratios") {
     // ln(a) - ln(b) per round, which turns a speedup into a difference
     auto const d =
         nb::pairedLogRatios({std::exp(1.0), std::exp(2.0)}, {1.0, 1.0});
@@ -70,7 +70,7 @@ TEST_CASE("unit_ab_paired_log_ratios") {
 }
 
 // NOLINTNEXTLINE
-TEST_CASE("unit_ab_median_of") {
+TEST_CASE("unit_compare_median_of") {
     CHECK(nb::medianOf({}) == doctest::Approx(0.0));
     CHECK(nb::medianOf({7.0}) == doctest::Approx(7.0));
     CHECK(nb::medianOf({3.0, 1.0, 2.0}) == doctest::Approx(2.0));
@@ -78,7 +78,7 @@ TEST_CASE("unit_ab_median_of") {
 }
 
 // NOLINTNEXTLINE
-TEST_CASE("unit_ab_median_interval_indices") {
+TEST_CASE("unit_compare_median_interval_indices") {
     // The sign test: [x_(k), x_(n+1-k)] brackets the median with at least the
     // requested probability, where k is the largest one whose binomial tail
     // still fits in alpha/2. These are the exact answers, worked out from the
@@ -134,7 +134,7 @@ TEST_CASE("unit_ab_median_interval_indices") {
 }
 
 // NOLINTNEXTLINE
-TEST_CASE("unit_ab_median_interval") {
+TEST_CASE("unit_compare_median_interval") {
     // 101 values from 5 to 15, median 10
     std::vector<double> values;
     for (int i = -50; i <= 50; ++i) {
@@ -168,7 +168,7 @@ TEST_CASE("unit_ab_median_interval") {
     // Data that does not vary has an interval of zero width, and that is the
     // correct answer rather than a failure: every order statistic is the same
     // number. It is also what a comparison of two operations too fast for the
-    // clock produces, which is why ab() reports the tie count next to it.
+    // clock produces, which is why compare() reports the tie count next to it.
     auto const flat =
         nb::medianInterval({5.0, 5.0, 5.0, 5.0, 5.0, 5.0, 5.0, 5.0}, 0.95);
     CHECK(flat.first == doctest::Approx(5.0));
@@ -189,7 +189,7 @@ TEST_CASE("unit_ab_median_interval") {
 }
 
 // NOLINTNEXTLINE
-TEST_CASE("unit_ab_tied_rounds") {
+TEST_CASE("unit_compare_tied_rounds") {
     CHECK(nb::countTiedRounds({}) == 0U);
     CHECK(nb::countTiedRounds({1.0, -1.0, 2.0}) == 0U);
     CHECK(nb::countTiedRounds({0.0, 1.0, 0.0, -1.0}) == 2U);
@@ -199,32 +199,39 @@ TEST_CASE("unit_ab_tied_rounds") {
 }
 
 // NOLINTNEXTLINE
-TEST_CASE("unit_ab_verdict_says_when_the_clock_ran_out") {
+TEST_CASE("unit_compare_verdict_says_when_the_clock_ran_out") {
     // An interval of 1.00x .. 1.00x means one of two very different things, and
     // the reader cannot tell them apart from the numbers. Built directly rather
     // than measured, because ties need a clock too coarse for the operation and
     // that is not something a test can arrange.
+    using Entry = ankerl::nanobench::CompareResult::Entry;
     ankerl::nanobench::Result const empty{ankerl::nanobench::Config{}};
-    ankerl::nanobench::AbResult const tied{"a", "b", empty, empty,
-                                           1.0, 1.0, 1.0,   7U};
-    CHECK(tied.tiedRounds() == 7U);
+
+    std::vector<Entry> tiedEntries;
+    tiedEntries.emplace_back("a", empty, 1.0, 1.0, 1.0, size_t(0));
+    tiedEntries.emplace_back("b", empty, 1.0, 1.0, 1.0, size_t(7));
+    ankerl::nanobench::CompareResult const tied{std::move(tiedEntries), 52U};
+    CHECK(tied[1].tiedRounds == 7U);
 
     std::ostringstream oss;
     oss << tied;
     INFO(oss.str());
-    CHECK(oss.str().find("7 of 0 rounds tied at the clock's resolution") !=
-          std::string::npos);
+    CHECK(
+        oss.str().find("up to 7 of 52 rounds tied at the clock's resolution") !=
+        std::string::npos);
 
     // and nothing about ties is said when there were none
-    ankerl::nanobench::AbResult const clean{"a", "b", empty, empty,
-                                            1.0, 1.0, 1.0,   0U};
+    std::vector<Entry> cleanEntries;
+    cleanEntries.emplace_back("a", empty, 1.0, 1.0, 1.0, size_t(0));
+    cleanEntries.emplace_back("b", empty, 1.0, 1.0, 1.0, size_t(0));
+    ankerl::nanobench::CompareResult const clean{std::move(cleanEntries), 52U};
     std::ostringstream quietOss;
     quietOss << clean;
     CHECK(quietOss.str().find("tied at the clock") == std::string::npos);
 }
 
 // NOLINTNEXTLINE
-TEST_CASE("unit_ab_reports_no_difference_for_identical_work") {
+TEST_CASE("unit_compare_reports_no_difference_for_identical_work") {
     // Both sides are the *same* closure over the same state, so any difference
     // found is the machine and not the code.
     //
@@ -241,27 +248,27 @@ TEST_CASE("unit_ab_reports_no_difference_for_identical_work") {
         w.step();
     };
     auto bench = quiet(32);
-    auto const result = bench.ab("a", op, "b", op);
+    auto const result = bench.compare("a", op, "b", op);
 
-    INFO("speedup " << result.speedup() << " CI [" << result.speedupLow()
-                    << ", " << result.speedupHigh() << "]");
-    CHECK(result.speedup() == doctest::Approx(1.0).epsilon(0.10));
-    CHECK(result.speedupLow() <= result.speedup());
-    CHECK(result.speedupHigh() >= result.speedup());
+    INFO("speedup " << result[1].relative << " CI [" << result[1].relativeLow
+                    << ", " << result[1].relativeHigh << "]");
+    CHECK(result[1].relative == doctest::Approx(1.0).epsilon(0.10));
+    CHECK(result[1].relativeLow <= result[1].relative);
+    CHECK(result[1].relativeHigh >= result[1].relative);
     // an interval that wide would mean something has gone badly wrong with the
     // pairing
-    CHECK(result.speedupHigh() - result.speedupLow() < 0.5);
+    CHECK(result[1].relativeHigh - result[1].relativeLow < 0.5);
 }
 
 // NOLINTNEXTLINE
-TEST_CASE("unit_ab_resolves_a_real_difference") {
+TEST_CASE("unit_compare_resolves_a_real_difference") {
     // The other half: a difference that is really there has to be found, with
     // the right sign and roughly the right size. Doing the work twice is the
     // least ambiguous thing to ask for.
     Work a;
     Work b;
     auto bench = quiet(32);
-    auto const result = bench.ab(
+    auto const result = bench.compare(
         "once",
         [&] {
             a.step();
@@ -273,13 +280,13 @@ TEST_CASE("unit_ab_resolves_a_real_difference") {
             }
         });
 
-    INFO("speedup " << result.speedup() << " CI [" << result.speedupLow()
-                    << ", " << result.speedupHigh() << "]");
-    CHECK(result.isSignificant());
+    INFO("speedup " << result[1].relative << " CI [" << result[1].relativeLow
+                    << ", " << result[1].relativeHigh << "]");
+    CHECK(result.isSignificant(1));
     // B does the work eight times over, so it is the slower one: the ratio is
     // below 1, and the whole interval is
-    CHECK(result.speedup() < 1.0);
-    CHECK(result.speedupHigh() < 1.0);
+    CHECK(result[1].relative < 1.0);
+    CHECK(result[1].relativeHigh < 1.0);
 
     // Deliberately no assertion on *how much* slower. Eight times the
     // arithmetic is not eight times the time: the measuring loop and the
@@ -289,11 +296,11 @@ TEST_CASE("unit_ab_resolves_a_real_difference") {
     // where x86-64 measured 0.50 - both correct. What the feature promises is
     // the direction and that the interval resolved it, and that is what is
     // checked.
-    CHECK(result.speedup() > 0.05);
+    CHECK(result[1].relative > 0.05);
 }
 
 // NOLINTNEXTLINE
-TEST_CASE("unit_ab_both_sides_run_the_same_iteration_count") {
+TEST_CASE("unit_compare_both_sides_run_the_same_iteration_count") {
     // Not a detail: what is compared is time per iteration, and an epoch
     // carries a fixed overhead that gets divided by that count. Different
     // counts amortize it differently, which biases the ratio systematically -
@@ -301,7 +308,7 @@ TEST_CASE("unit_ab_both_sides_run_the_same_iteration_count") {
     Work a;
     Work b;
     auto bench = quiet(8);
-    auto const result = bench.ab(
+    auto const result = bench.compare(
         "fast",
         [&] {
             a.step();
@@ -315,16 +322,16 @@ TEST_CASE("unit_ab_both_sides_run_the_same_iteration_count") {
         });
 
     using M = ankerl::nanobench::Result::Measure;
-    REQUIRE(result.resultA().size() == result.resultB().size());
-    for (size_t i = 0; i < result.resultA().size(); ++i) {
+    REQUIRE(result[0].result.size() == result[1].result.size());
+    for (size_t i = 0; i < result[0].result.size(); ++i) {
         INFO("round " << i);
-        CHECK(result.resultA().get(i, M::iterations) ==
-              doctest::Approx(result.resultB().get(i, M::iterations)));
+        CHECK(result[0].result.get(i, M::iterations) ==
+              doctest::Approx(result[1].result.get(i, M::iterations)));
     }
 }
 
 // NOLINTNEXTLINE
-TEST_CASE("unit_ab_orders_the_epochs_abba") {
+TEST_CASE("unit_compare_orders_the_epochs_abba") {
     // ABBA cancels a drift that is linear over the block, because the two A
     // positions and the two B positions then have the same mean time. Always
     // running A first would still interleave, and would still look fine in
@@ -333,8 +340,8 @@ TEST_CASE("unit_ab_orders_the_epochs_abba") {
     std::string calls;
     Work a;
     Work b;
-    auto bench = quiet(4);
-    auto const result = bench.ab(
+    auto bench = quiet(8);
+    auto const result = bench.compare(
         "a",
         [&] {
             calls += 'a';
@@ -349,11 +356,12 @@ TEST_CASE("unit_ab_orders_the_epochs_abba") {
     using M = ankerl::nanobench::Result::Measure;
     REQUIRE(result.rounds() == 8U);
     auto const iters =
-        static_cast<size_t>(result.resultA().get(0, M::iterations));
+        static_cast<size_t>(result[0].result.get(0, M::iterations));
     REQUIRE(iters > 0U);
 
-    // calibration runs before any round, so the rounds are the tail: two epochs
-    // each, one letter per call, exactly `iters` calls per epoch
+    // calibration runs before any round, so the rounds are the tail: one epoch
+    // per alternative each, one letter per call, exactly `iters` calls per
+    // epoch
     auto const roundCalls = 2U * result.rounds() * iters;
     REQUIRE(calls.size() >= roundCalls);
     auto const tail = calls.substr(calls.size() - roundCalls);
@@ -368,14 +376,15 @@ TEST_CASE("unit_ab_orders_the_epochs_abba") {
     }
 
     INFO("epoch order: " << order);
-    // Each block of four rounds is eight epochs, and has to be ABBA or its
-    // mirror. Both put the two a's and the two b's at positions with the same
-    // mean, which is what cancels a linear drift.
-    REQUIRE(order.size() % 8U == 0U);
-    for (size_t block = 0; block * 8U < order.size(); ++block) {
-        auto const chunk = order.substr(block * 8U, 8U);
+    // A block is one round per alternative - two rounds here, so four epochs -
+    // and has to be a Latin square: each alternative in each position exactly
+    // once. For two alternatives that is ABBA or its mirror, which is what puts
+    // the two a's and the two b's at positions with the same mean.
+    REQUIRE(order.size() % 4U == 0U);
+    for (size_t block = 0; block * 4U < order.size(); ++block) {
+        auto const chunk = order.substr(block * 4U, 4U);
         INFO("block " << block << ": " << chunk);
-        CHECK((chunk == "abbabaab" || chunk == "baababba"));
+        CHECK((chunk == "abba" || chunk == "baab"));
     }
 
     // and over the whole run each side goes first exactly half the time
@@ -389,46 +398,92 @@ TEST_CASE("unit_ab_orders_the_epochs_abba") {
 }
 
 // NOLINTNEXTLINE
-TEST_CASE("unit_ab_runs_the_warmup_it_was_given") {
-    // warmup() used to be read by run() and silently ignored by ab(). It does
-    // not buy much here - calibration already runs each side for about an
-    // epoch, and the correlation a warmup would target is removed by the
-    // pairing - but a setting the caller wrote down has to do something.
-    auto callsFor = [](uint64_t warmupIters) {
-        uint64_t calls = 0;
-        Work w;
-        ankerl::nanobench::Bench bench;
-        bench.output(nullptr)
-            .epochs(8)
-            .performanceCounters(false)
-            .warmup(warmupIters)
-            .minEpochTime(std::chrono::microseconds(100));
-        bench.ab(
-            "a",
-            [&] {
-                ++calls;
-                w.step();
-            },
-            "b",
-            [&] {
-                w.step();
-            });
-        return calls;
-    };
+// NOLINTNEXTLINE
+TEST_CASE("unit_compare_more_than_two_alternatives") {
+    // The whole point of compare() over a two-way ab(): the first is the
+    // baseline and everything else is measured against it, in the same rounds.
+    Work a;
+    Work b;
+    Work c;
+    Work d;
+    auto bench = quiet(12);
+    auto const result = bench.compare(
+        "baseline",
+        [&] {
+            a.step();
+        },
+        "same",
+        [&] {
+            b.step();
+        },
+        "twice",
+        [&] {
+            c.step();
+            c.step();
+        },
+        "eight times",
+        [&] {
+            for (int i = 0; i < 8; ++i) {
+                d.step();
+            }
+        });
 
-    uint64_t const warmupIters = 5000000;
-    auto const without = callsFor(0);
-    auto const with = callsFor(warmupIters);
-    INFO("without " << without << ", with " << with);
-    // calibration and the rounds vary a little between runs, so this only asks
-    // that most of the warmup actually happened - if it were ignored the two
-    // would be the same
-    CHECK(with > without);
-    CHECK(with - without > warmupIters * 4U / 5U);
+    REQUIRE(result.size() == 4U);
+    CHECK(result[0].name == "baseline");
+    CHECK(result[3].name == "eight times");
+
+    // one comparison per alternative besides the baseline
+    CHECK(result.comparisons() == 3U);
+
+    // rounds come in blocks of one epoch per alternative
+    CHECK(result.rounds() % 4U == 0U);
+    for (size_t i = 0; i < result.size(); ++i) {
+        INFO("entry " << i);
+        CHECK(result[i].result.size() == result.rounds());
+    }
+
+    // the baseline is the reference, so it has no ratio and no interval of its
+    // own
+    CHECK(result[0].relative == doctest::Approx(1.0));
+    CHECK(result[0].relativeLow == doctest::Approx(1.0));
+    CHECK(result[0].relativeHigh == doctest::Approx(1.0));
+    CHECK_FALSE(result.isSignificant(0));
+
+    // doing the work more times is resolvably slower, and more times is slower
+    // still
+    INFO("twice " << result[2].relative << ", eight times "
+                  << result[3].relative);
+    CHECK(result.isSignificant(2));
+    CHECK(result.isSignificant(3));
+    CHECK(result[2].relative < 1.0);
+    CHECK(result[3].relative < result[2].relative);
+
+    // and the fastest is one of the two that do the least work
+    auto const best = result.fastest();
+    INFO("fastest is " << result[best].name);
+    CHECK(best <= 1U);
 }
 
 // NOLINTNEXTLINE
-TEST_CASE("unit_ab_rounds_up_to_whole_blocks") {
+TEST_CASE("unit_compare_corrects_for_the_number_of_comparisons") {
+    // Every alternative besides the baseline is another chance to be wrong at
+    // 5%, so the intervals widen to keep the whole table at 95% rather than
+    // each row separately. Checked on the order statistics directly, because
+    // the effect on a measured interval is too small to assert without being
+    // flaky.
+    auto const single = nb::medianIntervalIndices(52, 0.95);
+    auto const nine = nb::medianIntervalIndices(52, 1.0 - 0.05 / 9.0);
+    CHECK(nine.first < single.first);
+    CHECK(nine.second > single.second);
+
+    // it costs surprisingly little - the binomial tail is steep, so correcting
+    // for nine comparisons moves the interval by a few order statistics, not by
+    // half the data
+    CHECK(single.first - nine.first <= 5U);
+}
+
+// NOLINTNEXTLINE
+TEST_CASE("unit_compare_rounds_up_to_whole_blocks") {
     // The default epochs() is 11, which is not a multiple of 4 - a partial
     // block gives one side the first position more often than the other, which
     // is the imbalance ABBA exists to remove.
@@ -436,20 +491,21 @@ TEST_CASE("unit_ab_rounds_up_to_whole_blocks") {
     auto op = [&w] {
         w.step();
     };
-    CHECK(quiet(9).ab("a", op, "b", op).rounds() == 12U);
-    CHECK(quiet(5).ab("a", op, "b", op).rounds() == 8U);
-    // and never fewer than eight, because five rounds cannot support a 95%
-    // interval at all
-    CHECK(quiet(4).ab("a", op, "b", op).rounds() == 8U);
-    CHECK(quiet(1).ab("a", op, "b", op).rounds() == 8U);
+    // rounded up to a whole block, which for two alternatives is two rounds
+    CHECK(quiet(9).compare("a", op, "b", op).rounds() == 10U);
+    CHECK(quiet(6).compare("a", op, "b", op).rounds() == 6U);
+    // and raised until an interval is possible at all: five rounds cannot
+    // support a 95% statement, so anything below six is lifted to it
+    CHECK(quiet(4).compare("a", op, "b", op).rounds() == 6U);
+    CHECK(quiet(1).compare("a", op, "b", op).rounds() == 6U);
 }
 
 // NOLINTNEXTLINE
-TEST_CASE("unit_ab_result_carries_both_measurements") {
+TEST_CASE("unit_compare_result_carries_both_measurements") {
     Work a;
     Work b;
     auto bench = quiet(12);
-    auto const result = bench.ab(
+    auto const result = bench.compare(
         "left",
         [&] {
             a.step();
@@ -459,35 +515,35 @@ TEST_CASE("unit_ab_result_carries_both_measurements") {
             b.step();
         });
 
-    CHECK(result.nameA() == "left");
-    CHECK(result.nameB() == "right");
+    CHECK(result[0].name == "left");
+    CHECK(result[1].name == "right");
     // rounds are rounded up to a whole number of ABBA blocks
     CHECK(result.rounds() == 12U);
 
     // both sides are also available as ordinary Results, for callers who want
     // their own arithmetic
     using M = ankerl::nanobench::Result::Measure;
-    CHECK(result.resultA().size() == 12U);
-    CHECK(result.resultB().size() == 12U);
-    CHECK(result.resultA().median(M::elapsed) > 0.0);
-    CHECK(result.resultB().median(M::elapsed) > 0.0);
-    CHECK(result.resultA().config().mBenchmarkName == "left");
-    CHECK(result.resultB().config().mBenchmarkName == "right");
+    CHECK(result[0].result.size() == 12U);
+    CHECK(result[1].result.size() == 12U);
+    CHECK(result[0].result.median(M::elapsed) > 0.0);
+    CHECK(result[1].result.median(M::elapsed) > 0.0);
+    CHECK(result[0].result.config().mBenchmarkName == "left");
+    CHECK(result[1].result.config().mBenchmarkName == "right");
 
-    // ab() reports its own verdict and does not append to the ordinary results,
-    // which belong to run()
+    // compare() reports its own verdict and does not append to the ordinary
+    // results, which belong to run()
     CHECK(bench.results().empty());
 }
 
 // NOLINTNEXTLINE
-TEST_CASE("unit_ab_writes_a_verdict_to_the_output_stream") {
+TEST_CASE("unit_compare_writes_a_verdict_to_the_output_stream") {
     Work a;
     Work b;
     std::ostringstream oss;
     ankerl::nanobench::Bench bench;
     bench.output(&oss).epochs(12).performanceCounters(false).minEpochTime(
         std::chrono::microseconds(200));
-    auto const result = bench.ab(
+    auto const result = bench.compare(
         "alpha",
         [&] {
             a.step();
@@ -508,9 +564,9 @@ TEST_CASE("unit_ab_writes_a_verdict_to_the_output_stream") {
     // completely different scale, and an unstable side is invisible
     CHECK(text.find("Summary") != std::string::npos);
     CHECK(text.find("ns/op") != std::string::npos);
-    CHECK(text.find("err ") != std::string::npos);
-    CHECK(text.find("min ") != std::string::npos);
-    CHECK(text.find("max ") != std::string::npos);
+    CHECK(text.find("err%") != std::string::npos);
+    CHECK(text.find("relative") != std::string::npos);
+    CHECK(text.find("95% CI") != std::string::npos);
 
     // the same verdict is available through the stream operator
     std::ostringstream direct;
@@ -524,7 +580,7 @@ TEST_CASE("unit_ab_writes_a_verdict_to_the_output_stream") {
         .epochs(12)
         .performanceCounters(false)
         .minEpochTime(std::chrono::microseconds(200));
-    quietBench.ab(
+    quietBench.compare(
         "x",
         [&] {
             a.step();
@@ -537,7 +593,7 @@ TEST_CASE("unit_ab_writes_a_verdict_to_the_output_stream") {
 }
 
 // NOLINTNEXTLINE
-TEST_CASE("unit_ab_names_a_backtick_safely") {
+TEST_CASE("unit_compare_names_a_backtick_safely") {
     // same escaping rule as the markdown table: a benchmark name is written as
     // code
     Work a;
@@ -546,7 +602,7 @@ TEST_CASE("unit_ab_names_a_backtick_safely") {
     ankerl::nanobench::Bench bench;
     bench.output(&oss).epochs(4).performanceCounters(false).minEpochTime(
         std::chrono::microseconds(200));
-    bench.ab(
+    bench.compare(
         "a`b",
         [&] {
             a.step();
