@@ -1801,15 +1801,16 @@ AbResult Bench::ab(std::string const& nameA, OpA&& opA, std::string const& nameB
     // autocorrelation around +0.10 while the paired differences carry -0.01 to -0.08, and dropping
     // the first twenty rounds changes neither. It is honored because silently ignoring a setting the
     // caller wrote down is worse than spending the iterations.
-    if (0 != warmup()) {
-        auto warmupIters = warmup();
-        while (warmupIters-- > 0) {
-            opA();
-        }
-        warmupIters = warmup();
-        while (warmupIters-- > 0) {
-            opB();
-        }
+    // Counting up rather than the `while (n-- > 0)` the measuring loops use. That idiom wraps to
+    // UINT64_MAX on its last turn, which needs ANKERL_NANOBENCH_NO_SANITIZE("integer") on the
+    // enclosing function - and putting that on ab() would stop the sanitizer checking the arithmetic
+    // further down, which is the part actually worth checking. Nothing here is being timed, so the
+    // tighter form buys nothing.
+    for (uint64_t i = 0; i < warmup(); ++i) {
+        opA();
+    }
+    for (uint64_t i = 0; i < warmup(); ++i) {
+        opB();
     }
 
     // Fixed for the whole experiment: an iteration count that drifted between rounds would be a
