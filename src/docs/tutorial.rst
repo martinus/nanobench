@@ -546,21 +546,57 @@ Designing the experiment
    amount of pairing removes: it measured 1.2% on 200µs epochs. The smaller of the two counts is
    used, so neither side runs an epoch longer than it was asked for.
 
-#. **Interleaving.** One epoch of each per round, adjacent in time, rather than all of A and then all
-   of B. Anything that affects both - a frequency ramp, a noisy neighbour, thermal throttling - is
-   then common to the pair and cancels out of the difference.
+#. **Interleaving.** One epoch of each alternative per round, adjacent in time, rather than all of A
+   and then all of B. Anything that affects all of them - a frequency ramp, a noisy neighbour,
+   thermal throttling - is then common to the round and cancels out of the differences.
 
-#. **ABBA order within each block of four rounds.** The two A positions and the two B positions then
-   have the same mean time, so a drift that is *linear* over the block cancels exactly. Simply
-   alternating would leave one side always first.
+#. **Position balanced within each block of rounds.** Interleaving alone is not enough, because
+   *within* a round the alternatives still run one after another: whatever goes first pays the cold
+   cache, and whatever goes last runs on a slightly hotter core. If one alternative were always
+   first, that cost would be attributed to it rather than to its position.
 
-#. **The block orientation randomized.** ABBA or BAAB, chosen per block. A fixed pattern can line up
-   with a periodic disturbance; randomizing the phase stops that without giving up the balance.
+   The fix is to rotate. With ``N`` alternatives a **block** is ``N`` rounds, and the
+   ordering within the block is arranged so that **every alternative runs in every position exactly
+   once**. Each one then has the same mean position, and a drift that is linear over the block
+   cancels exactly.
 
-#. **Rounds rounded up to whole blocks, and never fewer than eight.** A partial block hands one side
-   the first position more often than the other, which is the imbalance ABBA exists to remove. Eight
-   is the floor because fewer than six rounds cannot support a 95% statement at all - see the sign
-   test below - and reporting one anyway would be inventing confidence rather than measuring it.
+   With two alternatives that construction is literally ``ABBA``::
+
+       round 0:  A B
+       round 1:  B A
+
+   A is first once and second once; so is B. With three it is a *cyclic Latin square* - the same
+   idea, one row per rotation::
+
+       round 0:  A B C
+       round 1:  B C A
+       round 2:  C A B
+
+   Read down any column: each alternative appears in it exactly once. Read across any row: each
+   alternative appears once per round. That is what makes ``ABBA`` and the ``N``-way case the
+   same rule rather than two different ones - ``ABBA`` is just this square at ``N`` = 2.
+
+#. **The permutation re-randomized per block.** The rotation fixes the *relative* order for a whole
+   block, so a fixed starting permutation would repeat the same cycle forever and could line up with
+   a periodic disturbance. Each block therefore starts from a fresh random permutation, which is then
+   rotated. At ``N`` = 2 this is what picks ``ABBA`` or ``BAAB``.
+
+#. **Rounds rounded up to whole blocks, and never fewer than six.** A partial block leaves some
+   alternative having run in the first position more often than the others, which is the imbalance
+   the square exists to remove, so :cpp:func:`epochs() <ankerl::nanobench::Bench::epochs()>` is
+   rounded up to the next multiple of ``N``. Six is the floor because fewer than six rounds cannot
+   support a 95% statement at all - see the sign test below - and reporting one anyway would be
+   inventing confidence rather than measuring it. With the intervals corrected for several
+   comparisons the floor rises further, so a wide table is given the rounds its own interval needs.
+
+.. note::
+
+   The square balances **position**, not **carryover**. In a cyclic square each alternative is always
+   immediately preceded by the same neighbour - in the ``A B C`` block above, ``C`` never follows
+   anything but ``B``. If one alternative leaves the cache or the branch predictor in a state that
+   particularly helps or hurts the next one, that effect is not balanced away, only re-randomized
+   between blocks. Balancing it too needs a Williams design, which nanobench does not implement; the
+   per-block reshuffle is what keeps it from becoming systematic.
 
 Reducing a round to one number
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -611,11 +647,11 @@ can be arbitrarily slower but never faster than its floor:
 
 .. list-table::
    :header-rows: 1
-   :widths: 22 14 64
+   :widths: 20 12 68
 
    * - Method
      - Coverage
-     - 
+     - Why
    * - **sign test**
      - **96.7%**
      - Used. Assumes independence and nothing else. Slightly conservative, and about 10% wider than

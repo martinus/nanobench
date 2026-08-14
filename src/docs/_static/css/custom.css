@@ -1,0 +1,16 @@
+/* sphinx_rtd_theme sets `white-space: nowrap` on every table cell, which is right for a table of
+ * numbers and wrong for one with prose in it: the cell refuses to wrap, so the table grows past the
+ * page and the reader gets a horizontal scrollbar instead of a paragraph. Let cells wrap.
+ *
+ * This is safe for the numeric tables too - their cells hold single tokens (`ns/op`, `132,948.79`),
+ * which have nowhere to break, so those tables render exactly as before. */
+.wy-table-responsive table td,
+.wy-table-responsive table th {
+    white-space: normal;
+}
+
+/* Without a width the browser gives a table only as much room as its content demands, so a narrow
+ * table full of prose ends up in a column down the middle of the page. */
+.wy-table-responsive table {
+    width: 100%;
+}
