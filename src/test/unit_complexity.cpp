@@ -196,7 +196,34 @@ TEST_CASE("unit_complexity_ordering_is_a_strict_weak_ordering") {
                             BigO("O(1)", empty, one),
                             BigO("O(n)", empty, linear)};
     CHECK_NOTHROW(std::sort(bigOs.begin(), bigOs.end()));
-    CHECK(bigOs.size() == 3U);
+    REQUIRE(bigOs.size() == 3U);
+
+    // Nothing to fit means no constant and no error, rather than the 0/0 this
+    // used to compute - which is a NaN, and a NaN is both undefined behaviour
+    // for the division and unordered for the sort above.
+    for (auto const& bigO : bigOs) {
+        INFO(bigO.name());
+        CHECK_FALSE(std::isnan(bigO.constant()));
+        CHECK_FALSE(std::isnan(bigO.normalizedRootMeanSquare()));
+        CHECK(bigO.constant() == doctest::Approx(0.0));
+        CHECK(bigO.normalizedRootMeanSquare() == doctest::Approx(0.0));
+    }
+    // with equal errors the ordering is by name, so the sort is deterministic
+    CHECK(bigOs.front().name() == "O(1)");
+
+    // measurements that are all zero are the same kind of degenerate: the error
+    // is relative to the mean, and there is no relative error to report
+    BigO::RangeMeasure const allZero{{1.0, 0.0}, {2.0, 0.0}, {4.0, 0.0}};
+    BigO const flat("O(n)", allZero, linear);
+    CHECK_FALSE(std::isnan(flat.constant()));
+    CHECK_FALSE(std::isnan(flat.normalizedRootMeanSquare()));
+    CHECK(flat.normalizedRootMeanSquare() == doctest::Approx(0.0));
+
+    // and so is a range where every n is zero
+    BigO::RangeMeasure const noRange{{0.0, 1.0}, {0.0, 2.0}};
+    BigO const degenerate("O(n)", noRange, linear);
+    CHECK_FALSE(std::isnan(degenerate.constant()));
+    CHECK_FALSE(std::isnan(degenerate.normalizedRootMeanSquare()));
 
     // two models with identical error are ordered by name, deterministically
     auto const data = exactly(1.0, linear);
