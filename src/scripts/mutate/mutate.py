@@ -30,7 +30,7 @@ the suite stays green, and the report blames your tests for it:
 
     mutate.py --diff HEAD~1                    # only what this change touched
     mutate.py --lines 2890-2960                # one function
-    mutate.py                                  # the whole header, ~80 minutes
+    mutate.py                                  # the whole header
     mutate.py --diff HEAD~1 --dry-run          # how many, and how long
 
 Nothing is scored until the suite is green repeatedly, because a flaky test
@@ -39,17 +39,22 @@ tree is never touched: every build happens in a throwaway copy, so a run that
 dies half way cannot leave a mutated header behind, and two runs at once get
 their own copies rather than deleting each other's.
 
-How a mutant dies matters. `build` means the compiler refused it - real
-protection, but not your tests doing the work. `test` means an assertion failed,
-which is the number worth moving. `hang` means it ran forever; this library grows
-iteration counts in a loop, so a mutated bound does that rather than failing.
+Every mutant ends in one of four verdicts, and the difference matters.
+`compiler` means the build refused it - real protection, but not your tests
+doing the work. `caught` means an assertion failed, which is the number worth
+moving. `hang` means it ran forever; this library grows iteration counts in a
+loop, so a mutated bound does that rather than failing. `survived` means nothing
+noticed, which is the answer you are looking for.
 """
 
 import argparse
+import bisect
 import concurrent.futures
+import contextlib
 import json
 import os
 import queue
+import random
 import re
 import shutil
 import subprocess
@@ -60,23 +65,38 @@ import time
 
 REPO = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..", ".."))
 
-# The library is one header, so that is the default target. Set by --file, because
-# a repo-relative path is the only thing tying this to nanobench.
+# The library is one header, so that is the default target; --file overrides it.
 HEADER = os.path.join("src", "include", "nanobench.h")
 
-# Copied into each lane. Only the *top level* `docs` is skipped - it is the
-# gitignored sphinx preview. `src/docs` must come along: unit_templates compares
-# the built-in templates against `src/docs/_generated`, and a lane without it
-# fails the baseline for a reason that has nothing to do with any mutant.
-COPY_SKIP = {".git", "__pycache__"}
+# The one TU that compiles the implementation block, used for the syntax
+# pre-filter. Only meaningful when the mutated file is one it includes.
+IMPL_TU = os.path.join("src", "test", "app", "nanobench.cpp")
+
+# Only the *top level* `docs` is skipped - it is the gitignored sphinx preview.
+# `src/docs` must come along: unit_templates compares the built-in templates
+# against `src/docs/_generated`, and a lane without it fails the baseline for a
+# reason that has nothing to do with any mutant.
+LANE_IGNORE = shutil.ignore_patterns(".git", "__pycache__", "build*", "b", "bsan")
+
+# Rough seconds per mutant, plus the fixed cost of copying and configuring a lane
+# and taking a baseline. Calibrated on one machine, so --dry-run's estimate is an
+# order of magnitude rather than a promise.
+SECONDS_PER_MUTANT = 8.4
+SECONDS_OF_SETUP = 14.0
+
+VERDICTS = ("caught", "compiler", "hang", "survived")
 
 
 def lane_ignore(directory, names):
-    skip = [n for n in names
-            if n in COPY_SKIP or n.startswith("build") or n in ("b", "bsan")]
+    skip = list(LANE_IGNORE(directory, names))
     if os.path.abspath(directory) == REPO:
         skip.append("docs")
     return skip
+
+
+def estimate(count, lanes):
+    seconds = SECONDS_OF_SETUP + SECONDS_PER_MUTANT * count / max(1, lanes)
+    return "%.0f min" % (seconds / 60) if seconds > 90 else "%.0f s" % seconds
 
 
 # ---------------------------------------------------------------- lexing
@@ -92,8 +112,8 @@ def code_mask(src):
     mask = bytearray(b"\x01" * len(src))
 
     def blank(start, end):
-        for i in range(start, min(end, len(src))):
-            mask[i] = 0
+        end = min(end, len(src))
+        mask[start:end] = b"\x00" * max(0, end - start)
 
     i, n = 0, len(src)
     at_line_start = True
@@ -174,7 +194,7 @@ def code_mask(src):
 
 # Longest first, so `<=` is never split into `<`. Shifts, `->` and `::` are left
 # alone on purpose: mutating them is a compile error essentially every time, and
-# a mutant that cannot build costs a full rebuild to tell us nothing.
+# a mutant that cannot build costs a rebuild to tell us nothing.
 OPERATOR_MUTATIONS = [
     ("<<=", []), (">>=", []), ("<<", []), (">>", []), ("->", []), ("::", []),
     ("<=", ["<", ">=", "=="]),
@@ -204,25 +224,48 @@ NUMBER = re.compile(r"\b(\d+)([uUlL]*)\b")
 WORD_MUTATIONS = {"true": ["false"], "false": ["true"]}
 
 
+def is_comparison(src, offset, op):
+    """Whether a bare `<`/`>` is a comparison rather than a template bracket.
+
+    Nearly half of all sites are angle brackets - `std::conditional<`,
+    `static_cast<Op*>`, `template <typename Op>` - and mutating one is a compile
+    error every time. They are not free: each costs a syntax check, and they
+    swamp the `compiler` bucket, which is the one the report explicitly calls
+    not the number worth moving. The header is clang-formatted, so a comparison
+    always has a space on both sides and a template bracket never does.
+    """
+    if op not in ("<", ">"):
+        return True
+    before = src[offset - 1] if offset else ""
+    after = src[offset + 1] if offset + 1 < len(src) else ""
+    return before == " " and after == " "
+
+
+def line_starts(src):
+    starts = [0]
+    start = src.find("\n")
+    while start >= 0:
+        starts.append(start + 1)
+        start = src.find("\n", start + 1)
+    return starts
+
+
 def mutation_sites(src, mask, line_filter=None):
-    """Every (offset, original, replacement, description) worth trying."""
+    """Every single-token change worth trying, as {offset, original, ...} dicts."""
     sites = []
     n = len(src)
-
     starts = line_starts(src)
 
     def line_of(off):
-        lo, hi = 0, len(starts) - 1
-        while lo < hi:
-            mid = (lo + hi + 1) // 2
-            if starts[mid] <= off:
-                lo = mid
-            else:
-                hi = mid - 1
-        return lo + 1
+        return bisect.bisect_right(starts, off)
 
-    def keep(off):
-        return line_filter is None or line_of(off) in line_filter
+    def add(offset, original, replacement):
+        line = line_of(offset)
+        if line_filter is not None and line not in line_filter:
+            return
+        sites.append(dict(offset=offset, original=original,
+                          replacement=replacement, line=line,
+                          description="%s -> %s" % (original, replacement)))
 
     i = 0
     while i < n:
@@ -232,10 +275,8 @@ def mutation_sites(src, mask, line_filter=None):
 
         m = IDENT.match(src, i)
         if m:
-            word = m.group(0)
-            if word in WORD_MUTATIONS and keep(i):
-                for rep in WORD_MUTATIONS[word]:
-                    sites.append((i, word, rep, "%s -> %s" % (word, rep)))
+            for rep in WORD_MUTATIONS.get(m.group(0), ()):
+                add(i, m.group(0), rep)
             i = m.end()
             continue
 
@@ -247,35 +288,22 @@ def mutation_sites(src, mask, line_filter=None):
             if before not in ".0123456789" and after not in ".eE0123456789":
                 value, suffix = int(m.group(1)), m.group(2)
                 for rep_val in (value + 1, value - 1):
-                    if rep_val < 0:
-                        continue
-                    if keep(i):
-                        rep = "%d%s" % (rep_val, suffix)
-                        sites.append((i, m.group(0), rep,
-                                      "%s -> %s" % (m.group(0), rep)))
+                    if rep_val >= 0:
+                        add(i, m.group(0), "%d%s" % (rep_val, suffix))
             i = m.end()
             continue
 
         for op, reps in OPERATOR_MUTATIONS:
             if src.startswith(op, i):
-                if keep(i):
+                if is_comparison(src, i, op):
                     for rep in reps:
-                        sites.append((i, op, rep, "%s -> %s" % (op, rep)))
+                        add(i, op, rep)
                 i += len(op)
                 break
         else:
             i += 1
 
-    return [dict(offset=o, original=orig, replacement=rep, description=desc,
-                 line=line_of(o)) for (o, orig, rep, desc) in sites]
-
-
-def line_starts(src):
-    starts = [0]
-    for i, c in enumerate(src):
-        if c == "\n":
-            starts.append(i + 1)
-    return starts
+    return sites
 
 
 def changed_lines(ref, path):
@@ -293,16 +321,52 @@ def changed_lines(ref, path):
 
 # ---------------------------------------------------------------- running
 
+def parse_test_output(proc):
+    """Which tests went red, given a finished run of the suite.
+
+    Kept out of Lane so that spawning a process and interpreting doctest's
+    output stay separable - the second is the part that changes when a mutant
+    dies in a way doctest has no vocabulary for.
+    """
+    if proc.returncode == 0:
+        return []
+
+    # doctest prints a `TEST CASE:` banner for anything that produces output, a
+    # passing MESSAGE included, so the banners alone are not failures - only one
+    # with an assertion error under it counts.
+    failing, current = [], None
+    for line in proc.stdout.splitlines():
+        banner = re.match(r"^TEST CASE:\s*(.+)$", line)
+        if banner:
+            current = banner.group(1).strip()
+        elif ("ERROR" in line or "FAILED" in line) and current:
+            if current not in failing:
+                failing.append(current)
+    if failing:
+        return failing
+
+    # Nonzero exit with no failed assertion: a sanitizer abort, a crash or a
+    # signal. Naming it beats reporting "unknown" - under --cmake-arg the thing
+    # that noticed is often not a test at all, and which runtime complained is
+    # the whole answer.
+    for stream in (proc.stderr, proc.stdout):
+        for pattern in (r"^SUMMARY: (\w+Sanitizer): (.+)$", r"runtime error: (.+)$"):
+            m = re.search(pattern, stream, re.M)
+            if m:
+                return [" ".join(m.groups())[:120]]
+    return ["exit %d, no assertion failed" % proc.returncode]
+
+
 class Lane:
     """One throwaway copy of the repo, configured once and reused per mutant."""
 
-    def __init__(self, root, index, jobs, test_filter=None, cmake_args=None):
+    def __init__(self, root, index, args):
         self.dir = os.path.join(root, "lane%d" % index)
         self.build = os.path.join(self.dir, "build")
-        self.header = os.path.join(self.dir, HEADER)
-        self.jobs = jobs
-        self.test_filter = test_filter
-        self.cmake_args = list(cmake_args or [])
+        self.target = os.path.join(self.dir, args.file)
+        self.jobs = args.jobs
+        self.test_filter = args.test_filter
+        self.cmake_args = list(args.cmake_arg)
         # Set unconditionally, exactly as the CI legs do: only a sanitizer
         # runtime reads these, so on an ordinary build they do nothing. Without
         # halt_on_error UBSan prints the error and the binary still exits 0 -
@@ -315,8 +379,7 @@ class Lane:
             "print_stacktrace=1:halt_on_error=1:suppressions="
             + os.path.join(self.dir, "ubsan.supp"))
 
-    def setup(self, log):
-        log("lane %s: copying tree" % os.path.basename(self.dir))
+    def setup(self):
         shutil.copytree(REPO, self.dir, ignore=lane_ignore)
         r = subprocess.run(
             ["cmake", "-S", self.dir, "-B", self.build, "-GNinja",
@@ -325,182 +388,57 @@ class Lane:
         if r.returncode != 0:
             raise RuntimeError("cmake failed in lane:\n" + r.stdout + r.stderr)
 
-    def write_header(self, text):
-        with open(self.header, "w", encoding="utf-8") as f:
+    def write_target(self, text):
+        with open(self.target, "w", encoding="utf-8") as f:
             f.write(text)
 
     def syntax_ok(self, timeout):
         """Cheap reject. Most operator mutants are simply not valid C++, and this
-        answers that in about a second instead of a full rebuild."""
+        answers that in about half a second instead of a full rebuild."""
         r = self._run([
             "c++", "-fsyntax-only", "-std=c++11",
             "-I", os.path.join(self.dir, "src", "include"),
             "-isystem", os.path.join(self.dir, "src", "test"),
-            os.path.join(self.dir, "src", "test", "app", "nanobench.cpp")],
-            cwd=self.dir, timeout=timeout)
+            os.path.join(self.dir, IMPL_TU)], timeout=timeout)
         return r is not None and r.returncode == 0
 
     def build_ok(self, timeout):
         r = self._run(["ninja", "-C", self.build, "-j", str(self.jobs)],
-                      cwd=self.dir, timeout=timeout)
+                      timeout=timeout)
         return r is not None and r.returncode == 0
 
-    def run_tests(self, timeout):
-        """(passed, first failing test name or None). None passed == timeout."""
-        failing = self.failing_tests(timeout)
-        if failing is None:
-            return None, None
-        return (True, None) if not failing else (False, failing[0])
-
     def failing_tests(self, timeout):
-        """Every test that went red, in order. None means the run timed out.
-
-        doctest prints a `TEST CASE:` banner for anything that produces output,
-        a passing MESSAGE included, so the banners alone are not failures - only
-        one with an assertion error under it counts.
-        """
+        """Tests that went red, or None if the run timed out."""
         cmd = [os.path.join(self.build, "nb")]
         if self.test_filter:
             cmd.append("-tc=" + self.test_filter)
         r = self._run(cmd, cwd=self.build, timeout=timeout, env=self.env)
-        if r is None:
-            return None
-        if r.returncode == 0:
-            return []
-        failing, current = [], None
-        for line in r.stdout.splitlines():
-            banner = re.match(r"^TEST CASE:\s*(.+)$", line)
-            if banner:
-                current = banner.group(1).strip()
-            elif ("ERROR" in line or "FAILED" in line) and current:
-                if current not in failing:
-                    failing.append(current)
-        if failing:
-            return failing
-        # Nonzero exit with no failed assertion: a sanitizer abort, a crash or a
-        # signal. Naming it beats reporting "unknown" - under --cmake-arg the
-        # thing that noticed is often not a test at all, and which runtime
-        # complained is the whole answer.
-        for stream in (r.stderr, r.stdout):
-            for pattern in (r"^SUMMARY: (\w+Sanitizer): (.+)$",
-                            r"runtime error: (.+)$"):
-                m = re.search(pattern, stream, re.M)
-                if m:
-                    return [" ".join(m.groups())[:120]]
-        return ["exit %d, no assertion failed" % r.returncode]
+        return None if r is None else parse_test_output(r)
 
-    @staticmethod
-    def _run(cmd, cwd, timeout, env=None):
+    def _run(self, cmd, timeout, cwd=None, env=None):
         try:
-            return subprocess.run(cmd, cwd=cwd, capture_output=True, text=True,
-                                  timeout=timeout, env=env)
+            return subprocess.run(cmd, cwd=cwd or self.dir, capture_output=True,
+                                  text=True, timeout=timeout, env=env)
         except subprocess.TimeoutExpired:
             return None
         except FileNotFoundError as e:
             raise RuntimeError("missing tool: %s" % e)
 
 
-def evaluate(lane, original, site, args):
-    """Run one mutant. Returns its verdict."""
-    mutated = (original[:site["offset"]] + site["replacement"]
-               + original[site["offset"] + len(site["original"]):])
-    lane.write_header(mutated)
-
+def evaluate(lane, mutant, args):
+    """Run one mutant. Returns (verdict, tests that caught it)."""
+    lane.write_target(mutant["text"])
     if args.quick_reject and not lane.syntax_ok(args.build_timeout):
-        return "build", None
+        return "compiler", []
     if not lane.build_ok(args.build_timeout):
-        return "build", None
-    passed, failing = lane.run_tests(args.test_timeout)
-    if passed is None:
-        return "timeout", None
-    return ("survived", None) if passed else ("test", failing)
+        return "compiler", []
+    failing = lane.failing_tests(args.test_timeout)
+    if failing is None:
+        return "hang", []
+    return ("caught", failing) if failing else ("survived", [])
 
 
-def fingerprint(args):
-    """What this run could actually observe, printed with every report.
-
-    A verdict is only meaningful for the machine that produced it, and the way
-    that goes wrong is silent: where `perf_event_open` is refused - most VMs and
-    containers - nanobench records no counters, so every bug in the counter
-    columns comes back UNCAUGHT no matter how good the tests are. Someone
-    reading that later would conclude the suite is worse than it is, which is
-    the one direction this tool must not be wrong in.
-    """
-    counters = "no"
-    paranoid = "/proc/sys/kernel/perf_event_paranoid"
-    if os.path.exists(paranoid):
-        try:
-            with open(paranoid) as f:
-                level = int(f.read().strip())
-            counters = "yes (perf_event_paranoid=%d)" % level if level <= 2 \
-                else "no (perf_event_paranoid=%d)" % level
-        except (OSError, ValueError):
-            counters = "unknown"
-
-    compiler = "unknown"
-    for arg in args.cmake_arg:
-        if arg.startswith("-DCMAKE_CXX_COMPILER="):
-            compiler = arg.split("=", 1)[1]
-    if compiler == "unknown":
-        try:
-            compiler = subprocess.run(["c++", "--version"], capture_output=True,
-                                      text=True).stdout.splitlines()[0]
-        except (OSError, IndexError):
-            pass
-
-    lines = ["compiler        %s" % compiler,
-             "perf counters   %s" % counters,
-             "cores           %s" % (os.cpu_count() or "?"),
-             "cmake           %s" % (" ".join(args.cmake_arg) or "(defaults)"),
-             "tests           %s" % (args.test_filter or "all")]
-    if counters.startswith("no"):
-        lines.append("")
-        lines.append("NOTE: no performance counters here, so nanobench records "
-                     "none and every")
-        lines.append("      bug in the ins/cyc/IPC/bra/miss columns will look "
-                     "UNCAUGHT whatever")
-        lines.append("      the tests do. Those verdicts mean nothing on this "
-                     "machine.")
-    return "\n".join(lines)
-
-
-def baseline(lane, args, log):
-    """Refuse to score anything until the suite is green repeatedly.
-
-    A flaky test scored as a kill inflates the number in the flattering
-    direction, which is the worst way for this tool to be wrong. Parts of this
-    suite are timing dependent, so this is not hypothetical.
-    """
-    log("baseline: building")
-    if not lane.build_ok(args.build_timeout):
-        raise RuntimeError("baseline build failed - fix the tree first")
-    for attempt in range(args.baseline_runs):
-        passed, failing = lane.run_tests(args.test_timeout)
-        if passed is None:
-            raise RuntimeError("baseline run %d timed out" % (attempt + 1))
-        if not passed:
-            raise RuntimeError(
-                "baseline run %d failed (%s). The suite must be green and "
-                "deterministic before mutants mean anything." %
-                (attempt + 1, failing))
-        log("baseline: run %d/%d green" % (attempt + 1, args.baseline_runs))
-
-
-def prepare_workdir(args):
-    """A fresh directory per run, unique unless --workdir says otherwise.
-
-    A fixed path would be tidier to look at and quietly wrong: two runs on one
-    machine - a sweep in one terminal, a quick --replace in another - would
-    delete each other's lanes mid-build, and the victim fails with a missing
-    header rather than anything that points at the cause.
-    """
-    if args.workdir:
-        shutil.rmtree(args.workdir, ignore_errors=True)
-        os.makedirs(args.workdir)
-        return args.workdir
-    return tempfile.mkdtemp(prefix="nanobench-mutate-",
-                            dir=os.environ.get("TMPDIR", "/tmp"))
-
+# ------------------------------------------------------------- mutants
 
 def parse_bug_file(path):
     """Bugs to reintroduce, one block each:
@@ -543,12 +481,12 @@ def parse_bug_file(path):
     return bugs
 
 
-def validate_bugs(bugs, original):
-    """Fail before running anything if a bug does not apply.
+def bug_mutants(bugs, original):
+    """Substitutions to mutated sources, refusing any that does not apply.
 
     A typo in the `old` text would otherwise substitute nothing, the suite would
-    stay green, and the report would say 'nothing caught it' - a false alarm
-    about the tests when the fault is in the bug list.
+    stay green, and the report would say the bug survived - a false alarm about
+    the tests when the fault is in the bug list.
     """
     problems = []
     for bug in bugs:
@@ -560,108 +498,226 @@ def validate_bugs(bugs, original):
             problems.append("  %-40s is a no-op" % bug["name"])
     if problems:
         raise RuntimeError("these bugs do not apply:\n" + "\n".join(problems))
+    return [dict(name=bug["name"], text=original.replace(bug["old"], bug["new"]))
+            for bug in bugs]
 
 
-def evaluate_bug(lane, original, bug, args):
-    """(verdict, [tests that caught it])."""
-    lane.write_header(original.replace(bug["old"], bug["new"]))
-    if not lane.build_ok(args.build_timeout):
-        return "compiler", []
-    failing = lane.failing_tests(args.test_timeout)
-    if failing is None:
-        return "hang", []
-    return ("caught", failing) if failing else ("UNCAUGHT", [])
+def site_mutants(sites, original):
+    return [dict(name=site["description"], line=site["line"],
+                 offset=site["offset"], description=site["description"],
+                 text=(original[:site["offset"]] + site["replacement"]
+                       + original[site["offset"] + len(site["original"]):]))
+            for site in sites]
 
 
-def run_bugs(lanes, original, bugs, args, log):
-    """Reintroduce every bug, spread across lanes.
+def reverse_commit_mutant(ref, original, target):
+    """One bug, expressed as 'undo what this commit did to the file'.
 
-    Doing this by hand is serial by construction - one header, one build tree -
-    which is why a batch of ten was an afternoon. They are independent, so they
-    parallelise exactly like mutants do.
+    Applied to a scratch copy rather than a lane, so that every mode has produced
+    its mutants before any lane exists - otherwise --dry-run has nothing to show
+    and the lane count cannot be sized from the number of bugs.
     """
-    validate_bugs(bugs, original)
-    log("%d bug%s over %d lane%s"
-        % (len(bugs), "" if len(bugs) == 1 else "s",
-           len(lanes), "" if len(lanes) == 1 else "s"))
+    # --format= drops the commit header, which `git show` prints even when the
+    # path it was given is untouched - leaving output that is not empty but
+    # holds no patch, so the failure surfaces from `git apply` instead of here.
+    diff = subprocess.run(["git", "show", "--format=", ref, "--", target],
+                          cwd=REPO, capture_output=True, text=True,
+                          check=True).stdout
+    if "diff --git" not in diff:
+        raise RuntimeError("%s does not touch %s" % (ref, target))
+    with tempfile.TemporaryDirectory(prefix="nanobench-reverse-") as scratch:
+        staged = os.path.join(scratch, target)
+        os.makedirs(os.path.dirname(staged), exist_ok=True)
+        with open(staged, "w", encoding="utf-8") as f:
+            f.write(original)
+        r = subprocess.run(["git", "apply", "-R", "--unsafe-paths",
+                            "--directory", ".", "-p1", "-"],
+                           cwd=scratch, input=diff, capture_output=True, text=True)
+        if r.returncode != 0:
+            raise RuntimeError("could not reverse %s:\n%s" % (ref, r.stderr))
+        with open(staged, encoding="utf-8") as f:
+            text = f.read()
+    if text == original:
+        raise RuntimeError("reversing %s changes nothing" % ref)
+    return dict(name="reverse of %s" % ref, text=text)
 
+
+# ------------------------------------------------------------- the run
+
+def fingerprint(args):
+    """What this run could actually observe.
+
+    A verdict is only meaningful for the machine that produced it, and the way
+    that goes wrong is silent: where `perf_event_open` is refused - most VMs and
+    containers - nanobench records no counters, so every bug in the counter
+    columns comes back survived no matter how good the tests are. Someone
+    reading that later would conclude the suite is worse than it is, which is
+    the one direction this tool must not be wrong in.
+    """
+    counters = None
+    paranoid = "/proc/sys/kernel/perf_event_paranoid"
+    if os.path.exists(paranoid):
+        try:
+            with open(paranoid) as f:
+                counters = int(f.read().strip()) <= 2
+        except (OSError, ValueError):
+            counters = None
+    else:
+        counters = False
+
+    compiler = None
+    for arg in args.cmake_arg:
+        if arg.startswith("-DCMAKE_CXX_COMPILER="):
+            compiler = arg.split("=", 1)[1]
+    if compiler is None:
+        try:
+            compiler = subprocess.run(["c++", "--version"], capture_output=True,
+                                      text=True).stdout.splitlines()[0]
+        except (OSError, IndexError):
+            compiler = "unknown"
+
+    return dict(compiler=compiler, perf_counters=counters,
+                cores=os.cpu_count(), cmake=list(args.cmake_arg),
+                tests=args.test_filter or "all", file=args.file)
+
+
+def render_fingerprint(facts):
+    counters = {True: "yes", False: "no", None: "unknown"}[facts["perf_counters"]]
+    lines = ["compiler        %s" % facts["compiler"],
+             "perf counters   %s" % counters,
+             "cores           %s" % (facts["cores"] or "?"),
+             "cmake           %s" % (" ".join(facts["cmake"]) or "(defaults)"),
+             "mutating        %s" % facts["file"],
+             "tests           %s" % facts["tests"]]
+    if facts["perf_counters"] is not True:
+        lines += ["",
+                  "NOTE: no performance counters here, so nanobench records none",
+                  "      and every bug in the ins/cyc/IPC/bra/miss columns will",
+                  "      look survived whatever the tests do. Those verdicts",
+                  "      mean nothing on this machine."]
+    return "\n".join(lines)
+
+
+def baseline(lane, args, log):
+    """Refuse to score anything until the suite is green repeatedly.
+
+    A flaky test scored as a kill inflates the number in the flattering
+    direction, which is the worst way for this tool to be wrong. Parts of this
+    suite are timing dependent, so this is not hypothetical.
+
+    Returns how long a green run takes, which is what the per-mutant timeouts
+    are derived from - a fixed generous timeout makes every hung mutant cost
+    many times what a real one does, and hangs are an expected verdict here.
+    """
+    log("baseline: building")
+    if not lane.build_ok(args.build_timeout):
+        raise RuntimeError("baseline build failed - fix the tree first")
+    slowest = 0.0
+    for attempt in range(args.baseline_runs):
+        started = time.time()
+        failing = lane.failing_tests(args.test_timeout)
+        slowest = max(slowest, time.time() - started)
+        if failing is None:
+            raise RuntimeError("baseline run %d timed out" % (attempt + 1))
+        if failing:
+            raise RuntimeError(
+                "baseline run %d failed (%s). The suite must be green and "
+                "deterministic before mutants mean anything."
+                % (attempt + 1, ", ".join(failing)))
+        log("baseline: run %d/%d green" % (attempt + 1, args.baseline_runs))
+    return slowest
+
+
+@contextlib.contextmanager
+def lanes_for(args, wanted, log):
+    """Copied trees, configured and baselined, cleaned up whatever happens."""
+    workdir = args.workdir or tempfile.mkdtemp(prefix="nanobench-mutate-")
+    if args.workdir:
+        shutil.rmtree(workdir, ignore_errors=True)
+        os.makedirs(workdir)
+    try:
+        count = max(1, min(args.lanes, wanted))
+        lanes = [Lane(workdir, i, args) for i in range(count)]
+        log("preparing %d lane%s" % (count, "" if count == 1 else "s"))
+        with concurrent.futures.ThreadPoolExecutor(count) as pool:
+            list(pool.map(lambda lane: lane.setup(), lanes))
+        green_seconds = baseline(lanes[0], args, log)
+        if args.test_timeout is None:
+            args.test_timeout = max(20, int(6 * green_seconds))
+            log("test timeout %ds, from a %.1fs green run"
+                % (args.test_timeout, green_seconds))
+        yield lanes
+    finally:
+        shutil.rmtree(workdir, ignore_errors=True)
+
+
+def run_mutants(lanes, mutants, args, log):
+    """Every mutant through a lane, reported in the order they were produced."""
     pending, results, lock = queue.Queue(), [], threading.Lock()
-    for bug in bugs:
-        pending.put(bug)
+    for index, mutant in enumerate(mutants):
+        pending.put((index, mutant))
 
     def worker(lane):
         while True:
             try:
-                bug = pending.get_nowait()
+                index, mutant = pending.get_nowait()
             except queue.Empty:
                 return
-            verdict, tests = evaluate_bug(lane, original, bug, args)
+            verdict, caught_by = evaluate(lane, mutant, args)
             with lock:
-                results.append(dict(bug, verdict=verdict, caught_by=tests))
-                print("[%d/%d] %-44s %s" % (len(results), len(bugs),
-                                            bug["name"][:44], verdict),
-                      flush=True)
+                results.append(dict(mutant, index=index, verdict=verdict,
+                                    caught_by=caught_by))
+                log("[%d/%d] %-46s %s%s"
+                    % (len(results), len(mutants), mutant["name"][:46], verdict,
+                       " (%s)" % ", ".join(caught_by) if caught_by else ""))
 
     with concurrent.futures.ThreadPoolExecutor(len(lanes)) as pool:
         list(pool.map(worker, lanes))
 
-    order = {b["name"]: i for i, b in enumerate(bugs)}
-    results.sort(key=lambda r: order[r["name"]])
-
-    width = max(len(r["name"]) for r in results)
-    print("\n" + "=" * 72)
+    results.sort(key=lambda r: r["index"])
     for r in results:
-        tests = ", ".join(r["caught_by"]) if r["caught_by"] else "-"
-        print("%-*s  %-9s  %s" % (width, r["name"], r["verdict"], tests))
-
-    uncaught = [r for r in results if r["verdict"] == "UNCAUGHT"]
-    compiler = [r for r in results if r["verdict"] == "compiler"]
-    print("\n%d caught by a test, %d by the compiler only, %d UNCAUGHT"
-          % (len(results) - len(uncaught) - len(compiler), len(compiler),
-             len(uncaught)))
-    if uncaught:
-        print("\nnothing noticed these - whatever covers them is decoration:")
-        for r in uncaught:
-            print("  %s" % r["name"])
+        r.pop("text", None)  # a whole mutated header per result helps nobody
+        r.pop("index", None)
     return results
 
 
-def reverse_commit_bug(lane, ref):
-    """One bug, expressed as 'undo what this commit did to the header'."""
-    diff = subprocess.run(["git", "show", ref, "--", HEADER],
-                          cwd=REPO, capture_output=True, text=True,
-                          check=True).stdout
-    if not diff.strip():
-        raise RuntimeError("%s does not touch %s" % (ref, HEADER))
-    r = subprocess.run(["git", "apply", "-R", "-"], cwd=lane.dir,
-                       input=diff, capture_output=True, text=True)
-    if r.returncode != 0:
-        raise RuntimeError("could not reverse %s onto the lane:\n%s"
-                           % (ref, r.stderr))
-    with open(lane.header, encoding="utf-8") as f:
-        return f.read()
+def report(results, args, original):
+    """One summary for both modes. Only the framing differs, not the verdicts."""
+    counts = {v: sum(1 for r in results if r["verdict"] == v) for v in VERDICTS}
+    survivors = [r for r in results if r["verdict"] == "survived"]
+
+    print("\n" + "=" * 72)
+    width = max(len(r["name"]) for r in results)
+    if len(results) <= 40:
+        for r in results:
+            print("%-*s  %-9s  %s"
+                  % (width, r["name"], r["verdict"], ", ".join(r["caught_by"]) or "-"))
+        print()
+
+    print("%d caught by a test, %d by the compiler only, %d hung, %d SURVIVED"
+          % (counts["caught"], counts["compiler"], counts["hang"],
+             counts["survived"]))
+    if len(results) > 1:
+        print("score            %.0f%% killed, %.0f%% by a test"
+              % (100.0 * (len(results) - counts["survived"]) / len(results),
+                 100.0 * counts["caught"] / len(results)))
+
+    if survivors:
+        print("\nnothing noticed these - whatever covers them is decoration:")
+        source = original.splitlines()
+        for r in survivors:
+            if "line" in r:
+                text = source[r["line"] - 1].strip() if r["line"] <= len(source) else ""
+                print("  %s:%d  %s\n      %s" % (args.file, r["line"], r["name"],
+                                                 text[:100]))
+            else:
+                print("  %s" % r["name"])
+    return counts
 
 
 def main():
-    global HEADER
     p = argparse.ArgumentParser(
         description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
-    p.add_argument("--diff", metavar="REF",
-                   help="only mutate lines changed since REF (the fast mode)")
-    p.add_argument("--lines", metavar="A-B", help="only mutate lines A..B")
-    p.add_argument("--lanes", type=int, default=4,
-                   help="parallel build+test lanes (default 4)")
-    p.add_argument("--jobs", type=int, default=8,
-                   help="ninja parallelism inside one lane (default 8)")
-    p.add_argument("--limit", type=int, help="stop after N mutants")
-    p.add_argument("--shuffle-seed", type=int, default=0,
-                   help="sample mutants deterministically when using --limit")
-    p.add_argument("--build-timeout", type=int, default=300)
-    p.add_argument("--test-timeout", type=int, default=120)
-    p.add_argument("--baseline-runs", type=int, default=2)
-    p.add_argument("--no-quick-reject", dest="quick_reject",
-                   action="store_false", default=True,
-                   help="skip the -fsyntax-only pre-filter")
     p.add_argument("--replace", nargs=2, metavar=("OLD", "NEW"), action="append",
                    help="put a specific bug back: substitute OLD with NEW (must "
                         "match exactly once) and report which tests notice. "
@@ -670,10 +726,29 @@ def main():
                    help="a file of bugs to reintroduce, '# name' then a "
                         "<<< old === new >>> block each. Runs in parallel")
     p.add_argument("--reverse", metavar="REF",
-                   help="put one specific bug back by reverse-applying REF's "
-                        "changes to the header, keeping today's tests")
+                   help="put one bug back by reverse-applying REF's changes to "
+                        "the file, keeping today's tests")
+    p.add_argument("--diff", metavar="REF",
+                   help="only mutate lines changed since REF (the fast sweep)")
+    p.add_argument("--lines", metavar="A-B", help="only mutate lines A..B")
     p.add_argument("--file", metavar="PATH", default=HEADER,
                    help="repo-relative file to mutate (default the header)")
+    p.add_argument("--lanes", type=int, default=4,
+                   help="parallel build+test lanes (default 4; past about four "
+                        "they only re-divide the same cores)")
+    p.add_argument("--jobs", type=int, default=8,
+                   help="ninja parallelism inside one lane (default 8)")
+    p.add_argument("--limit", type=int, help="stop after N mutants")
+    p.add_argument("--shuffle-seed", type=int, default=0,
+                   help="sample mutants deterministically when using --limit")
+    p.add_argument("--build-timeout", type=int, default=300)
+    p.add_argument("--test-timeout", type=int, default=None,
+                   help="seconds before a mutant counts as hung (default: six "
+                        "times the measured green run)")
+    p.add_argument("--baseline-runs", type=int, default=2)
+    p.add_argument("--no-quick-reject", dest="quick_reject",
+                   action="store_false", default=True,
+                   help="skip the -fsyntax-only pre-filter")
     p.add_argument("--cmake-arg", metavar="ARG", action="append", default=[],
                    help="extra cmake argument for every lane, repeatable. This "
                         "is how you ask a different question: whether a leg "
@@ -683,175 +758,100 @@ def main():
                         "--cmake-arg=-DNB_sanitizer=ON "
                         "--cmake-arg=-DCMAKE_CXX_COMPILER=clang++")
     p.add_argument("--test-filter", metavar="PATTERN",
-                   help="run only matching doctest cases. 'unit_*' cuts the "
-                        "test phase from 4.7s to 0.8s here, because the example "
-                        "and tutorial cases are benchmarks that assert nothing "
-                        "- but they can still die by crashing, so a kill only "
-                        "they would have seen is reported as a survivor")
+                   help="run only matching doctest cases. 'unit_*' roughly "
+                        "halves a run, because the example and tutorial cases "
+                        "are benchmarks that assert nothing - but they can "
+                        "still die by crashing, so a kill only they would have "
+                        "seen is reported as a survivor")
     p.add_argument("--dry-run", action="store_true",
                    help="list the mutants and the likely runtime, then stop")
     p.add_argument("--workdir", default=None, help="where lanes are copied")
     p.add_argument("--json", metavar="FILE", help="write the full result set")
     args = p.parse_args()
 
-    HEADER = args.file
-    header_path = os.path.join(REPO, HEADER)
-    if not os.path.exists(header_path):
-        p.error("no such file: %s" % HEADER)
-    with open(header_path, encoding="utf-8") as f:
-        original = f.read()
-
-    if sum(bool(x) for x in (args.replace, args.bugs, args.reverse)) > 1:
+    modes = [bool(args.replace), bool(args.bugs), bool(args.reverse)]
+    if sum(modes) > 1:
         p.error("--replace, --bugs and --reverse are three ways to say the same "
                 "thing; pick one")
 
-    if args.replace or args.bugs or args.reverse:
-        bugs = []
+    target_path = os.path.join(REPO, args.file)
+    if not os.path.exists(target_path):
+        p.error("no such file: %s" % args.file)
+    with open(target_path, encoding="utf-8") as f:
+        original = f.read()
+
+    # The syntax pre-filter compiles one fixed TU. Against any other file it
+    # would compile something the mutation cannot reach, pass every time, and
+    # quietly stop filtering.
+    if args.file != HEADER and args.quick_reject:
+        args.quick_reject = False
+
+    if any(modes):
         if args.bugs:
-            bugs = parse_bug_file(args.bugs)
+            mutants = bug_mutants(parse_bug_file(args.bugs), original)
         elif args.replace:
-            bugs = [dict(name="%s -> %s" % (old.strip()[:34], new.strip()[:34]),
-                         old=old, new=new) for old, new in args.replace]
-        if args.dry_run:
-            for bug in bugs:
-                print("  %s" % bug["name"])
-            print("\n%d bugs, roughly %.0f s over %d lanes"
-                  % (len(bugs), 8.4 * len(bugs) / max(1, args.lanes), args.lanes))
-            return 0
+            mutants = bug_mutants(
+                [dict(name="%s -> %s" % (old.strip()[:34], new.strip()[:34]),
+                      old=old, new=new) for old, new in args.replace], original)
+        else:
+            mutants = [reverse_commit_mutant(args.reverse, original, args.file)]
+    else:
+        line_filter = None
+        if args.diff:
+            line_filter = changed_lines(args.diff, args.file)
+            if not line_filter:
+                print("no changed lines in %s since %s" % (args.file, args.diff))
+                return 0
+        elif args.lines:
+            a, _, b = args.lines.partition("-")
+            line_filter = set(range(int(a), int(b or a) + 1))
+        mutants = site_mutants(
+            mutation_sites(original, code_mask(original), line_filter), original)
+        if args.limit and len(mutants) > args.limit:
+            random.Random(args.shuffle_seed).shuffle(mutants)
+            mutants = mutants[:args.limit]
+            mutants.sort(key=lambda m: m["offset"])
 
-        print(fingerprint(args) + "\n")
-        workdir = prepare_workdir(args)
-        # one lane is plenty for a single bug, and copying four trees to run one
-        # of them is most of that job's wall clock
-        count = 1 if args.reverse else min(max(1, args.lanes), max(1, len(bugs)))
-        lanes = [Lane(workdir, i, args.jobs, args.test_filter, args.cmake_arg)
-                 for i in range(count)]
-        try:
-            with concurrent.futures.ThreadPoolExecutor(count) as pool:
-                list(pool.map(lambda ln: ln.setup(print), lanes))
-            baseline(lanes[0], args, print)
-            if args.reverse:
-                mutated = reverse_commit_bug(lanes[0], args.reverse)
-                bugs = [dict(name="reverse of %s" % args.reverse,
-                             old=original, new=mutated)]
-            results = run_bugs(lanes, original, bugs, args, print)
-            if args.json:
-                with open(args.json, "w") as f:
-                    json.dump(results, f, indent=2)
-                print("\nwrote %s" % args.json)
-            return 1 if any(r["verdict"] == "UNCAUGHT" for r in results) else 0
-        finally:
-            shutil.rmtree(workdir, ignore_errors=True)
-
-    line_filter = None
-    if args.diff:
-        line_filter = changed_lines(args.diff, HEADER)
-        if not line_filter:
-            print("no changed lines in %s since %s" % (HEADER, args.diff))
-            return 0
-    elif args.lines:
-        a, _, b = args.lines.partition("-")
-        line_filter = set(range(int(a), int(b or a) + 1))
-
-    sites = mutation_sites(original, code_mask(original), line_filter)
-    if args.limit and len(sites) > args.limit:
-        import random
-        random.Random(args.shuffle_seed).shuffle(sites)
-        sites = sites[:args.limit]
-    sites.sort(key=lambda s: s["offset"])
-
-    if not sites:
-        print("no mutation sites")
+    if not mutants:
+        print("nothing to mutate")
         return 0
 
     if args.dry_run:
-        by_line = {}
-        for s in sites:
-            by_line.setdefault(s["line"], []).append(s["description"])
-        for line in sorted(by_line):
-            print("  line %d: %s" % (line, ", ".join(by_line[line])))
-        # ~8s per mutant measured on this tree, most of it the rebuild every TU
-        # needs because they all include the header.
-        seconds = 8.4 * len(sites) / max(1, args.lanes)
-        print("\n%d mutants over %d lanes, roughly %s"
-              % (len(sites), args.lanes,
-                 "%.0f min" % (seconds / 60) if seconds > 90
-                 else "%.0f s" % seconds))
+        for mutant in mutants:
+            print("  %s%s" % ("line %d: " % mutant["line"] if "line" in mutant
+                              else "", mutant["name"]))
+        print("\n%d mutant%s over %d lanes, roughly %s"
+              % (len(mutants), "" if len(mutants) == 1 else "s", args.lanes,
+                 estimate(len(mutants), args.lanes)))
         return 0
 
-    print(fingerprint(args) + "\n")
-    workdir = prepare_workdir(args)
+    facts = fingerprint(args)
+    print(render_fingerprint(facts) + "\n")
 
     print_lock = threading.Lock()
 
-    def log(msg):
+    def log(message):
         with print_lock:
-            print(msg, flush=True)
+            print(message, flush=True)
 
-    lanes = [Lane(workdir, i, args.jobs, args.test_filter, args.cmake_arg)
-             for i in range(max(1, args.lanes))]
     started = time.time()
-    for lane in lanes:
-        lane.setup(log)
-    baseline(lanes[0], args, log)
+    with lanes_for(args, len(mutants), log) as lanes:
+        log("%d mutant%s over %d lane%s"
+            % (len(mutants), "" if len(mutants) == 1 else "s",
+               len(lanes), "" if len(lanes) == 1 else "s"))
+        results = run_mutants(lanes, mutants, args, log)
 
-    log("%d mutants over %d lanes" % (len(sites), len(lanes)))
-    results = []
-    pending = queue.Queue()
-    for idx, site in enumerate(sites):
-        pending.put((idx, site))
-
-    def worker(lane):
-        while True:
-            try:
-                idx, site = pending.get_nowait()
-            except queue.Empty:
-                return
-            verdict, failing = evaluate(lane, original, site, args)
-            record = dict(site, verdict=verdict, killed_by=failing)
-            with print_lock:
-                results.append(record)
-                done = len(results)
-                print("[%d/%d] line %d  %-22s %s%s" %
-                      (done, len(sites), site["line"], site["description"],
-                       verdict, " (%s)" % failing if failing else ""),
-                      flush=True)
-
-    with concurrent.futures.ThreadPoolExecutor(len(lanes)) as pool:
-        list(pool.map(worker, lanes))
-
-    results.sort(key=lambda r: r["offset"])
-    counts = {k: sum(1 for r in results if r["verdict"] == k)
-              for k in ("test", "build", "timeout", "survived")}
-    killed = counts["test"] + counts["build"] + counts["timeout"]
-
-    print("\n" + "=" * 72)
-    print("mutants          %d in %.0fs" % (len(results), time.time() - started))
-    print("killed by test   %d   <- the number worth moving" % counts["test"])
-    print("killed by build  %d   <- the compiler, not your tests" % counts["build"])
-    print("killed by hang   %d" % counts["timeout"])
-    print("SURVIVED         %d" % counts["survived"])
-    if results:
-        print("score            %.0f%% killed, %.0f%% by a test"
-              % (100.0 * killed / len(results),
-                 100.0 * counts["test"] / len(results)))
-
-    survivors = [r for r in results if r["verdict"] == "survived"]
-    if survivors:
-        print("\nsurvivors - nothing noticed these:")
-        src_lines = original.splitlines()
-        for r in survivors:
-            text = src_lines[r["line"] - 1].strip() if r["line"] <= len(src_lines) else ""
-            print("  %s:%d  %s" % (HEADER, r["line"], r["description"]))
-            print("      %s" % text[:100])
+    counts = report(results, args, original)
+    print("\n%d mutant%s in %.0fs"
+          % (len(results), "" if len(results) == 1 else "s", time.time() - started))
 
     if args.json:
         with open(args.json, "w") as f:
-            json.dump(dict(counts=counts, results=results), f, indent=2)
-        print("\nwrote %s" % args.json)
+            json.dump(dict(environment=facts, counts=counts, results=results),
+                      f, indent=2)
+        print("wrote %s" % args.json)
 
-    shutil.rmtree(workdir, ignore_errors=True)
-    return 1 if survivors else 0
+    return 1 if counts["survived"] else 0
 
 
 if __name__ == "__main__":
