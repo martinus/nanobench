@@ -542,7 +542,7 @@ ANKERL_NANOBENCH(IGNORE_PADDED_PUSH)
 class AbResult {
 public:
     AbResult(std::string nameA, std::string nameB, Result resultA, Result resultB, double speedup, double speedupLow,
-             double speedupHigh);
+             double speedupHigh, size_t tiedRounds);
 
     ANKERL_NANOBENCH(NODISCARD) std::string const& nameA() const noexcept;
     ANKERL_NANOBENCH(NODISCARD) std::string const& nameB() const noexcept;
@@ -569,6 +569,15 @@ public:
     ANKERL_NANOBENCH(NODISCARD) size_t rounds() const noexcept;
 
     /**
+     * @brief Rounds in which both sides measured the same time to the last tick the clock can report.
+     *
+     * Not evidence that they are equally fast - evidence that the clock ran out of resolution. A
+     * comparison that is mostly ties is measuring nothing, and the fix is a longer epoch
+     * (`minEpochTime`) rather than more rounds.
+     */
+    ANKERL_NANOBENCH(NODISCARD) size_t tiedRounds() const noexcept;
+
+    /**
      * @brief True when the confidence interval excludes 1, i.e. the measurement can tell the two apart.
      *
      * False does not mean "the same speed", it means "this experiment did not resolve a difference" -
@@ -584,6 +593,7 @@ private:
     double mSpeedup{};
     double mSpeedupLow{};
     double mSpeedupHigh{};
+    size_t mTiedRounds{};
 };
 ANKERL_NANOBENCH(IGNORE_PADDED_POP)
 
@@ -1460,15 +1470,32 @@ std::vector<double> pairedLogRatios(std::vector<double> const& a, std::vector<do
 // Median of a copy of the values. 0.0 when there are none.
 double medianOf(std::vector<double> values);
 
-// Percentile bootstrap interval for the median: resample the values with replacement `resamples`
-// times, take the median of each resample, and report the requested central fraction of those.
-// Deterministic given the same input, so the reported interval does not jitter between runs.
+// The pair of 0-based order statistics that bracket the median with at least `confidence`
+// probability: the largest k with P(Bin(n, 1/2) < k) <= (1 - confidence) / 2 gives the interval
+// [x_(k), x_(n+1-k)]. Returns {1, 0} - an empty range - when no such interval exists, which is the
+// case for fewer than six observations at 95%.
+std::pair<size_t, size_t> medianIntervalIndices(size_t n, double confidence);
+
+// Rounds whose two sides measured the same time to the last tick the clock could report, i.e. a log
+// ratio of exactly 0. Not evidence of equality - evidence that the clock ran out of resolution.
+size_t countTiedRounds(std::vector<double> const& logRatios);
+
+// Distribution-free confidence interval for the median, from those order statistics.
 //
-// A bootstrap rather than a t-interval on purpose: epoch times are heavy-tailed and nothing here is
-// normally distributed. Cheap enough to do properly - a few thousand resamples of a few dozen values
-// is microseconds with nanobench's own Rng.
-std::pair<double, double> bootstrapMedianInterval(std::vector<double> const& values, uint64_t seed, size_t resamples,
-                                                  double confidence);
+// The sign test, and it is chosen for what it does *not* assume. It needs the observations to be
+// independent and nothing else - no shape, no symmetry, no finite variance, no asymptotics - and it
+// is exact at every n rather than approximately right for large ones. The alternatives all want
+// more: a t-interval wants normality, a bootstrap wants its own asymptotics and converges slowly
+// for a median in particular, and Wilcoxon wants the differences to be symmetric about their
+// median. That last one is exactly what paired timings do not give you, because an operation can be
+// arbitrarily slower but never faster than its floor, so the differences are skewed whenever one
+// side has the heavier tail. Measured on such data: sign 96.7% coverage of a nominal 95%, Wilcoxon
+// 91.5%.
+//
+// The price is width - roughly 10% wider than a bootstrap - and slight over-coverage from the
+// discreteness. Both err towards saying "no difference resolved", which is the right direction for
+// a tool whose output ends up in a pull request.
+std::pair<double, double> medianInterval(std::vector<double> values, double confidence);
 
 // Branch misses cannot exceed the branches they were taken from, and the loop is assumed to mispredict
 // its own exit once - so at least one miss is always attributed to it.
@@ -1747,7 +1774,12 @@ AbResult Bench::ab(std::string const& nameA, OpA&& opA, std::string const& nameB
     // Rounded up to a whole number of ABBA blocks. A partial block leaves one side running first
     // more often than the other, which is exactly the imbalance the pattern exists to remove - and
     // the default epochs() of 11 is not a multiple of 4.
-    auto const numRounds = ((epochs() + 3U) / 4U) * 4U;
+    //
+    // At least two blocks, because fewer than six rounds cannot support a 95% interval at all - the
+    // widest statement the order statistics allow is weaker than that, and reporting one anyway
+    // would be inventing confidence rather than measuring it.
+    auto const wholeBlocks = ((epochs() + 3U) / 4U) * 4U;
+    auto const numRounds = wholeBlocks < 8U ? 8U : wholeBlocks;
     for (size_t round = 0; round < numRounds; ++round) {
         // ABBA over each block of four rounds: the two A positions and the two B positions then have
         // the same mean time, so a drift that is linear over the block cancels exactly.
@@ -1768,11 +1800,17 @@ AbResult Bench::ab(std::string const& nameA, OpA&& opA, std::string const& nameB
 
     // ln(tA) - ln(tB), so a positive difference means A took longer and B is the faster one
     auto const logRatios = detail::pairedLogRatios(perRoundA, perRoundB);
+    // ln is monotonic, so the median commutes with it: this is exactly the median of the per-round
+    // ratios, and the same quantity the interval below is an interval for.
     auto const speedup = std::exp(detail::medianOf(logRatios));
-    auto const interval = detail::bootstrapMedianInterval(logRatios, UINT64_C(0xab0), 4096, 0.95);
+    auto const interval = detail::medianInterval(logRatios, 0.95);
+
+    // A reader looking at an interval of 1.00x .. 1.00x deserves to be told whether that is two
+    // operations that really are equally fast, or a clock that could not tell them apart.
+    auto const tied = detail::countTiedRounds(logRatios);
 
     AbResult abResult{
-        nameA, nameB, std::move(resultA), std::move(resultB), speedup, std::exp(interval.first), std::exp(interval.second)};
+        nameA, nameB, std::move(resultA), std::move(resultB), speedup, std::exp(interval.first), std::exp(interval.second), tied};
     if (nullptr != output()) {
         *output() << abResult;
     }
@@ -3832,48 +3870,71 @@ double medianOf(std::vector<double> values) {
     return calcMedian(values);
 }
 
-std::pair<double, double> bootstrapMedianInterval(std::vector<double> const& values, uint64_t seed, size_t resamples,
-                                                  double confidence) {
-    if (values.empty() || 0U == resamples) {
+std::pair<size_t, size_t> medianIntervalIndices(size_t n, double confidence) {
+    auto const alphaHalf = (1.0 - confidence) / 2.0;
+    size_t k = 0;
+
+    if (n <= 1024U) {
+        // Exact: walk the binomial tail up from P(X = 0) = 2^-n, each term from the one before it.
+        // 2^-1024 is still a representable double, so nothing underflows into a wrong answer.
+        double p = std::pow(0.5, d(n));
+        double cumulative = 0.0;
+        for (size_t i = 0; i < n; ++i) {
+            if (i > 0U) {
+                p = p * d(n - i + 1U) / d(i);
+            }
+            if (cumulative + p > alphaHalf) {
+                break;
+            }
+            cumulative += p;
+            k = i + 1U;
+        }
+    } else {
+        // well past the point where the normal approximation of a binomial is worth arguing about
+        auto const z = 1.959963985;
+        auto const approx = d(n) / 2.0 - z * std::sqrt(d(n)) / 2.0;
+        k = approx <= 0.0 ? 0U : static_cast<size_t>(approx);
+    }
+
+    if (0U == k || 2U * k > n) {
+        // no interval at this confidence for this few observations
+        return {1U, 0U};
+    }
+    return {k - 1U, n - k};
+}
+
+size_t countTiedRounds(std::vector<double> const& logRatios) {
+    size_t tied = 0;
+    for (auto logRatio : logRatios) {
+        // written without == so that -Wfloat-equal stays on for everyone else
+        if (!(logRatio < 0.0) && !(logRatio > 0.0)) {
+            ++tied;
+        }
+    }
+    return tied;
+}
+
+std::pair<double, double> medianInterval(std::vector<double> values, double confidence) {
+    auto const indices = medianIntervalIndices(values.size(), confidence);
+    if (indices.first > indices.second) {
         return {0.0, 0.0};
     }
-
-    Rng rng(seed);
-    std::vector<double> medians;
-    medians.reserve(resamples);
-
-    std::vector<double> sample(values.size());
-    auto const numValues = static_cast<uint32_t>(values.size());
-    for (size_t r = 0; r < resamples; ++r) {
-        for (size_t i = 0; i < values.size(); ++i) {
-            sample[i] = values[rng.bounded(numValues)];
-        }
-        medians.push_back(calcMedian(sample));
-    }
-
-    std::sort(medians.begin(), medians.end());
-    auto const tail = (1.0 - confidence) / 2.0;
-    auto at = [&medians](double quantile) {
-        auto idx = static_cast<size_t>(quantile * d(medians.size()));
-        if (idx >= medians.size()) {
-            idx = medians.size() - 1U;
-        }
-        return medians[idx];
-    };
-    return {at(tail), at(1.0 - tail)};
+    std::sort(values.begin(), values.end());
+    return {values[indices.first], values[indices.second]};
 }
 
 } // namespace detail
 
 AbResult::AbResult(std::string nameA, std::string nameB, Result resultA, Result resultB, double speedup, double speedupLow,
-                   double speedupHigh)
+                   double speedupHigh, size_t tiedRounds)
     : mNameA(std::move(nameA))
     , mNameB(std::move(nameB))
     , mResultA(std::move(resultA))
     , mResultB(std::move(resultB))
     , mSpeedup(speedup)
     , mSpeedupLow(speedupLow)
-    , mSpeedupHigh(speedupHigh) {}
+    , mSpeedupHigh(speedupHigh)
+    , mTiedRounds(tiedRounds) {}
 
 std::string const& AbResult::nameA() const noexcept {
     return mNameA;
@@ -3898,6 +3959,9 @@ double AbResult::speedupHigh() const noexcept {
 }
 size_t AbResult::rounds() const noexcept {
     return (std::min)(mResultA.size(), mResultB.size());
+}
+size_t AbResult::tiedRounds() const noexcept {
+    return mTiedRounds;
 }
 bool AbResult::isSignificant() const noexcept {
     // the interval excludes "exactly as fast", so the experiment resolved a direction
@@ -3928,7 +3992,11 @@ std::ostream& operator<<(std::ostream& os, AbResult const& abResult) {
         os << "     95% CI " << detail::fmt::Number(1, 2, 1.0 / abResult.speedupHigh()) << "x .. "
            << detail::fmt::Number(1, 2, 1.0 / abResult.speedupLow()) << "x";
     }
-    os << ", " << abResult.rounds() << " paired rounds, ABBA interleaved" << std::endl;
+    os << ", " << abResult.rounds() << " paired rounds";
+    if (0U != abResult.tiedRounds()) {
+        os << " (" << abResult.tiedRounds() << " tied at the clock's resolution)";
+    }
+    os << ", ABBA interleaved" << std::endl;
     return os;
 }
 
