@@ -7,7 +7,7 @@ cmake_minimum_required(VERSION 3.10)
 # cannot drift from them silently.
 project(
     nanobench
-    VERSION 4.4.0
+    VERSION 4.5.0
     DESCRIPTION "Simple, fast, accurate single-header microbenchmarking functionality for C++11/14/17/20"
     HOMEPAGE_URL "https://github.com/martinus/nanobench"
     LANGUAGES CXX)
