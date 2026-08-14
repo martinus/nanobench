@@ -596,14 +596,40 @@ can be arbitrarily slower but never faster than its floor:
      - n/a
      - Wants normality and a finite variance, and has a breakdown point of zero.
 
+Serial correlation, and why warmup is not the answer
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+The one assumption every method above shares is that the rounds are independent. Benchmark rounds
+have every reason not to be: frequency and thermal state persist across them, so a slow round makes
+the next one more likely to be slow too. Positive autocorrelation would make any of these intervals
+narrower than they should be.
+
+Measured over 200 rounds of two identical operations, lag-1 autocorrelation:
+
+================================== ==================
+Series                             lag-1 correlation
+================================== ==================
+raw per-round times                +0.10
+paired log ratios                  -0.08 .. -0.01
+paired, first 20 rounds discarded  -0.07 .. -0.01
+================================== ==================
+
+The correlation is real, and it is in the **raw** times. It is not in the paired differences,
+because that is what pairing is for: the drift is common to both sides of a round and subtracts out.
+What is left is slightly *negative*, which makes the interval conservative rather than too narrow -
+consistent with the false-positive rate measured below the nominal 5% rather than above it.
+
 .. note::
 
-   The one assumption every method above shares is that the rounds are independent, and strictly they
-   are not: thermal and frequency state persist across them. Interleaving removes drift from each
-   paired difference but does not make the differences independent, and positive autocorrelation
-   makes any such interval narrower than it should be. In practice the measured false-positive rate
-   lands slightly *below* the nominal 5% rather than above it, but it is worth knowing about before
-   trusting a very tight interval. A block bootstrap would address it properly.
+   This is also why :cpp:func:`warmup() <ankerl::nanobench::Bench::warmup()>` is not the fix it looks
+   like. Discarding the first twenty rounds - a warmup by another name - moves none of the numbers
+   above, because calibration has already run each side for about a full epoch before the first round
+   starts. ``ab()`` does honor ``warmup()`` if you set it, but do not expect it to buy an honest
+   interval that pairing has not already bought.
+
+   The measurements above are one machine and one workload. A laptop that thermally throttles under
+   sustained load could look different, and a block bootstrap would be the principled answer if it
+   ever does.
 
 .. warning::
 
