@@ -436,6 +436,110 @@ seconds are possible. To the left we show relative performance compared to ``std
    at `romu-random <http://www.romu-random.org>`_ for details.
 
 
+.. _ab-comparison:
+
+A/B Comparison
+==============
+
+:cpp:func:`relative() <ankerl::nanobench::Bench::relative()>` runs one benchmark to completion, then
+the next, and divides the two medians. That measures the machine as much as the code. Nanobench's own
+test suite records the failure: two **identical** workloads came out 38% apart on a CI runner, while
+each reported an ``err%`` of 0.5. ``err%`` is the spread *within* one benchmark; the comparison
+depends on the spread *between* them, and nothing in that table tells you anything about it.
+
+:cpp:func:`ab() <ankerl::nanobench::Bench::ab()>` compares two alternatives against each other inside
+the same slice of time. A frequency ramp, a noisy neighbour or thermal throttling then hits both and
+cancels out of the ratio, and what comes back is a ratio with a confidence interval:
+
+.. literalinclude:: ../test/tutorial_ab.cpp
+   :language: c++
+   :linenos:
+   :caption: tutorial_ab.cpp
+
+Takes about 200ms and prints:
+
+.. code-block:: text
+
+   A/B: `cheap` is 2.40x faster than `murmurhash3`
+        95% CI 2.39x .. 2.41x, 52 paired rounds, ABBA interleaved
+
+   A/B: no difference resolved between `murmurhash3` and `splitmix64`
+        ratio 1.00x, 95% CI 1.00x .. 1.00x, 52 paired rounds, ABBA interleaved
+
+Reading the output
+------------------
+
+**The interval, not the ratio, is the result.** ``2.40x`` alone is a number; ``2.40x, 95% CI 2.39 ..
+2.41`` is a claim you can defend in a code review. If the interval were ``0.9 .. 1.8`` the point
+estimate would still say 1.3x, and it would still mean nothing.
+
+**"No difference resolved" is not "the same speed."** It says this experiment did not separate them,
+which is usually a reason to raise :cpp:func:`epochs() <ankerl::nanobench::Bench::epochs()>` rather
+than a conclusion. :cpp:func:`isSignificant() <ankerl::nanobench::AbResult::isSignificant()>` is
+exactly the question of whether the interval excludes 1.
+
+**Watch for tied rounds.** When the verdict says ``(38 tied at the clock's resolution)``, both sides
+measured the same time to the last tick the clock can report. That is not evidence they are equally
+fast, it is the clock running out of resolution, and the fix is a longer epoch via
+:cpp:func:`minEpochTime() <ankerl::nanobench::Bench::minEpochTime()>` - not more rounds.
+
+**Use more rounds than the default.** An epoch is about a millisecond, so ``epochs(51)`` costs a tenth
+of a second and buys an interval narrow enough to act on. Fewer than six rounds cannot support a 95%
+statement at all, so ``ab()`` always runs at least eight.
+
+How it works
+------------
+
+Four things are doing the work, and each of them is there for a reason that showed up in measurement:
+
+#. **Pairing.** Each round contributes ``ln(tA) - ln(tB)``. A speedup is multiplicative, so logs turn
+   it into a difference; a disturbance that hit one round is then one bad ratio rather than a shifted
+   result.
+
+#. **ABBA ordering, randomized per block.** Within each block of four rounds the order is ABBA or its
+   mirror, chosen at random. ABBA cancels a drift that is *linear* over the block exactly, because the
+   two A positions and the two B positions have the same mean time; randomizing the orientation keeps
+   a periodic disturbance from lining up with the pattern.
+
+#. **One iteration count for both sides.** An epoch carries a fixed overhead, and what gets compared
+   is time per iteration - so calibrating each side separately would amortize that overhead
+   differently between them. It measured as a 1.2% systematic bias on 200µs epochs, which no amount
+   of pairing removes.
+
+#. **The sign test for the interval.** It assumes the rounds are independent and nothing else: no
+   distribution shape, no symmetry, no finite variance, no asymptotics, and it is exact at every
+   number of rounds. A t-interval would want normality; a bootstrap wants its own asymptotics and
+   converges slowly for a median; Wilcoxon wants the differences symmetric about their median, which
+   is exactly what timings do not give you - an operation can be arbitrarily slower but never faster
+   than its floor.
+
+The point estimate is the median of the per-round ratios, which has a 50% breakdown point: half the
+rounds can be arbitrarily corrupted before it moves.
+
+.. warning::
+
+   **Interleaving is a different measurement from running either side alone.** Each alternative runs
+   with the other's cache and branch predictor state. That is usually the more honest number for
+   "which should I ship", and it is the wrong number for "how fast is this in isolation" - use
+   :cpp:func:`run() <ankerl::nanobench::Bench::run()>` for that.
+
+.. note::
+
+   This resolves differences down to about 0.1%, which means it also resolves differences caused by
+   where the compiler happened to put the code. Two *distinct* functions doing identical arithmetic
+   report a difference about 10% of the time. That is a real difference - just not the one you meant
+   to measure - so treat a sub-percent result as a question about code layout rather than about the
+   algorithm.
+
+.. note::
+
+   The interval assumes the rounds are independent, and strictly they are not: thermal and frequency
+   state persist across them. Interleaving removes drift from each paired difference but does not make
+   the differences independent, and positive autocorrelation makes any such interval narrower than it
+   should be. In practice the measured error rate lands slightly *below* the nominal 5% rather than
+   above it, but the assumption is worth knowing about before trusting a very tight interval.
+
+
 .. _asymptotic-complexity:
 
 Asymptotic Complexity

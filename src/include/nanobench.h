@@ -851,20 +851,24 @@ public:
      * std::cout << ab;   // `pdqsort` is 1.24x faster than `std::sort` (95% CI 1.19..1.28, 51 rounds)
      * @endcode
      *
-     * @verbatim embed:rst
-     * .. note::
-     *
-     *    Use more rounds than the default 11. An epoch is about a millisecond, so ``epochs(51)`` costs
-     *    a tenth of a second and buys a confidence interval narrow enough to act on.
-     *
-     * .. warning::
-     *
-     *    Interleaving means each alternative runs with the other's cache and branch predictor state.
-     *    That is usually the more honest measurement, but it is a different measurement from running
-     *    either alone - if what you want is the cold, undisturbed cost of one of them, use
-     *    :cpp:func:`run() <ankerl::nanobench::Bench::run()>`.
-     *
-     * @endverbatim
+     @verbatim embed:rst
+     A worked example with output, and how to read the interval, is in the tutorial at
+     :ref:`ab-comparison`.
+
+     .. note::
+
+        Use more rounds than the default 11. An epoch is about a millisecond, so ``epochs(51)`` costs
+        a tenth of a second and buys a confidence interval narrow enough to act on. Fewer than six
+        rounds cannot support a 95% statement at all, so this always runs at least eight.
+
+     .. warning::
+
+        Interleaving means each alternative runs with the other's cache and branch predictor state.
+        That is usually the more honest measurement, but it is a different measurement from running
+        either alone - if what you want is the cold, undisturbed cost of one of them, use
+        :cpp:func:`run() <ankerl::nanobench::Bench::run()>`.
+
+     @endverbatim
      *
      * @tparam OpA The first alternative.
      * @tparam OpB The second alternative.
