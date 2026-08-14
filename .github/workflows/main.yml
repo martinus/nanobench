@@ -297,6 +297,38 @@ jobs:
             ./build-musl/nb
           '
 
+  # The third libc, and the third answer to the ioctl() question above: bionic declares ioctl() twice,
+  # taking int and taking unsigned, so `&::ioctl` is an overload set and the deduction that settles
+  # glibc against musl cannot deduce anything at all. nanobench 4.5.0 did not compile for any Android
+  # triplet in vcpkg because of it (microsoft/vcpkg#53422).
+  #
+  # Cross-compiled only - the runners have no Android to run the result on - so this leg sees compile
+  # errors and warnings, which is what the failure it exists for was. The NDK ships with the runner
+  # image; ANDROID_NDK_LATEST_HOME is where it lives.
+  android:
+    name: Android NDK (bionic, cross-compile)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - name: Compile for every Android ABI
+        run: |
+          bin="$ANDROID_NDK_LATEST_HOME/toolchains/llvm/prebuilt/linux-x86_64/bin"
+          "$bin/clang++" --version
+          # 21 is the lowest API level the current NDK still supports.
+          for target in aarch64-linux-android21 armv7a-linux-androideabi21 \
+                        x86_64-linux-android21 i686-linux-android21; do
+            for std in 11 17; do
+              echo "--- $target -std=c++$std"
+              # The same consumer flags as the `header` job. They do not catch the ioctl() overload
+              # being resolved to the *wrong* one of the two - an explicit cast to either is quiet -
+              # so they are here for everything else bionic might disagree about, not for that.
+              "$bin/$target-clang++" -std=c++$std -O1 -Isrc/include -o /tmp/consumer-android \
+                src/test/app/nanobench.cpp src/test/cmake_consumer/consumer.cpp \
+                -Werror -Wall -Wextra -Wconversion -Wsign-conversion -Wold-style-cast -Wfloat-equal \
+                -Wshadow -Wdouble-promotion
+            done
+          done
+
   # clang in MSVC mode picks a different doNotOptimizeAway than clang everywhere else, and that
   # difference is where issue #111 hid for two years with no job able to see it. Built without the
   # project's strict flag set on purpose: the question here is whether the header works on this
@@ -381,7 +413,7 @@ jobs:
   ci-green:
     name: CI green
     if: always()
-    needs: [lint, build, header, no-rtti, no-exceptions, musl, clang-cl, mingw, consumer]
+    needs: [lint, build, header, no-rtti, no-exceptions, musl, android, clang-cl, mingw, consumer]
     runs-on: ubuntu-latest
     steps:
       - name: Check that every job succeeded
