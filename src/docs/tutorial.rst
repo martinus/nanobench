@@ -460,17 +460,33 @@ Takes about 200ms and prints:
 
 .. code-block:: text
 
-   A/B: `cheap` is 2.40x faster than `murmurhash3`
-        95% CI 2.39x .. 2.41x, 52 paired rounds, ABBA interleaved
+   A/B comparison, 52 paired rounds, ABBA interleaved
+     `murmurhash3`          2.44 ns/op  err   0.0%  (min 2.43, max 2.48)
+     `cheap`                1.01 ns/op  err   0.1%  (min 1.01, max 1.03)
 
-   A/B: no difference resolved between `murmurhash3` and `splitmix64`
-        ratio 1.00x, 95% CI 1.00x .. 1.00x, 52 paired rounds, ABBA interleaved
+     Summary
+       `cheap` ran 2.41x faster than `murmurhash3`
+       95% CI [2.39 .. 2.41]
+
+   A/B comparison, 52 paired rounds, ABBA interleaved
+     `murmurhash3`          2.44 ns/op  err   0.1%  (min 2.43, max 2.62)
+     `splitmix64`           2.44 ns/op  err   0.1%  (min 2.43, max 2.57)
+
+     Summary
+       no difference resolved between `murmurhash3` and `splitmix64`
+       ratio 1.00x, 95% CI [1.00 .. 1.00]
 
 Reading the output
 ------------------
 
-**The interval, not the ratio, is the result.** ``2.40x`` alone is a number; ``2.40x, 95% CI 2.39 ..
-2.41`` is a claim you can defend in a code review. If the interval were ``0.9 .. 1.8`` the point
+**Each side's own numbers come first, the verdict after.** A ratio with no scale beside it cannot be
+told from the same ratio on a completely different scale, and a side that was wildly unstable is
+invisible in a ratio. The per-side lines are the median, nanobench's usual ``err%``, and the range -
+the same three things :cpp:func:`run() <ankerl::nanobench::Bench::run()>` reports, so they mean what
+you already expect them to mean.
+
+**The interval, not the ratio, is the result.** ``2.41x`` alone is a number; ``2.41x, 95% CI [2.39 ..
+2.41]`` is a claim you can defend in a code review. If the interval were ``[0.9 .. 1.8]`` the point
 estimate would still say 1.3x, and it would still mean nothing.
 
 **"No difference resolved" is not "the same speed."** It says this experiment did not separate them,
