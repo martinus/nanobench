@@ -1287,6 +1287,42 @@ ANKERL_NANOBENCH(IGNORE_PADDED_POP)
 // Gets the singleton
 PerformanceCounters& performanceCounters();
 
+// The arithmetic that turns what the kernel hands back into the numbers of the ins/op, cyc/op, IPC,
+// bra/op and miss% columns. It lives out here, rather than inside the Linux-only counter class,
+// because it is the part that can be silently wrong: a counter that is quietly 5% low looks exactly
+// like a correct one. Out here it is compiled and testable on every platform, while
+// perf_event_open() - which cannot be exercised in a container at all - stays where it is.
+//
+// All of these saturate at 0 rather than wrapping: a correction larger than the measurement means
+// the measurement was noise, not that the value is enormous.
+
+// Rounded integer division, for spreading a measured overhead over the iterations it covers.
+uint64_t divRounded(uint64_t a, uint64_t divisor) noexcept;
+
+// Index of the i-th event's value in a PERF_FORMAT_GROUP | PERF_FORMAT_ID read: three header words
+// (nr, time_enabled, time_running), then a value and an id per event.
+size_t perfValueIndex(uint64_t i) noexcept;
+
+// Extrapolates a counter that the kernel could only keep active for part of the measurement, the way
+// `perf stat` does. Returns the value unchanged when it was active throughout.
+uint64_t scaleMultiplexed(uint64_t value, uint64_t timeEnabled, uint64_t timeRunning) noexcept;
+
+// Subtracts the calibrated overhead of measuring, plus the per-iteration overhead of the loop doing
+// the measuring, from a raw counter value. Pass 0 for a correction that does not apply.
+uint64_t correctOverhead(uint64_t value, uint64_t measuringOverhead, uint64_t loopOverheadPerIteration, uint64_t numIters) noexcept;
+
+// The loop's own per-iteration cost, from a calibration run of `numIters` operations and one of
+// twice as many: whatever the second run did not cost twice over is the loop rather than the work.
+uint64_t loopOverheadPerIteration(uint64_t single, uint64_t doubled, uint64_t measuringOverhead, uint64_t numIters) noexcept;
+
+// Removes the branch that the measuring loop itself takes once per iteration, plus the one that ends
+// it, from a raw branch count.
+uint64_t correctBranchInstructions(uint64_t rawBranchInstructions, uint64_t numIters) noexcept;
+
+// Branch misses cannot exceed the branches they were taken from, and the loop is assumed to mispredict
+// its own exit once - so at least one miss is always attributed to it.
+double correctBranchMisses(uint64_t rawBranchMisses, double correctedBranchInstructions) noexcept;
+
 } // namespace detail
 
 class BigO {
@@ -2824,6 +2860,65 @@ void IterationLogic::moveResultTo(std::vector<Result>& results) noexcept {
     results.emplace_back(std::move(mPimpl->mResult));
 }
 
+// The counter arithmetic, deliberately outside the PERF_COUNTERS guard - see the declarations.
+
+uint64_t divRounded(uint64_t a, uint64_t divisor) noexcept {
+    return (a + divisor / 2) / divisor;
+}
+
+size_t perfValueIndex(uint64_t i) noexcept {
+    return static_cast<size_t>(3 + i * 2);
+}
+
+uint64_t scaleMultiplexed(uint64_t value, uint64_t timeEnabled, uint64_t timeRunning) noexcept {
+    if (0U == timeRunning || timeEnabled <= timeRunning) {
+        // the event was active the whole time, nothing to extrapolate
+        return value;
+    }
+    // counts stay far below 2^53, so double is exact enough here and cannot overflow the way the
+    // integer multiplication would
+    return u64(d(value) * (d(timeEnabled) / d(timeRunning)));
+}
+
+ANKERL_NANOBENCH_NO_SANITIZE("integer", "undefined")
+uint64_t correctOverhead(uint64_t value, uint64_t measuringOverhead, uint64_t loopOverheadPerIter, uint64_t numIters) noexcept {
+    value = value >= measuringOverhead ? value - measuringOverhead : UINT64_C(0);
+    auto const loopCorrection = loopOverheadPerIter * numIters;
+    return value >= loopCorrection ? value - loopCorrection : UINT64_C(0);
+}
+
+ANKERL_NANOBENCH_NO_SANITIZE("integer", "undefined")
+uint64_t loopOverheadPerIteration(uint64_t single, uint64_t doubled, uint64_t measuringOverhead, uint64_t numIters) noexcept {
+    auto const m1 = single > measuringOverhead ? single - measuringOverhead : UINT64_C(0);
+    auto const m2 = doubled > measuringOverhead ? doubled - measuringOverhead : UINT64_C(0);
+    // the second run does the work twice, so twice the first run minus the second is what the loop
+    // costs on its own
+    auto const overhead = m1 * 2 > m2 ? m1 * 2 - m2 : UINT64_C(0);
+    return divRounded(overhead, numIters);
+}
+
+ANKERL_NANOBENCH_NO_SANITIZE("integer", "undefined")
+uint64_t correctBranchInstructions(uint64_t rawBranchInstructions, uint64_t numIters) noexcept {
+    // one branch per iteration for the loop, plus the one that ends it
+    auto const loopBranches = numIters + 1U;
+    return rawBranchInstructions > loopBranches ? rawBranchInstructions - loopBranches : UINT64_C(0);
+}
+
+double correctBranchMisses(uint64_t rawBranchMisses, double correctedBranchInstructions) noexcept {
+    auto branchMisses = d(rawBranchMisses);
+    if (branchMisses > correctedBranchInstructions) {
+        // can't have more branch misses than there were branches
+        branchMisses = correctedBranchInstructions;
+    }
+
+    // assuming at least one missed branch for the loop
+    branchMisses -= 1.0;
+    if (branchMisses < 1.0) {
+        branchMisses = 1.0;
+    }
+    return branchMisses;
+}
+
 #    if ANKERL_NANOBENCH(PERF_COUNTERS)
 
 // glibc declares ioctl()'s request parameter as unsigned long, musl as int. PERF_EVENT_IOC_ID and
@@ -2916,18 +3011,6 @@ public:
 
     void updateResults(uint64_t numIters);
 
-    // rounded integer division
-    template <typename T>
-    static inline T divRounded(T a, T divisor) {
-        return (a + divisor / 2) / divisor;
-    }
-
-    // Index of the i-th event's value in a PERF_FORMAT_GROUP | PERF_FORMAT_ID read: three header words
-    // (nr, time_enabled, time_running), then a value and an id per event.
-    static inline size_t valueIdx(uint64_t i) noexcept {
-        return static_cast<size_t>(3 + i * 2);
-    }
-
     // Compensates the counters that were just read for multiplexing.
     //
     // When more events are monitored than the hardware can count at the same time, the kernel time-shares the counters
@@ -2941,16 +3024,9 @@ public:
         mTotalTimeEnabledNanos = mCounters[1];
         mTotalTimeRunningNanos = mCounters[2];
 
-        if (0U == timeRunning || timeEnabled <= timeRunning) {
-            // all events were active the whole time, nothing to extrapolate
-            return;
-        }
-
-        auto const factor = d(timeEnabled) / d(timeRunning);
         for (uint64_t i = 0; i < mCounters[0]; ++i) {
-            // uint64_t multiplication could overflow, and counts are far below 2^53 so double is exact enough here
-            auto const idx = valueIdx(i);
-            mCounters[idx] = u64(d(mCounters[idx]) * factor);
+            auto const idx = perfValueIndex(i);
+            mCounters[idx] = scaleMultiplexed(mCounters[idx], timeEnabled, timeRunning);
         }
     }
 
@@ -3022,12 +3098,7 @@ public:
             auto measure2 = mCounters;
 
             for (size_t i = 0; i < mCounters.size(); ++i) {
-                // factor 2 because we have two instructions per loop
-                auto m1 = measure1[i] > mCalibratedOverhead[i] ? measure1[i] - mCalibratedOverhead[i] : 0;
-                auto m2 = measure2[i] > mCalibratedOverhead[i] ? measure2[i] - mCalibratedOverhead[i] : 0;
-                auto overhead = m1 * 2 > m2 ? m1 * 2 - m2 : 0;
-
-                mLoopOverhead[i] = divRounded(overhead, numIters);
+                mLoopOverhead[i] = loopOverheadPerIteration(measure1[i], measure2[i], mCalibratedOverhead[i], numIters);
             }
         }
     }
@@ -3079,29 +3150,15 @@ void LinuxPerformanceCounters::updateResults(uint64_t numIters) {
 
     // mCounters has already been compensated for multiplexing in endMeasure(), and so has mCalibratedOverhead
     for (uint64_t i = 0; i < mCounters[0]; ++i) {
-        auto idx = valueIdx(i);
+        auto idx = perfValueIndex(i);
         auto id = mCounters[idx + 1U];
 
         auto it = mIdToTarget.find(id);
         if (it != mIdToTarget.end()) {
-
             auto& tgt = it->second;
-            *tgt.targetValue = mCounters[idx];
-            if (tgt.correctMeasuringOverhead) {
-                if (*tgt.targetValue >= mCalibratedOverhead[idx]) {
-                    *tgt.targetValue -= mCalibratedOverhead[idx];
-                } else {
-                    *tgt.targetValue = 0U;
-                }
-            }
-            if (tgt.correctLoopOverhead) {
-                auto correctionVal = mLoopOverhead[idx] * numIters;
-                if (*tgt.targetValue >= correctionVal) {
-                    *tgt.targetValue -= correctionVal;
-                } else {
-                    *tgt.targetValue = 0U;
-                }
-            }
+            // a correction the target did not ask for is applied as a correction of zero
+            *tgt.targetValue = correctOverhead(mCounters[idx], tgt.correctMeasuringOverhead ? mCalibratedOverhead[idx] : UINT64_C(0),
+                                               tgt.correctLoopOverhead ? mLoopOverhead[idx] : UINT64_C(0), numIters);
         }
     }
 }
@@ -3444,26 +3501,11 @@ void Result::add(Clock::duration totalElapsed, uint64_t iters, detail::Performan
         mNameToMeasurements[u(Result::Measure::instructions)].push_back(d(pc.val().instructions) / dIters);
     }
     if (pc.has().branchInstructions) {
-        double branchInstructions = 0.0;
-        // correcting branches: remove branch introduced by the while (...) loop for each iteration.
-        if (pc.val().branchInstructions > iters + 1U) {
-            branchInstructions = d(pc.val().branchInstructions - (iters + 1U));
-        }
+        double const branchInstructions = d(detail::correctBranchInstructions(pc.val().branchInstructions, iters));
         mNameToMeasurements[u(Result::Measure::branchinstructions)].push_back(branchInstructions / dIters);
 
         if (pc.has().branchMisses) {
-            // correcting branch misses
-            double branchMisses = d(pc.val().branchMisses);
-            if (branchMisses > branchInstructions) {
-                // can't have branch misses when there were branches...
-                branchMisses = branchInstructions;
-            }
-
-            // assuming at least one missed branch for the loop
-            branchMisses -= 1.0;
-            if (branchMisses < 1.0) {
-                branchMisses = 1.0;
-            }
+            auto const branchMisses = detail::correctBranchMisses(pc.val().branchMisses, branchInstructions);
             mNameToMeasurements[u(Result::Measure::branchmisses)].push_back(branchMisses / dIters);
         }
     }
