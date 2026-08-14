@@ -479,6 +479,9 @@ public:
         instructions,
         branchinstructions,
         branchmisses,
+
+        /// Number of measures, and what fromString() returns for a name it does not know. Passing it
+        /// to the accessors below is not an error: it reads as a measure that was never recorded.
         _size
     };
 
@@ -2171,7 +2174,6 @@ ANKERL_NANOBENCH(IGNORE_PADDED_POP)
 class Number {
 public:
     Number(int width, int precision, double value);
-    Number(int width, int precision, int64_t value);
     ANKERL_NANOBENCH(NODISCARD) std::string to_s() const;
 
 private:
@@ -3311,11 +3313,6 @@ void StreamStateRestorer::restore() {
     mStream.flags(mFmtFlags);
 }
 
-Number::Number(int width, int precision, int64_t value)
-    : mWidth(width)
-    , mPrecision(precision)
-    , mValue(d(value)) {}
-
 Number::Number(int width, int precision, double value)
     : mWidth(width)
     , mPrecision(precision)
@@ -3478,7 +3475,13 @@ inline constexpr typename std::underlying_type<T>::type u(T val) noexcept {
 // Result returned after a benchmark has finished. Can be used as a baseline for relative().
 Result::Result(Config benchmarkConfig)
     : mConfig(std::move(benchmarkConfig))
-    , mNameToMeasurements{detail::u(Result::Measure::_size)} {}
+    // One slot per measure, plus one for _size itself. Result::fromString() returns _size for a name
+    // it does not know, so it reaches these accessors whenever a caller resolves a measure from
+    // user input - and reading one slot past the end of the storage is not the answer to a typo.
+    // With the extra slot it is a permanently empty measurement list, which reads as "nothing was
+    // measured": 0.0 from the statistics and false from has(), the same thing the mustache renderer
+    // already does with a measure it does not recognise.
+    , mNameToMeasurements{detail::u(Result::Measure::_size) + 1U} {}
 
 void Result::add(Clock::duration totalElapsed, uint64_t iters, detail::PerformanceCounters const& pc) {
     using detail::d;
@@ -3530,13 +3533,13 @@ inline double calcMedian(std::vector<double>& data) {
 
 double Result::median(Measure m) const {
     // create a copy so we can sort
-    auto data = mNameToMeasurements[detail::u(m)];
+    auto data = mNameToMeasurements.at(detail::u(m));
     return calcMedian(data);
 }
 
 double Result::average(Measure m) const {
     using detail::d;
-    auto const& data = mNameToMeasurements[detail::u(m)];
+    auto const& data = mNameToMeasurements.at(detail::u(m));
     if (data.empty()) {
         return 0.0;
     }
@@ -3547,7 +3550,7 @@ double Result::average(Measure m) const {
 
 double Result::medianAbsolutePercentError(Measure m) const {
     // create copy
-    auto data = mNameToMeasurements[detail::u(m)];
+    auto data = mNameToMeasurements.at(detail::u(m));
 
     // calculates MdAPE which is the median of percentage error
     // see https://support.numxl.com/hc/en-us/articles/115001223503-MdAPE-Median-Absolute-Percentage-Error
@@ -3573,13 +3576,13 @@ double Result::medianAbsolutePercentError(Measure m) const {
 }
 
 double Result::sum(Measure m) const noexcept {
-    auto const& data = mNameToMeasurements[detail::u(m)];
+    auto const& data = mNameToMeasurements.at(detail::u(m));
     return std::accumulate(data.begin(), data.end(), 0.0);
 }
 
 double Result::sumProduct(Measure m1, Measure m2) const noexcept {
-    auto const& data1 = mNameToMeasurements[detail::u(m1)];
-    auto const& data2 = mNameToMeasurements[detail::u(m2)];
+    auto const& data1 = mNameToMeasurements.at(detail::u(m1));
+    auto const& data2 = mNameToMeasurements.at(detail::u(m2));
 
     if (data1.size() != data2.size()) {
         return 0.0;
@@ -3593,11 +3596,11 @@ double Result::sumProduct(Measure m1, Measure m2) const noexcept {
 }
 
 bool Result::has(Measure m) const noexcept {
-    return !mNameToMeasurements[detail::u(m)].empty();
+    return !mNameToMeasurements.at(detail::u(m)).empty();
 }
 
 double Result::get(size_t idx, Measure m) const {
-    auto const& data = mNameToMeasurements[detail::u(m)];
+    auto const& data = mNameToMeasurements.at(detail::u(m));
     return data.at(idx);
 }
 
@@ -3606,12 +3609,12 @@ bool Result::empty() const noexcept {
 }
 
 size_t Result::size() const noexcept {
-    auto const& data = mNameToMeasurements[detail::u(Measure::elapsed)];
+    auto const& data = mNameToMeasurements.at(detail::u(Measure::elapsed));
     return data.size();
 }
 
 double Result::minimum(Measure m) const noexcept {
-    auto const& data = mNameToMeasurements[detail::u(m)];
+    auto const& data = mNameToMeasurements.at(detail::u(m));
     if (data.empty()) {
         return 0.0;
     }
@@ -3621,7 +3624,7 @@ double Result::minimum(Measure m) const noexcept {
 }
 
 double Result::maximum(Measure m) const noexcept {
-    auto const& data = mNameToMeasurements[detail::u(m)];
+    auto const& data = mNameToMeasurements.at(detail::u(m));
     if (data.empty()) {
         return 0.0;
     }
