@@ -78,60 +78,149 @@ TEST_CASE("unit_ab_median_of") {
 }
 
 // NOLINTNEXTLINE
-TEST_CASE("unit_ab_bootstrap_interval") {
-    // 101 values centred on 10, spread +-5
+TEST_CASE("unit_ab_median_interval_indices") {
+    // The sign test: [x_(k), x_(n+1-k)] brackets the median with at least the
+    // requested probability, where k is the largest one whose binomial tail
+    // still fits in alpha/2. These are the exact answers, worked out from the
+    // binomial rather than from this implementation.
+    auto idx = [](size_t n, double conf) {
+        return nb::medianIntervalIndices(n, conf);
+    };
+
+    CHECK(idx(6, 0.95) == std::make_pair(size_t(0), size_t(5)));
+    CHECK(idx(8, 0.95) == std::make_pair(size_t(0), size_t(7)));
+    CHECK(idx(12, 0.95) == std::make_pair(size_t(2), size_t(9)));
+    CHECK(idx(20, 0.95) == std::make_pair(size_t(5), size_t(14)));
+    CHECK(idx(52, 0.95) == std::make_pair(size_t(18), size_t(33)));
+    CHECK(idx(100, 0.95) == std::make_pair(size_t(39), size_t(60)));
+
+    // A stricter confidence reaches further out into the order statistics,
+    // never less far.
+    CHECK(idx(52, 0.99) == std::make_pair(size_t(16), size_t(35)));
+    CHECK(idx(100, 0.99) == std::make_pair(size_t(36), size_t(63)));
+    for (size_t n = 6; n <= 200; ++n) {
+        INFO("n = " << n);
+        auto const wide = idx(n, 0.99);
+        auto const narrow = idx(n, 0.95);
+        if (wide.first <= wide.second) {
+            CHECK(wide.first <= narrow.first);
+            CHECK(wide.second >= narrow.second);
+        }
+    }
+
+    // Too few observations to make the statement at all. Five rounds cannot
+    // support a 95% interval - even the full range only covers 93.75% - and
+    // saying so is the honest answer, rather than reporting the range and
+    // calling it 95%.
+    for (size_t n = 0; n <= 5; ++n) {
+        INFO("n = " << n);
+        auto const none = idx(n, 0.95);
+        CHECK(none.first > none.second);
+    }
+    // and 99% needs one more round than 95% does
+    CHECK(idx(6, 0.99).first > idx(6, 0.99).second);
+    CHECK(idx(8, 0.99).first <= idx(8, 0.99).second);
+
+    // The interval is symmetric about the middle: as many order statistics are
+    // excluded from each end. An off-by-one at one end only would still look
+    // plausible without this.
+    for (size_t n = 6; n <= 200; ++n) {
+        INFO("n = " << n);
+        auto const pair = idx(n, 0.95);
+        if (pair.first <= pair.second) {
+            CHECK(pair.first == n - 1U - pair.second);
+        }
+    }
+}
+
+// NOLINTNEXTLINE
+TEST_CASE("unit_ab_median_interval") {
+    // 101 values from 5 to 15, median 10
     std::vector<double> values;
     for (int i = -50; i <= 50; ++i) {
         values.push_back(10.0 + static_cast<double>(i) / 10.0);
     }
 
-    auto const ci = nb::bootstrapMedianInterval(values, 1234, 2000, 0.95);
-    // the interval brackets the median it is an interval for
+    auto const ci = nb::medianInterval(values, 0.95);
     CHECK(ci.first <= 10.0);
     CHECK(ci.second >= 10.0);
-    // and it is an interval for the *median*, which is known far more precisely
-    // than any single measurement: the data spans 10 wide, the uncertainty
-    // about its middle is a small fraction of that. Reporting the spread of the
-    // data instead is the mistake this rules out.
+    // an interval for the *median*, which is known far better than any single
+    // measurement is: the data spans 10 wide, this is a small fraction of that
     CHECK(ci.second - ci.first < 3.0);
 
-    // deterministic: the same data gives the same interval, so a reported
-    // number does not jitter between runs of the same binary
-    auto const again = nb::bootstrapMedianInterval(values, 1234, 2000, 0.95);
-    CHECK(ci.first == doctest::Approx(again.first));
-    CHECK(ci.second == doctest::Approx(again.second));
+    // no resampling anywhere, so the same data gives the same interval always -
+    // not merely because a seed was pinned
+    CHECK(nb::medianInterval(values, 0.95) == ci);
 
-    // more scattered data has to give a wider interval - this is the whole job
+    // more scattered data, wider interval - this is the whole job
     std::vector<double> scattered;
     for (int i = -50; i <= 50; ++i) {
         scattered.push_back(10.0 + static_cast<double>(i));
     }
-    auto const wide = nb::bootstrapMedianInterval(scattered, 1234, 2000, 0.95);
+    auto const wide = nb::medianInterval(scattered, 0.95);
     CHECK(wide.second - wide.first > ci.second - ci.first);
 
-    // data that does not vary at all has no uncertainty
-    auto const none =
-        nb::bootstrapMedianInterval({5.0, 5.0, 5.0, 5.0}, 1234, 500, 0.95);
-    CHECK(none.first == doctest::Approx(5.0));
-    CHECK(none.second == doctest::Approx(5.0));
+    // a stricter confidence is a wider interval
+    auto const ci99 = nb::medianInterval(values, 0.99);
+    CHECK(ci99.first <= ci.first);
+    CHECK(ci99.second >= ci.second);
 
-    // a wider confidence level is a wider interval
-    auto const ci99 = nb::bootstrapMedianInterval(values, 1234, 2000, 0.99);
-    CHECK(ci99.second - ci99.first >= ci.second - ci.first);
+    // Data that does not vary has an interval of zero width, and that is the
+    // correct answer rather than a failure: every order statistic is the same
+    // number. It is also what a comparison of two operations too fast for the
+    // clock produces, which is why ab() reports the tie count next to it.
+    auto const flat =
+        nb::medianInterval({5.0, 5.0, 5.0, 5.0, 5.0, 5.0, 5.0, 5.0}, 0.95);
+    CHECK(flat.first == doctest::Approx(5.0));
+    CHECK(flat.second == doctest::Approx(5.0));
 
-    // Half the probability is still an interval, and a narrower one. This pins
-    // down that the requested confidence is split over *two* tails: putting it
-    // all in one tail leaves a 50% interval with both ends at the median, and
-    // every check above would still pass.
-    auto const ci50 = nb::bootstrapMedianInterval(values, 1234, 2000, 0.50);
-    CHECK(ci50.second - ci50.first > 0.0);
-    CHECK(ci50.second - ci50.first < ci.second - ci.first);
+    // too few observations to say anything at this confidence
+    auto const tooFew = nb::medianInterval({1.0, 2.0, 3.0}, 0.95);
+    CHECK(tooFew.first == doctest::Approx(0.0));
+    CHECK(tooFew.second == doctest::Approx(0.0));
+    CHECK(nb::medianInterval({}, 0.95).first == doctest::Approx(0.0));
 
-    // degenerate inputs are answered, not crashed on
-    CHECK(nb::bootstrapMedianInterval({}, 1, 100, 0.95).first ==
-          doctest::Approx(0.0));
-    CHECK(nb::bootstrapMedianInterval({1.0}, 1, 0, 0.95).first ==
-          doctest::Approx(0.0));
+    // the input is taken by value, so the caller's order is not disturbed
+    std::vector<double> unsorted{3.0, 1.0, 2.0, 9.0, 5.0, 4.0, 8.0, 7.0};
+    auto const copy = unsorted;
+    ankerl::nanobench::doNotOptimizeAway(
+        nb::medianInterval(unsorted, 0.95).first);
+    CHECK(unsorted == copy);
+}
+
+// NOLINTNEXTLINE
+TEST_CASE("unit_ab_tied_rounds") {
+    CHECK(nb::countTiedRounds({}) == 0U);
+    CHECK(nb::countTiedRounds({1.0, -1.0, 2.0}) == 0U);
+    CHECK(nb::countTiedRounds({0.0, 1.0, 0.0, -1.0}) == 2U);
+    CHECK(nb::countTiedRounds({0.0, 0.0, 0.0}) == 3U);
+    // -0.0 is the same time measured twice just as much as +0.0 is
+    CHECK(nb::countTiedRounds({-0.0, 0.0}) == 2U);
+}
+
+// NOLINTNEXTLINE
+TEST_CASE("unit_ab_verdict_says_when_the_clock_ran_out") {
+    // An interval of 1.00x .. 1.00x means one of two very different things, and
+    // the reader cannot tell them apart from the numbers. Built directly rather
+    // than measured, because ties need a clock too coarse for the operation and
+    // that is not something a test can arrange.
+    ankerl::nanobench::Result const empty{ankerl::nanobench::Config{}};
+    ankerl::nanobench::AbResult const tied{"a", "b", empty, empty,
+                                           1.0, 1.0, 1.0,   7U};
+    CHECK(tied.tiedRounds() == 7U);
+
+    std::ostringstream oss;
+    oss << tied;
+    INFO(oss.str());
+    CHECK(oss.str().find("7 tied at the clock's resolution") !=
+          std::string::npos);
+
+    // and nothing about ties is said when there were none
+    ankerl::nanobench::AbResult const clean{"a", "b", empty, empty,
+                                            1.0, 1.0, 1.0,   0U};
+    std::ostringstream quietOss;
+    quietOss << clean;
+    CHECK(quietOss.str().find("tied at the clock") == std::string::npos);
 }
 
 // NOLINTNEXTLINE
@@ -258,7 +347,7 @@ TEST_CASE("unit_ab_orders_the_epochs_abba") {
         });
 
     using M = ankerl::nanobench::Result::Measure;
-    REQUIRE(result.rounds() == 4U);
+    REQUIRE(result.rounds() == 8U);
     auto const iters =
         static_cast<size_t>(result.resultA().get(0, M::iterations));
     REQUIRE(iters > 0U);
@@ -279,7 +368,24 @@ TEST_CASE("unit_ab_orders_the_epochs_abba") {
     }
 
     INFO("epoch order: " << order);
-    CHECK((order == "abbabaab" || order == "baabab" + std::string("ba")));
+    // Each block of four rounds is eight epochs, and has to be ABBA or its
+    // mirror. Both put the two a's and the two b's at positions with the same
+    // mean, which is what cancels a linear drift.
+    REQUIRE(order.size() % 8U == 0U);
+    for (size_t block = 0; block * 8U < order.size(); ++block) {
+        auto const chunk = order.substr(block * 8U, 8U);
+        INFO("block " << block << ": " << chunk);
+        CHECK((chunk == "abbabaab" || chunk == "baababba"));
+    }
+
+    // and over the whole run each side goes first exactly half the time
+    size_t aFirst = 0;
+    for (size_t round = 0; round < result.rounds(); ++round) {
+        if ('a' == order[round * 2U]) {
+            ++aFirst;
+        }
+    }
+    CHECK(aFirst == result.rounds() / 2U);
 }
 
 // NOLINTNEXTLINE
@@ -293,7 +399,10 @@ TEST_CASE("unit_ab_rounds_up_to_whole_blocks") {
     };
     CHECK(quiet(9).ab("a", op, "b", op).rounds() == 12U);
     CHECK(quiet(5).ab("a", op, "b", op).rounds() == 8U);
-    CHECK(quiet(4).ab("a", op, "b", op).rounds() == 4U);
+    // and never fewer than eight, because five rounds cannot support a 95%
+    // interval at all
+    CHECK(quiet(4).ab("a", op, "b", op).rounds() == 8U);
+    CHECK(quiet(1).ab("a", op, "b", op).rounds() == 8U);
 }
 
 // NOLINTNEXTLINE
