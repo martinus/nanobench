@@ -43,8 +43,8 @@ TEST_CASE("tutorial_compare") {
 
     // 52 rounds rather than the default 11. An epoch is about a millisecond, so
     // this costs a tenth of a second and buys an interval narrow enough to act
-    // on. A multiple of four, because rounds are grouped into ABBA blocks and a
-    // number that is not one gets rounded up to the next.
+    // on. A block is one round per alternative - two here - and a count that is
+    // not a whole number of blocks gets rounded up to the next one.
     auto const cheaper = ankerl::nanobench::Bench().epochs(52).compare(
         "murmurhash3",
         [&] {
@@ -69,8 +69,9 @@ TEST_CASE("tutorial_compare") {
         });
     ankerl::nanobench::doNotOptimizeAway(x);
 
-    // ab() prints the verdict itself. Everything behind it is available as data
-    // too, which is what a script gating a pull request would look at.
+    // compare() prints the table and the verdict itself. Everything behind it
+    // is available as data too, which is what a script gating a pull request
+    // would look at.
     for (auto const* result : {&cheaper, &sameShape}) {
         if (result->isSignificant(1)) {
             std::cout << (*result)[1].name << " vs " << (*result)[0].name

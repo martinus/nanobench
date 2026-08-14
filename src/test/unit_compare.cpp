@@ -398,10 +398,9 @@ TEST_CASE("unit_compare_orders_the_epochs_abba") {
 }
 
 // NOLINTNEXTLINE
-// NOLINTNEXTLINE
 TEST_CASE("unit_compare_more_than_two_alternatives") {
-    // The whole point of compare() over a two-way ab(): the first is the
-    // baseline and everything else is measured against it, in the same rounds.
+    // More than two alternatives: the first is the baseline and everything else
+    // is measured against it, in the same rounds.
     Work a;
     Work b;
     Work c;
@@ -484,9 +483,10 @@ TEST_CASE("unit_compare_corrects_for_the_number_of_comparisons") {
 
 // NOLINTNEXTLINE
 TEST_CASE("unit_compare_rounds_up_to_whole_blocks") {
-    // The default epochs() is 11, which is not a multiple of 4 - a partial
-    // block gives one side the first position more often than the other, which
-    // is the imbalance ABBA exists to remove.
+    // A block is one round per alternative, so for two of them the round count
+    // has to be a multiple of two. The default epochs() is 11, which is not: a
+    // partial block gives one side the first position more often than the
+    // other, which is the imbalance the ordering exists to remove.
     Work w;
     auto op = [&w] {
         w.step();
@@ -612,4 +612,182 @@ TEST_CASE("unit_compare_names_a_backtick_safely") {
             b.step();
         });
     CHECK(oss.str().find("`a``b`") != std::string::npos);
+}
+
+// The tests below are regressions. Each one covers a bug that was in compare()
+// as first written, and each one goes red if that bug is put back.
+
+// NOLINTNEXTLINE
+TEST_CASE("unit_compare_honors_epoch_iterations") {
+    // An exact epochIterations() overrides any calculated count in a normal
+    // run, in every state of the iteration logic. compare() calibrated its own
+    // count and ignored the setting entirely, so this asked for 3 and got
+    // whatever filled an epoch - a number some four orders of magnitude larger.
+    Work a;
+    Work b;
+    auto bench = quiet(8);
+    bench.epochIterations(3);
+    auto const result = bench.compare(
+        "a",
+        [&] {
+            a.step();
+        },
+        "b",
+        [&] {
+            b.step();
+        });
+
+    // Result stores the iteration count of every epoch it measured.
+    for (size_t i = 0; i < result.size(); ++i) {
+        auto const& r = result[i].result;
+        REQUIRE(r.size() > 0U);
+        for (size_t epoch = 0; epoch < r.size(); ++epoch) {
+            CHECK(
+                r.get(epoch, ankerl::nanobench::Result::Measure::iterations) ==
+                doctest::Approx(3.0));
+        }
+    }
+}
+
+// NOLINTNEXTLINE
+TEST_CASE("unit_compare_min_epoch_time_wins_over_max") {
+    // When the two bounds conflict the minimum wins - that is the rule run()
+    // has always followed. compare() clamped in the other order, so a minimum
+    // above the maximum silently produced the *maximum*, i.e. epochs orders of
+    // magnitude shorter than asked for.
+    //
+    // A one-sided bound on elapsed time, deliberately loose: getting this wrong
+    // moves the runtime by orders of magnitude, so there is nothing to gain by
+    // being tight and a flaky leg to lose.
+    Work a;
+    Work b;
+    ankerl::nanobench::Bench bench;
+    bench.output(nullptr)
+        .epochs(2)
+        .performanceCounters(false)
+        .minEpochTime(std::chrono::milliseconds(20))
+        .maxEpochTime(std::chrono::microseconds(1));
+
+    auto const before = std::chrono::steady_clock::now();
+    bench.compare(
+        "a",
+        [&] {
+            a.step();
+        },
+        "b",
+        [&] {
+            b.step();
+        });
+    auto const elapsed = std::chrono::steady_clock::now() - before;
+
+    // 2 rounds x 2 alternatives x 20ms = 80ms if the minimum wins. If the
+    // maximum wins instead this finishes in well under a millisecond.
+    CHECK(elapsed >= std::chrono::milliseconds(40));
+}
+
+// NOLINTNEXTLINE
+TEST_CASE("unit_compare_honors_hide_column") {
+    // hideColumn() applies to a comparison table too. The compare table built
+    // its columns directly instead of going through the visibility check, so
+    // hideColumn() was silently inert there.
+    Work a;
+    Work b;
+    std::ostringstream oss;
+    ankerl::nanobench::Bench bench;
+    bench.output(&oss)
+        .epochs(4)
+        .performanceCounters(false)
+        .minEpochTime(std::chrono::microseconds(200))
+        .hideColumn(ankerl::nanobench::Column::error);
+    bench.compare(
+        "a",
+        [&] {
+            a.step();
+        },
+        "b",
+        [&] {
+            b.step();
+        });
+
+    CHECK(oss.str().find("err%") == std::string::npos);
+    // the columns that were not hidden are still there
+    CHECK(oss.str().find("relative") != std::string::npos);
+    CHECK(oss.str().find("total") != std::string::npos);
+}
+
+// NOLINTNEXTLINE
+TEST_CASE("unit_compare_leaves_the_stream_ready_for_a_table") {
+    // The header of an ordinary table is only written when the table's shape
+    // changes, and that state lives on the output stream. compare() writes its
+    // own header without touching that state, so a run() afterwards compared
+    // against a shape it had never written and streamed its rows with no header
+    // at all - directly under the comparison, where they read as part of it.
+    Work a;
+    Work b;
+    std::ostringstream oss;
+    ankerl::nanobench::Bench bench;
+    bench.output(&oss).epochs(4).performanceCounters(false).minEpochTime(
+        std::chrono::microseconds(200));
+
+    // a run() first, so the stream remembers that shape
+    bench.run("before", [&] {
+        a.step();
+    });
+    auto const afterFirstRun = oss.str().size();
+
+    bench.compare(
+        "x",
+        [&] {
+            a.step();
+        },
+        "y",
+        [&] {
+            b.step();
+        });
+    bench.run("after", [&] {
+        b.step();
+    });
+
+    // the second run() must have written a header of its own
+    auto const tail = oss.str().substr(afterFirstRun);
+    CHECK(tail.find("ns/op") != std::string::npos);
+    CHECK(tail.find("`after`") != std::string::npos);
+}
+
+// NOLINTNEXTLINE
+TEST_CASE("unit_compare_honors_clock_resolution_multiple") {
+    // The epoch length is clockResolution() * clockResolutionMultiple(), then
+    // clamped into [minEpochTime, maxEpochTime]. compare() calibrated from the
+    // bounds alone and never consulted the multiple, which is only harmless
+    // while minEpochTime binds - i.e. on every platform whose clock is good.
+    // On a coarse-clock platform it is the multiple that sets the epoch, and
+    // ignoring it makes every epoch far too short to measure anything.
+    //
+    // Iteration counts rather than times: the multiple is what turns the clock
+    // resolution into the target, so raising it by 10000x has to raise the
+    // calibrated count too. A loose one-sided bound, for the usual reason.
+    auto countFor = [](size_t multiple) {
+        Work a;
+        Work b;
+        ankerl::nanobench::Bench bench;
+        bench.output(nullptr)
+            .epochs(2)
+            .performanceCounters(false)
+            .minEpochTime(std::chrono::nanoseconds(1))
+            .maxEpochTime(std::chrono::milliseconds(500))
+            .clockResolutionMultiple(multiple);
+        auto const result = bench.compare(
+            "a",
+            [&] {
+                a.step();
+            },
+            "b",
+            [&] {
+                b.step();
+            });
+        return result[0].result.get(
+            0, ankerl::nanobench::Result::Measure::iterations);
+    };
+
+    CHECK(countFor(10000) > countFor(1) * 10.0);
 }
