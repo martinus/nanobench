@@ -246,6 +246,12 @@ Five traps, each of which has cost a round trip:
   to allow for. Where a test really is about elapsed time, as in `unit_epoch_time.cpp`, assert a loose
   one-sided bound — a broken clamp moves the runtime by orders of magnitude, so there is nothing to
   gain by being tight and a flaky leg to lose.
+- A new loop written as `while (n-- > 0)` wraps to `UINT64_MAX` on its last turn. That is defined
+  behaviour, but `-fsanitize=integer` flags it, so the enclosing function needs
+  `ANKERL_NANOBENCH_NO_SANITIZE("integer")` the way `runImpl` has it. Only the *measuring* loops are
+  worth that: the attribute switches the check off for the whole function, so on anything that also
+  does arithmetic worth checking, count upwards instead. This has cost two round trips, both times
+  on a clang sanitizer leg and neither time visible to a plain `-fsanitize=address,undefined`.
 - Most of `Result`'s getters are `[[nodiscard]]`, and `ANKERL_NANOBENCH(NODISCARD)` expands to nothing
   before C++17. So `CHECK_THROWS_AS(r.get(2, m), std::out_of_range)` builds clean at the default
   C++11 and fails `-Werror` on every C++17 and C++20 leg. Call such a getter through a lambda inside
