@@ -4048,28 +4048,57 @@ std::ostream& operator<<(std::ostream& os, AbResult const& abResult) {
     auto const codeB = detail::fmt::MarkDownCode(abResult.nameB());
     auto const speedup = abResult.speedup();
 
-    os << std::endl;
+    // The ratio is the answer, but it is not the whole report: without the two absolute numbers next
+    // to it there is no way to tell 2.4x on a nanosecond from 2.4x on a minute, and no way to see
+    // that one side was wildly unstable. Measurements first and the verdict after, the way hyperfine
+    // and criterion lay it out.
+    auto const nameWidth = static_cast<int>((std::max)(abResult.nameA().size(), abResult.nameB().size()) + 2U);
+
+    // captured by reference throughout: a closure holding a pointer and an int pads out to the next
+    // alignment boundary, and -Wpadded is an error in this project's clang builds
+    auto writeSide = [&](std::string const& name, Result const& result) {
+        auto const& config = result.config();
+        auto const scale = config.mTimeUnit.count() * config.mBatch;
+        auto perUnit = [scale](double seconds) {
+            return scale <= 0.0 ? 0.0 : seconds / scale;
+        };
+
+        std::ostringstream nameCell;
+        nameCell << detail::fmt::MarkDownCode(name);
+
+        os << "  " << std::left << std::setw(nameWidth) << nameCell.str() << std::right
+           << detail::fmt::Number(14, 2, perUnit(result.median(Result::Measure::elapsed))) << ' ' << config.mTimeUnitName << '/'
+           << config.mUnit << "  err "
+           << detail::fmt::Number(5, 1, result.medianAbsolutePercentError(Result::Measure::elapsed) * 100.0) << "%  (min "
+           << detail::fmt::Number(1, 2, perUnit(result.minimum(Result::Measure::elapsed))) << ", max "
+           << detail::fmt::Number(1, 2, perUnit(result.maximum(Result::Measure::elapsed))) << ")" << std::endl;
+    };
+
+    os << std::endl << "A/B comparison, " << abResult.rounds() << " paired rounds, ABBA interleaved" << std::endl;
+    writeSide(abResult.nameA(), abResult.resultA());
+    writeSide(abResult.nameB(), abResult.resultB());
+
+    os << std::endl << "  Summary" << std::endl;
     if (!abResult.isSignificant()) {
         // Not "they are the same speed" - this experiment did not resolve a difference, which is
         // usually a reason to run more rounds rather than a conclusion.
-        os << "A/B: no difference resolved between " << codeA << " and " << codeB << std::endl;
-        os << "     ratio " << detail::fmt::Number(1, 2, speedup) << "x, 95% CI " << detail::fmt::Number(1, 2, abResult.speedupLow())
-           << "x .. " << detail::fmt::Number(1, 2, abResult.speedupHigh()) << "x";
+        os << "    no difference resolved between " << codeA << " and " << codeB << std::endl
+           << "    ratio " << detail::fmt::Number(1, 2, speedup) << "x, 95% CI [" << detail::fmt::Number(1, 2, abResult.speedupLow())
+           << " .. " << detail::fmt::Number(1, 2, abResult.speedupHigh()) << "]";
     } else if (speedup > 1.0) {
-        os << "A/B: " << codeB << " is " << detail::fmt::Number(1, 2, speedup) << "x faster than " << codeA << std::endl;
-        os << "     95% CI " << detail::fmt::Number(1, 2, abResult.speedupLow()) << "x .. "
-           << detail::fmt::Number(1, 2, abResult.speedupHigh()) << "x";
+        os << "    " << codeB << " ran " << detail::fmt::Number(1, 2, speedup) << "x faster than " << codeA << std::endl
+           << "    95% CI [" << detail::fmt::Number(1, 2, abResult.speedupLow()) << " .. "
+           << detail::fmt::Number(1, 2, abResult.speedupHigh()) << "]";
     } else {
         // stated the way round the reader asked the question, so the interval is inverted with it
-        os << "A/B: " << codeB << " is " << detail::fmt::Number(1, 2, 1.0 / speedup) << "x slower than " << codeA << std::endl;
-        os << "     95% CI " << detail::fmt::Number(1, 2, 1.0 / abResult.speedupHigh()) << "x .. "
-           << detail::fmt::Number(1, 2, 1.0 / abResult.speedupLow()) << "x";
+        os << "    " << codeB << " ran " << detail::fmt::Number(1, 2, 1.0 / speedup) << "x slower than " << codeA << std::endl
+           << "    95% CI [" << detail::fmt::Number(1, 2, 1.0 / abResult.speedupHigh()) << " .. "
+           << detail::fmt::Number(1, 2, 1.0 / abResult.speedupLow()) << "]";
     }
-    os << ", " << abResult.rounds() << " paired rounds";
     if (0U != abResult.tiedRounds()) {
-        os << " (" << abResult.tiedRounds() << " tied at the clock's resolution)";
+        os << ", " << abResult.tiedRounds() << " of " << abResult.rounds() << " rounds tied at the clock's resolution";
     }
-    os << ", ABBA interleaved" << std::endl;
+    os << std::endl;
     return os;
 }
 

@@ -212,7 +212,7 @@ TEST_CASE("unit_ab_verdict_says_when_the_clock_ran_out") {
     std::ostringstream oss;
     oss << tied;
     INFO(oss.str());
-    CHECK(oss.str().find("7 tied at the clock's resolution") !=
+    CHECK(oss.str().find("7 of 0 rounds tied at the clock's resolution") !=
           std::string::npos);
 
     // and nothing about ties is said when there were none
@@ -503,6 +503,14 @@ TEST_CASE("unit_ab_writes_a_verdict_to_the_output_stream") {
     CHECK(text.find("`beta`") != std::string::npos);
     CHECK(text.find("95% CI") != std::string::npos);
     CHECK(text.find("12 paired rounds") != std::string::npos);
+    // the absolute numbers of each side, not only the ratio between them: a
+    // ratio with no scale next to it cannot be told from the same ratio on a
+    // completely different scale, and an unstable side is invisible
+    CHECK(text.find("Summary") != std::string::npos);
+    CHECK(text.find("ns/op") != std::string::npos);
+    CHECK(text.find("err ") != std::string::npos);
+    CHECK(text.find("min ") != std::string::npos);
+    CHECK(text.find("max ") != std::string::npos);
 
     // the same verdict is available through the stream operator
     std::ostringstream direct;

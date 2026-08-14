@@ -43,8 +43,9 @@ TEST_CASE("tutorial_ab") {
 
     // 52 rounds rather than the default 11. An epoch is about a millisecond, so
     // this costs a tenth of a second and buys an interval narrow enough to act
-    // on.
-    auto const cheaper = ankerl::nanobench::Bench().epochs(51).ab(
+    // on. A multiple of four, because rounds are grouped into ABBA blocks and a
+    // number that is not one gets rounded up to the next.
+    auto const cheaper = ankerl::nanobench::Bench().epochs(52).ab(
         "murmurhash3",
         [&] {
             x = murmurHash3Finalizer(x);
@@ -57,7 +58,7 @@ TEST_CASE("tutorial_ab") {
     // Two finalizers of the same shape. The interesting answer here is usually
     // that the measurement cannot tell them apart, which is a thing worth being
     // told rather than a percentage to argue over.
-    auto const sameShape = ankerl::nanobench::Bench().epochs(51).ab(
+    auto const sameShape = ankerl::nanobench::Bench().epochs(52).ab(
         "murmurhash3",
         [&] {
             x = murmurHash3Finalizer(x);
