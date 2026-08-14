@@ -76,6 +76,17 @@ TEST_CASE("unit_markdown_table_is_rectangular") {
     std::ostringstream oss;
     ankerl::nanobench::Bench bench;
     configure(bench, oss, "rectangular");
+
+    // err% is hidden on purpose, and the reason is the interesting part. A
+    // value wider than the column it goes in widens the cell, and nanobench
+    // cannot prevent that: the table is streamed a row at a time, so a column
+    // cannot be widened retroactively once a later value turns out not to fit.
+    // A benchmark this short can report an enormous relative error on a loaded
+    // machine - a CI runner produced `err% = 10,139.9%`, one character too wide
+    // for a column sized for "err%" - which shifted that row and made this test
+    // fail for a property the library never promised. Every other column here
+    // holds a value whose width is bounded.
+    bench.hideColumn(ankerl::nanobench::Column::error);
     bench.contextColumn("threads");
     bench.context("threads", "8").run("with", [] {});
     bench.clearContext().run("without", [] {});
@@ -101,6 +112,10 @@ TEST_CASE("unit_markdown_table_is_rectangular") {
         INFO("line: " << line);
         CHECK(line.rfind('|') == lastBar);
     }
+
+    // The header and the separator are built from the column widths alone, with
+    // no measured value in them, so those two line up whatever the machine did.
+    CHECK(lines[1].rfind('|') == lines[0].rfind('|'));
 }
 
 // NOLINTNEXTLINE
