@@ -44,7 +44,9 @@ Every mutant ends in one of four verdicts, and the difference matters.
 doing the work. `caught` means an assertion failed, which is the number worth
 moving. `hang` means it ran forever; this library grows iteration counts in a
 loop, so a mutated bound does that rather than failing. `survived` means nothing
-noticed, which is the answer you are looking for.
+noticed, which is the answer you are looking for. A fifth, `error`, means this
+tool fell over on that mutant; it is left out of the score rather than guessed
+at, and the rest of the run carries on regardless.
 """
 
 import argparse
@@ -78,13 +80,21 @@ IMPL_TU = os.path.join("src", "test", "app", "nanobench.cpp")
 # reason that has nothing to do with any mutant.
 LANE_IGNORE = shutil.ignore_patterns(".git", "__pycache__", "build*", "b", "bsan")
 
-# Rough seconds per mutant, plus the fixed cost of copying and configuring a lane
-# and taking a baseline. Calibrated on one machine, so --dry-run's estimate is an
-# order of magnitude rather than a promise.
-SECONDS_PER_MUTANT = 8.4
-SECONDS_OF_SETUP = 14.0
+# Wall seconds per mutant, as SERIAL / lanes + FLOOR. Lanes do not divide the
+# work cleanly: at 32 lanes a mutant takes over twice the lane-seconds it takes
+# at 4, because concurrent compiles contend for L2 and a shared L3 long before
+# they run out of cores. The floor is that loss. Fitted to the 4 lane and 32
+# lane ends of a full sweep, and it lands within 5% of the 16 lane middle.
+#
+# Setup is copying and configuring each lane and taking a baseline, and it grows
+# with the lane count rather than being fixed. Calibrated on one machine, so
+# --dry-run's estimate is an order of magnitude rather than a promise.
+SECONDS_PER_MUTANT_SERIAL = 6.4
+SECONDS_PER_MUTANT_FLOOR = 0.46
+SECONDS_OF_SETUP = 20.0
+SECONDS_OF_SETUP_PER_LANE = 1.4
 
-VERDICTS = ("caught", "compiler", "hang", "survived")
+VERDICTS = ("caught", "compiler", "hang", "survived", "error")
 
 
 def lane_ignore(directory, names):
@@ -95,7 +105,10 @@ def lane_ignore(directory, names):
 
 
 def estimate(count, lanes):
-    seconds = SECONDS_OF_SETUP + SECONDS_PER_MUTANT * count / max(1, lanes)
+    lanes = max(1, lanes)
+    seconds = (SECONDS_OF_SETUP + SECONDS_OF_SETUP_PER_LANE * lanes
+               + count * (SECONDS_PER_MUTANT_SERIAL / lanes
+                          + SECONDS_PER_MUTANT_FLOOR))
     return "%.0f min" % (seconds / 60) if seconds > 90 else "%.0f s" % seconds
 
 
@@ -416,9 +429,14 @@ class Lane:
         return None if r is None else parse_test_output(r)
 
     def _run(self, cmd, timeout, cwd=None, env=None):
+        # errors="replace" because a mutant's whole job is to make the library
+        # misbehave, and a mutated width or divisor prints whatever bytes it
+        # likes. Strict decoding turned one such byte into a traceback that
+        # killed the pool and lost a 40 minute sweep.
         try:
             return subprocess.run(cmd, cwd=cwd or self.dir, capture_output=True,
-                                  text=True, timeout=timeout, env=env)
+                                  text=True, errors="replace", timeout=timeout,
+                                  env=env)
         except subprocess.TimeoutExpired:
             return None
         except FileNotFoundError as e:
@@ -663,7 +681,16 @@ def run_mutants(lanes, mutants, args, log):
                 index, mutant = pending.get_nowait()
             except queue.Empty:
                 return
-            verdict, caught_by = evaluate(lane, mutant, args)
+            # One mutant that blows up must not take the sweep with it: at eight
+            # seconds each these runs are an hour long, and losing the other
+            # 1344 verdicts to salvage nothing is the worst possible trade. An
+            # 'error' of its own rather than a silent 'survived' - a swallowed
+            # exception would flatter the tests, which is the one direction this
+            # tool must never be wrong in.
+            try:
+                verdict, caught_by = evaluate(lane, mutant, args)
+            except Exception as e:  # noqa: BLE001 - deliberately total
+                verdict, caught_by = "error", ["%s: %s" % (type(e).__name__, e)]
             with lock:
                 results.append(dict(mutant, index=index, verdict=verdict,
                                     caught_by=caught_by))
@@ -697,10 +724,19 @@ def report(results, args, original):
     print("%d caught by a test, %d by the compiler only, %d hung, %d SURVIVED"
           % (counts["caught"], counts["compiler"], counts["hang"],
              counts["survived"]))
-    if len(results) > 1:
+    # Errors are not scored either way. Counting them as killed would inflate
+    # the number, and as survived would invent holes that may not be there.
+    scored = len(results) - counts["error"]
+    if counts["error"]:
+        print("%d could not be scored - the tool failed, not the tests:"
+              % counts["error"])
+        for r in results:
+            if r["verdict"] == "error":
+                print("  %-46s %s" % (r["name"][:46], ", ".join(r["caught_by"])))
+    if scored > 1:
         print("score            %.0f%% killed, %.0f%% by a test"
-              % (100.0 * (len(results) - counts["survived"]) / len(results),
-                 100.0 * counts["caught"] / len(results)))
+              % (100.0 * (scored - counts["survived"]) / scored,
+                 100.0 * counts["caught"] / scored))
 
     if survivors:
         print("\nnothing noticed these - whatever covers them is decoration:")
@@ -733,11 +769,19 @@ def main():
     p.add_argument("--lines", metavar="A-B", help="only mutate lines A..B")
     p.add_argument("--file", metavar="PATH", default=HEADER,
                    help="repo-relative file to mutate (default the header)")
-    p.add_argument("--lanes", type=int, default=4,
-                   help="parallel build+test lanes (default 4; past about four "
-                        "they only re-divide the same cores)")
-    p.add_argument("--jobs", type=int, default=8,
-                   help="ninja parallelism inside one lane (default 8)")
+    # One lane per hardware thread, one job each. A mutant is almost entirely
+    # serial work - one compile of the implementation TU, then one run of a
+    # single threaded test binary - so the parallelism belongs between lanes
+    # rather than inside them. Measured over the full 1345 mutant sweep on a
+    # 32 thread machine: 32 lanes x 1 job took 948s against 962s for 16 x 4 and
+    # an extrapolated 47 min for the 4 x 8 this used to default to.
+    p.add_argument("--lanes", type=int, default=os.cpu_count() or 4,
+                   help="parallel build+test lanes (default: one per hardware "
+                        "thread, %d here)" % (os.cpu_count() or 4))
+    p.add_argument("--jobs", type=int, default=1,
+                   help="ninja parallelism inside one lane (default 1: with a "
+                        "lane per thread the machine is already full, and one "
+                        "mutant only has a single TU to rebuild anyway)")
     p.add_argument("--limit", type=int, help="stop after N mutants")
     p.add_argument("--shuffle-seed", type=int, default=0,
                    help="sample mutants deterministically when using --limit")
