@@ -295,6 +295,45 @@ TEST_CASE("unit_complexity_rendering") {
     // the error column is a percentage
     CHECK(table.str().find("%") != std::string::npos);
 
+    // An exact fit recovers the constant it was built from and has no error at
+    // all, so this row is the same on every machine - which makes it the one
+    // place the coefficient's width and its seven significant decimals can be
+    // held to something. Searching the text for "O(n)" and a "%" cannot: every
+    // width and every precision here can be moved without disturbing either.
+    CHECK(table.str().find("| 2.5000000e+00 |   0.0% | O(n)\n") !=
+          std::string::npos);
+
+    // The zero above cannot tell a percentage from a fraction - scaled either
+    // way it stays zero - so a fit that really misses is needed to pin that the
+    // column is one and not the other. Read back out of the table and compared
+    // against the BigO it was rendered from, which is exact arithmetic.
+    BigO const misfit("O(n^2)", data, squared);
+    REQUIRE(misfit.normalizedRootMeanSquare() > 0.0);
+    std::ostringstream missed;
+    missed << std::vector<BigO>{misfit};
+    INFO(missed.str());
+
+    std::istringstream lines(missed.str());
+    std::string line;
+    bool checked = false;
+    while (std::getline(lines, line)) {
+        if (line.find("O(n^2)") == std::string::npos) {
+            continue;
+        }
+        auto const first = line.find('|', line.find('|') + 1);
+        auto const second = line.find('|', first + 1);
+        REQUIRE(first != std::string::npos);
+        REQUIRE(second != std::string::npos);
+        auto cell = line.substr(first + 1, second - first - 1);
+        cell.erase(std::remove(cell.begin(), cell.end(), ' '), cell.end());
+        cell.erase(std::remove(cell.begin(), cell.end(), '%'), cell.end());
+        CHECK(std::stod(cell) ==
+              doctest::Approx(misfit.normalizedRootMeanSquare() * 100.0)
+                  .epsilon(0.01));
+        checked = true;
+    }
+    CHECK(checked);
+
     // printing must not leave the stream reformatted for whatever comes next
     std::ostringstream reused;
     reused << std::setprecision(3) << std::fixed;

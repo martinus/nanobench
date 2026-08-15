@@ -108,14 +108,32 @@ TEST_CASE("unit_compare_median_interval_indices") {
         }
     }
 
+    // Past 1024 observations the binomial tail is not walked term by term any
+    // more; a normal approximation of it takes over. That branch had never run
+    // here - every case above is in the exact one - and these are its answers,
+    // worked out from k = n/2 - z*sqrt(n)/2 rather than from the code.
+    CHECK(idx(1025, 0.95) == std::make_pair(size_t(480), size_t(544)));
+    CHECK(idx(2000, 0.95) == std::make_pair(size_t(955), size_t(1044)));
+    CHECK(idx(4096, 0.95) == std::make_pair(size_t(1984), size_t(2111)));
+    CHECK(idx(100000, 0.95) == std::make_pair(size_t(49689), size_t(50310)));
+
+    // The boundary itself, which is only assertable because the two branches
+    // disagree there: exact says (480, 543) and the approximation would say
+    // (479, 544). A test at any n where they agree could not tell which one
+    // ran.
+    CHECK(idx(1024, 0.95) == std::make_pair(size_t(480), size_t(543)));
+
     // Too few observations to make the statement at all. Five rounds cannot
     // support a 95% interval - even the full range only covers 93.75% - and
     // saying so is the honest answer, rather than reporting the range and
     // calling it 95%.
+    //
+    // Asserted as the exact sentinel, not merely as first > second: {2, 0} and
+    // {SIZE_MAX, n} satisfy that too, and both are things this has returned
+    // when its guard was broken.
     for (size_t n = 0; n <= 5; ++n) {
         INFO("n = " << n);
-        auto const none = idx(n, 0.95);
-        CHECK(none.first > none.second);
+        CHECK(idx(n, 0.95) == std::make_pair(size_t(1), size_t(0)));
     }
     // and 99% needs one more round than 95% does
     CHECK(idx(6, 0.99).first > idx(6, 0.99).second);
@@ -854,4 +872,51 @@ TEST_CASE("unit_compare_resolves_a_two_fold_difference") {
     // not that any leg reproduces 0.5 exactly.
     CHECK(result[1].relative < 0.8);
     CHECK(result[1].relative > 0.25);
+}
+
+// NOLINTNEXTLINE
+TEST_CASE("unit_compare_fastest_is_a_selection_over_the_medians") {
+    // CompareResult is constructible, so this can be asked directly instead of
+    // through a comparison that has to be lucky enough to order things a given
+    // way. Which is the point: a search over entries goes wrong in different
+    // directions depending on *where* the answer sits, and one arrangement
+    // cannot show them all. Starting after the first entry only misses a
+    // winner at index 1; walking backwards off the end only misses one that is
+    // not reached first; never entering the loop at all only misses one that
+    // is not at index 0.
+    size_t const rounds = 8;
+    auto measured = [&](char const* name, int workPerOp) {
+        auto bench = quiet(rounds);
+        Work w;
+        bench.run(name, [&] {
+            for (int i = 0; i < workPerOp; ++i) {
+                w.step();
+            }
+        });
+        return bench.results().front();
+    };
+    auto const swift = measured("swift", 1);
+    auto const middling = measured("middling", 8);
+    auto const sluggish = measured("sluggish", 64);
+
+    using ankerl::nanobench::CompareResult;
+    auto arrange = [&](std::vector<ankerl::nanobench::Result> const& results) {
+        std::vector<CompareResult::Entry> entries;
+        for (size_t i = 0; i < results.size(); ++i) {
+            entries.emplace_back("e", results[i], 1.0, 1.0, 1.0, 0U);
+        }
+        return CompareResult(std::move(entries), rounds);
+    };
+
+    CHECK(arrange({swift, middling, sluggish}).fastest() == 0U);
+    CHECK(arrange({middling, swift, sluggish}).fastest() == 1U);
+    CHECK(arrange({middling, sluggish, swift}).fastest() == 2U);
+
+    // Two entries that measured the same thing tie exactly, because they are
+    // the same Result. The first of them wins - a tie is not a reason to
+    // prefer the later one, and "less than" is what makes that so.
+    CHECK(arrange({sluggish, swift, swift}).fastest() == 1U);
+
+    // and nothing to choose from is entry 0, not an out of range index
+    CHECK(arrange({}).fastest() == 0U);
 }
