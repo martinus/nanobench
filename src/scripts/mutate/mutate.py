@@ -14,6 +14,11 @@ so a batch runs across lanes at once rather than one rebuild after another.
     mutate.py --bugs bugs.txt                  # a file of them, in parallel
     mutate.py --replace OLD NEW                # one, repeatable
     mutate.py --reverse HEAD                   # undo a fix, keep today's tests
+    mutate.py --bugs bugs.txt --reuse          # again, against an edited test
+
+`--reuse` keeps the lanes and syncs only what changed next time, which is most
+of the difference between waiting 2 minutes and waiting 45 seconds while a test
+is being written.
 
 A bug file is a name and a block each. Old text must match exactly once, and a
 block that does not apply stops the run - otherwise a typo substitutes nothing,
@@ -52,6 +57,7 @@ at, and the rest of the run carries on regardless.
 import argparse
 import bisect
 import concurrent.futures
+import filecmp
 import contextlib
 import json
 import os
@@ -86,13 +92,15 @@ LANE_IGNORE = shutil.ignore_patterns(".git", "__pycache__", "build*", "b", "bsan
 # they run out of cores. The floor is that loss. Fitted to the 4 lane and 32
 # lane ends of a full sweep, and it lands within 5% of the 16 lane middle.
 #
-# Setup is copying and configuring each lane and taking a baseline, and it grows
-# with the lane count rather than being fixed. Calibrated on one machine, so
-# --dry-run's estimate is an order of magnitude rather than a promise.
+# Setup is almost all baseline: copying and configuring 32 lanes is 1.3s, while
+# building one and running the suite twice is around 13. It barely grows with
+# the lane count, which is the opposite of what these constants used to say.
+# Calibrated on one machine, so --dry-run's estimate is an order of magnitude
+# rather than a promise.
 SECONDS_PER_MUTANT_SERIAL = 6.4
 SECONDS_PER_MUTANT_FLOOR = 0.46
-SECONDS_OF_SETUP = 20.0
-SECONDS_OF_SETUP_PER_LANE = 1.4
+SECONDS_OF_SETUP = 15.0
+SECONDS_OF_SETUP_PER_LANE = 0.05
 
 VERDICTS = ("caught", "compiler", "hang", "survived", "error")
 
@@ -102,6 +110,48 @@ def lane_ignore(directory, names):
     if os.path.abspath(directory) == REPO:
         skip.append("docs")
     return skip
+
+
+def sync_tree(src, dst):
+    """Bring an existing lane back in line with the repo, copying only what
+    actually changed.
+
+    The point is the mtimes. A wholesale re-copy would restamp all 51 sources
+    and cost a full rebuild in every lane, which is most of what reuse was
+    meant to save - so a file that matches is left alone, and ninja rebuilds
+    exactly what the working tree touched since last time.
+
+    Sameness is decided by *content*, and a file that differs is stamped with
+    the current time rather than the repo's. Both halves are load-bearing.
+    Comparing mtimes would call the previous run's mutated header a change on
+    every file in the tree; and copying the repo's older mtime onto it would
+    leave the lane's object files looking newer than their source, so ninja
+    would build nothing and the suite would run against the last mutant. That
+    is not hypothetical - it is what the first version of this did, and the
+    baseline guard caught it."""
+    for root, dirs, files in os.walk(src):
+        skip = set(lane_ignore(root, dirs + files))
+        dirs[:] = [d for d in dirs if d not in skip]
+        rel = os.path.relpath(root, src)
+        target = dst if "." == rel else os.path.join(dst, rel)
+        os.makedirs(target, exist_ok=True)
+        wanted = set()
+        for name in files:
+            if name in skip:
+                continue
+            wanted.add(name)
+            source, copy = os.path.join(root, name), os.path.join(target, name)
+            if os.path.exists(copy) and filecmp.cmp(source, copy, shallow=False):
+                continue
+            shutil.copyfile(source, copy)
+            os.utime(copy, None)
+        # A file deleted from the repo has to go, or it keeps being compiled.
+        # Only files: the lane's build directory is a directory and is not in
+        # the source tree, so it is never a candidate.
+        for name in os.listdir(target):
+            stale = os.path.join(target, name)
+            if os.path.isfile(stale) and name not in wanted:
+                os.remove(stale)
 
 
 def estimate(count, lanes):
@@ -386,6 +436,14 @@ class Lane:
         # and a mutant that only UBSan can see is then reported as a survivor,
         # which is the one way this tool must never be wrong.
         self.env = dict(os.environ)
+        # ccache keys on the compiler command line, and every lane's -I is a
+        # different absolute path - so without this each lane's first build is a
+        # cold compile of all 51 units, 32 times over, for byte identical
+        # sources. base_dir makes ccache rewrite absolute paths beneath it to
+        # relative ones; pointing it at the lane itself makes every lane, and
+        # every future run, hash to the same key. Harmless when ccache is not
+        # installed, since then nothing reads it.
+        self.env["CCACHE_BASEDIR"] = os.path.abspath(self.dir)
         self.env.setdefault("ASAN_OPTIONS", "detect_stack_use_after_return=1")
         self.env.setdefault(
             "UBSAN_OPTIONS",
@@ -393,7 +451,22 @@ class Lane:
             + os.path.join(self.dir, "ubsan.supp"))
 
     def setup(self):
-        shutil.copytree(REPO, self.dir, ignore=lane_ignore)
+        if os.path.isdir(self.dir):
+            sync_tree(REPO, self.dir)
+            # The mutated file is the one thing whose *content* can be right
+            # while the build behind it is wrong: a run that ended with a mutant
+            # applied, and was then restored, leaves a binary built from the
+            # mutant and a source that matches the repo again. Nothing in a
+            # content comparison can see that, so the file that every mutant
+            # rewrites is stamped unconditionally. It costs the one rebuild that
+            # was going to happen anyway.
+            os.utime(self.target, None)
+        else:
+            shutil.copytree(REPO, self.dir, ignore=lane_ignore)
+        # Always, even when reusing: it is a fraction of a second, and it is
+        # what picks up a new test file added to src/test/CMakeLists.txt. The
+        # sources are listed there by hand, so skipping this would build the
+        # previous run's set and score mutants against tests that are not in it.
         r = subprocess.run(
             ["cmake", "-S", self.dir, "-B", self.build, "-GNinja",
              "-DCMAKE_BUILD_TYPE=Release"] + self.cmake_args,
@@ -415,9 +488,14 @@ class Lane:
             os.path.join(self.dir, IMPL_TU)], timeout=timeout)
         return r is not None and r.returncode == 0
 
-    def build_ok(self, timeout):
-        r = self._run(["ninja", "-C", self.build, "-j", str(self.jobs)],
-                      timeout=timeout)
+    def build_ok(self, timeout, jobs=None):
+        # jobs is overridden for the baseline, which is the one build that has
+        # the machine to itself: at the per-mutant default of 1 it compiles all
+        # 51 translation units serially and costs more than the sweep's first
+        # minute of real work.
+        r = self._run(["ninja", "-C", self.build,
+                       "-j", str(jobs or self.jobs)],
+                      timeout=timeout, env=self.env)
         return r is not None and r.returncode == 0
 
     def failing_tests(self, timeout):
@@ -628,7 +706,7 @@ def baseline(lane, args, log):
     many times what a real one does, and hangs are an expected verdict here.
     """
     log("baseline: building")
-    if not lane.build_ok(args.build_timeout):
+    if not lane.build_ok(args.build_timeout, jobs=os.cpu_count() or 4):
         raise RuntimeError("baseline build failed - fix the tree first")
     slowest = 0.0
     for attempt in range(args.baseline_runs):
@@ -649,24 +727,37 @@ def baseline(lane, args, log):
 @contextlib.contextmanager
 def lanes_for(args, wanted, log):
     """Copied trees, configured and baselined, cleaned up whatever happens."""
-    workdir = args.workdir or tempfile.mkdtemp(prefix="nanobench-mutate-")
-    if args.workdir:
-        shutil.rmtree(workdir, ignore_errors=True)
-        os.makedirs(workdir)
+    if args.reuse:
+        workdir = args.workdir or os.path.join(tempfile.gettempdir(),
+                                               "nanobench-mutate-reuse")
+        os.makedirs(workdir, exist_ok=True)
+    else:
+        workdir = args.workdir or tempfile.mkdtemp(prefix="nanobench-mutate-")
+        if args.workdir:
+            shutil.rmtree(workdir, ignore_errors=True)
+            os.makedirs(workdir)
     try:
         count = max(1, min(args.lanes, wanted))
         lanes = [Lane(workdir, i, args) for i in range(count)]
-        log("preparing %d lane%s" % (count, "" if count == 1 else "s"))
+        existing = sum(1 for lane in lanes if os.path.isdir(lane.build))
+        log("preparing %d lane%s%s"
+            % (count, "" if count == 1 else "s",
+               " (%d reused)" % existing if existing else ""))
+        started = time.time()
         with concurrent.futures.ThreadPoolExecutor(count) as pool:
             list(pool.map(lambda lane: lane.setup(), lanes))
+        log("lanes ready in %.1fs" % (time.time() - started))
+        started = time.time()
         green_seconds = baseline(lanes[0], args, log)
+        log("baseline in %.1fs" % (time.time() - started))
         if args.test_timeout is None:
             args.test_timeout = max(20, int(6 * green_seconds))
             log("test timeout %ds, from a %.1fs green run"
                 % (args.test_timeout, green_seconds))
         yield lanes
     finally:
-        shutil.rmtree(workdir, ignore_errors=True)
+        if not args.reuse:
+            shutil.rmtree(workdir, ignore_errors=True)
 
 
 def run_mutants(lanes, mutants, args, log):
@@ -810,6 +901,13 @@ def main():
     p.add_argument("--dry-run", action="store_true",
                    help="list the mutants and the likely runtime, then stop")
     p.add_argument("--workdir", default=None, help="where lanes are copied")
+    p.add_argument("--reuse", action="store_true",
+                   help="keep the lanes afterwards and reuse them next time, "
+                        "syncing only what changed. Turns the fixed cost of a "
+                        "run from a full build per lane into an incremental "
+                        "one, which is what you want while iterating on a "
+                        "test. Uses a fixed workdir unless --workdir says "
+                        "otherwise, so two concurrent runs need different ones")
     p.add_argument("--json", metavar="FILE", help="write the full result set")
     args = p.parse_args()
 
