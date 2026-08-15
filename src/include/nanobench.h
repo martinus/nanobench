@@ -900,7 +900,9 @@ public:
      #. Calibrates an iteration count once, up front, and uses the **same** count for every
         alternative for the whole run. An epoch's fixed overhead is divided by that count, so two
         different counts would amortize it differently and bias the ratio - 1.2% on 200us epochs, and
-        no amount of pairing removes it.
+        no amount of pairing removes it. The shared count is the slowest alternative's, raised where
+        that would leave the fastest one's epoch too short for the clock to resolve, and capped so
+        the slowest one still fits in maxEpochTime().
      #. Runs one epoch of each per round, interleaved, so drift is common to the round.
      #. Orders each block of N rounds as a randomly chosen cyclic Latin square, so every alternative
         occupies every position exactly once per block and their mean positions are equal - which is
@@ -4178,26 +4180,72 @@ uint64_t Bench::compareIterations(std::vector<detail::ErasedOp> const& ops) cons
         return epochIterations();
     }
 
-    // The count that fills a normal epoch, per alternative, and then the smallest of them - so the
-    // slowest alternative does not run an epoch longer than maxEpochTime asked for. Every faster one
-    // then runs a shorter epoch than it could have, which is the price of them sharing a count.
+    // The count that fills a normal epoch, per alternative. The smallest of them belongs to the
+    // slowest alternative - it needs the fewest iterations to fill an epoch - and the largest to the
+    // fastest.
     auto const target = detail::targetRuntimePerEpoch(*this);
-    auto iters = (std::numeric_limits<uint64_t>::max)();
+    auto fewest = (std::numeric_limits<uint64_t>::max)();
+    uint64_t most = 0;
     for (auto const& op : ops) {
-        iters = (std::min)(iters, compareCalibrate(op, target));
+        auto const calibrated = compareCalibrate(op, target);
+        fewest = (std::min)(fewest, calibrated);
+        most = (std::max)(most, calibrated);
     }
-    return iters;
+
+    // Every count above fills the same target, so they are inversely proportional to the
+    // per-iteration times and convert to any other epoch length by scaling: a count that fills
+    // `target` times `wanted / target` is the count that fills `wanted`. Calibration stops at the
+    // first count that reaches the target rather than at the exact one, so the per-iteration time
+    // behind it is if anything underestimated and the scaled counts err upwards.
+    auto const targetSeconds = detail::d(target);
+    if (!(targetSeconds > 0.0)) {
+        // Nothing to scale by. A maxEpochTime of zero gets here, and every alternative then ran
+        // minEpochIterations during calibration, which is what `fewest` holds.
+        return fewest;
+    }
+    auto const scaled = [&](uint64_t iters, Clock::duration wanted) {
+        return detail::u64(detail::d(iters) * (detail::d(wanted) / targetSeconds));
+    };
+
+    // Taking `fewest` is what keeps the slowest alternative inside maxEpochTime, but on its own it
+    // makes every faster alternative run an epoch shorter than asked for by however much faster it
+    // is - a 1ns operation against a 50ns one gets a fiftieth of an epoch. So the count is raised
+    // until the *fastest* alternative clears the epoch this library calls long enough to measure:
+    // the clock's resolution times the multiple, which is where targetRuntimePerEpoch() starts from.
+    // That sits far below minEpochTime wherever the clock is good, so this binds only when the
+    // alternatives are orders of magnitude apart or the clock is coarse.
+    auto const measurable = scaled(most, detail::clockResolution() * clockResolutionMultiple());
+
+    // Raising it stretches the slowest alternative's epoch by the same factor, and maxEpochTime is
+    // the bound on that. A 1ns operation against a 1ms one cannot have both, and epochs a million
+    // times longer than asked for are the worse of the two failures.
+    auto const affordable = scaled(fewest, maxEpochTime());
+
+    return (std::max)(fewest, (std::min)(measurable, affordable));
 }
 
 uint64_t Bench::compareCalibrate(detail::ErasedOp const& op, Clock::duration target) const {
     uint64_t numIters = minEpochIterations();
+    uint64_t reached = 0;
     for (size_t attempt = 0; attempt < 64; ++attempt) {
         Clock::time_point const before = Clock::now();
         op.run(op.op, numIters);
         auto const elapsed = Clock::now() - before;
         if (elapsed >= target) {
-            return numIters;
+            // Measured again at the same count before it is believed. A single reading is one
+            // interruption away from being far too high, and this loop grows in steps of up to 10x -
+            // so one preempted attempt ends the search an order of magnitude early, and every
+            // alternative then runs epochs that much shorter than they were asked to be. That is not
+            // hypothetical: an Alpine leg on a shared two core runner returned 11111 for an operation
+            // whose 11111 iterations take 14us against a 100us target, because one attempt was
+            // interrupted for 86us. Two readings in a row have to cross.
+            if (reached == numIters) {
+                return numIters;
+            }
+            reached = numIters;
+            continue;
         }
+        reached = 0;
 
         // grow towards the target, but never by more than 10x at once - the same shape as the normal
         // upscaling, so a wildly wrong first guess still converges in a few steps
