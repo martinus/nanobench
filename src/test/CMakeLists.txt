@@ -32,6 +32,7 @@ target_sources_local(nb PRIVATE
     tutorial_slow_v1.cpp
     tutorial_slow_v2.cpp
     unit_compare.cpp
+    unit_compare_output.cpp
     unit_api.cpp
     unit_bench_config.cpp
     unit_cold.cpp
