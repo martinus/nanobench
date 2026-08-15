@@ -544,12 +544,30 @@ Designing the experiment
    adapts the count as it goes; ``compare()`` does not. An iteration count that drifted between rounds
    would be a second thing changing while the comparison is being made.
 
+   Calibration grows the count until an epoch's worth of time has passed, then measures that count a
+   second time before believing it. One reading is one interruption away from being far too high, and
+   the count grows in steps of up to ten, so a single preempted attempt would end the search an order
+   of magnitude early and every epoch of the comparison would come out that much shorter than it was
+   asked to be. On a shared machine that is not a remote possibility - it is what a CI runner does
+   several times an hour.
+
 #. **The same count for both sides.** An epoch carries a fixed overhead - two clock reads and the
    performance counter ioctls - and what gets compared is time *per iteration*, so that overhead is
    divided by the count. Calibrating each side separately gives them slightly different counts and
    amortizes the overhead differently between them. That is a systematic bias in the ratio, which no
-   amount of pairing removes: it measured 1.2% on 200µs epochs. The smaller of the two counts is
-   used, so neither side runs an epoch longer than it was asked for.
+   amount of pairing removes: it measured 1.2% on 200µs epochs.
+
+   Which count they share is a second question. The smallest of them is the slowest alternative's -
+   it needs the fewest iterations to fill an epoch - so taking it is what keeps that alternative
+   inside :cpp:func:`maxEpochTime() <ankerl::nanobench::Bench::maxEpochTime()>`. But it also makes
+   every faster alternative run an epoch shorter than the target by however much faster it is: a 1ns
+   operation next to a 50ns one would get a fiftieth of an epoch. So the shared count is raised until
+   the *fastest* alternative clears ``clockResolution() * clockResolutionMultiple()``, the length
+   this library calls long enough to measure - normally far below
+   :cpp:func:`minEpochTime() <ankerl::nanobench::Bench::minEpochTime()>`, so it only binds where the
+   spread is wide or the clock is coarse. Once the alternatives are far enough apart the two cannot
+   both hold, and the maximum wins: a comparison measured coarsely is better than one whose epochs
+   are a thousand times longer than they were asked to be.
 
 #. **Interleaving.** One epoch of each alternative per round, adjacent in time, rather than all of A
    and then all of B. Anything that affects all of them - a frequency ramp, a noisy neighbour,

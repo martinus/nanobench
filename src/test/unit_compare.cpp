@@ -1,10 +1,12 @@
 #include <nanobench.h>
 #include <thirdparty/doctest/doctest.h>
 
+#include <chrono>
 #include <cmath>
 #include <cstdint>
 #include <sstream>
 #include <string>
+#include <thread>
 #include <vector>
 
 // Bench::compare() compares two alternatives paired and interleaved, and
@@ -25,6 +27,28 @@ struct Work {
     void step() {
         state = state * UINT64_C(6364136223846793005) + 1U;
         ankerl::nanobench::doNotOptimizeAway(state);
+    }
+};
+
+// The same work, with one call somewhere in the middle taking a millisecond -
+// a scheduling hiccup, made repeatable. Which call is fixed rather than timed,
+// so this behaves the same on a fast machine and a slow one.
+struct WorkWithOneHiccup {
+    Work work;
+    uint64_t callsUntilHiccup;
+
+    explicit WorkWithOneHiccup(uint64_t calls)
+        : work()
+        , callsUntilHiccup(calls) {}
+
+    void step() {
+        if (0 != callsUntilHiccup) {
+            --callsUntilHiccup;
+            if (0 == callsUntilHiccup) {
+                std::this_thread::sleep_for(std::chrono::milliseconds(1));
+            }
+        }
+        work.step();
     }
 };
 
@@ -824,6 +848,248 @@ TEST_CASE("unit_compare_honors_clock_resolution_multiple") {
     };
 
     CHECK(countFor(10000) > countFor(1) * 10.0);
+}
+
+// NOLINTNEXTLINE
+TEST_CASE("unit_compare_keeps_the_fast_alternative_measurable") {
+    // Every alternative runs the same count, and that count is the one that
+    // fills an epoch for the *slowest* of them. So the fastest alternative's
+    // epoch is shorter than the target by however much faster it is, and
+    // nothing bounds that: compare a 1ns operation against a 250ns one and the
+    // fast side gets a two-hundred-and-fiftieth of an epoch. Everywhere else in
+    // the library an epoch is sized so it cannot fall below what the clock can
+    // resolve, and here it is raised until the fastest alternative clears
+    // clockResolution() * clockResolutionMultiple() - the same quantity the
+    // ordinary epoch length is built from.
+    Work a;
+    Work b;
+    ankerl::nanobench::Bench bench;
+    bench.output(nullptr).epochs(6).performanceCounters(false).minEpochTime(
+        std::chrono::microseconds(100));
+    auto const result = bench.compare(
+        "one step",
+        [&] {
+            a.step();
+        },
+        "sixty four steps",
+        [&] {
+            for (int i = 0; i < 64; ++i) {
+                b.step();
+            }
+        });
+
+    using M = ankerl::nanobench::Result::Measure;
+    auto const& fast = result[0].result;
+    REQUIRE(fast.size() > 0U);
+
+    // The spread has to be real for this to be asking anything: if the compiler
+    // folded the loop away, both sides would fill an epoch with the same count
+    // and the assertion below would hold for the wrong reason. A loose bound -
+    // the work is 64x, and what matters is only that it is not 1x.
+    INFO("fast " << fast.median(M::elapsed) << "s/op, slow "
+                 << result[1].result.median(M::elapsed) << "s/op");
+    REQUIRE(result[1].result.median(M::elapsed) >
+            fast.median(M::elapsed) * 10.0);
+
+    // clockResolution() is measured on the machine rather than configured, and
+    // lives on the implementation side of the header; the mustache tag is how a
+    // test gets at it. It is in seconds, as every rendered duration is.
+    std::ostringstream oss;
+    ankerl::nanobench::render("{{clockResolution}}", {fast}, oss);
+    auto const measurable =
+        std::stod(oss.str()) *
+        static_cast<double>(bench.clockResolutionMultiple());
+
+    // elapsed is stored per iteration, so an epoch is that times the count.
+    auto const epoch = fast.median(M::elapsed) * fast.get(0, M::iterations);
+    INFO("fast epoch " << epoch << "s, measurable from " << measurable << "s");
+
+    // Half of it, deliberately: the count is calibrated before the rounds are
+    // run and the machine is entitled to differ between the two. Without the
+    // floor this epoch is the target divided by the spread - a few microseconds
+    // against a measurability bound of some tens - so there is no need to be
+    // tight about it.
+    CHECK(epoch > measurable * 0.5);
+}
+
+// NOLINTNEXTLINE
+TEST_CASE(
+    "unit_compare_does_not_stretch_the_slow_alternative_past_the_maximum") {
+    // The other side of that floor. Raising the shared count stretches the
+    // slowest alternative's epoch by the same factor the fastest one was raised
+    // by, so a wide enough spread would push it arbitrarily far past
+    // maxEpochTime - which is the property that made the smallest count the
+    // choice in the first place. The two cannot both hold once the spread is
+    // wide enough, and this is which one gives way.
+    Work a;
+    Work b;
+    ankerl::nanobench::Bench bench;
+    bench.output(nullptr)
+        .epochs(6)
+        .performanceCounters(false)
+        .minEpochTime(std::chrono::microseconds(50))
+        .maxEpochTime(std::chrono::milliseconds(1));
+    //
+    // The slow alternative goes first here on purpose. Both counts are picked
+    // by walking the alternatives, and a walk that keeps the last one it saw
+    // instead of the smallest gives the same answer whenever the slowest is
+    // last - which it is in every other test in this file.
+    auto const result = bench.compare(
+        "a thousand steps",
+        [&] {
+            for (int i = 0; i < 1000; ++i) {
+                b.step();
+            }
+        },
+        "one step",
+        [&] {
+            a.step();
+        });
+
+    using M = ankerl::nanobench::Result::Measure;
+    auto const& slow = result[0].result;
+    REQUIRE(slow.size() > 0U);
+    auto const epoch = slow.median(M::elapsed) * slow.get(0, M::iterations);
+
+    // A loose one-sided bound, for the usual reason: an uncapped floor would
+    // ask this side for some twenty times its maximum, so nothing is gained by
+    // being tight and a flaky leg is lost.
+    INFO("slow epoch " << epoch << "s, maximum 0.001s");
+    CHECK(epoch < 0.003);
+}
+
+// NOLINTNEXTLINE
+TEST_CASE("unit_compare_calibration_is_not_fooled_by_one_slow_reading") {
+    // Calibration grows the iteration count in steps of up to 10x and stops at
+    // the first count whose measurement reaches the target. One interrupted
+    // reading therefore ends the search an order of magnitude early, and since
+    // every alternative shares the count, every epoch of the comparison comes
+    // out that much shorter than it was asked to be.
+    //
+    // This is what took an Alpine leg red: an operation whose 11111 iterations
+    // take 14us returned 11111 against a 100us target, because one attempt was
+    // preempted for 86us on a shared runner. Here the interruption is a fixed
+    // call rather than a fixed time, so the same thing happens on any machine:
+    // one call in the middle of the growth loop sleeps for a millisecond, which
+    // is five times the target and dwarfs everything the loop has measured.
+    WorkWithOneHiccup a(5000);
+    Work b;
+    ankerl::nanobench::Bench bench;
+    bench.output(nullptr).epochs(6).performanceCounters(false).minEpochTime(
+        std::chrono::microseconds(200));
+    auto const result = bench.compare(
+        "hiccup while calibrating",
+        [&] {
+            a.step();
+        },
+        "plain",
+        [&] {
+            b.step();
+        });
+
+    using M = ankerl::nanobench::Result::Measure;
+    for (size_t i = 0; i < result.size(); ++i) {
+        auto const& r = result[i].result;
+        REQUIRE(r.size() > 0U);
+        auto const epoch = r.median(M::elapsed) * r.get(0, M::iterations);
+        INFO("entry " << i << " (" << result[i].name << ") epoch " << epoch
+                      << "s, asked for 0.0002s");
+        // Loose, and it does not need to be tight: believing the interrupted
+        // reading gives epochs some twenty times shorter than this bound, not
+        // twenty percent.
+        CHECK(epoch > 0.0001);
+    }
+}
+
+// NOLINTNEXTLINE
+TEST_CASE("unit_compare_the_floor_is_the_clock_rather_than_the_epoch") {
+    // What the floor is measured against is the whole of its design. Raising
+    // the count until the fastest alternative fills a whole *epoch* would also
+    // keep it measurable - that is the other option this could have been - but
+    // it costs the slowest alternative an epoch stretched by the full spread,
+    // for a comparison that was already measurable. Keying it to the clock is
+    // what makes it cost nothing wherever the clock is good.
+    //
+    // clockResolutionMultiple(1) is how that is asked as a question: the floor
+    // is then a single clock tick, far below anything a benchmark runs for, so
+    // it must not bind at all and the shared count must come out as the
+    // ordinary one - the count that fills an epoch for the slowest alternative.
+    Work a;
+    Work b;
+    ankerl::nanobench::Bench bench;
+    bench.output(nullptr)
+        .epochs(6)
+        .performanceCounters(false)
+        .minEpochTime(std::chrono::microseconds(200))
+        .clockResolutionMultiple(1);
+    auto const result = bench.compare(
+        "one step",
+        [&] {
+            a.step();
+        },
+        "thirty two steps",
+        [&] {
+            for (int i = 0; i < 32; ++i) {
+                b.step();
+            }
+        });
+
+    using M = ankerl::nanobench::Result::Measure;
+    auto const& slow = result[1].result;
+    REQUIRE(slow.size() > 0U);
+    auto const epoch = slow.median(M::elapsed) * slow.get(0, M::iterations);
+    INFO("slow epoch " << epoch << "s, asked for 0.0002s");
+
+    // Both bounds are loose, and each catches a different way of getting this
+    // wrong. Too long is the floor keyed to the epoch rather than the clock,
+    // which would give this side 32 epochs instead of one. Too short is a floor
+    // allowed to lower the count rather than only raise it, which would leave
+    // every alternative running for a clock tick and nothing honoring
+    // minEpochTime at all.
+    CHECK(epoch < 0.001);
+    CHECK(epoch > 0.0001);
+}
+
+// NOLINTNEXTLINE
+TEST_CASE("unit_compare_epochs_of_no_length_at_all") {
+    // Both bounds at zero leave the epoch no length at all, and the counts
+    // above are scaled by dividing by it. A division by zero in a double is an
+    // infinity rather than a crash, and the answer that comes out of it happens
+    // to be the right one anyway - so this is red on the sanitizer legs only,
+    // where float-divide-by-zero is an error, and green everywhere else. That
+    // is the same trap a 0/0 in BigO fell into.
+    //
+    // What comes out is minEpochIterations: calibration starts there and an
+    // epoch of no length is filled before it can grow.
+    Work a;
+    Work b;
+    ankerl::nanobench::Bench bench;
+    bench.output(nullptr)
+        .epochs(6)
+        .performanceCounters(false)
+        .minEpochTime(std::chrono::nanoseconds(0))
+        .maxEpochTime(std::chrono::nanoseconds(0))
+        .minEpochIterations(5);
+    auto const result = bench.compare(
+        "a",
+        [&] {
+            a.step();
+        },
+        "b",
+        [&] {
+            b.step();
+        });
+
+    using M = ankerl::nanobench::Result::Measure;
+    REQUIRE(result.size() == 2U);
+    for (size_t i = 0; i < result.size(); ++i) {
+        auto const& r = result[i].result;
+        REQUIRE(r.size() > 0U);
+        for (size_t epoch = 0; epoch < r.size(); ++epoch) {
+            INFO("entry " << i << ", epoch " << epoch);
+            CHECK(r.get(epoch, M::iterations) == doctest::Approx(5.0));
+        }
+    }
 }
 
 // NOLINTNEXTLINE

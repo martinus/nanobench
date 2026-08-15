@@ -1,0 +1,140 @@
+# How Bench::compareIterations() and Bench::compareCalibrate() pick the one
+# iteration count every alternative in a comparison runs. Every alternative has to run the same count - what is
+# compared is time per iteration, and an epoch's fixed overhead divided by two
+# different counts biases the ratio by 1.2% on 200us epochs - so the count is
+# the slowest alternative's, raised until the fastest one's epoch still clears
+# the clock, and capped so the slowest one stays inside maxEpochTime.
+#
+# Three of these were survivors when they were first written, and the tests that
+# kill them now exist because of that. Run with a sweep over the same function
+# for what is not listed here:
+#
+#     mutate.py --bugs src/scripts/mutate/bugs/compare-iterations.txt \
+#               --lines 4177-4261 --reuse
+#
+# A snapshot against the code as it was: when a block stops applying, that part
+# has been rewritten and these questions want re-deriving rather than repairing.
+
+# the floor never binds: the plain minimum, as it was before the floor existed
+<<<
+    auto const measurable = scaled(most, detail::clockResolution() * clockResolutionMultiple());
+===
+    auto const measurable = fewest;
+>>>
+
+# the floor keyed off the slowest alternative instead of the fastest
+<<<
+    auto const measurable = scaled(most, detail::clockResolution() * clockResolutionMultiple());
+===
+    auto const measurable = scaled(fewest, detail::clockResolution() * clockResolutionMultiple());
+>>>
+
+# clockResolutionMultiple dropped, so the floor is a single clock tick
+<<<
+    auto const measurable = scaled(most, detail::clockResolution() * clockResolutionMultiple());
+===
+    auto const measurable = scaled(most, detail::clockResolution());
+>>>
+
+# the floor keyed off the epoch rather than the clock
+# every alternative then gets a full epoch, and the slowest is stretched by the
+# whole spread to pay for it
+<<<
+    auto const measurable = scaled(most, detail::clockResolution() * clockResolutionMultiple());
+===
+    auto const measurable = most;
+>>>
+
+# no cap, so the slowest alternative is stretched however far the floor asks
+<<<
+    auto const affordable = scaled(fewest, maxEpochTime());
+===
+    auto const affordable = (std::numeric_limits<uint64_t>::max)();
+>>>
+
+# the cap measured against the fastest alternative rather than the slowest
+<<<
+    auto const affordable = scaled(fewest, maxEpochTime());
+===
+    auto const affordable = scaled(most, maxEpochTime());
+>>>
+
+# the cap taken from minEpochTime instead of maxEpochTime
+<<<
+    auto const affordable = scaled(fewest, maxEpochTime());
+===
+    auto const affordable = scaled(fewest, minEpochTime());
+>>>
+
+# floor and cap the wrong way round
+<<<
+    return (std::max)(fewest, (std::min)(measurable, affordable));
+===
+    return (std::min)(fewest, (std::max)(measurable, affordable));
+>>>
+
+# the floor allowed to lower the count rather than only raise it
+# which leaves nothing honoring minEpochTime at all
+<<<
+    return (std::max)(fewest, (std::min)(measurable, affordable));
+===
+    return (std::min)(measurable, affordable);
+>>>
+
+# the last alternative's count wins instead of the smallest
+# the same answer whenever the slowest alternative happens to be last, which it
+# is in every comparison that does not deliberately put it first
+<<<
+        fewest = (std::min)(fewest, calibrated);
+===
+        fewest = calibrated;
+>>>
+
+# the last alternative's count wins instead of the largest
+<<<
+        most = (std::max)(most, calibrated);
+===
+        most = calibrated;
+>>>
+
+# the zero-length-epoch guard removed
+# only a sanitizer leg can see this: the division by zero produces an infinity
+# and a NaN whose clamps land on the right answer anyway. Run it with
+# --cmake-arg=-DNB_sanitizer=ON
+<<<
+    if (!(targetSeconds > 0.0)) {
+        // Nothing to scale by. A maxEpochTime of zero gets here, and every alternative then ran
+        // minEpochIterations during calibration, which is what `fewest` holds.
+        return fewest;
+    }
+===
+    if (targetSeconds < 0.0) {
+        return fewest;
+    }
+>>>
+
+# the exact epochIterations() override ignored
+# as compare() did when it was first written
+<<<
+    if (0 != epochIterations()) {
+        return epochIterations();
+    }
+===
+>>>
+
+# calibration believes a single reading
+# it grows the count in steps of up to 10x and stopped at the first measurement
+# that reached the target, so one preempted attempt ended the search an order of
+# magnitude early - which is what took an Alpine leg red
+<<<
+            if (reached == numIters) {
+                return numIters;
+            }
+            reached = numIters;
+            continue;
+===
+            if (reached != numIters) {
+                reached = numIters;
+            }
+            return numIters;
+>>>
