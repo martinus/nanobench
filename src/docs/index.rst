@@ -46,12 +46,9 @@ nanobench
 .. |badge-license| image:: https://img.shields.io/github/license/martinus/nanobench.svg
    :target: https://raw.githubusercontent.com/martinus/nanobench/master/LICENSE
    :alt: License
-.. |badge-travis| image:: https://travis-ci.com/martinus/nanobench.svg?branch=master
-   :target: https://travis-ci.com/martinus/nanobench
-   :alt: Travis CI Build Status
-.. |badge-appveyor| image:: https://ci.appveyor.com/api/projects/status/github/martinus/nanobench?branch=master&svg=true
-   :target: https://ci.appveyor.com/project/martinus/nanobench
-   :alt: Appveyor Build Status
+.. |badge-ci| image:: https://github.com/martinus/nanobench/actions/workflows/main.yml/badge.svg
+   :target: https://github.com/martinus/nanobench/actions/workflows/main.yml
+   :alt: Build, Test, Lint
 .. |badge-gitter| image:: https://badges.gitter.im/nanobench/community.svg
    :target: https://gitter.im/nanobench/community?utm_source=badge&utm_medium=badge&utm_campaign=pr-badge&utm_content=badge
    :alt: Join the chat at https://gitter.im/nanobench/community
@@ -79,7 +76,7 @@ nanobench
    </div>
 
    
-|badge-release| |badge-license| |badge-travis| |badge-appveyor| |badge-gitter|
+|badge-release| |badge-license| |badge-ci| |badge-gitter|
 
 .. image:: nanobench-logo-small.svg
    :alt: I need a better logo. Currently I use a small bench. Nanobench. Ha ha.
