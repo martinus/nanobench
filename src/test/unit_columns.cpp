@@ -402,7 +402,17 @@ TEST_CASE("unit_columns_precision_is_fixed") {
     std::ostringstream oss;
     ankerl::nanobench::Bench bench;
     configure(bench, oss, "precision");
-    bench.complexityN(1234567890).run("x", [] {});
+
+    // Work that no clock rounds to zero. An empty op at one iteration measures
+    // exactly 0 wherever the clock is coarse enough - a macOS runner did - and
+    // an epoch of zero makes the percentage error a division by zero, so the
+    // cell reads `inf%` and has no decimals to count. The value here does not
+    // matter, only that it is a number.
+    bench.complexityN(1234567890).run("x", [] {
+        for (uint64_t i = 0; i < 20000U; ++i) {
+            ankerl::nanobench::doNotOptimizeAway(i);
+        }
+    });
 
     // How many decimals a column shows does not depend on what was measured,
     // which is what makes this assertable where the values themselves are not.
