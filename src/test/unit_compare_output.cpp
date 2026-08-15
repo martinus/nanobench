@@ -177,16 +177,28 @@ TEST_CASE("unit_compare_output_names_the_winner_and_the_runner_up") {
     // another. They are captured first and then treated as fixed data, so both
     // the code and this test read the same numbers and must agree on them -
     // whichever way round the machine happened to order them.
-    // Deliberately not fastest-first. The runner-up here is entry 0, so a
-    // search for it that starts at 1 - skipping the baseline because the
-    // baseline is where comparisons usually start - names the wrong one.
+    //
+    // The order of the entries is the point of running this twice. The search
+    // for the runner-up walks every entry that is not the winner, and the two
+    // ways of getting that walk wrong need opposite arrangements to show up:
+    // starting at 1 instead of 0 only misses a runner-up that sits at 0, and
+    // walking backwards off the end only misses one that is not reached first.
     size_t const rounds = 16;
+    std::vector<int> order;
+    SUBCASE("runner-up first") {
+        order = {4, 1, 16};
+    }
+    SUBCASE("winner first") {
+        order = {1, 4, 16};
+    }
+    REQUIRE(order.size() == 3U);
+
+    char const* const names[] = {"a", "b", "c"};
     std::vector<CompareResult::Entry> entries;
-    entries.emplace_back("four", measured("four", 4, rounds), 1.0, 1.0, 1.0,
-                         0U);
-    entries.emplace_back("one", measured("one", 1, rounds), 1.0, 1.0, 1.0, 0U);
-    entries.emplace_back("sixteen", measured("sixteen", 16, rounds), 1.0, 1.0,
-                         1.0, 0U);
+    for (size_t i = 0; i < order.size(); ++i) {
+        entries.emplace_back(names[i], measured(names[i], order[i], rounds),
+                             1.0, 1.0, 1.0, 0U);
+    }
     CompareResult const compareResult(std::move(entries), rounds);
 
     auto const best = compareResult.fastest();
@@ -278,10 +290,16 @@ TEST_CASE("unit_compare_output_table_has_a_row_per_entry") {
     // can tell them apart.
     CHECK(header.back() == "baseline title");
 
-    // Only the measurement columns are fixed width; the last cell holds the
-    // title on the header line and the benchmark name on a data line. What has
-    // to line up is the offset of the last '|', and a column one character
-    // wider or narrower moves it.
+    // The header holds no measured value, so it is the same on every machine
+    // and its two comparison columns can be held to an exact width. Checking
+    // the offsets against each other cannot do that: a width that changes
+    // shifts every line by the same amount, and a uniform shift satisfies
+    // every relative check there is.
+    CHECK(lines[0] == "| relative |              95% CI |"
+                      "               ns/op |                op/s |"
+                      "    err% |     total | baseline title");
+
+    // and the rest of the table still has to line up with it
     auto const bar = lines[0].rfind('|');
     REQUIRE(bar != std::string::npos);
     for (auto const& line : lines) {
