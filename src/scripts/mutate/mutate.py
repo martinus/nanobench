@@ -31,12 +31,21 @@ the suite stays green, and the report blames your tests for it:
         if (rInsMedian > 0.0 && rCycMedian > 0.0) {
     >>>
 
+Bug files worth keeping live in `src/scripts/mutate/bugs/`. They are snapshots
+against the code as it was, so one that stops applying is not a failure - it is
+the tool saying that part has been rewritten and the questions need re-deriving.
+
 **Or sweep for holes you have not thought of**, mutating one token at a time:
 
     mutate.py --diff HEAD~1                    # only what this change touched
     mutate.py --lines 2890-2960                # one function
     mutate.py                                  # the whole header
     mutate.py --diff HEAD~1 --dry-run          # how many, and how long
+
+The two compose, and a change is best asked both questions at once - the named
+bugs the tests were written for, and the sweep for what nobody thought to ask:
+
+    mutate.py --bugs bugs.txt --lines 2890-2960 --reuse
 
 Nothing is scored until the suite is green repeatedly, because a flaky test
 counted as a kill inflates the number in the flattering direction. The working
@@ -549,6 +558,11 @@ def parse_bug_file(path):
     A block format rather than a diff so that multi-line bodies need no escaping
     and no leading-character rules - these are C++ fragments, and `-` is an
     operator.
+
+    The name is the *first* line of a run of comments, so the ones after it are
+    room to explain the bug without any of it ending up in the report. A blank
+    line starts a new run, which is what lets a file open with a header of its
+    own.
     """
     bugs, name, state, old, new = [], None, None, [], []
     with open(path, encoding="utf-8") as f:
@@ -556,11 +570,14 @@ def parse_bug_file(path):
             line = raw.rstrip("\n")
             stripped = line.strip()
             if state is None:
-                if stripped.startswith("#"):
-                    name = stripped.lstrip("#").strip()
+                if not stripped:
+                    name = None
+                elif stripped.startswith("#"):
+                    if name is None:
+                        name = stripped.lstrip("#").strip()
                 elif stripped == "<<<":
                     state, old, new = "old", [], []
-                elif stripped:
+                else:
                     raise RuntimeError("%s:%d: expected '#' or '<<<'" % (path, lineno))
             elif stripped == "===" and state == "old":
                 state = "new"
@@ -856,8 +873,12 @@ def main():
                    help="put one bug back by reverse-applying REF's changes to "
                         "the file, keeping today's tests")
     p.add_argument("--diff", metavar="REF",
-                   help="only mutate lines changed since REF (the fast sweep)")
-    p.add_argument("--lines", metavar="A-B", help="only mutate lines A..B")
+                   help="only mutate lines changed since REF (the fast sweep). "
+                        "Adds to --bugs or --replace rather than replacing "
+                        "them, so one run can ask both questions")
+    p.add_argument("--lines", metavar="A-B",
+                   help="only mutate lines A..B, and the same: it adds a sweep "
+                        "to whatever bugs were named")
     p.add_argument("--file", metavar="PATH", default=HEADER,
                    help="repo-relative file to mutate (default the header)")
     # One lane per hardware thread, one job each. A mutant is almost entirely
@@ -928,31 +949,44 @@ def main():
     if args.file != HEADER and args.quick_reject:
         args.quick_reject = False
 
-    if any(modes):
-        if args.bugs:
-            mutants = bug_mutants(parse_bug_file(args.bugs), original)
-        elif args.replace:
-            mutants = bug_mutants(
-                [dict(name="%s -> %s" % (old.strip()[:34], new.strip()[:34]),
-                      old=old, new=new) for old, new in args.replace], original)
-        else:
-            mutants = [reverse_commit_mutant(args.reverse, original, args.file)]
-    else:
+    # The two kinds compose, and asking for both in one run is worth doing: they
+    # answer different questions over the same code, and everything a second
+    # invocation would repeat - copying the lanes, building the baseline, running
+    # the suite green twice - is paid once instead. The named bugs come first in
+    # the report, which is the order they are read in.
+    mutants = []
+    if args.bugs:
+        mutants = bug_mutants(parse_bug_file(args.bugs), original)
+    elif args.replace:
+        mutants = bug_mutants(
+            [dict(name="%s -> %s" % (old.strip()[:34], new.strip()[:34]),
+                  old=old, new=new) for old, new in args.replace], original)
+    elif args.reverse:
+        mutants = [reverse_commit_mutant(args.reverse, original, args.file)]
+
+    # A sweep is asked for by --diff or --lines, and with nothing named at all it
+    # is the whole file - which is what this does when given no arguments.
+    if args.diff or args.lines or not mutants:
         line_filter = None
         if args.diff:
             line_filter = changed_lines(args.diff, args.file)
-            if not line_filter:
-                print("no changed lines in %s since %s" % (args.file, args.diff))
-                return 0
         elif args.lines:
             a, _, b = args.lines.partition("-")
             line_filter = set(range(int(a), int(b or a) + 1))
-        mutants = site_mutants(
-            mutation_sites(original, code_mask(original), line_filter), original)
-        if args.limit and len(mutants) > args.limit:
-            random.Random(args.shuffle_seed).shuffle(mutants)
-            mutants = mutants[:args.limit]
-            mutants.sort(key=lambda m: m["offset"])
+        if args.diff and not line_filter:
+            # Nothing to sweep. Only an error when it was the whole request:
+            # alongside a bug file it is a note, not a reason to run nothing.
+            print("no changed lines in %s since %s" % (args.file, args.diff))
+            if not mutants:
+                return 0
+        else:
+            sweep = site_mutants(
+                mutation_sites(original, code_mask(original), line_filter), original)
+            if args.limit and len(sweep) > args.limit:
+                random.Random(args.shuffle_seed).shuffle(sweep)
+                sweep = sweep[:args.limit]
+                sweep.sort(key=lambda m: m["offset"])
+            mutants += sweep
 
     if not mutants:
         print("nothing to mutate")
