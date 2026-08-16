@@ -1618,6 +1618,15 @@ std::pair<double, double> medianInterval(std::vector<double> values, double conf
 // its own exit once - so at least one miss is always attributed to it.
 double correctBranchMisses(uint64_t rawBranchMisses, double correctedBranchInstructions) noexcept;
 
+// Applies a "key=value,key=value" string - the contents of NANOBENCH_CONFIG - to cfg. Separate from
+// reading the environment so that it can be tested by handing it a string: the variable itself is
+// read once per process and is spelled putenv on one platform and _putenv_s on another, neither of
+// which a test should have to care about.
+//
+// An entry that cannot be applied appends one message to errors and is skipped; every other entry
+// still applies. Nothing throws, so a typo behaves the same for a consumer built -fno-exceptions.
+void applyConfigString(Config& cfg, std::string const& configStr, std::vector<std::string>& errors);
+
 } // namespace detail
 
 class BigO {
@@ -1894,6 +1903,7 @@ void doNotOptimizeAway(T const& val) {
 #    include <fstream>   // ifstream to parse proc files
 #    include <iomanip>   // setw, setprecision
 #    include <iostream>  // cout
+#    include <limits>    // numeric_limits, to parse NANOBENCH_CONFIG without overflowing
 #    include <numeric>   // accumulate
 #    include <random>    // random_device
 #    include <sstream>   // to_s in Number
@@ -2413,6 +2423,9 @@ char const* getEnv(char const* name);
 bool isEndlessRunning(std::string const& name);
 bool isWarningsEnabled();
 
+// Applies NANOBENCH_CONFIG to a freshly built Config, printing whatever it could not use.
+void applyEnvConfig(Config& cfg);
+
 template <typename T>
 T parseFile(std::string const& filename, bool* fail);
 
@@ -2655,6 +2668,255 @@ bool isEndlessRunning(std::string const& name) {
 bool isWarningsEnabled() {
     auto const* const suppression = getEnv("NANOBENCH_SUPPRESS_WARNINGS");
     return nullptr == suppression || suppression == std::string("0");
+}
+
+// NANOBENCH_CONFIG ///////////////////////////////////////////////////////////////////////////////
+//
+// The parsing below reports a bad value by returning the reason for it as a string, empty when the
+// value was fine. That is what keeps this usable from a Bench constructor: throwing would be worse
+// than the mistake it reports, and impossible for a consumer built with -fno-exceptions.
+//
+// The numbers are parsed by hand rather than through a stream or std::stoull. Both of those accept
+// "-1" as a uint64_t - the standard has them read a signed value and negate it - which would turn a
+// typo into 18446744073709551615 epochs. Doing it here also keeps the decimal point out of the
+// hands of the global locale, and lets a duration be scaled by an exact power of ten instead of a
+// double multiplication that turns 1.5s into 1499999999ns.
+
+// Everything before the unit of a duration, and every count: "1.5" gives digits 15 and one fraction
+// digit. A sign, an exponent, a second dot and anything that does not fit are all rejected - these
+// are epoch times and iteration counts, not a general purpose number format.
+static std::string parseDecimal(std::string const& str, uint64_t& digits, int& fractionDigits) {
+    digits = 0;
+    fractionDigits = 0;
+    bool seenDot = false;
+    bool seenDigit = false;
+    for (auto ch : str) {
+        if ('.' == ch) {
+            if (seenDot) {
+                return "is not a number";
+            }
+            seenDot = true;
+            continue;
+        }
+        if (ch < '0' || ch > '9') {
+            return "is not a number";
+        }
+        auto const digit = static_cast<uint64_t>(ch - '0');
+        if (digits > (std::numeric_limits<uint64_t>::max() - digit) / 10U) {
+            return "is too large";
+        }
+        digits = digits * 10U + digit;
+        seenDigit = true;
+        if (seenDot) {
+            ++fractionDigits;
+        }
+    }
+    return seenDigit ? std::string() : std::string("is not a number");
+}
+
+// Multiplies by ten `exponent` times, or divides that often when it is negative. Only the last
+// division rounds, so that the digits thrown away before it cannot round up twice.
+static bool scaleByPowerOfTen(uint64_t& value, int exponent) {
+    while (exponent > 0) {
+        if (value > std::numeric_limits<uint64_t>::max() / 10U) {
+            return false;
+        }
+        value *= 10U;
+        --exponent;
+    }
+    while (exponent < 0) {
+        auto const remainder = value % 10U;
+        value /= 10U;
+        if (-1 == exponent && remainder >= 5U) {
+            ++value;
+        }
+        ++exponent;
+    }
+    return true;
+}
+
+// True when value ends in unit. exponent is then the power of ten that turns that unit into
+// nanoseconds, and numberLen how much of value is left in front of it.
+static bool matchTimeUnit(std::string const& value, char const* unit, int unitExponent, int& exponent, size_t& numberLen) {
+    auto const unitLen = std::strlen(unit);
+    if (value.size() < unitLen || 0 != value.compare(value.size() - unitLen, unitLen, unit)) {
+        return false;
+    }
+    exponent = unitExponent;
+    numberLen = value.size() - unitLen;
+    return true;
+}
+
+// The trailing ns/us/ms/s of a duration. The two character units have to be tried first, or every
+// one of them ends in a match for "s".
+static bool splitTimeUnit(std::string const& value, int& exponent, size_t& numberLen) {
+    return matchTimeUnit(value, "ns", 0, exponent, numberLen) || matchTimeUnit(value, "us", 3, exponent, numberLen) ||
+           matchTimeUnit(value, "ms", 6, exponent, numberLen) || matchTimeUnit(value, "s", 9, exponent, numberLen);
+}
+
+// A whole number of iterations or epochs.
+static std::string parseCount(std::string const& value, uint64_t& out) {
+    int fractionDigits = 0;
+    std::string reason = parseDecimal(value, out, fractionDigits);
+    if (reason.empty() && fractionDigits > 0) {
+        reason = "is not a whole number";
+    }
+    return reason;
+}
+
+// A number with a required unit, e.g. "1.5s". The unit is required because a bare number reads as
+// whatever the writer had in mind and would be taken as nanoseconds, so "minEpochTime=5" would
+// quietly become a 5ns floor - which is the trap that made one variable per setting, in nanoseconds,
+// the wrong shape for this.
+static std::string parseDuration(std::string const& value, std::chrono::nanoseconds& out) {
+    int unitExponent = 0;
+    size_t numberLen = 0;
+    if (!splitTimeUnit(value, unitExponent, numberLen)) {
+        return "is missing a time unit - use ns, us, ms or s";
+    }
+
+    uint64_t digits = 0;
+    int fractionDigits = 0;
+    std::string reason = parseDecimal(value.substr(0, numberLen), digits, fractionDigits);
+    if (reason.empty()) {
+        using Rep = std::chrono::nanoseconds::rep;
+        if (scaleByPowerOfTen(digits, unitExponent - fractionDigits) &&
+            digits <= static_cast<uint64_t>(std::numeric_limits<Rep>::max())) {
+            out = std::chrono::nanoseconds(static_cast<Rep>(digits));
+        } else {
+            reason = "is too large";
+        }
+    }
+    return reason;
+}
+
+// What a key's value looks like, or that there is no such key. Only tuning knobs are here: name,
+// title, unit, batch and timeUnit say what a benchmark *is*, and letting a shell variable change
+// those for a whole process would change what the numbers mean rather than how long they take.
+enum class ConfigKeyKind { unknown, count, duration };
+
+static ConfigKeyKind configKeyKind(std::string const& key) {
+    if (key == "minEpochTime" || key == "maxEpochTime") {
+        return ConfigKeyKind::duration;
+    }
+    if (key == "epochs" || key == "warmup" || key == "minEpochIterations" || key == "epochIterations" ||
+        key == "clockResolutionMultiple") {
+        return ConfigKeyKind::count;
+    }
+    return ConfigKeyKind::unknown;
+}
+
+// Sorted, so that a typo is answered with the same list every time.
+static char const* configKeyList() {
+    return "clockResolutionMultiple, epochIterations, epochs, maxEpochTime, minEpochIterations, minEpochTime, warmup";
+}
+
+// Reached only for a key configKeyKind() called a duration, so the last branch is maxEpochTime.
+static void assignDuration(Config& cfg, std::string const& key, std::chrono::nanoseconds value) {
+    if (key == "minEpochTime") {
+        cfg.mMinEpochTime = value;
+    } else {
+        cfg.mMaxEpochTime = value;
+    }
+}
+
+// Likewise, so the last branch is clockResolutionMultiple.
+static void assignCount(Config& cfg, std::string const& key, uint64_t value) {
+    if (key == "epochs") {
+        cfg.mNumEpochs = static_cast<size_t>(value);
+    } else if (key == "warmup") {
+        cfg.mWarmup = value;
+    } else if (key == "minEpochIterations") {
+        cfg.mMinEpochIterations = value;
+    } else if (key == "epochIterations") {
+        cfg.mEpochIterations = value;
+    } else {
+        cfg.mClockResolutionMultiple = static_cast<size_t>(value);
+    }
+}
+
+static void applyConfigEntry(Config& cfg, std::string const& key, std::string const& value, std::vector<std::string>& errors) {
+    auto const kind = configKeyKind(key);
+    if (ConfigKeyKind::unknown == kind) {
+        errors.push_back("NANOBENCH_CONFIG: unknown key '" + key + "' - valid keys are " + configKeyList());
+        return;
+    }
+
+    std::string reason;
+    if (ConfigKeyKind::duration == kind) {
+        std::chrono::nanoseconds duration{};
+        reason = parseDuration(value, duration);
+        if (reason.empty()) {
+            assignDuration(cfg, key, duration);
+        }
+    } else {
+        uint64_t count = 0;
+        reason = parseCount(value, count);
+        if (reason.empty()) {
+            assignCount(cfg, key, count);
+        }
+    }
+
+    if (!reason.empty()) {
+        errors.push_back("NANOBENCH_CONFIG: '" + key + "=" + value + "' " + reason);
+    }
+}
+
+// Whitespace around a key or a value is somebody laying the variable out to be read, not part of
+// what they typed.
+static std::string trimWhitespace(std::string const& str) {
+    char const* const spaces = " \t\n\r\f\v";
+    auto const first = str.find_first_not_of(spaces);
+    if (std::string::npos == first) {
+        return {};
+    }
+    return str.substr(first, str.find_last_not_of(spaces) - first + 1);
+}
+
+void applyConfigString(Config& cfg, std::string const& configStr, std::vector<std::string>& errors) {
+    size_t pos = 0;
+    while (pos < configStr.size()) {
+        auto const comma = configStr.find(',', pos);
+        auto const end = std::string::npos == comma ? configStr.size() : comma;
+        auto const entry = trimWhitespace(configStr.substr(pos, end - pos));
+        pos = end + 1;
+
+        // an empty variable, or a trailing comma, is nothing to complain about
+        if (entry.empty()) {
+            continue;
+        }
+        auto const equals = entry.find('=');
+        if (std::string::npos == equals) {
+            errors.push_back("NANOBENCH_CONFIG: '" + entry + "' is not a key=value pair");
+            continue;
+        }
+        applyConfigEntry(cfg, trimWhitespace(entry.substr(0, equals)), trimWhitespace(entry.substr(equals + 1)), errors);
+    }
+}
+
+// Applies NANOBENCH_CONFIG to a freshly built Config, so that anything the benchmark sets afterwards
+// still wins: the environment moves the default, it does not overrule a benchmark that needs a
+// particular setting to mean anything.
+void applyEnvConfig(Config& cfg) {
+    auto const* const configStr = getEnv("NANOBENCH_CONFIG");
+    if (nullptr == configStr) {
+        return;
+    }
+
+    std::vector<std::string> errors;
+    applyConfigString(cfg, configStr, errors);
+
+    // Every Bench parses the variable, but a typo in it is one mistake and gets one message. This is
+    // deliberately not behind NANOBENCH_SUPPRESS_WARNINGS: that hides statements about the machine
+    // being unsuitable, whereas this is a mistake in something the user typed moments ago, and
+    // swallowing it is how somebody ends up believing a sweep ran when it did not.
+    static bool isFirstBench = true;
+    if (isFirstBench) {
+        isFirstBench = false;
+        for (auto const& error : errors) {
+            std::cerr << error << std::endl;
+        }
+    }
 }
 
 void gatherStabilityInformation(std::vector<std::string>& warnings, std::vector<std::string>& recommendations) {
@@ -4501,6 +4763,7 @@ Result::Measure Result::fromString(std::string const& str) {
 // Configuration of a microbenchmark.
 Bench::Bench() {
     mConfig.mOut = &std::cout;
+    detail::applyEnvConfig(mConfig);
 }
 
 Bench::Bench(Bench&&) noexcept = default;

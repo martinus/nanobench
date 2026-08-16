@@ -1,0 +1,163 @@
+# How NANOBENCH_CONFIG is parsed. The whole point of the variable is that a
+# number typed into a shell reaches the right field with the right value, so
+# every bug here is one that would leave a benchmark running with settings
+# nobody asked for - and unlike a wrong measurement, there is no output that
+# says so. Run with a sweep over the same code for what is not listed here:
+#
+#     mutate.py --bugs src/scripts/mutate/bugs/env-config.txt \
+#               --lines 2673-2919 --reuse
+#
+# A snapshot against the code as it was: when a block stops applying, that part
+# has been rewritten and these questions want re-deriving rather than repairing.
+
+# the unit is not required after all, so "minEpochTime=5" is a 5ns floor - the
+# exact trap that made one variable per setting, in nanoseconds, the wrong shape
+<<<
+    if (!splitTimeUnit(value, unitExponent, numberLen)) {
+        return "is missing a time unit - use ns, us, ms or s";
+    }
+===
+    if (!splitTimeUnit(value, unitExponent, numberLen)) {
+        numberLen = value.size();
+    }
+>>>
+
+# "s" tried before the two character units, so every one of them matches it and
+# "5ms" is parsed as the number "5m"
+<<<
+    return matchTimeUnit(value, "ns", 0, exponent, numberLen) || matchTimeUnit(value, "us", 3, exponent, numberLen) ||
+           matchTimeUnit(value, "ms", 6, exponent, numberLen) || matchTimeUnit(value, "s", 9, exponent, numberLen);
+===
+    return matchTimeUnit(value, "s", 9, exponent, numberLen) || matchTimeUnit(value, "ns", 0, exponent, numberLen) ||
+           matchTimeUnit(value, "us", 3, exponent, numberLen) || matchTimeUnit(value, "ms", 6, exponent, numberLen);
+>>>
+
+# us and ms an order of magnitude apart from where they belong
+<<<
+    return matchTimeUnit(value, "ns", 0, exponent, numberLen) || matchTimeUnit(value, "us", 3, exponent, numberLen) ||
+           matchTimeUnit(value, "ms", 6, exponent, numberLen) || matchTimeUnit(value, "s", 9, exponent, numberLen);
+===
+    return matchTimeUnit(value, "ns", 0, exponent, numberLen) || matchTimeUnit(value, "us", 6, exponent, numberLen) ||
+           matchTimeUnit(value, "ms", 3, exponent, numberLen) || matchTimeUnit(value, "s", 9, exponent, numberLen);
+>>>
+
+# the fraction digits are not taken back out of the scale, so "1.5s" is 15s
+<<<
+        if (scaleByPowerOfTen(digits, unitExponent - fractionDigits) &&
+===
+        if (scaleByPowerOfTen(digits, unitExponent) &&
+>>>
+
+# the last division truncates instead of rounding, so "1.5ns" is 1ns
+<<<
+        if (-1 == exponent && remainder >= 5U) {
+            ++value;
+        }
+===
+        (void)remainder;
+>>>
+
+# a fractional count is accepted and its dot ignored, so "epochs=1.5" is 15
+<<<
+    if (reason.empty() && fractionDigits > 0) {
+        reason = "is not a whole number";
+    }
+===
+    (void)fractionDigits;
+>>>
+
+# a sign is accepted, which is how "-1" becomes 18446744073709551615 through
+# every parser that reads a signed value and negates it
+<<<
+        if (ch < '0' || ch > '9') {
+            return "is not a number";
+        }
+===
+        if ('-' == ch || '+' == ch) {
+            continue;
+        }
+        if (ch < '0' || ch > '9') {
+            return "is not a number";
+        }
+>>>
+
+# no overflow check while accumulating digits, so a long number wraps silently
+<<<
+        if (digits > (std::numeric_limits<uint64_t>::max() - digit) / 10U) {
+            return "is too large";
+        }
+===
+>>>
+
+# the guard is conservative by the digit being added, so the last few values a
+# uint64_t can hold are reported as too large instead of arriving
+<<<
+        if (digits > (std::numeric_limits<uint64_t>::max() - digit) / 10U) {
+===
+        if (digits > (std::numeric_limits<uint64_t>::max() - 9U) / 10U) {
+>>>
+
+# an unknown key is silently ignored rather than reported
+<<<
+        errors.push_back("NANOBENCH_CONFIG: unknown key '" + key + "' - valid keys are " + configKeyList());
+        return;
+===
+        return;
+>>>
+
+# a value that did not parse is reported and applied anyway
+<<<
+    if (!reason.empty()) {
+        errors.push_back("NANOBENCH_CONFIG: '" + key + "=" + value + "' " + reason);
+    }
+===
+>>>
+
+# minEpochTime lands in maxEpochTime
+<<<
+    if (key == "minEpochTime") {
+        cfg.mMinEpochTime = value;
+    } else {
+        cfg.mMaxEpochTime = value;
+    }
+===
+    if (key == "minEpochTime") {
+        cfg.mMaxEpochTime = value;
+    } else {
+        cfg.mMaxEpochTime = value;
+    }
+>>>
+
+# epochIterations lands in minEpochIterations - two neighbouring fields whose
+# names differ by one word and whose meanings do not
+<<<
+    } else if (key == "epochIterations") {
+        cfg.mEpochIterations = value;
+===
+    } else if (key == "epochIterations") {
+        cfg.mMinEpochIterations = value;
+>>>
+
+# an empty entry is complained about, so a trailing comma - or an empty variable
+# - is a mistake rather than nothing
+<<<
+        if (entry.empty()) {
+            continue;
+        }
+===
+>>>
+
+# an entry without an = is silently skipped instead of reported
+<<<
+            errors.push_back("NANOBENCH_CONFIG: '" + entry + "' is not a key=value pair");
+            continue;
+===
+            continue;
+>>>
+
+# whitespace is part of the key, so "epochs = 3" is an unknown key " epochs "
+<<<
+        applyConfigEntry(cfg, trimWhitespace(entry.substr(0, equals)), trimWhitespace(entry.substr(equals + 1)), errors);
+===
+        applyConfigEntry(cfg, entry.substr(0, equals), entry.substr(equals + 1), errors);
+>>>
