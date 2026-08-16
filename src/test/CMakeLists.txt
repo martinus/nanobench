@@ -38,6 +38,7 @@ target_sources_local(nb PRIVATE
     unit_cold.cpp
     unit_columns.cpp
     unit_complexity.cpp
+    unit_env_config.cpp
     unit_epoch_time.cpp
     unit_exact_iters_and_epochs.cpp
     unit_markdown_output.cpp
