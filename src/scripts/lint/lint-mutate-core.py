@@ -66,32 +66,31 @@ def check_adapter():
 
     Every one of these is a way of being wrong that produces no error at all - a run that copies
     the wrong tree, builds nothing, or scores mutants against a suite that never ran.
+
+    The generic half of the question is `Project.problems()`, which lives in the core and is
+    covered by unordered_dense's scripts/test_mutate.py. Only what is nanobench's own is here: a
+    check that lived in this file *and* nowhere else would sit in the one repository with no test
+    suite, which is the arrangement this whole change exists to end.
     """
     adapter = load(ADAPTER)
     project = adapter.Nanobench()
-    problems = []
 
     # The core the adapter *imported*, rather than a second module object loaded
     # from the same path: those compare unequal, and an isinstance against the
     # wrong one fails for a reason that has nothing to do with the code.
     core = adapter.mutate_core
+    problems = list(project.problems())
     if Path(core.__file__).resolve() != CORE:
         problems.append("the adapter imported %s rather than the vendored core beside it"
                         % core.__file__)
     if not isinstance(project, core.Project):
         problems.append("the project does not derive from the vendored core's Project")
-    for attribute in ("slug", "repo", "target", "syntax_tu", "build_dir", "test_binary"):
-        if not getattr(project, attribute, None):
-            problems.append("%s is empty, and nothing else can fill it in" % attribute)
-
     if Path(project.repo) != REPO:
         problems.append("repo resolves to %s, not %s - every lane would copy the wrong tree"
                         % (project.repo, REPO))
-    for attribute in ("target", "syntax_tu"):
-        path = REPO / getattr(project, attribute)
-        if not path.exists():
-            problems.append("%s names %s, which does not exist"
-                            % (attribute, path.relative_to(REPO)))
+    if not project.syntax_tu:
+        problems.append("no syntax_tu, so every mutant that is not valid C++ costs a full "
+                        "rebuild rather than half a second")
 
     # The suite runs from the build directory: `nb` writes its example artifacts
     # into the working directory, and unit_templates wants an absolute __FILE__.
@@ -100,15 +99,24 @@ def check_adapter():
         problems.append("test_cwd is not the build directory, so nb's artifacts would land in "
                         "the lane's source tree")
 
-    # The one flag whose spelling is in CLAUDE.md and in the docstring.
-    if project.backend.arg_flag != "--cmake-arg":
-        problems.append("the pass-through flag is %s, not --cmake-arg" % project.backend.arg_flag)
+    # Guarded, because `problems()` has already said if there is no backend at
+    # all and a traceback on top of that message helps nobody read it. The flag
+    # spelling is in CLAUDE.md and in the docstring; the sanitizer answer is what
+    # the fingerprint's "no sanitizer in this build" NOTE is printed off.
+    if project.backend is not None:
+        if project.backend.arg_flag != "--cmake-arg":
+            problems.append("the pass-through flag is %s, not --cmake-arg"
+                            % project.backend.arg_flag)
+        if project.sanitizer(["-DNB_sanitizer=ON"]) == "none":
+            problems.append("a sanitizer build reports itself as unsanitized, and the "
+                            "fingerprint would print the warning that belongs to a plain build")
+        if project.sanitizer([]) != "none":
+            problems.append("a plain build does not report itself as unsanitized")
 
-    if project.sanitizer(["-DNB_sanitizer=ON"]) == "none":
-        problems.append("a sanitizer build reports itself as unsanitized, and the fingerprint "
-                        "would print the warning that belongs to a plain build")
-    if project.sanitizer([]) != "none":
-        problems.append("a plain build does not report itself as unsanitized")
+    # ubsan.supp is named by the adapter and read by a sanitizer lane only, so a
+    # rename would surface as a mutant nobody catches rather than as an error.
+    if not (REPO / "ubsan.supp").exists():
+        problems.append("ubsan_suppressions names ubsan.supp, which is not in the repository root")
 
     if problems:
         print("%s does not fit the core it is vendored with:" % ADAPTER.relative_to(REPO))

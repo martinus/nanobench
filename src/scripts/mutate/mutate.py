@@ -1,52 +1,14 @@
 #!/usr/bin/env python3
-"""Mutation testing for nanobench.
+"""What mutation testing means for nanobench in particular.
 
-Coverage says a line ran. This says something would have noticed it misbehaving.
-It breaks `nanobench.h`, rebuilds, runs the suite, and asks whether anything went
-red. What nothing notices is a hole in the tests.
+`--help` prints the shared manual from mutate_core.py first; this is the part
+underneath it. The file mutated by default is `src/include/nanobench.h`, the
+suite is the doctest binary `nb`, and cmake configures the lanes.
 
-Two ways to use it, and the first is the everyday one.
-
-**Put specific bugs back.** The check that decides whether a new test is worth
-keeping: break the thing it covers and confirm it goes red. Bugs are independent,
-so a batch runs across lanes at once rather than one rebuild after another.
-
-    mutate.py --bugs bugs.txt                  # a file of them, in parallel
-    mutate.py --replace OLD NEW                # one, repeatable
-    mutate.py --reverse HEAD                   # undo a fix, keep today's tests
-    mutate.py --bugs bugs.txt --reuse          # again, against an edited test
-
-`--reuse` keeps the lanes and syncs only what changed next time, which saves the
-copying and the configuring and not the compiling: the file every mutant
-rewrites is restamped on the way in, so the baseline rebuilds it either way.
-Measured here on one bug, 4 lanes: 54s cold against 52s reused, of which the
-baseline is 29s. Worth it for a sweep over many lanes, not for a single bug.
-
-A bug file is a name and a block each. Old text must match exactly once, and a
-block that does not apply stops the run - otherwise a typo substitutes nothing,
-the suite stays green, and the report blames your tests for it:
-
-    # IPC keyed off measured values rather than availability
-    <<<
-        if (hasIns && hasCyc) {
-    ===
-        if (rInsMedian > 0.0 && rCycMedian > 0.0) {
-    >>>
-
-Bug files worth keeping live in `src/scripts/mutate/bugs/`. They are snapshots
-against the code as it was, so one that stops applying is not a failure - it is
-the tool saying that part has been rewritten and the questions need re-deriving.
-
-**Or sweep for holes you have not thought of**, changing one place at a time:
-
-    mutate.py --diff                           # whatever is uncommitted
-    mutate.py --diff HEAD~1                    # only what that change touched
-    mutate.py --lines 2890-2960,3100           # a function, or a scattering
-    mutate.py                                  # the whole header
-    mutate.py --diff --dry-run                 # how many, and how long
-
-    mutate.py --operators deletions            # what a token sweep cannot ask
-    mutate.py --operators bitwise              # ^ and | alone
+    src/scripts/mutate/mutate.py --bugs src/scripts/mutate/bugs/env-config.txt
+    src/scripts/mutate/mutate.py --replace 'OLD CODE' 'NEW CODE'
+    src/scripts/mutate/mutate.py --diff                # whatever is uncommitted
+    src/scripts/mutate/mutate.py --lines 2890-2960,3100
 
 **What this cannot see here.** Performance counters are Linux-only and refused in
 most containers and VMs, and where they are refused nanobench records nothing -
@@ -55,15 +17,19 @@ so every mutant in the `ins`/`cyc`/`IPC`/`bra`/`miss` columns comes back
 every run says whether this machine has them; read it before believing a
 survivor in that code. It is also why this is not a CI gate.
 
+A mutant here rebuilds one translation unit - everything below
+`ANKERL_NANOBENCH_IMPLEMENT` is compiled in exactly one - then links and runs the
+suite, so it costs seconds rather than the minutes it costs in unordered_dense.
+`--reuse` saves the copying and the configuring and not the compiling: the file
+every mutant rewrites is restamped on the way in, so the baseline rebuilds it
+either way. Measured on one bug over 4 lanes, 54s cold against 52s reused, of
+which the baseline is 29s.
+
 `--cmake-arg` is how you ask a different question - whether some other leg
 catches a bug the default Release build cannot see:
 
-    mutate.py --replace OLD NEW --cmake-arg=-DNB_sanitizer=ON
-    mutate.py --diff --cmake-arg=-DCMAKE_CXX_COMPILER=clang++
-
-Everything above this line is the same in unordered_dense, and the code that does
-it lives in `mutate_core.py`, which is a vendored copy shared with that
-repository. What is below is only what this project has to answer for itself.
+    src/scripts/mutate/mutate.py --replace OLD NEW --cmake-arg=-DNB_sanitizer=ON
+    src/scripts/mutate/mutate.py --diff --cmake-arg=-DCMAKE_CXX_COMPILER=clang++
 """
 
 import os
@@ -87,7 +53,6 @@ class Nanobench(mutate_core.Project):
     # mutate, and it is also the TU the real build spends its time on.
     syntax_tu = os.path.join("src", "test", "app", "nanobench.cpp")
 
-    build_dir = "build"
     test_binary = "nb"
     backend = mutate_core.CMakeBackend()
     # The suite is built and run the way CI runs it. Not a detail: several tests
@@ -101,7 +66,8 @@ class Nanobench(mutate_core.Project):
     # `build*` matching `src/scripts/build.sh` if it were global.
     root_ignore = ("build*", "b", "bsan", "docs")
 
-    lane_bytes = 75 * mutate_core.MIB  # ~2 MB of sources, ~68 MB of build directory
+    # Measured: ~2 MB of sources, ~68 MB of build directory.
+    lane_bytes = 75 * mutate_core.MIB
 
     # A mutant here is one translation unit rebuilt, then a link and a suite run:
     # nearly all serial work inside one lane, so it is the lanes that divide it
@@ -111,7 +77,6 @@ class Nanobench(mutate_core.Project):
     # Fitted to the 4 lane and 32 lane ends of a full sweep, and it lands within
     # 5% of the 16 lane middle. Setup is almost all baseline, and barely grows
     # with the lane count.
-    cpu_seconds_per_mutant = 0.0
     lane_seconds_per_mutant = 6.4
     overhead_seconds_per_mutant = 0.46
     setup_seconds = 15.0
@@ -125,9 +90,8 @@ class Nanobench(mutate_core.Project):
         # source tree, which sync_tree would otherwise have to delete them from.
         return lane.build
 
-    def lane_env(self, lane_dir):
-        return {"UBSAN_OPTIONS": "print_stacktrace=1:halt_on_error=1:suppressions="
-                                 + os.path.join(lane_dir, "ubsan.supp")}
+    def ubsan_suppressions(self, lane):
+        return os.path.join(lane.dir, "ubsan.supp")
 
     def sanitizer(self, setup_args):
         # The project's own option rather than a compiler flag, and deliberately

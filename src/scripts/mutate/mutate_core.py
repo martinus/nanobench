@@ -12,7 +12,32 @@ how a build is configured, what the test binary is called, and the constants
 that only a measurement on that project can supply. Everything else - the lanes,
 the mutants, the baseline discipline, the verdicts and the report - is here.
 
-Coverage says a line ran. This says something would have noticed it misbehaving.
+The manual the two projects share is MANUAL below, which each `mutate.py`'s
+`--help` prints ahead of its own project section. It lives there rather than
+here so that there is one copy of it rather than one per repository: this
+docstring is for whoever opens this file, MANUAL is for whoever runs the tool.
+"""
+
+import argparse
+import bisect
+import concurrent.futures
+import contextlib
+import filecmp
+import fnmatch
+import json
+import os
+import queue
+import random
+import re
+import shlex
+import shutil
+import subprocess
+import sys
+import tempfile
+import threading
+import time
+
+MANUAL = """Coverage says a line ran. This says something would have noticed it misbehaving.
 It breaks a file, rebuilds, runs the suite, and asks whether anything went red.
 What nothing notices is a hole in the tests.
 
@@ -109,25 +134,6 @@ reason: a crashing mutant is an ordinary verdict here, and each one would
 otherwise leave ~30 MB in a lane that is about to be deleted.
 """
 
-import argparse
-import bisect
-import concurrent.futures
-import contextlib
-import filecmp
-import fnmatch
-import json
-import os
-import queue
-import random
-import re
-import shlex
-import shutil
-import subprocess
-import sys
-import tempfile
-import threading
-import time
-
 VERDICTS = ("caught", "compiler", "hang", "oom", "survived", "error")
 
 MIB = 1024 * 1024
@@ -163,6 +169,19 @@ class Backend:
         """What this run configures with, for the fingerprint and for `--dry-run`."""
         raise NotImplementedError
 
+    def sanitizer(self, setup_args):
+        """Which sanitizer this configuration builds with, as a word for the
+        fingerprint.
+
+        Asked of the backend rather than of the project, because the spelling is
+        the build system's: meson has one for every project, and a cmake project
+        has whatever it called its own switch. The fingerprint prints "no
+        sanitizer in this build" off the back of this, and that sentence is a
+        claim about what the run could observe - so a backend that cannot know
+        says so rather than answering "none".
+        """
+        return "unknown"
+
 
 class MesonBackend(Backend):
     name = "meson"
@@ -189,7 +208,14 @@ class MesonBackend(Backend):
         # The usual objection does not apply here. Unity is bad for development
         # because touching one file recompiles its whole chunk; a mutant
         # recompiles every file either way, so there is nothing left to spoil.
-        if not any("unity" in a for a in args.configure_arg):
+        #
+        # Asked of the project rather than forced, because *whether a tree builds
+        # as a unity at all* is not a general fact: an anonymous namespace stops
+        # isolating a file once its neighbours share the chunk, and a header with
+        # no include guard only collides there. A project that has not proved its
+        # tree survives it would get a baseline that fails to compile and the
+        # message "fix the tree first".
+        if args.unity and not any("unity" in a for a in args.configure_arg):
             extra.append("--unity=on")
         return extra + list(args.configure_arg)
 
@@ -197,9 +223,32 @@ class MesonBackend(Backend):
         return (["meson", "setup"] + self.setup_args(args)
                 + (["--reconfigure"] if configured else []) + [build, source])
 
+    def sanitizer(self, setup_args):
+        return next((a.split("=", 1)[1] for a in setup_args
+                     if a.startswith("-Db_sanitize=")), "none")
+
 
 class CMakeBackend(Backend):
     name = "cmake"
+
+    # `--buildtype` is one shared flag over two vocabularies, and the translation
+    # has to be a table rather than `.capitalize()`. cmake accepts an unknown
+    # CMAKE_BUILD_TYPE *silently*, dropping every per-configuration flag with it -
+    # so `debugoptimized` would configure a lane with no optimisation at all, and
+    # a project whose tests assert on measured time would then produce a wall of
+    # verdicts about the wrong binary. Anything not in here is refused instead.
+    BUILD_TYPES = {"debug": "Debug", "release": "Release",
+                   "debugoptimized": "RelWithDebInfo", "minsize": "MinSizeRel"}
+
+    def build_type(self, buildtype):
+        try:
+            return self.BUILD_TYPES[buildtype.lower()]
+        except KeyError:
+            raise RuntimeError(
+                "cmake has no configuration for --buildtype %s. Known: %s. It "
+                "would be accepted silently and drop every optimisation flag "
+                "with it, so it is refused here."
+                % (buildtype, ", ".join(sorted(self.BUILD_TYPES))))
 
     def setup_args(self, args):
         # Ninja because the lanes rebuild constantly and nothing else here
@@ -207,7 +256,7 @@ class CMakeBackend(Backend):
         # pre-filter is read out of it rather than reassembled by hand - see
         # Lane._syntax_command for why that matters.
         extra = ["-GNinja",
-                 "-DCMAKE_BUILD_TYPE=" + args.buildtype.capitalize(),
+                 "-DCMAKE_BUILD_TYPE=" + self.build_type(args.buildtype),
                  "-DCMAKE_EXPORT_COMPILE_COMMANDS=ON"]
         return extra + list(args.configure_arg)
 
@@ -242,10 +291,17 @@ class Project:
     build_dir = "build"
     #: The test binary, relative to the build directory.
     test_binary = ""
-    backend = MesonBackend()
+    #: A MesonBackend or a CMakeBackend. No default: which build system a project
+    #: uses is the most consequential thing it has to say, and inheriting one
+    #: silently is how the wrong tool gets run against the right tree.
+    backend = None
     #: What `--buildtype` defaults to. A project whose suite only asserts what it
     #: asserts in an optimised build has to say so.
     buildtype = "debug"
+    #: Whether lanes merge the translation units. Worth 2.5x on a many-TU project
+    #: and nothing on a single-TU one, and only the project knows whether its tree
+    #: survives it - see MesonBackend.setup_args.
+    unity = False
 
     #: Never copied into a lane. Build directories go in `root_ignore` instead
     #: when their names are ordinary words, since a pattern matching `build`
@@ -255,29 +311,76 @@ class Project:
     root_ignore = ()
 
     #: Roughly what a lane occupies once it has been built in, for the check that
-    #: refuses before copying. Sources plus a build directory.
-    lane_bytes = 90 * MIB
+    #: refuses before copying. Sources plus a build directory. A floor rather than
+    #: a considered value - a project that has looked should say what it saw.
+    lane_bytes = 64 * MIB
 
-    # The cost model behind --dry-run, in three terms because projects differ in
-    # which one dominates. A many-TU project spends CPU-seconds that no number of
-    # lanes creates or removes, so that term is divided by the *machine*; a
-    # single-TU project spends serial seconds inside one lane, so that term is
-    # divided by the lanes; and the last is what neither divides - the loss to
-    # cache and memory contention when every lane compiles at once. Each project
-    # measures its own; all of them are one machine's numbers, so an estimate is
-    # an order of magnitude rather than a promise.
+    # The cost model behind --dry-run, in three per-mutant terms because projects
+    # differ in which one dominates. A many-TU project spends CPU-seconds that no
+    # number of lanes creates or removes, so that term is divided by the
+    # *machine*; a single-TU project spends serial seconds inside one lane, so
+    # that term is divided by the lanes; and the last is what neither divides -
+    # the loss to cache and memory contention when every lane compiles at once.
+    #
+    # All five default to zero on purpose. They are measurements, and one
+    # project's numbers standing in for another's would make --dry-run confidently
+    # wrong rather than obviously unanswered; a project that has measured nothing
+    # gets an estimate of nothing.
     cpu_seconds_per_mutant = 0.0
     lane_seconds_per_mutant = 0.0
     overhead_seconds_per_mutant = 0.0
-    setup_seconds = 20.0
-    setup_seconds_per_lane = 1.5
+    setup_seconds = 0.0
+    setup_seconds_per_lane = 0.0
 
-    def lane_env(self, lane_dir):
-        """Environment a lane needs beyond the defaults, given where it lives.
+    def problems(self, repo=None):
+        """Everything wrong with this project object, as sentences.
+
+        Here rather than in each repository's lint because none of it is about
+        any one project, and because the half that was written first lived in
+        nanobench's lint - the repository with no test suite, so the checks that
+        exist to catch a silent failure were themselves uncovered.
+
+        Every one of these is silent at runtime. A `syntax_tu` naming a file that
+        has moved makes the pre-filter borrow another TU's flags and swap in a
+        path that does not exist, so it fails for every mutant and the whole run
+        reports `compiler` - a verdict in the flattering direction, which is the
+        one way this tool must not be wrong.
+        """
+        repo = repo or self.repo
+        found = []
+        for attribute in ("slug", "repo", "target", "build_dir", "test_binary"):
+            if not getattr(self, attribute, None):
+                found.append("%s is empty, and nothing else can fill it in" % attribute)
+        if self.backend is None:
+            found.append("no backend: say MesonBackend() or CMakeBackend()")
+        if repo and not os.path.isdir(repo):
+            found.append("repo %s is not a directory" % repo)
+        elif repo:
+            for attribute in ("target", "syntax_tu"):
+                named = getattr(self, attribute, None)
+                if named and not os.path.exists(os.path.join(repo, named)):
+                    found.append("%s names %s, which does not exist" % (attribute, named))
+        return found
+
+    def lane_env(self, lane):
+        """Environment a lane needs beyond the defaults.
 
         Applied with setdefault, so what the caller already exported still wins.
+        A sanitizer suppressions file goes through `ubsan_suppressions` instead -
+        setting UBSAN_OPTIONS here would replace the core's own options rather
+        than adding to them.
         """
         return {}
+
+    def ubsan_suppressions(self, lane):
+        """A suppressions file for this lane, or None.
+
+        Separate from `lane_env` because UBSAN_OPTIONS is not a project's to own:
+        `halt_on_error=1` is what makes UBSan fail a run rather than print and
+        exit 0, and a project that set the variable wholesale would drop it - and
+        with it every mutant only UBSan can see, reported as survivors.
+        """
+        return None
 
     def test_cwd(self, lane):
         """Where the test binary runs. The lane's source tree unless a project
@@ -285,7 +388,7 @@ class Project:
         working directory, or reads a path it derived from one."""
         return lane.dir
 
-    def default_syntax_tu(self, args):
+    def default_syntax_tu(self, path):
         """The pre-filter TU for whatever `--file` names.
 
         Mutating a header the TU includes is the case it was built for; mutating
@@ -293,19 +396,17 @@ class Project:
         compile something the mutation cannot reach, pass every time, and quietly
         stop filtering - so it is turned off instead.
         """
-        if args.file == self.target:
+        if path == self.target:
             return self.syntax_tu
-        if args.file.endswith((".cpp", ".cc", ".cxx")):
-            return args.file
+        if path.endswith((".cpp", ".cc", ".cxx")):
+            return path
         return None
 
     def sanitizer(self, setup_args):
         """Which sanitizer this configuration builds with, as a word for the
-        fingerprint. Asked of the project because the option is the project's:
-        meson has a common spelling, a cmake project has whatever it called its
-        own switch."""
-        return next((a.split("=", 1)[1] for a in setup_args
-                     if a.startswith("-Db_sanitize=")), "none")
+        fingerprint. The build system knows the common spelling; a project that
+        wraps it in an option of its own overrides this."""
+        return self.backend.sanitizer(setup_args)
 
     def extra_facts(self, args):
         """Anything else this run's verdicts depend on, for the fingerprint."""
@@ -329,10 +430,11 @@ def lane_ignore_for(project):
     Both of those are real - one from each project.
     """
     patterns = shutil.ignore_patterns(*project.ignore)
+    root = os.path.abspath(project.repo)
 
     def ignore(directory, names):
         skip = list(patterns(directory, names))
-        if os.path.abspath(directory) == os.path.abspath(project.repo):
+        if os.path.abspath(directory) == root:
             for pattern in project.root_ignore:
                 skip.extend(fnmatch.filter(names, pattern))
         return skip
@@ -1140,7 +1242,7 @@ class Lane:
         self.ignore = lane_ignore_for(project)
 
         self.env = dict(os.environ)
-        for key, value in project.lane_env(self.dir).items():
+        for key, value in project.lane_env(self).items():
             self.env.setdefault(key, value)
         # ccache keys on the compiler command line, and every lane's -I is a
         # different absolute path - base_dir rewrites absolute paths beneath it
@@ -1156,9 +1258,17 @@ class Lane:
         # halt_on_error UBSan prints the error and the binary still exits 0 -
         # and a mutant that only UBSan can see is then reported as a survivor,
         # which is the one way this tool must never be wrong.
+        #
+        # A project's suppressions file is appended rather than handed the whole
+        # variable, so that these two options reach every lane whatever a project
+        # has to add - and so that adding a third one here does not silently miss
+        # the project that had replaced the variable wholesale.
+        ubsan = ["print_stacktrace=1", "halt_on_error=1"]
+        suppressions = project.ubsan_suppressions(self)
+        if suppressions:
+            ubsan.append("suppressions=" + suppressions)
         self.env.setdefault("ASAN_OPTIONS", "detect_stack_use_after_return=1")
-        self.env.setdefault("UBSAN_OPTIONS",
-                            "print_stacktrace=1:halt_on_error=1")
+        self.env.setdefault("UBSAN_OPTIONS", ":".join(ubsan))
 
     def setup(self):
         if os.path.isdir(self.dir):
@@ -1224,7 +1334,7 @@ class Lane:
                           if os.path.abspath(e["directory"]) == os.path.abspath(self.build)), None)
         if entry is None:
             return None
-        argv, out, i = shlex.split(self._command_of(entry)), [], 0
+        argv, out, i = shlex.split(entry["command"]), [], 0
         swapped = False
         while i < len(argv):
             arg = argv[i]
@@ -1251,16 +1361,6 @@ class Lane:
             return None
         out.insert(1, "-fsyntax-only")
         return dict(argv=out, cwd=entry["directory"])
-
-    @staticmethod
-    def _command_of(entry):
-        """One entry's compile line. cmake writes `command`, but the format also
-        allows `arguments` as a list, which is what a generator may emit - and
-        reading only the first would turn the pre-filter off with no explanation
-        on whichever build system chose the other."""
-        if "command" in entry:
-            return entry["command"]
-        return " ".join(shlex.quote(a) for a in entry.get("arguments", []))
 
     def write_target(self, text):
         with open(self.target, "w", encoding="utf-8") as f:
@@ -1599,11 +1699,8 @@ def render_fingerprint(project, facts):
              "mutating        %s" % facts["file"],
              "tests           %s" % facts["tests"]]
     rows, notes = project.extra_fingerprint(facts)
-    # Copied before anything is appended: a project that returns a constant list
-    # would otherwise grow it by three notes on every call, and the second run in
-    # a process would print them twice.
-    notes = list(notes)
-    lines += list(rows)
+    notes = list(notes)  # appended to below; a project's own list is not ours to grow
+    lines += rows
     if not facts["memory"]:
         notes.append(
             "NOTE: nothing caps what a mutant may allocate in this run%s.\n"
@@ -1863,8 +1960,13 @@ def report(results, args, original):
 
 
 def build_parser(project, doc):
+    # The shared manual, then the project's own section. Composed rather than
+    # each adapter carrying an excerpt: the excerpts were 37 identical lines and
+    # both left out the verdicts and the memory cap, which is what a reader of
+    # --help most needs and what only this file had.
     p = argparse.ArgumentParser(
-        description=doc, formatter_class=argparse.RawDescriptionHelpFormatter)
+        description=MANUAL + "\n" + (doc or ""),
+        formatter_class=argparse.RawDescriptionHelpFormatter)
     p.add_argument("--replace", nargs=2, metavar=("OLD", "NEW"), action="append",
                    help="put a specific bug back: substitute OLD with NEW (must "
                         "match exactly once) and report which tests notice. "
@@ -1952,6 +2054,11 @@ def build_parser(project, doc):
                         "--workdir says otherwise, so two concurrent runs need "
                         "different ones")
     p.add_argument("--json", metavar="FILE", help="write the full result set")
+    # Not a flag: whether merged translation units are safe is the project's
+    # answer, not a per-run choice, and `--meson-arg=--unity=off` is already the
+    # way to override it for one run. Carried on `args` so a backend reads one
+    # namespace rather than two.
+    p.set_defaults(unity=project.unity)
     return p
 
 
@@ -1964,8 +2071,8 @@ def collect_mutants(project, args, original):
     the suite green twice - is paid once instead. The named bugs come first in
     the report, which is the order they are read in.
 
-    None rather than a list when the answer is "there was nothing to ask" and
-    that is not an error - a --diff over lines that hold no code, say.
+    An empty list is the honest answer to "there was nothing to ask" - a --diff
+    over lines that hold no code, say - and the caller reads it as one.
     """
     mutants = []
     if args.bugs:
@@ -1995,7 +2102,7 @@ def collect_mutants(project, args, original):
             # alongside a bug file it is a note, not a reason to run nothing.
             print("no changed lines in %s since %s" % (args.file, args.diff))
             if not mutants:
-                return None
+                return []
         else:
             mask = code_mask(original)
             sites, equivalent = [], []
@@ -2023,13 +2130,22 @@ def collect_mutants(project, args, original):
         # clear answer and someone re-running it to find out why.
         print("nothing to mutate in %s - the lines asked for are comments, "
               "preprocessor or whitespace" % args.file)
-        return None
     return mutants
 
 
-def main(project, doc=None, argv=None):
-    p = build_parser(project, doc or __doc__)
-    args = p.parse_args(argv)
+def main(project, doc):
+    p = build_parser(project, doc)
+    args = p.parse_args()
+
+    # Before anything is copied or built. Each of these is silent at runtime and
+    # surfaces as a lane that builds nothing or a pre-filter that rejects
+    # everything, so they are worth one stat call each at the top of every run
+    # rather than only in whichever repository remembered to lint for them.
+    problems = project.problems()
+    if problems:
+        raise RuntimeError("%s does not describe this repository:\n%s"
+                           % (type(project).__name__,
+                              "\n".join("  " + problem for problem in problems)))
 
     modes = [bool(args.replace), bool(args.bugs), bool(args.reverse)]
     if sum(modes) > 1:
@@ -2043,14 +2159,19 @@ def main(project, doc=None, argv=None):
         original = f.read()
 
     if args.syntax_tu is None:
-        args.syntax_tu = project.default_syntax_tu(args)
+        args.syntax_tu = project.default_syntax_tu(args.file)
         if args.syntax_tu is None:
             args.quick_reject = False
+    elif not os.path.exists(os.path.join(project.repo, args.syntax_tu)):
+        # Named by hand and wrong. Left to itself the pre-filter would compile a
+        # borrowed chunk's flags against a path that does not exist, fail for
+        # every mutant, and report the run as one long wall of `compiler`.
+        p.error("no such file to pre-filter with: %s" % args.syntax_tu)
     if not args.quick_reject:
         args.syntax_tu = None
 
     mutants = collect_mutants(project, args, original)
-    if mutants is None:
+    if not mutants:
         return 0
 
     plan(args, len(mutants))
@@ -2107,7 +2228,7 @@ def main(project, doc=None, argv=None):
     return 1 if counts["survived"] else 0
 
 
-def run(project, doc=None):
+def run(project, doc):
     """What a project's `mutate.py` calls. The exception handling is here rather
     than in each copy of it, because every RuntimeError raised in this file is
     the tool refusing to answer - a bug block that does not apply, a baseline
