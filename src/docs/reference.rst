@@ -184,6 +184,9 @@ trailing comma is harmless. The keys are the :cpp:class:`Bench <ankerl::nanobenc
      - duration
      - :cpp:func:`Bench::maxEpochTime <ankerl::nanobench::Bench::maxEpochTime>`
 
+Each entry is applied by calling the setter its key names, so anything that setter enforces holds for a value that arrived from the
+environment too - ``minEpochIterations=0`` becomes 1, exactly as :cpp:func:`Bench::minEpochIterations <ankerl::nanobench::Bench::minEpochIterations>` does.
+
 A **count** is a whole number. A **duration** is a number followed by one of ``ns``, ``us``, ``ms`` or ``s``, and the number may be
 fractional - so a duration can be written at whatever scale reads best:
 
