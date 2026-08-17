@@ -1,6 +1,9 @@
 .vscode/
 .clangd/
 .cache/
+# src/scripts/ is python now that the mutation tool is two files that import each other, and an
+# import writes one of these next to the source.
+__pycache__/
 **/*.ppm
 **/perf.data
 **/perf.data.old
