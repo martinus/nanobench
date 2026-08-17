@@ -253,6 +253,7 @@ suite is green first.
 
 ```sh
 src/scripts/mutate/mutate.py --replace 'OLD CODE' 'NEW CODE'   # does a test catch this bug?
+src/scripts/mutate/mutate.py --diff                             # whatever is uncommitted
 src/scripts/mutate/mutate.py --diff HEAD~1                      # what did my change leave uncovered?
 ```
 
@@ -260,7 +261,30 @@ src/scripts/mutate/mutate.py --diff HEAD~1                      # what did my ch
 while keeping its tests, and `--cmake-arg` asks whether some other leg catches it. `--help` has the
 grammar and the rest; do not copy it here, or the copies drift.
 
-Four things about it are worth knowing before trusting a number:
+**The tool is two files, and one of them is shared with unordered_dense.** `mutate_core.py` is
+everything that is not about any one project — the lanes, the mutants, the baseline discipline, the
+verdicts, the report — and that repository holds a byte-identical copy. `mutate.py` beside it is
+nanobench's adapter: the header, that cmake configures the build, that the binary is `nb` and runs
+from the build directory, the `ubsan.supp` path, the performance-counter question, and the measured
+constants behind `--dry-run`. Roughly 1800 lines shared against 100 of adapter.
+
+The core is *tested over there*, by `scripts/test_mutate.py` — a hermetic suite that covers the
+cmake backend this repository drives even though that one builds with meson. So a change to the core
+is only half a change: make it in unordered_dense, run that suite, copy the file back, and record
+the new hash in both `mutate_core.sha256` files. `lint-mutate-core.py` fails if this copy has been
+edited without that hash moving with it, and separately checks that the adapter still fits the core
+it is vendored against — a renamed hook is otherwise silent, and `test_cwd` misspelled leaves `nb`
+writing its example artifacts into a lane's source tree.
+
+Two capabilities worth knowing, both of which arrived with the shared core. `--operators` picks what
+a sweep changes: `deletions` removes whole statements, which is the shape nearly every hand-written
+bug turns out to have — "the code forgot to do this" is never one token — and it costs *less* than
+the token sweep, since half of them are rejected by the `-fsyntax-only` pre-filter rather than a
+rebuild. `bitwise` mutates `^` and `|`, which the token table leaves alone. And a mutant in a branch
+this configuration does not compile is now dropped before it costs a rebuild, with the run saying
+which lines those were — this header picks between platforms with `#if` more than most.
+
+Five things about it are worth knowing before trusting a number:
 
 - **Every way this tool has been wrong so far flattered the tests** — it reported "nothing caught it"
   when the fault was its own. That is why the baseline must be green before scoring and why a bug
@@ -275,7 +299,15 @@ Four things about it are worth knowing before trusting a number:
   the container or CI. On this machine the clang sanitizer leg cannot even baseline, for the
   libstdc++ reason above.
 - **A full sweep is tens of minutes**; `--diff` against your own change is the version worth running
-  every time. `--dry-run` sizes either, though its estimate is calibrated to one machine.
+  every time — it measures from the merge base, so a branch that has not caught up with master does
+  not sweep every line master moved on without it. `--dry-run` sizes either, though its estimate is
+  calibrated to one machine.
+- **One flaky case stops the whole run**, because the baseline refuses to score until the suite is
+  green twice — which is the point of it, not a defect. `unit_compare_calibration_is_not_fooled_by_
+  one_slow_reading` is the one that goes red on a loaded machine here, asserting an epoch of at
+  least 0.1ms against the 0.2ms it asked for. `--exclude-filter NAME` (doctest's `-tce=`) is the
+  honest way past it: the fingerprint then prints what was skipped, where lowering `--baseline-runs`
+  would hide it.
 
 What it found when it was written is the standing example of why the distinction matters: the
 comparison table's performance counters could be deleted outright and the whole suite stayed green,

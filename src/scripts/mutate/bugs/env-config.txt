@@ -75,9 +75,9 @@
 
 # the fraction digits are not taken back out of the scale, so "1.5s" is 15s
 <<<
-    if (!scaleByPowerOfTen(digits, unitExponent - fractionDigits) ||
+        if (scaleByPowerOfTen(digits, unitExponent - fractionDigits) &&
 ===
-    if (!scaleByPowerOfTen(digits, unitExponent) ||
+        if (scaleByPowerOfTen(digits, unitExponent) &&
 >>>
 
 # the last division truncates instead of rounding, so "1.5ns" is 1ns
@@ -100,7 +100,10 @@
 
 # a sign is accepted, which is how "-1" becomes 18446744073709551615 through
 # every parser that reads a signed value and negates it
-<<<
+#
+# `additive` because this one really does mean to insert in front of code that
+# stays: the digit check below is still there, it just never sees the sign.
+<<< additive
         if (ch < '0' || ch > '9') {
             return "is not a number";
         }
