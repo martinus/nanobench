@@ -1,14 +1,28 @@
-# How NANOBENCH_CONFIG is parsed. The whole point of the variable is that a
-# number typed into a shell reaches the right field with the right value, so
-# every bug here is one that would leave a benchmark running with settings
-# nobody asked for - and unlike a wrong measurement, there is no output that
-# says so. Run with a sweep over the same code for what is not listed here:
+# How NANOBENCH_CONFIG is parsed and reaches a Bench. The whole point of the
+# variable is that a number typed into a shell arrives at the right setting with
+# the right value, so every bug here is one that would leave a benchmark running
+# with settings nobody asked for - and unlike a wrong measurement, there is no
+# output that says so. Run with a sweep over the same code for what is not
+# listed here:
 #
 #     mutate.py --bugs src/scripts/mutate/bugs/env-config.txt \
-#               --lines 2673-2919 --reuse
+#               --lines 2673-2930 --reuse
 #
 # A snapshot against the code as it was: when a block stops applying, that part
 # has been rewritten and these questions want re-deriving rather than repairing.
+
+# the variable is never read, so the parser is perfect and reaches nothing
+<<<
+    detail::applyEnvConfig(*this);
+===
+>>>
+
+# the variable is spelled differently from what is documented
+<<<
+    auto const* const configStr = getEnv("NANOBENCH_CONFIG");
+===
+    auto const* const configStr = getEnv("NANOBENCH_CONFIGURATION");
+>>>
 
 # the unit is not required after all, so "minEpochTime=5" is a 5ns floor - the
 # exact trap that made one variable per setting, in nanoseconds, the wrong shape
@@ -22,30 +36,48 @@
     }
 >>>
 
-# "s" tried before the two character units, so every one of them matches it and
-# "5ms" is parsed as the number "5m"
+# the metric prefix is not consumed, so "5ms" is the number "5m" and only bare
+# seconds work at all
 <<<
-    return matchTimeUnit(value, "ns", 0, exponent, numberLen) || matchTimeUnit(value, "us", 3, exponent, numberLen) ||
-           matchTimeUnit(value, "ms", 6, exponent, numberLen) || matchTimeUnit(value, "s", 9, exponent, numberLen);
+    numberLen = value.size() - 1;
+    exponent = 9;
+    if (numberLen > 0) {
 ===
-    return matchTimeUnit(value, "s", 9, exponent, numberLen) || matchTimeUnit(value, "ns", 0, exponent, numberLen) ||
-           matchTimeUnit(value, "us", 3, exponent, numberLen) || matchTimeUnit(value, "ms", 6, exponent, numberLen);
+    numberLen = value.size() - 1;
+    exponent = 9;
+    if (false) {
 >>>
 
 # us and ms an order of magnitude apart from where they belong
 <<<
-    return matchTimeUnit(value, "ns", 0, exponent, numberLen) || matchTimeUnit(value, "us", 3, exponent, numberLen) ||
-           matchTimeUnit(value, "ms", 6, exponent, numberLen) || matchTimeUnit(value, "s", 9, exponent, numberLen);
+        if ('n' == prefix) {
+            exponent = 0;
+            --numberLen;
+        } else if ('u' == prefix) {
+            exponent = 3;
+            --numberLen;
+        } else if ('m' == prefix) {
+            exponent = 6;
+            --numberLen;
+        }
 ===
-    return matchTimeUnit(value, "ns", 0, exponent, numberLen) || matchTimeUnit(value, "us", 6, exponent, numberLen) ||
-           matchTimeUnit(value, "ms", 3, exponent, numberLen) || matchTimeUnit(value, "s", 9, exponent, numberLen);
+        if ('n' == prefix) {
+            exponent = 0;
+            --numberLen;
+        } else if ('u' == prefix) {
+            exponent = 6;
+            --numberLen;
+        } else if ('m' == prefix) {
+            exponent = 3;
+            --numberLen;
+        }
 >>>
 
 # the fraction digits are not taken back out of the scale, so "1.5s" is 15s
 <<<
-        if (scaleByPowerOfTen(digits, unitExponent - fractionDigits) &&
+    if (!scaleByPowerOfTen(digits, unitExponent - fractionDigits) ||
 ===
-        if (scaleByPowerOfTen(digits, unitExponent) &&
+    if (!scaleByPowerOfTen(digits, unitExponent) ||
 >>>
 
 # the last division truncates instead of rounding, so "1.5ns" is 1ns
@@ -97,45 +129,69 @@
         if (digits > (std::numeric_limits<uint64_t>::max() - 9U) / 10U) {
 >>>
 
+# The setter is bypassed for the field behind it, so a rule the setter enforces
+# stops holding for a value that arrived from the environment -
+# minEpochIterations stops refusing 0.
+#
+# This one is caught by the compiler, and that is the point of it: Bench::config()
+# hands out a `Config const&`, so there is no way to reach the fields from here at
+# all. The route through the setters is structural rather than remembered, which
+# is a better answer than a test.
+<<<
+    if (reason.empty()) {
+        (bench.*setter)(static_cast<Arg>(parsed));
+    }
+    return true;
+}
+
+static bool setDuration(
+===
+    if (reason.empty()) {
+        (bench.*setter)(static_cast<Arg>(parsed));
+        if (key == "minEpochIterations") {
+            bench.config().mMinEpochIterations = parsed;
+        }
+    }
+    return true;
+}
+
+static bool setDuration(
+>>>
+
 # an unknown key is silently ignored rather than reported
 <<<
         errors.push_back("NANOBENCH_CONFIG: unknown key '" + key + "' - valid keys are " + configKeyList());
-        return;
 ===
-        return;
 >>>
 
 # a value that did not parse is reported and applied anyway
 <<<
-    if (!reason.empty()) {
+    } else if (!reason.empty()) {
         errors.push_back("NANOBENCH_CONFIG: '" + key + "=" + value + "' " + reason);
     }
 ===
+    }
 >>>
 
 # minEpochTime lands in maxEpochTime
 <<<
-    if (key == "minEpochTime") {
-        cfg.mMinEpochTime = value;
-    } else {
-        cfg.mMaxEpochTime = value;
-    }
+    return setDuration(bench, key, "minEpochTime", &Bench::minEpochTime, value, reason) ||
 ===
-    if (key == "minEpochTime") {
-        cfg.mMaxEpochTime = value;
-    } else {
-        cfg.mMaxEpochTime = value;
-    }
+    return setDuration(bench, key, "minEpochTime", &Bench::maxEpochTime, value, reason) ||
 >>>
 
-# epochIterations lands in minEpochIterations - two neighbouring fields whose
+# epochIterations lands in minEpochIterations - two neighbouring settings whose
 # names differ by one word and whose meanings do not
 <<<
-    } else if (key == "epochIterations") {
-        cfg.mEpochIterations = value;
+           setCount<uint64_t>(bench, key, "epochIterations", &Bench::epochIterations, value, reason) ||
 ===
-    } else if (key == "epochIterations") {
-        cfg.mMinEpochIterations = value;
+           setCount<uint64_t>(bench, key, "epochIterations", &Bench::minEpochIterations, value, reason) ||
+>>>
+
+# a key drops out of the chain, so it reports as unknown
+<<<
+           setCount<uint64_t>(bench, key, "warmup", &Bench::warmup, value, reason) ||
+===
 >>>
 
 # an empty entry is complained about, so a trailing comma - or an empty variable
@@ -157,7 +213,7 @@
 
 # whitespace is part of the key, so "epochs = 3" is an unknown key " epochs "
 <<<
-        applyConfigEntry(cfg, trimWhitespace(entry.substr(0, equals)), trimWhitespace(entry.substr(equals + 1)), errors);
+        applyConfigEntry(bench, trimWhitespace(entry.substr(0, equals)), trimWhitespace(entry.substr(equals + 1)), errors);
 ===
-        applyConfigEntry(cfg, entry.substr(0, equals), entry.substr(equals + 1), errors);
+        applyConfigEntry(bench, entry.substr(0, equals), entry.substr(equals + 1), errors);
 >>>

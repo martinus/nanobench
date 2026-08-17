@@ -1618,14 +1618,14 @@ std::pair<double, double> medianInterval(std::vector<double> values, double conf
 // its own exit once - so at least one miss is always attributed to it.
 double correctBranchMisses(uint64_t rawBranchMisses, double correctedBranchInstructions) noexcept;
 
-// Applies a "key=value,key=value" string - the contents of NANOBENCH_CONFIG - to cfg. Separate from
-// reading the environment so that it can be tested by handing it a string: the variable itself is
-// read once per process and is spelled putenv on one platform and _putenv_s on another, neither of
-// which a test should have to care about.
+// Applies a "key=value,key=value" string - the contents of NANOBENCH_CONFIG - to bench, by calling
+// the setter each key is named after. Separate from reading the environment so that it can be tested
+// by handing it a string, rather than through a variable that is spelled putenv on one platform and
+// _putenv_s on another.
 //
 // An entry that cannot be applied appends one message to errors and is skipped; every other entry
 // still applies. Nothing throws, so a typo behaves the same for a consumer built -fno-exceptions.
-void applyConfigString(Config& cfg, std::string const& configStr, std::vector<std::string>& errors);
+void applyConfigString(Bench& bench, std::string const& configStr, std::vector<std::string>& errors);
 
 } // namespace detail
 
@@ -2423,8 +2423,9 @@ char const* getEnv(char const* name);
 bool isEndlessRunning(std::string const& name);
 bool isWarningsEnabled();
 
-// Applies NANOBENCH_CONFIG to a freshly built Config, printing whatever it could not use.
-void applyEnvConfig(Config& cfg);
+// Applies NANOBENCH_CONFIG to a freshly built Bench, printing whatever it could not use. Every Bench
+// re-reads and re-parses the variable; only the complaining is once per process.
+void applyEnvConfig(Bench& bench);
 
 template <typename T>
 T parseFile(std::string const& filename, bool* fail);
@@ -2735,23 +2736,32 @@ static bool scaleByPowerOfTen(uint64_t& value, int exponent) {
     return true;
 }
 
-// True when value ends in unit. exponent is then the power of ten that turns that unit into
+// The trailing ns/us/ms/s of a duration. exponent is then the power of ten that turns that unit into
 // nanoseconds, and numberLen how much of value is left in front of it.
-static bool matchTimeUnit(std::string const& value, char const* unit, int unitExponent, int& exponent, size_t& numberLen) {
-    auto const unitLen = std::strlen(unit);
-    if (value.size() < unitLen || 0 != value.compare(value.size() - unitLen, unitLen, unit)) {
+//
+// Every unit is an "s" with an optional metric prefix, which is worth saying that way rather than as
+// a list of four suffixes to try: a list has to put the two character units first, since every one
+// of them also ends in a match for "s", and nothing about the list says so.
+static bool splitTimeUnit(std::string const& value, int& exponent, size_t& numberLen) {
+    if (value.empty() || 's' != value[value.size() - 1]) {
         return false;
     }
-    exponent = unitExponent;
-    numberLen = value.size() - unitLen;
+    numberLen = value.size() - 1;
+    exponent = 9;
+    if (numberLen > 0) {
+        auto const prefix = value[numberLen - 1];
+        if ('n' == prefix) {
+            exponent = 0;
+            --numberLen;
+        } else if ('u' == prefix) {
+            exponent = 3;
+            --numberLen;
+        } else if ('m' == prefix) {
+            exponent = 6;
+            --numberLen;
+        }
+    }
     return true;
-}
-
-// The trailing ns/us/ms/s of a duration. The two character units have to be tried first, or every
-// one of them ends in a match for "s".
-static bool splitTimeUnit(std::string const& value, int& exponent, size_t& numberLen) {
-    return matchTimeUnit(value, "ns", 0, exponent, numberLen) || matchTimeUnit(value, "us", 3, exponent, numberLen) ||
-           matchTimeUnit(value, "ms", 6, exponent, numberLen) || matchTimeUnit(value, "s", 9, exponent, numberLen);
 }
 
 // A whole number of iterations or epochs.
@@ -2775,6 +2785,9 @@ static std::string parseDuration(std::string const& value, std::chrono::nanoseco
         return "is missing a time unit - use ns, us, ms or s";
     }
 
+    // Nested, rather than the flatter chain of early returns this wants to be. `return reason;` is
+    // only elided when it is the *only* return of a named local, and clang's -Wnrvo is an error
+    // here; the early return above is fine because it returns a temporary built from a literal.
     uint64_t digits = 0;
     int fractionDigits = 0;
     std::string reason = parseDecimal(value.substr(0, numberLen), digits, fractionDigits);
@@ -2790,74 +2803,74 @@ static std::string parseDuration(std::string const& value, std::chrono::nanoseco
     return reason;
 }
 
-// What a key's value looks like, or that there is no such key. Only tuning knobs are here: name,
-// title, unit, batch and timeUnit say what a benchmark *is*, and letting a shell variable change
-// those for a whole process would change what the numbers mean rather than how long they take.
-enum class ConfigKeyKind { unknown, count, duration };
-
-static ConfigKeyKind configKeyKind(std::string const& key) {
-    if (key == "minEpochTime" || key == "maxEpochTime") {
-        return ConfigKeyKind::duration;
+// One key, applied by calling the Bench setter it is named after. Going through the setter is what
+// "the keys are the Bench setter names" has to mean to be worth writing down: minEpochIterations
+// turns 0 into 1, and a setter that grows a rule later gets it for a value from the environment too.
+//
+// Arg is spelled at the call site rather than deduced. Every one of these names a setter *and* a
+// getter, and naming the parameter type outright makes picking between them ordinary overload
+// resolution rather than deduction against an overload set.
+template <typename Arg>
+static bool setCount(Bench& bench, std::string const& key, char const* name, Bench& (Bench::*setter)(Arg), std::string const& value,
+                     std::string& reason) {
+    if (key != name) {
+        return false;
     }
-    if (key == "epochs" || key == "warmup" || key == "minEpochIterations" || key == "epochIterations" ||
-        key == "clockResolutionMultiple") {
-        return ConfigKeyKind::count;
+    uint64_t parsed = 0;
+    reason = parseCount(value, parsed);
+    // size_t is 32 bits on a third of the matrix, and a count that does not survive the trip would
+    // otherwise run a quietly different benchmark than the one that was asked for
+    if (reason.empty() && static_cast<uint64_t>(static_cast<Arg>(parsed)) != parsed) {
+        reason = "is too large";
     }
-    return ConfigKeyKind::unknown;
+    if (reason.empty()) {
+        (bench.*setter)(static_cast<Arg>(parsed));
+    }
+    return true;
 }
 
-// Sorted, so that a typo is answered with the same list every time.
+static bool setDuration(Bench& bench, std::string const& key, char const* name, Bench& (Bench::*setter)(std::chrono::nanoseconds),
+                        std::string const& value, std::string& reason) {
+    if (key != name) {
+        return false;
+    }
+    std::chrono::nanoseconds parsed{};
+    reason = parseDuration(value, parsed);
+    if (reason.empty()) {
+        (bench.*setter)(parsed);
+    }
+    return true;
+}
+
+// Everything NANOBENCH_CONFIG understands, each key named exactly once. '||' short-circuits, so at
+// most one of these runs and nothing past the match is even evaluated.
+//
+// This is the shape generateConfigTag() uses for the same seven names in the other direction, and
+// for the reason its comment gives: as a stanza per key, the one mistake the compiler cannot see is
+// a key you classified and then forgot to assign, which falls through to whichever branch was last.
+static bool applyKnownKey(Bench& bench, std::string const& key, std::string const& value, std::string& reason) {
+    return setDuration(bench, key, "minEpochTime", &Bench::minEpochTime, value, reason) ||
+           setDuration(bench, key, "maxEpochTime", &Bench::maxEpochTime, value, reason) ||
+           setCount<size_t>(bench, key, "epochs", &Bench::epochs, value, reason) ||
+           setCount<uint64_t>(bench, key, "warmup", &Bench::warmup, value, reason) ||
+           setCount<uint64_t>(bench, key, "minEpochIterations", &Bench::minEpochIterations, value, reason) ||
+           setCount<uint64_t>(bench, key, "epochIterations", &Bench::epochIterations, value, reason) ||
+           setCount<size_t>(bench, key, "clockResolutionMultiple", &Bench::clockResolutionMultiple, value, reason);
+}
+
+// Sorted, and next to the chain above so that a key added to one and not the other is visible on one
+// screen. Only tuning knobs are there at all: name, title, unit, batch and timeUnit say what a
+// benchmark *is*, and letting a shell variable change those for a whole process would change what
+// the numbers mean rather than how long they take.
 static char const* configKeyList() {
     return "clockResolutionMultiple, epochIterations, epochs, maxEpochTime, minEpochIterations, minEpochTime, warmup";
 }
 
-// Reached only for a key configKeyKind() called a duration, so the last branch is maxEpochTime.
-static void assignDuration(Config& cfg, std::string const& key, std::chrono::nanoseconds value) {
-    if (key == "minEpochTime") {
-        cfg.mMinEpochTime = value;
-    } else {
-        cfg.mMaxEpochTime = value;
-    }
-}
-
-// Likewise, so the last branch is clockResolutionMultiple.
-static void assignCount(Config& cfg, std::string const& key, uint64_t value) {
-    if (key == "epochs") {
-        cfg.mNumEpochs = static_cast<size_t>(value);
-    } else if (key == "warmup") {
-        cfg.mWarmup = value;
-    } else if (key == "minEpochIterations") {
-        cfg.mMinEpochIterations = value;
-    } else if (key == "epochIterations") {
-        cfg.mEpochIterations = value;
-    } else {
-        cfg.mClockResolutionMultiple = static_cast<size_t>(value);
-    }
-}
-
-static void applyConfigEntry(Config& cfg, std::string const& key, std::string const& value, std::vector<std::string>& errors) {
-    auto const kind = configKeyKind(key);
-    if (ConfigKeyKind::unknown == kind) {
-        errors.push_back("NANOBENCH_CONFIG: unknown key '" + key + "' - valid keys are " + configKeyList());
-        return;
-    }
-
+static void applyConfigEntry(Bench& bench, std::string const& key, std::string const& value, std::vector<std::string>& errors) {
     std::string reason;
-    if (ConfigKeyKind::duration == kind) {
-        std::chrono::nanoseconds duration{};
-        reason = parseDuration(value, duration);
-        if (reason.empty()) {
-            assignDuration(cfg, key, duration);
-        }
-    } else {
-        uint64_t count = 0;
-        reason = parseCount(value, count);
-        if (reason.empty()) {
-            assignCount(cfg, key, count);
-        }
-    }
-
-    if (!reason.empty()) {
+    if (!applyKnownKey(bench, key, value, reason)) {
+        errors.push_back("NANOBENCH_CONFIG: unknown key '" + key + "' - valid keys are " + configKeyList());
+    } else if (!reason.empty()) {
         errors.push_back("NANOBENCH_CONFIG: '" + key + "=" + value + "' " + reason);
     }
 }
@@ -2873,7 +2886,7 @@ static std::string trimWhitespace(std::string const& str) {
     return str.substr(first, str.find_last_not_of(spaces) - first + 1);
 }
 
-void applyConfigString(Config& cfg, std::string const& configStr, std::vector<std::string>& errors) {
+void applyConfigString(Bench& bench, std::string const& configStr, std::vector<std::string>& errors) {
     size_t pos = 0;
     while (pos < configStr.size()) {
         auto const comma = configStr.find(',', pos);
@@ -2890,21 +2903,21 @@ void applyConfigString(Config& cfg, std::string const& configStr, std::vector<st
             errors.push_back("NANOBENCH_CONFIG: '" + entry + "' is not a key=value pair");
             continue;
         }
-        applyConfigEntry(cfg, trimWhitespace(entry.substr(0, equals)), trimWhitespace(entry.substr(equals + 1)), errors);
+        applyConfigEntry(bench, trimWhitespace(entry.substr(0, equals)), trimWhitespace(entry.substr(equals + 1)), errors);
     }
 }
 
-// Applies NANOBENCH_CONFIG to a freshly built Config, so that anything the benchmark sets afterwards
+// Applies NANOBENCH_CONFIG to a freshly built Bench, so that anything the benchmark sets afterwards
 // still wins: the environment moves the default, it does not overrule a benchmark that needs a
 // particular setting to mean anything.
-void applyEnvConfig(Config& cfg) {
+void applyEnvConfig(Bench& bench) {
     auto const* const configStr = getEnv("NANOBENCH_CONFIG");
     if (nullptr == configStr) {
         return;
     }
 
     std::vector<std::string> errors;
-    applyConfigString(cfg, configStr, errors);
+    applyConfigString(bench, configStr, errors);
 
     // Every Bench parses the variable, but a typo in it is one mistake and gets one message. This is
     // deliberately not behind NANOBENCH_SUPPRESS_WARNINGS: that hides statements about the machine
@@ -4763,7 +4776,7 @@ Result::Measure Result::fromString(std::string const& str) {
 // Configuration of a microbenchmark.
 Bench::Bench() {
     mConfig.mOut = &std::cout;
-    detail::applyEnvConfig(mConfig);
+    detail::applyEnvConfig(*this);
 }
 
 Bench::Bench(Bench&&) noexcept = default;
