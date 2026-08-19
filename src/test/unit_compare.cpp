@@ -33,6 +33,13 @@ struct Work {
 // The same work, with one call somewhere in the middle taking a millisecond -
 // a scheduling hiccup, made repeatable. Which call is fixed rather than timed,
 // so this behaves the same on a fast machine and a slow one.
+//
+// A count of zero never hiccups at all, which is how the *same* code goes on
+// both sides of a comparison. That matters more than it looks: the branch is
+// not free, so putting this against a plain Work compares two operations that
+// differ threefold on some machines - 3.04ns a call against 1.01ns on a four
+// core cloud VM. The calibration test below was flaky for exactly that
+// reason.
 struct WorkWithOneHiccup {
     Work work;
     uint64_t callsUntilHiccup;
@@ -282,9 +289,10 @@ TEST_CASE("unit_compare_reports_no_difference_for_identical_work") {
     // this comparison the rate was 3.3%, which is the interval doing its job
     // rather than a bug. Asserting it here would buy a test that fails a few
     // times in a hundred - and a benchmark suite that cries wolf is how people
-    // learn to ignore it. What is asserted instead is that the ratio lands near
-    // 1 and the interval is a well-formed interval around it, which holds every
-    // time.
+    // learn to ignore it. What is asserted instead is that the three numbers
+    // the table reports are the ones these two Results give when put through
+    // the paired statistics, which is exact, and that the ratio has not gone
+    // somewhere absurd, which is loose on purpose.
     Work w;
     auto op = [&w] {
         w.step();
@@ -294,12 +302,33 @@ TEST_CASE("unit_compare_reports_no_difference_for_identical_work") {
 
     INFO("speedup " << result[1].relative << " CI [" << result[1].relativeLow
                     << ", " << result[1].relativeHigh << "]");
-    CHECK(result[1].relative == doctest::Approx(1.0).epsilon(0.10));
+
+    // Exact arithmetic against its own Result, rather than a bound on how
+    // closely two timings of the same closure agree. The interval's width used
+    // to be checked against a hardcoded 0.5, and that is a bound on the
+    // machine: identical work measured 20% apart on a sanitizer runner, the
+    // interval widened to 0.59 to say so, and the check failed the tool for
+    // reporting honestly. Nothing derived from the round count would have
+    // helped either - the count decides *which* order statistics bracket the
+    // median, not how far apart the rounds themselves lie.
+    auto const logRatios =
+        nb::pairedLogRatios(result[0].result, result[1].result);
+    auto const interval =
+        nb::medianInterval(logRatios, nb::bonferroniConfidence(1U));
+    CHECK(result[1].relative ==
+          doctest::Approx(std::exp(nb::medianOf(logRatios))));
+    CHECK(result[1].relativeLow == doctest::Approx(std::exp(interval.first)));
+    CHECK(result[1].relativeHigh == doctest::Approx(std::exp(interval.second)));
     CHECK(result[1].relativeLow <= result[1].relative);
     CHECK(result[1].relativeHigh >= result[1].relative);
-    // an interval that wide would mean something has gone badly wrong with the
-    // pairing
-    CHECK(result[1].relativeHigh - result[1].relativeLow < 0.5);
+
+    // Loose, and one-sided in effect: two timings of the same closure landing
+    // 20% apart is the machine, and a factor of two is not. Written as a pair
+    // of bounds because doctest's Approx(1.0).epsilon(0.10) does not mean the
+    // +-10% it reads as - it admits (0.8, 1.2222), since the tolerance is
+    // scaled by 1 + max(|lhs|, |rhs|) - and that 1.20 run passed it.
+    CHECK(result[1].relative > 0.5);
+    CHECK(result[1].relative < 2.0);
 }
 
 // NOLINTNEXTLINE
@@ -953,9 +982,14 @@ TEST_CASE(
 
     // A loose one-sided bound, for the usual reason: an uncapped floor would
     // ask this side for some twenty times its maximum, so nothing is gained by
-    // being tight and a flaky leg is lost.
+    // being tight and a flaky leg is lost. Six times rather than three,
+    // because three was not loose enough: the count is calibrated before the
+    // rounds are run, and this epoch came out at 3.7ms on a four core cloud VM
+    // under three times oversubscription - the machine slowing down between
+    // the two, with nothing wrong. An uncapped floor gives this side the spread
+    // times the clock's measurable epoch, which is tens of milliseconds.
     INFO("slow epoch " << epoch << "s, maximum 0.001s");
-    CHECK(epoch < 0.003);
+    CHECK(epoch < 0.006);
 }
 
 // NOLINTNEXTLINE
@@ -972,11 +1006,38 @@ TEST_CASE("unit_compare_calibration_is_not_fooled_by_one_slow_reading") {
     // call rather than a fixed time, so the same thing happens on any machine:
     // one call in the middle of the growth loop sleeps for a millisecond, which
     // is five times the target and dwarfs everything the loop has measured.
-    WorkWithOneHiccup a(5000);
-    Work b;
+    //
+    // Both sides are the same code, and only one of them is ever interrupted.
+    // Anything else makes this a comparison of two different operations, and a
+    // short epoch then says nothing about calibration: the shared count is the
+    // *slowest* alternative's - see compareIterations() - so a faster one gets
+    // an epoch shorter in proportion to how much faster it is, by design, and
+    // bounded below only by the floor the test below is about. The clean side
+    // used to be a plain Work, and the never-taken hiccup branch here is not
+    // free: 3.04ns against 1.01ns per call on a four core cloud VM, against
+    // 1.00x on a fast desktop. The plain side's epochs then came out at a
+    // third of the target, and this test went red for it four times on CI -
+    // always on the plain side, at 6.7e-05 against the old bound, while the
+    // interrupted side it is actually about passed every time.
+    //
+    // clockResolutionMultiple(1) takes the measurability floor out of the way,
+    // so that what is measured here is the calibrated count and nothing else.
+    // The floor is keyed to that multiple, and at the default 1000 it lifts a
+    // count this badly short back up to about a tenth of a healthy one - which
+    // is the same order as the bound below, and it is set by the machine's
+    // clock rather than by anything this test controls. With it out of the way
+    // the two outcomes are 1.3e-06 to 3.6e-06 for a believed interruption
+    // against 1.3e-04 to 5.9e-04 for a healthy calibration, measured over 60
+    // runs of each on a four core cloud VM, and the bound below has clear air
+    // on both sides. The floor has its own test underneath this one.
+    WorkWithOneHiccup a(500);
+    WorkWithOneHiccup b(0);
     ankerl::nanobench::Bench bench;
-    bench.output(nullptr).epochs(6).performanceCounters(false).minEpochTime(
-        std::chrono::microseconds(200));
+    bench.output(nullptr)
+        .epochs(6)
+        .performanceCounters(false)
+        .clockResolutionMultiple(1)
+        .minEpochTime(std::chrono::microseconds(200));
     auto const result = bench.compare(
         "hiccup while calibrating",
         [&] {
@@ -987,17 +1048,36 @@ TEST_CASE("unit_compare_calibration_is_not_fooled_by_one_slow_reading") {
             b.step();
         });
 
+    // Both epochs are collected before either is checked, so that a failure
+    // reports the pair. Reporting from inside the loop is what left the four
+    // CI failures above unexplained for as long as they were: doctest scopes
+    // INFO to the loop body, so the log carried the epoch that failed and not
+    // the one that would have said whether the count was short for both sides
+    // or only for one - which is the whole difference between calibration
+    // stopping early and the two sides not running the same work.
     using M = ankerl::nanobench::Result::Measure;
+    std::vector<double> epochs;
     for (size_t i = 0; i < result.size(); ++i) {
         auto const& r = result[i].result;
         REQUIRE(r.size() > 0U);
-        auto const epoch = r.median(M::elapsed) * r.get(0, M::iterations);
-        INFO("entry " << i << " (" << result[i].name << ") epoch " << epoch
-                      << "s, asked for 0.0002s");
-        // Loose, and it does not need to be tight: believing the interrupted
-        // reading gives epochs some twenty times shorter than this bound, not
-        // twenty percent.
-        CHECK(epoch > 0.0001);
+        epochs.push_back(r.median(M::elapsed) * r.get(0, M::iterations));
+    }
+    REQUIRE(epochs.size() == 2U);
+    INFO("epochs " << epochs[0] << "s (" << result[0].name << ") and "
+                   << epochs[1] << "s (" << result[1].name
+                   << "), asked for 0.0002s");
+    for (auto const epoch : epochs) {
+        // A tenth of what was asked for, which is loose against the machine
+        // and tight against the bug: believing the interrupted reading ends
+        // calibration at 1111 iterations instead of some hundreds of
+        // thousands, which is the 1.3e-06 to 3.6e-06 above - an order of
+        // magnitude under this, rather than the twenty percent that half the
+        // target left room for. Tighter buys nothing and costs a leg, because
+        // the count is calibrated before the rounds are run and a machine that
+        // speeds up in between shortens every epoch by the same factor with
+        // nothing wrong: at half the target, and with both sides finally equal,
+        // an epoch of 8.5e-05 still turned up here.
+        CHECK(epoch > 0.00002);
     }
 }
 
@@ -1046,8 +1126,16 @@ TEST_CASE("unit_compare_the_floor_is_the_clock_rather_than_the_epoch") {
     // allowed to lower the count rather than only raise it, which would leave
     // every alternative running for a clock tick and nothing honoring
     // minEpochTime at all.
-    CHECK(epoch < 0.001);
-    CHECK(epoch > 0.0001);
+    //
+    // Both are an order of magnitude away from what they catch, for the reason
+    // the test above spells out: this epoch is calibrated before the rounds
+    // are run, and a machine that changes speed in between moves it by a
+    // factor without anything being wrong - 6.9e-05 turned up here against the
+    // old 1e-04. Keying the floor to the epoch gives 32 epochs, i.e. 6ms; a
+    // floor that lowered the count gives a single clock tick, i.e. tens of
+    // nanoseconds. Neither is anywhere near these.
+    CHECK(epoch < 0.002);
+    CHECK(epoch > 0.00002);
 }
 
 // NOLINTNEXTLINE
