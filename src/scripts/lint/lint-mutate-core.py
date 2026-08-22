@@ -1,17 +1,18 @@
 #!/usr/bin/env python3
 """`src/scripts/mutate/mutate_core.py` is vendored, and this is what says so out loud.
 
-That file is byte-identical in unordered_dense, which is where it is *tested*: its
-`scripts/test_mutate.py` is a hermetic suite over the half of the tool that decides what a verdict
-means, and it covers the cmake backend this repository drives even though that repository builds
-with meson. Sharing the file is what buys that. A copy edited in place ends it quietly -- the other
-suite stays green while this repository runs something nothing tests.
+That file is byte-identical in unordered_dense and in oans. unordered_dense is where it is
+*tested*: its `scripts/test_mutate.py` is a hermetic suite over the half of the tool that decides
+what a verdict means, and it covers the cmake backend this repository drives even though that
+repository builds with meson -- as it covers oans's make backend and minunit harness, which
+neither of the other two runs. Sharing the file is what buys that. A copy edited in place ends it
+quietly: the other suite stays green while this repository runs something nothing tests.
 
 So two checks, and neither can see the other repository:
 
 - the core still hashes to what was recorded when it was last vendored. Changing it means copying
-  the file back the other way, running that suite, and recording the new hash in both -- after
-  which "are these in sync?" is a question `diff` can answer on the two `.sha256` files.
+  the file back the other way, running that suite, and recording the new hash in all three -- after
+  which "are these in sync?" is a question `diff` can answer on the `.sha256` files.
 - the adapter beside it still fits the core it is vendored against, which is this repository's
   own half and is not covered over there. A renamed hook is silent otherwise: `test_cwd` misspelled
   leaves `nb` writing its artifacts into a lane's source tree, which nothing fails on and
@@ -50,9 +51,10 @@ def check_vendored():
         print("%s has changed since it was last vendored.\n"
               "  recorded  %s\n"
               "  actual    %s\n"
-              "It is shared with unordered_dense and tested there, so a change here is only half "
-              "of one. Make it in that repository, run its scripts/test_mutate.py, copy the file "
-              "back, and record the new hash in both:\n"
+              "It is shared with unordered_dense and oans, and tested in the first of those, so "
+              "a change here is only part of one. Make it in that repository, run its "
+              "scripts/test_mutate.py, copy the file into all three, and record the new hash in "
+              "each:\n"
               "  echo %s > %s"
               % (CORE.relative_to(REPO), recorded, digest, digest,
                  RECORDED.relative_to(REPO)))

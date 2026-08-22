@@ -261,20 +261,29 @@ src/scripts/mutate/mutate.py --diff HEAD~1                      # what did my ch
 while keeping its tests, and `--cmake-arg` asks whether some other leg catches it. `--help` has the
 grammar and the rest; do not copy it here, or the copies drift.
 
-**The tool is two files, and one of them is shared with unordered_dense.** `mutate_core.py` is
-everything that is not about any one project — the lanes, the mutants, the baseline discipline, the
-verdicts, the report — and that repository holds a byte-identical copy. `mutate.py` beside it is
-nanobench's adapter: the header, that cmake configures the build, that the binary is `nb` and runs
-from the build directory, the `ubsan.supp` path, the performance-counter question, and the measured
-constants behind `--dry-run`. Roughly 1800 lines shared against 100 of adapter.
+**The tool is two files, and one of them is shared with unordered_dense and oans.**
+`mutate_core.py` is everything that is not about any one project — the lanes, the mutants, the
+baseline discipline, the verdicts, the report — and both of those repositories hold a byte-identical
+copy. `mutate.py` beside it is nanobench's adapter: the header, that cmake configures the build,
+that the binary is `nb` and runs from the build directory, the `ubsan.supp` path, the
+performance-counter question, and the measured constants behind `--dry-run`. Roughly 1900 lines
+shared against 100 of adapter.
+
+Three build systems and two test runners live in the core, of which this repository uses cmake and
+doctest. meson is unordered_dense's; make and minunit are oans's, a C project whose whole suite is
+one minunit binary. That is why `Backend.build_argv` takes the argument namespace — make remembers
+nothing between invocations, so its pass-through arguments have to ride on the build line — and why
+a harness that accepts no filter arguments is not offered `--test-filter` at all: a flag accepted
+and then ignored would run the whole suite while the fingerprint claimed otherwise.
 
 The core is *tested over there*, by `scripts/test_mutate.py` — a hermetic suite that covers the
-cmake backend this repository drives even though that one builds with meson. So a change to the core
-is only half a change: make it in unordered_dense, run that suite, copy the file back, and record
-the new hash in both `mutate_core.sha256` files. `lint-mutate-core.py` fails if this copy has been
-edited without that hash moving with it, and separately checks that the adapter still fits the core
-it is vendored against — a renamed hook is otherwise silent, and `test_cwd` misspelled leaves `nb`
-writing its example artifacts into a lane's source tree.
+cmake backend this repository drives even though that one builds with meson, and the make backend
+and minunit harness that neither of them runs. So a change to the core is only part of a change:
+make it in unordered_dense, run that suite, copy the file into all three, and record the new hash in
+each `mutate_core.sha256`. `lint-mutate-core.py` fails if this copy has been edited without that
+hash moving with it, and separately checks that the adapter still fits the core it is vendored
+against — a renamed hook is otherwise silent, and `test_cwd` misspelled leaves `nb` writing its
+example artifacts into a lane's source tree.
 
 Two capabilities worth knowing, both of which arrived with the shared core. `--operators` picks what
 a sweep changes: `deletions` removes whole statements, which is the shape nearly every hand-written
