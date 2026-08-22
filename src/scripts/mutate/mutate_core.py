@@ -1,21 +1,25 @@
 #!/usr/bin/env python3
 """The half of mutation testing that is not about any one project.
 
-**This file is vendored.** It is byte-identical in `unordered_dense` and in
-`nanobench`, and `lint-mutate-core.py` fails if a copy has been edited in place.
-Change it here, re-vendor it there, and re-run both suites - the point of the
-sharing is that one test suite covers the code both repositories run, and a
-local patch quietly ends that.
+**This file is vendored.** It is byte-identical in `unordered_dense`, in
+`nanobench` and in `oans`, and each of their `lint-mutate-core.py` fails if that
+copy has been edited in place. Change it here, re-vendor it there, and re-run
+this repository's `scripts/test_mutate.py` - the point of the sharing is that
+one test suite covers the code all three repositories run, and a local patch
+quietly ends that. That suite therefore covers backends and harnesses this
+project itself never executes, on purpose: a backend tested only where it is
+used is exactly as untested as it was before the tools were merged.
 
-What is left to a project is `mutate.py` next to this file: where the header is,
-how a build is configured, what the test binary is called, and the constants
-that only a measurement on that project can supply. Everything else - the lanes,
-the mutants, the baseline discipline, the verdicts and the report - is here.
+What is left to a project is `mutate.py` next to this file: where the source is,
+how a build is configured, what the test binary is called, which runner reads
+its output, and the constants that only a measurement on that project can
+supply. Everything else - the lanes, the mutants, the baseline discipline, the
+verdicts and the report - is here.
 
-The manual the two projects share is MANUAL below, which each `mutate.py`'s
-`--help` prints ahead of its own project section. It lives there rather than
-here so that there is one copy of it rather than one per repository: this
-docstring is for whoever opens this file, MANUAL is for whoever runs the tool.
+The manual the projects share is MANUAL below, which each `mutate.py`'s `--help`
+prints ahead of its own project section. It lives there rather than here so that
+there is one copy of it rather than one per repository: this docstring is for
+whoever opens this file, MANUAL is for whoever runs the tool.
 """
 
 import argparse
@@ -143,19 +147,20 @@ GIB = 1024 * MIB
 # ---------------------------------------------------------------- backends
 
 class Backend:
-    """How a build is configured, which is nearly all that separates the two
-    build systems this has to drive.
+    """How a build is configured and driven, which is nearly all that separates
+    the build systems this has to run against.
 
-    Both end in `ninja -C <build>`, so only the configure step and the spelling
-    of "pass this through to it" differ. Both live here rather than one in each
-    project's adapter on purpose: the test suite that covers this file runs in
-    one repository and has to cover the code the other one executes, and a
-    backend that only exists over there is exactly as untested as it was before
-    the two tools were merged.
+    Two of the three end in `ninja -C <build>`, so for those only the configure
+    step and the spelling of "pass this through to it" differ; make has no
+    configure step at all and builds in the tree it was handed. All of them live
+    here rather than one in each project's adapter on purpose: the test suite
+    that covers this file runs in one repository and has to cover the code the
+    others execute, and a backend that only exists over there is exactly as
+    untested as it was before the tools were merged.
     """
 
-    #: `--meson-arg` / `--cmake-arg`. Named after the tool because that is what
-    #: the value is - the help text and both CLAUDE.md files say so.
+    #: `--meson-arg` / `--cmake-arg` / `--make-arg`. Named after the tool because
+    #: that is what the value is - the help text and every CLAUDE.md say so.
     name = ""
 
     @property
@@ -168,6 +173,46 @@ class Backend:
     def setup_args(self, args):
         """What this run configures with, for the fingerprint and for `--dry-run`."""
         raise NotImplementedError
+
+    def is_configured(self, build):
+        """Whether this build directory has been configured before.
+
+        Only meson reads the answer - it wants `--reconfigure` on a second pass
+        where cmake re-runs in place - but the file that proves it is ninja's
+        rather than either tool's, so a backend that generates no build.ninja
+        has to answer for itself rather than be assumed into one. Getting this
+        wrong is not cosmetic: a backend inheriting `False` forever would
+        reconfigure from scratch every time `--reuse` was supposed to save it.
+        """
+        return os.path.exists(os.path.join(build, "build.ninja"))
+
+    def build_argv(self, build, jobs, args):
+        """The command that builds the suite. ninja, for both generators here.
+
+        `args` is the whole namespace rather than the parsed setup arguments,
+        because a build system without a configure step has nowhere to have put
+        them: make carries `CC=clang` on the build line itself, so for that
+        backend this is the only place `--make-arg` can land.
+        """
+        return ["ninja", "-C", build, "-j", str(jobs)]
+
+    def configure(self, lane, args):
+        """Prepare a lane's build directory, raising if it cannot be.
+
+        A method rather than only an argv, because "configure" is not a command
+        everywhere. An in-tree make build has nothing to run and needs something
+        else done instead - a compile_commands.json written out of what make
+        says it would do - and overriding this is how that stays honest: the
+        alternative is a backend returning a command that pretends to configure,
+        and a failure message naming a step that does not exist.
+        """
+        cmd = self.configure_argv(args, lane.dir, lane.build,
+                                  self.is_configured(lane.build))
+        r = subprocess.run(cmd, cwd=lane.dir, capture_output=True, text=True,
+                           env=lane.env)
+        if r.returncode != 0:
+            raise RuntimeError("%s failed in lane:\n%s%s"
+                               % (self.name, r.stdout, r.stderr))
 
     def sanitizer(self, setup_args):
         """Which sanitizer this configuration builds with, as a word for the
@@ -266,6 +311,327 @@ class CMakeBackend(Backend):
         return ["cmake", "-S", source, "-B", build] + self.setup_args(args)
 
 
+# A compiler, as a command line begins with one. Spelled as a set of basenames
+# rather than "contains gcc" because `make` prints plenty of lines that mention
+# a compiler without being one - a `command -v`, an echo of the flags, the probe
+# a makefile runs to ask whether a warning exists.
+COMPILERS = ("cc", "gcc", "clang", "c++", "g++", "clang++", "cpp", "tcc", "icc", "icx")
+
+# What a compile line accepts as input. `.h` is not here: a makefile that names a
+# header on a compile line is doing something (a precompiled header, usually)
+# that this has no business writing a compile_commands entry for.
+SOURCE_SUFFIXES = (".c", ".cc", ".cpp", ".cxx", ".c++", ".m", ".mm", ".S", ".s")
+
+# Link-only arguments, dropped from the entry this writes. They are harmless to
+# a compile that produces an object and *fatal* to one that does not: with
+# `-fsyntax-only` gcc warns "linker input file unused because linking not done"
+# for every one of them, and a tree built with -Werror then fails its own syntax
+# pre-filter. Every mutant would come back `compiler` - a verdict in the
+# flattering direction, which is the one way this tool must not be wrong.
+LINK_ONLY = ("-l", "-L", "-Wl,", "-shared", "-static", "-rdynamic", "-pie", "-no-pie")
+
+
+def looks_like_compiler(word):
+    """Whether this is the compiler at the head of a command line.
+
+    Version suffixes count (`clang-18`, `gcc-14`), so do target triplets
+    (`x86_64-linux-gnu-gcc`, which is what a cross build calls it) and so do
+    paths (`/usr/lib/ccache/cc`) - a wrapper is still the head of a compile line.
+    """
+    parts = os.path.basename(word).split("-")
+    while parts and parts[-1].replace(".", "").isdigit():
+        parts.pop()
+    return bool(parts) and parts[-1] in COMPILERS
+
+
+def compile_commands_from_make(output, directory):
+    """`make --dry-run`'s output, read as compile_commands.json entries.
+
+    make configures nothing, so there is no compilation database to read and the
+    syntax pre-filter would simply switch itself off - which costs a full rebuild
+    for every mutant that is not valid C, and there are a great many of those.
+    Asking make what it *would* run is the only source of those flags that cannot
+    drift: a makefile that probes its compiler for half its warnings (`-Wlogical-op`
+    if this is gcc, `-Wno-gnu-...` if it is clang) has no hand-written form that
+    is right on two machines, let alone right next year.
+
+    One entry per source file named on a line that starts with a compiler. A line
+    naming several sources yields an entry each, all carrying that same line: the
+    check is then of a superset of the file asked about, which can only be
+    stricter than the question and never falsely permissive.
+    """
+    entries, seen = [], set()
+    for line in output.splitlines():
+        line = line.strip()
+        if not line or line.startswith("#"):
+            continue
+        try:
+            argv = shlex.split(line)
+        except ValueError:
+            # An unbalanced quote is a shell fragment make is echoing rather
+            # than a compile; there is nothing here worth guessing at.
+            continue
+        if not argv or not looks_like_compiler(argv[0]):
+            continue
+        kept, sources, i = [], [], 0
+        while i < len(argv):
+            arg = argv[i]
+            # The argument after these names an output, not an input: without
+            # skipping it, `-o src/x.o` would be read as a source the moment a
+            # makefile named an output ending in one of the suffixes.
+            if arg in ("-o", "-MF", "-MQ", "-MT"):
+                i += 2
+                continue
+            if arg.startswith(LINK_ONLY):
+                i += 1
+                continue
+            if arg.endswith(SOURCE_SUFFIXES) and not arg.startswith("-"):
+                sources.append(arg)
+            kept.append(arg)
+            i += 1
+        for source in sources:
+            key = os.path.normpath(os.path.join(directory, source))
+            if key in seen:
+                # `make --always-make` on a tree with several targets compiles
+                # the same file more than once. The first entry wins, the way a
+                # generator's own database does.
+                continue
+            seen.add(key)
+            entries.append(dict(directory=directory, file=source,
+                                command=" ".join(shlex.quote(a) for a in kept)))
+    return entries
+
+
+class MakeBackend(Backend):
+    """make, building in the tree the lane copied.
+
+    Nothing here configures, because there is nothing to configure: a lane's
+    build directory *is* its source tree. What the setup step does instead is
+    write the compile_commands.json the syntax pre-filter reads, out of
+    `make --dry-run` - see compile_commands_from_make for why that is the only
+    honest source of those flags.
+
+    The other difference from the two generators is where a pass-through
+    argument lands. meson and cmake remember what they were configured with;
+    make remembers nothing, so `--make-arg CC=clang` has to ride on every build
+    command instead. That is what `build_argv` takes `args` for.
+    """
+
+    name = "make"
+
+    def __init__(self, target=None):
+        #: The make target the lanes build. None builds the default goal, which
+        #: for most trees is everything - so a project whose suite is one binary
+        #: should name it and not pay for the rest on every mutant.
+        self.target = target
+
+    def setup_args(self, args):
+        # No `--buildtype`: make has no portable spelling for one, and inventing
+        # a mapping to a variable this makefile may not have would configure
+        # something silently different from what was asked for. A project with
+        # such a variable passes it as `--make-arg` and the fingerprint shows it.
+        return list(args.configure_arg)
+
+    def _argv(self, build, args, extra):
+        return (["make", "-C", build] + list(extra) + self.setup_args(args)
+                + ([self.target] if self.target else []))
+
+    def is_configured(self, build):
+        # An in-tree build is configured the moment the tree exists. Answering
+        # off build.ninja here would say "never", and `--reuse` would then
+        # rewrite the compilation database on every run for nothing.
+        return os.path.isdir(build)
+
+    def build_argv(self, build, jobs, args):
+        return self._argv(build, args, ["-j", str(jobs)])
+
+    def configure(self, lane, args):
+        argv = self._argv(lane.build, args, ["--always-make", "--dry-run"])
+        r = subprocess.run(argv, cwd=lane.dir, capture_output=True, text=True,
+                           env=lane.env)
+        if r.returncode != 0:
+            raise RuntimeError("make --dry-run failed in lane:\n%s%s"
+                               % (r.stdout, r.stderr))
+        entries = compile_commands_from_make(r.stdout, lane.build)
+        # Written even when empty. The pre-filter reads a database with no entry
+        # for its file as "no pre-filter", which is the correct reading of a
+        # makefile whose commands this could not recognise - and leaving a stale
+        # one from a previous `--reuse` in place would be worse than none.
+        with open(os.path.join(lane.build, "compile_commands.json"), "w",
+                  encoding="utf-8") as f:
+            json.dump(entries, f)
+
+
+# ---------------------------------------------------------------- harnesses
+
+class Harness:
+    """How the suite is asked to run, and how its output is read back.
+
+    Every verdict this tool prints rests on one reading of a test runner's
+    output, so a runner it does not understand is not a cosmetic problem: a
+    failure it cannot see is scored `survived`, and the report then blames the
+    tests for a hole that is this file's. That is why the base class asserts
+    nothing and each runner says what it knows - and why `parse_output`'s last
+    resort is "nonzero exit, no assertion failed" rather than "green".
+
+    Kept apart from Lane so that spawning a process and interpreting what came
+    back stay separable; the second is the half that changes when a mutant dies
+    in a way the runner has no vocabulary for.
+    """
+
+    name = ""
+
+    #: Whether this runner can be told to run a subset of its cases. The four
+    #: `--test-suite`/`--test-filter` flags are only offered when it can: a
+    #: filter flag that is accepted and then ignored would run the whole suite
+    #: while the fingerprint claimed otherwise, and there is no reading of that
+    #: report which is true.
+    filters = False
+
+    def test_args(self, args):
+        """The filter flags, as this runner spells them."""
+        return []
+
+    def parse_output(self, proc):
+        """Which tests went red, given a finished run."""
+        raise NotImplementedError
+
+    def count_cases(self, stdout):
+        """How many cases actually ran, or None if the output never said.
+
+        The number this guards against is zero: a run that executed nothing is
+        green, and every mutant under it survives.
+        """
+        return None
+
+    def no_cases_hint(self):
+        """Why a run might have executed nothing, for the message that refuses."""
+        return "the suite ran no test cases"
+
+    def short_name(self, name, limit=52):
+        """A case name, shortened for a terminal."""
+        return name if len(name) <= limit else name[:limit - 3] + "..."
+
+    def render_caught(self, caught_by, most=3):
+        """The tests that noticed, as much of them as is worth printing."""
+        if not caught_by:
+            return ""
+        shown = ", ".join(self.short_name(t) for t in caught_by[:most])
+        extra = len(caught_by) - most
+        return shown + (" (+%d more)" % extra if extra > 0 else "")
+
+    def crash_summary(self, proc):
+        """A nonzero exit that no failed assertion explains.
+
+        Shared, because it is about the runtime rather than the runner: under a
+        sanitizer build the thing that noticed is often not a test at all, and
+        which runtime complained is the whole answer. Naming it beats "unknown".
+        """
+        for stream in (proc.stderr, proc.stdout):
+            for pattern in (r"^SUMMARY: (\w+Sanitizer): (.+)$", r"runtime error: (.+)$"):
+                m = re.search(pattern, stream, re.M)
+                if m:
+                    return [" ".join(m.groups())[:120]]
+        return ["exit %d, no assertion failed" % proc.returncode]
+
+
+class DoctestHarness(Harness):
+    """doctest, as both C++ projects here use it."""
+
+    name = "doctest"
+    filters = True
+
+    def test_args(self, args):
+        pairs = (("-ts=", args.test_suite), ("-tse=", args.exclude_suite),
+                 ("-tc=", args.test_filter), ("-tce=", args.exclude_filter))
+        return [flag + value for flag, value in pairs if value]
+
+    def count_cases(self, stdout):
+        m = re.search(r"^\[doctest\] test cases:\s*(\d+)", stdout, re.M)
+        return int(m.group(1)) if m else None
+
+    def no_cases_hint(self):
+        return ("doctest's suites are the ones TEST_SUITE names, not the build "
+                "system's")
+
+    def parse_output(self, proc):
+        if proc.returncode == 0:
+            return []
+
+        # doctest prints a `TEST CASE:` banner for anything that produces
+        # output, a passing MESSAGE included, so the banners alone are not
+        # failures - only one with an assertion error under it counts.
+        failing, current = [], None
+        for line in proc.stdout.splitlines():
+            banner = re.match(r"^TEST CASE:\s*(.+)$", line)
+            if banner:
+                current = banner.group(1).strip()
+            elif ("ERROR" in line or "FAILED" in line) and current:
+                if current not in failing:
+                    failing.append(current)
+        return failing or self.crash_summary(proc)
+
+    def short_name(self, name, limit=52):
+        """Where a suite is mostly `TEST_CASE_TEMPLATE`, a name arrives as
+        `a_hash_survives_rehashing<ankerl::unordered_dense::v4_9_1::detail::table<
+        std::__cxx11::basic_string<char>, int, ...>>` - 300 characters of which
+        the first 25 are the part that says what broke. The instantiation is
+        kept as a marker rather than dropped, because which one of a template's
+        instantiations failed is occasionally the answer, and the full names
+        stay in --json.
+        """
+        depth, out = 0, []
+        for ch in name:
+            if ch == "<":
+                depth += 1
+                if depth == 1:
+                    out.append("<...>")
+            elif ch == ">":
+                depth = max(0, depth - 1)
+            elif depth == 0:
+                out.append(ch)
+        return super().short_name("".join(out), limit)
+
+
+class MinunitHarness(Harness):
+    """minunit, the single-header C runner.
+
+    A whole suite is one binary with no arguments: `filters` stays False, so the
+    four filter flags are not offered rather than offered and ignored. Where
+    doctest lets a flaky case be excluded by name, here the honest answers are
+    to fix the case or to say in the fingerprint that it was not excluded.
+
+    The output is one character per assertion and a tally at the end. A failure
+    prints `F` and then the message minunit built, whose first line is
+    `<test function> failed:` - so the name of what went red is there, but only
+    on the failing path, which is why `count_cases` reads the tally instead.
+    """
+
+    name = "minunit"
+
+    def count_cases(self, stdout):
+        m = re.search(r"^(\d+) tests?, \d+ assertions?, \d+ failures?$",
+                      stdout, re.M)
+        return int(m.group(1)) if m else None
+
+    def no_cases_hint(self):
+        return ("minunit runs whatever MU_RUN_TEST names in the suite function; "
+                "a suite that names nothing is green")
+
+    def parse_output(self, proc):
+        if proc.returncode == 0:
+            return []
+        # `MU_RUN_TEST` prints "<func> failed:" and then an indented location.
+        # Matched anchored on its own line so that a test *name* containing the
+        # word, or an assertion message quoting it, cannot invent a failure.
+        failing = []
+        for line in proc.stdout.splitlines():
+            m = re.match(r"^(\S+) failed:$", line)
+            if m and m.group(1) not in failing:
+                failing.append(m.group(1))
+        return failing or self.crash_summary(proc)
+
+
 # ---------------------------------------------------------------- projects
 
 class Project:
@@ -291,10 +657,20 @@ class Project:
     build_dir = "build"
     #: The test binary, relative to the build directory.
     test_binary = ""
-    #: A MesonBackend or a CMakeBackend. No default: which build system a project
-    #: uses is the most consequential thing it has to say, and inheriting one
-    #: silently is how the wrong tool gets run against the right tree.
+    #: A MesonBackend, a CMakeBackend or a MakeBackend. No default: which build
+    #: system a project uses is the most consequential thing it has to say, and
+    #: inheriting one silently is how the wrong tool gets run against the right
+    #: tree.
     backend = None
+    #: How the suite is run and its output read. doctest by default because that
+    #: is what most C++ projects reach for, and because a default that is wrong
+    #: announces itself immediately - the baseline refuses a suite it cannot see
+    #: any test cases in, rather than scoring every mutant `survived`.
+    harness = DoctestHarness()
+    #: The environment variable naming the compiler, and what to ask for its
+    #: version when it is unset. For the fingerprint only; a C project says CC.
+    compiler_env = "CXX"
+    compiler_probe = "c++"
     #: What `--buildtype` defaults to. A project whose suite only asserts what it
     #: asserts in an optimised build has to say so.
     buildtype = "debug"
@@ -352,7 +728,10 @@ class Project:
             if not getattr(self, attribute, None):
                 found.append("%s is empty, and nothing else can fill it in" % attribute)
         if self.backend is None:
-            found.append("no backend: say MesonBackend() or CMakeBackend()")
+            found.append("no backend: say MesonBackend(), CMakeBackend() or "
+                         "MakeBackend()")
+        if self.harness is None:
+            found.append("no harness: say DoctestHarness() or MinunitHarness()")
         if repo and not os.path.isdir(repo):
             found.append("repo %s is not a directory" % repo)
         elif repo:
@@ -398,7 +777,7 @@ class Project:
         """
         if path == self.target:
             return self.syntax_tu
-        if path.endswith((".cpp", ".cc", ".cxx")):
+        if path.endswith((".c", ".cpp", ".cc", ".cxx")):
             return path
         return None
 
@@ -1135,87 +1514,6 @@ def changed_lines(repo, ref, path):
 
 # ---------------------------------------------------------------- running
 
-def count_test_cases(stdout):
-    """How many cases doctest actually ran, or None if it never got that far.
-
-    The number this guards against is zero. doctest's suites are the ones a
-    `TEST_SUITE` names and not the build system's, which typically calls the
-    whole binary one test; ask for a suite that does not exist and doctest skips
-    every case and exits 0. Every mutant then comes back `survived` and the
-    report reads as a suite full of holes.
-    """
-    m = re.search(r"^\[doctest\] test cases:\s*(\d+)", stdout, re.M)
-    return int(m.group(1)) if m else None
-
-
-def parse_test_output(proc):
-    """Which tests went red, given a finished run of the suite.
-
-    Kept out of Lane so that spawning a process and interpreting doctest's
-    output stay separable - the second is the part that changes when a mutant
-    dies in a way doctest has no vocabulary for.
-    """
-    if proc.returncode == 0:
-        return []
-
-    # doctest prints a `TEST CASE:` banner for anything that produces output, a
-    # passing MESSAGE included, so the banners alone are not failures - only one
-    # with an assertion error under it counts.
-    failing, current = [], None
-    for line in proc.stdout.splitlines():
-        banner = re.match(r"^TEST CASE:\s*(.+)$", line)
-        if banner:
-            current = banner.group(1).strip()
-        elif ("ERROR" in line or "FAILED" in line) and current:
-            if current not in failing:
-                failing.append(current)
-    if failing:
-        return failing
-
-    # Nonzero exit with no failed assertion: a sanitizer abort, a crash or a
-    # signal. Naming it beats reporting "unknown" - under a sanitizer build the
-    # thing that noticed is often not a test at all, and which runtime
-    # complained is the whole answer.
-    for stream in (proc.stderr, proc.stdout):
-        for pattern in (r"^SUMMARY: (\w+Sanitizer): (.+)$", r"runtime error: (.+)$"):
-            m = re.search(pattern, stream, re.M)
-            if m:
-                return [" ".join(m.groups())[:120]]
-    return ["exit %d, no assertion failed" % proc.returncode]
-
-
-def short_test_name(name, limit=52):
-    """A doctest case name, shortened for a terminal.
-
-    Where a suite is mostly `TEST_CASE_TEMPLATE`, a name arrives as
-    `a_hash_survives_rehashing<ankerl::unordered_dense::v4_9_1::detail::table<
-    std::__cxx11::basic_string<char>, int, ...>>` - 300 characters of which the
-    first 25 are the part that says what broke. The instantiation is kept as a
-    marker rather than dropped, because which one of a template's instantiations
-    failed is occasionally the answer, and the full names stay in --json.
-    """
-    depth, out = 0, []
-    for ch in name:
-        if ch == "<":
-            depth += 1
-            if depth == 1:
-                out.append("<...>")
-        elif ch == ">":
-            depth = max(0, depth - 1)
-        elif depth == 0:
-            out.append(ch)
-    short = "".join(out)
-    return short if len(short) <= limit else short[:limit - 3] + "..."
-
-
-def render_caught(caught_by, most=3):
-    """The tests that noticed, as much of them as is worth printing."""
-    if not caught_by:
-        return ""
-    shown = ", ".join(short_test_name(t) for t in caught_by[:most])
-    extra = len(caught_by) - most
-    return shown + (" (+%d more)" % extra if extra > 0 else "")
-
 
 class Lane:
     """One throwaway copy of the repo, configured once and reused per mutant."""
@@ -1223,20 +1521,15 @@ class Lane:
     def __init__(self, root, index, args, project):
         self.project = project
         self.dir = os.path.join(root, "lane%d" % index)
-        self.build = os.path.join(self.dir, project.build_dir)
+        # normpath because an in-tree build names its build directory ".", and
+        # a lane whose build path reads `.../lane0/.` puts that spelling into
+        # every command line and every error message this prints.
+        self.build = os.path.normpath(os.path.join(self.dir, project.build_dir))
         self.target = os.path.join(self.dir, args.file)
         self.args = args
         self.jobs = args.jobs
         self.memory = args.memory_limit
-        self.test_args = []
-        if args.test_suite:
-            self.test_args.append("-ts=" + args.test_suite)
-        if args.exclude_suite:
-            self.test_args.append("-tse=" + args.exclude_suite)
-        if args.test_filter:
-            self.test_args.append("-tc=" + args.test_filter)
-        if args.exclude_filter:
-            self.test_args.append("-tce=" + args.exclude_filter)
+        self.test_args = project.harness.test_args(args)
         self.syntax_cmd = None
         self.syntax_file = args.syntax_tu
         self.ignore = lane_ignore_for(project)
@@ -1287,14 +1580,7 @@ class Lane:
         # new test file added to the build definition. Sources are listed there
         # by hand, so skipping this would build the previous run's set and score
         # mutants against tests that are not in it.
-        configured = os.path.exists(os.path.join(self.build, "build.ninja"))
-        cmd = self.project.backend.configure_argv(self.args, self.dir, self.build,
-                                                  configured)
-        r = subprocess.run(cmd, cwd=self.dir, capture_output=True, text=True,
-                           env=self.env)
-        if r.returncode != 0:
-            raise RuntimeError("%s failed in lane:\n%s%s"
-                               % (self.project.backend.name, r.stdout, r.stderr))
+        self.project.backend.configure(self, self.args)
         self.syntax_cmd = self._syntax_command()
 
     def _syntax_command(self):
@@ -1420,7 +1706,7 @@ class Lane:
         # the machine to itself - and the cap follows it, so that build is not
         # measured against a share of the machine it is not sharing.
         jobs = jobs or self.jobs
-        return self._run(["ninja", "-C", self.build, "-j", str(jobs)],
+        return self._run(self.project.backend.build_argv(self.build, jobs, self.args),
                          timeout=timeout, env=self.env,
                          memory=build_memory_limit(self.memory, jobs))
 
@@ -1470,7 +1756,7 @@ def evaluate(lane, mutant, args, original):
         return "hang", []
     if killed_for_memory(proc):
         return "oom", []
-    failing = parse_test_output(proc)
+    failing = lane.project.harness.parse_output(proc)
     return ("caught", failing) if failing else ("survived", [])
 
 
@@ -1666,20 +1952,19 @@ def fingerprint(project, args):
     something a test then checks. Without a sanitizer those come back `survived`
     however good the tests are.
     """
-    compiler = os.environ.get("CXX")
+    compiler = os.environ.get(project.compiler_env)
     if compiler is None:
         try:
-            compiler = subprocess.run(["c++", "--version"], capture_output=True,
+            compiler = subprocess.run([project.compiler_probe, "--version"],
+                                      capture_output=True,
                                       text=True).stdout.splitlines()[0]
         except (OSError, IndexError):
             compiler = "unknown"
     setup_args = project.backend.setup_args(args)
-    tests = " ".join(filter(None, [args.test_suite and "-ts=" + args.test_suite,
-                                   args.exclude_suite and "-tse=" + args.exclude_suite,
-                                   args.test_filter and "-tc=" + args.test_filter,
-                                   args.exclude_filter and "-tce=" + args.exclude_filter]))
+    tests = " ".join(project.harness.test_args(args))
     facts = dict(compiler=compiler, sanitizer=project.sanitizer(setup_args),
                  cores=os.cpu_count(), backend=project.backend.name,
+                 harness=project.harness.name,
                  setup=setup_args, tests=tests or "all", file=args.file,
                  ccache=shutil.which("ccache") is not None,
                  lanes=args.lanes, jobs=args.jobs, memory=args.memory_limit,
@@ -1697,7 +1982,7 @@ def render_fingerprint(project, facts):
              "%-15s %s" % (facts["backend"] + " setup", " ".join(facts["setup"])),
              "sanitizer       %s" % facts["sanitizer"],
              "mutating        %s" % facts["file"],
-             "tests           %s" % facts["tests"]]
+             "tests           %s (%s)" % (facts["tests"], facts["harness"])]
     rows, notes = project.extra_fingerprint(facts)
     notes = list(notes)  # appended to below; a project's own list is not ours to grow
     lines += rows
@@ -1761,20 +2046,21 @@ def baseline(lane, args, log):
                 "suite the mutants are measured against, so the cap is too low "
                 "to tell anything apart - raise --memory-limit."
                 % (attempt + 1, human(lane.memory)))
-        failing, ran = parse_test_output(proc), count_test_cases(proc.stdout)
+        harness = lane.project.harness
+        failing, ran = harness.parse_output(proc), harness.count_cases(proc.stdout)
         if failing:
             raise RuntimeError(
                 "baseline run %d failed (%s). The suite must be green and "
                 "deterministic before mutants mean anything."
-                % (attempt + 1, ", ".join(short_test_name(t) for t in failing)))
+                % (attempt + 1, ", ".join(harness.short_name(t) for t in failing)))
         # A filter that matches nothing is green, and every mutant under it
         # survives. Refusing here is the difference between "your filter names
-        # no doctest suite" and a report claiming the suite covers nothing.
+        # nothing" and a report claiming the suite covers nothing.
         if ran == 0:
             raise RuntimeError(
-                "baseline run %d passed 0 test cases (%s). doctest's suites are "
-                "the ones TEST_SUITE names, not the build system's."
-                % (attempt + 1, " ".join(lane.test_args) or "no filter"))
+                "baseline run %d passed 0 test cases (%s). %s."
+                % (attempt + 1, " ".join(lane.test_args) or "no filter",
+                   harness.no_cases_hint()))
         log("baseline: run %d/%d green, %s case%s"
             % (attempt + 1, args.baseline_runs, "?" if ran is None else ran,
                "" if ran == 1 else "s"))
@@ -1872,6 +2158,7 @@ def drop_uncompiled(lane, mutants, args, log):
 def run_mutants(lanes, mutants, args, log, original):
     """Every mutant through a lane, reported in the order they were produced."""
     pending, results, lock = queue.Queue(), [], threading.Lock()
+    harness = lanes[0].project.harness
     for index, mutant in enumerate(mutants):
         pending.put((index, mutant))
 
@@ -1896,7 +2183,7 @@ def run_mutants(lanes, mutants, args, log, original):
                                     caught_by=caught_by))
                 log("[%d/%d] %-46s %s%s"
                     % (len(results), len(mutants), mutant["name"][:46], verdict,
-                       " (%s)" % render_caught(caught_by) if caught_by else ""))
+                       " (%s)" % harness.render_caught(caught_by) if caught_by else ""))
 
     with concurrent.futures.ThreadPoolExecutor(len(lanes)) as pool:
         list(pool.map(worker, lanes))
@@ -1910,8 +2197,15 @@ def run_mutants(lanes, mutants, args, log, original):
     return results
 
 
-def report(results, args, original):
-    """One summary for both modes. Only the framing differs, not the verdicts."""
+def report(results, args, original, harness=None):
+    """One summary for both modes. Only the framing differs, not the verdicts.
+
+    The harness is passed rather than reached for because this is the one part
+    of the run that has no lane to ask, and defaulting it to the base class -
+    which shortens a name without understanding it - keeps a caller that has
+    none from crashing at the last line of an hour-long sweep.
+    """
+    harness = harness or Harness()
     counts = {v: sum(1 for r in results if r["verdict"] == v) for v in VERDICTS}
     survivors = [r for r in results if r["verdict"] == "survived"]
 
@@ -1920,7 +2214,8 @@ def report(results, args, original):
     if len(results) <= 40:
         for r in results:
             print("%-*s  %-9s  %s"
-                  % (width, r["name"], r["verdict"], render_caught(r["caught_by"]) or "-"))
+                  % (width, r["name"], r["verdict"],
+                     harness.render_caught(r["caught_by"]) or "-"))
         print()
 
     tally = ["%d caught by a test" % counts["caught"],
@@ -2030,18 +2325,29 @@ def build_parser(project, doc):
                         "leg catches the bug, which the default build cannot "
                         "answer. Needs the '=' form when the value starts with "
                         "a dash" % project.backend.name)
-    p.add_argument("--test-suite", metavar="NAME",
-                   help="run only this doctest suite (-ts=)")
-    p.add_argument("--exclude-suite", metavar="NAME",
-                   help="skip this doctest suite (-tse=)")
-    p.add_argument("--test-filter", metavar="PATTERN",
-                   help="run only matching doctest cases (-tc=)")
-    p.add_argument("--exclude-filter", metavar="PATTERN",
-                   help="skip matching doctest cases (-tce=). What to reach for "
-                        "when one case is flaky on this machine: the baseline "
-                        "refuses to score against a suite that is not green "
-                        "twice running, and excluding the flake by name is "
-                        "honest in a way that lowering --baseline-runs is not")
+    # Offered only where the runner can honour them. A runner that takes no
+    # arguments - minunit is one - would accept `--test-filter` and run the whole
+    # suite anyway, while the fingerprint printed the filter as though it had
+    # applied; there is no reading of that report which is true, so the flags are
+    # absent instead and argparse says so by name.
+    if project.harness.filters:
+        runner = project.harness.name
+        p.add_argument("--test-suite", metavar="NAME",
+                       help="run only this %s suite (-ts=)" % runner)
+        p.add_argument("--exclude-suite", metavar="NAME",
+                       help="skip this %s suite (-tse=)" % runner)
+        p.add_argument("--test-filter", metavar="PATTERN",
+                       help="run only matching %s cases (-tc=)" % runner)
+        p.add_argument("--exclude-filter", metavar="PATTERN",
+                       help="skip matching %s cases (-tce=). What to reach for "
+                            "when one case is flaky on this machine: the "
+                            "baseline refuses to score against a suite that is "
+                            "not green twice running, and excluding the flake by "
+                            "name is honest in a way that lowering "
+                            "--baseline-runs is not" % runner)
+    else:
+        p.set_defaults(test_suite=None, exclude_suite=None,
+                       test_filter=None, exclude_filter=None)
     p.add_argument("--syntax-tu", metavar="PATH", default=None,
                    help="the TU the pre-filter compiles (default: derived from "
                         "--file)")
@@ -2215,7 +2521,7 @@ def main(project, doc):
                len(lanes), "" if len(lanes) == 1 else "s"))
         results = run_mutants(lanes, mutants, args, log, original)
 
-    counts = report(results, args, original)
+    counts = report(results, args, original, project.harness)
     print("\n%d mutant%s in %.0fs"
           % (len(results), "" if len(results) == 1 else "s", time.time() - started))
 
