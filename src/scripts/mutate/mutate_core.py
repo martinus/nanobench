@@ -2168,6 +2168,60 @@ def render_fingerprint(project, facts):
     return "\n".join(lines)
 
 
+PROBE_MARKER = "mutate_core: participation probe"
+
+
+def check_target_is_built(lane, args, log):
+    """Refuse a file the binary under test is not built from.
+
+    Every mutant in such a file comes back `survived`, because the mutation
+    never reaches the binary the tests run - so the report says "nothing
+    noticed these - whatever covers them is decoration" when the truth is that
+    nothing *could* have noticed. That is the flattering direction, and the one
+    this tool must never fail in: a 0% kill rate reads as an indictment of the
+    tests when it is really an indictment of the invocation.
+
+    Not hypothetical. oans's `src/tests.c` #includes most of `src/*.c` into a
+    single translation unit, but deliberately not `oans.c` or `run_dedupe.c`,
+    which belong to the shipped binary alone - and `make test-build` compiles
+    only `tests.c`. Sweeping `src/oans.c` planned 1,394 mutants and would have
+    scored every one of them `survived`.
+
+    The probe is an `#error` appended to the file. If the build still succeeds,
+    nothing the test binary is made of ever included it. That is deterministic
+    and needs to know nothing about the build system, which is what makes it
+    the right shape for a core shared by make, cmake and meson: a compilation
+    database can say which files are compiled, but not which are #included into
+    something that is.
+
+    It runs before the baseline build rather than after, so the tree is left
+    with a good build rather than a failed one, and it is skipped where it
+    cannot pay for itself - a run that scores nothing has nothing to be wrong
+    about.
+    """
+    with open(lane.target, encoding="utf-8") as f:
+        original = f.read()
+    log("checking the target reaches the binary under test")
+    lane.write_target("%s\n#error %s\n" % (original, PROBE_MARKER))
+    try:
+        proc = lane.run_build(args.build_timeout, jobs=os.cpu_count() or 4)
+    finally:
+        lane.write_target(original)
+    if proc is None:
+        # A timeout says nothing either way, and refusing on it would turn a
+        # slow machine into a wrong answer about the tests.
+        log("participation probe timed out; continuing without it")
+        return
+    if proc.returncode != 0:
+        return
+    raise RuntimeError(
+        "%s is not compiled into %s, so every mutant in it would come back "
+        "`survived` however good the tests are - the build succeeded with an "
+        "#error in the file. Sweep a file the test binary is actually built "
+        "from, or add this one to it."
+        % (args.file, lane.project.test_binary))
+
+
 def baseline(lane, args, log):
     """Refuse to score anything until the suite is green repeatedly.
 
@@ -2178,6 +2232,7 @@ def baseline(lane, args, log):
     are derived from - a fixed generous timeout makes every hung mutant cost
     many times what a real one does, and hangs are an expected verdict here.
     """
+    check_target_is_built(lane, args, log)
     log("baseline: building")
     proc = lane.run_build(args.build_timeout, jobs=os.cpu_count() or 4)
     if killed_for_memory(proc):
