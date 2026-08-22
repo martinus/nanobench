@@ -150,13 +150,18 @@ class Backend:
     """How a build is configured and driven, which is nearly all that separates
     the build systems this has to run against.
 
-    Two of the three end in `ninja -C <build>`, so for those only the configure
-    step and the spelling of "pass this through to it" differ; make has no
-    configure step at all and builds in the tree it was handed. All of them live
-    here rather than one in each project's adapter on purpose: the test suite
-    that covers this file runs in one repository and has to cover the code the
-    others execute, and a backend that only exists over there is exactly as
-    untested as it was before the tools were merged.
+    Nothing here assumes a generator. Two of the three backends end in `ninja -C
+    <build>` and share NinjaBackend below; make has no configure step at all and
+    builds in the tree it was handed, so it inherits this class directly. That
+    split is deliberate: a default of "ninja" on *this* class would be a trap
+    for the next backend, which would inherit a build command and a
+    configured-ness probe that are both wrong for it and get a slow reconfigure
+    loop rather than an error.
+
+    All of them live here rather than one in each project's adapter on purpose:
+    the test suite that covers this file runs in one repository and has to cover
+    the code the others execute, and a backend that only exists over there is
+    exactly as untested as it was before the tools were merged.
     """
 
     #: `--meson-arg` / `--cmake-arg` / `--make-arg`. Named after the tool because
@@ -167,34 +172,24 @@ class Backend:
     def arg_flag(self):
         return "--%s-arg" % self.name
 
-    def configure_argv(self, args, source, build, configured):
-        raise NotImplementedError
+    #: What the fingerprint calls this backend's configuration row. make has no
+    #: configure step - that is the whole reason `configure` is a method rather
+    #: than an argv - so "make setup" would name a step that does not exist.
+    setup_label = "setup"
 
     def setup_args(self, args):
         """What this run configures with, for the fingerprint and for `--dry-run`."""
         raise NotImplementedError
 
-    def is_configured(self, build):
-        """Whether this build directory has been configured before.
-
-        Only meson reads the answer - it wants `--reconfigure` on a second pass
-        where cmake re-runs in place - but the file that proves it is ninja's
-        rather than either tool's, so a backend that generates no build.ninja
-        has to answer for itself rather than be assumed into one. Getting this
-        wrong is not cosmetic: a backend inheriting `False` forever would
-        reconfigure from scratch every time `--reuse` was supposed to save it.
-        """
-        return os.path.exists(os.path.join(build, "build.ninja"))
-
     def build_argv(self, build, jobs, args):
-        """The command that builds the suite. ninja, for both generators here.
+        """The command that builds the suite.
 
         `args` is the whole namespace rather than the parsed setup arguments,
         because a build system without a configure step has nowhere to have put
         them: make carries `CC=clang` on the build line itself, so for that
         backend this is the only place `--make-arg` can land.
         """
-        return ["ninja", "-C", build, "-j", str(jobs)]
+        raise NotImplementedError
 
     def configure(self, lane, args):
         """Prepare a lane's build directory, raising if it cannot be.
@@ -206,13 +201,52 @@ class Backend:
         alternative is a backend returning a command that pretends to configure,
         and a failure message naming a step that does not exist.
         """
-        cmd = self.configure_argv(args, lane.dir, lane.build,
-                                  self.is_configured(lane.build))
-        r = subprocess.run(cmd, cwd=lane.dir, capture_output=True, text=True,
+        raise NotImplementedError
+
+    def add_arguments(self, parser, project):
+        """Flags this backend can honour, added to the parser.
+
+        Here rather than written out in `build_parser` for the same reason the
+        harness adds its own: a flag that is accepted and then ignored is worse
+        than an absent one, because the fingerprint prints it as though it
+        applied and there is no reading of that report which is true.
+        `--buildtype` is the case in point - it means something to both
+        generators and nothing to make.
+        """
+
+    def _run_in_lane(self, lane, argv, what):
+        """Run one setup command inside a lane, raising with both streams.
+
+        Shared so that the lane-invocation contract - which directory, which
+        environment, that stdout and stderr both reach the message - is stated
+        once. Only one of the two callers is exercised in any one repository.
+        """
+        r = subprocess.run(argv, cwd=lane.dir, capture_output=True, text=True,
                            env=lane.env)
         if r.returncode != 0:
             raise RuntimeError("%s failed in lane:\n%s%s"
-                               % (self.name, r.stdout, r.stderr))
+                               % (what, r.stdout, r.stderr))
+        return r
+
+    def compiler(self, project, args):
+        """The compiler this run builds with, as a line for the fingerprint.
+
+        Asked of the backend for the same reason `sanitizer` is: how the
+        compiler gets chosen is the build system's business. meson and cmake
+        honour `CXX`/`CC` from the environment; make takes it as a variable, so
+        `--make-arg CC=clang` would otherwise be reported as whatever the
+        system compiler happens to be - and the fingerprint is the artifact a
+        survivor is judged against later.
+        """
+        compiler = os.environ.get(project.compiler_env)
+        if compiler is None:
+            try:
+                return subprocess.run([project.compiler_probe, "--version"],
+                                      capture_output=True,
+                                      text=True).stdout.splitlines()[0]
+            except (OSError, IndexError):
+                return "unknown"
+        return compiler
 
     def sanitizer(self, setup_args):
         """Which sanitizer this configuration builds with, as a word for the
@@ -228,7 +262,39 @@ class Backend:
         return "unknown"
 
 
-class MesonBackend(Backend):
+class NinjaBackend(Backend):
+    """The half both generators share: they configure a build directory and then
+    hand it to ninja. Only the configure step and the spelling of "pass this
+    through" differ between them."""
+
+    def configure_argv(self, args, source, build, configured):
+        raise NotImplementedError
+
+    def is_configured(self, build):
+        """Whether this build directory has been configured before.
+
+        Only meson reads the answer - it wants `--reconfigure` on a second pass
+        where cmake re-runs in place - but the file that proves it is ninja's
+        rather than either tool's, which is why it is answered here and not on
+        Backend.
+        """
+        return os.path.exists(os.path.join(build, "build.ninja"))
+
+    def build_argv(self, build, jobs, args):
+        return ["ninja", "-C", build, "-j", str(jobs)]
+
+    def configure(self, lane, args):
+        self._run_in_lane(lane, self.configure_argv(args, lane.dir, lane.build,
+                                                    self.is_configured(lane.build)),
+                          self.name)
+
+    def add_arguments(self, parser, project):
+        parser.add_argument("--buildtype", default=project.buildtype,
+                            help="what the lanes are built as (default "
+                                 "%(default)s)")
+
+
+class MesonBackend(NinjaBackend):
     name = "meson"
 
     def setup_args(self, args):
@@ -273,7 +339,7 @@ class MesonBackend(Backend):
                      if a.startswith("-Db_sanitize=")), "none")
 
 
-class CMakeBackend(Backend):
+class CMakeBackend(NinjaBackend):
     name = "cmake"
 
     # `--buildtype` is one shared flag over two vocabularies, and the translation
@@ -317,31 +383,87 @@ class CMakeBackend(Backend):
 # a makefile runs to ask whether a warning exists.
 COMPILERS = ("cc", "gcc", "clang", "c++", "g++", "clang++", "cpp", "tcc", "icc", "icx")
 
+# Things a makefile puts *in front* of the compiler. `CC = ccache gcc` is
+# ordinary, and a reader that stops at argv[0] sees only the wrapper.
+WRAPPERS = ("ccache", "distcc", "sccache", "icecc", "time", "env")
+
 # What a compile line accepts as input. `.h` is not here: a makefile that names a
 # header on a compile line is doing something (a precompiled header, usually)
 # that this has no business writing a compile_commands entry for.
 SOURCE_SUFFIXES = (".c", ".cc", ".cpp", ".cxx", ".c++", ".m", ".mm", ".S", ".s")
 
-# Link-only arguments, dropped from the entry this writes. They are harmless to
-# a compile that produces an object and *fatal* to one that does not: with
-# `-fsyntax-only` gcc warns "linker input file unused because linking not done"
-# for every one of them, and a tree built with -Werror then fails its own syntax
-# pre-filter. Every mutant would come back `compiler` - a verdict in the
-# flattering direction, which is the one way this tool must not be wrong.
+# Arguments whose *next* word is an output rather than an input. Shared between
+# the make reader (where `-o generated.c` would otherwise be recorded as a
+# source) and the syntax check (where writing the depfile would leave the real
+# build's dependency information describing a compile that never happened).
+# Both are silent when wrong, and one tuple cannot drift from the other.
+OUTPUT_ARGS = ("-o", "-MF", "-MQ", "-MT")
+
+# Link-only arguments. Harmless to a compile that produces an object and *fatal*
+# to one that does not: with `-fsyntax-only` gcc warns "linker input file unused
+# because linking not done" for every one of them, and a tree built with -Werror
+# then fails its own syntax pre-filter, so every mutant comes back `compiler` -
+# a verdict in the flattering direction, which is the one way this tool must not
+# be wrong. Stripped in Lane._syntax_command rather than when a compilation
+# database is written, because it is a fact about `-fsyntax-only` and not about
+# any one build system: a generator database carrying a compile-and-link line
+# for a single-TU target has exactly the same hazard.
 LINK_ONLY = ("-l", "-L", "-Wl,", "-shared", "-static", "-rdynamic", "-pie", "-no-pie")
 
 
 def looks_like_compiler(word):
-    """Whether this is the compiler at the head of a command line.
+    """Whether this word names a compiler.
 
     Version suffixes count (`clang-18`, `gcc-14`), so do target triplets
     (`x86_64-linux-gnu-gcc`, which is what a cross build calls it) and so do
-    paths (`/usr/lib/ccache/cc`) - a wrapper is still the head of a compile line.
+    paths (`/usr/lib/ccache/cc`, where the wrapper *is* the compiler as far as
+    the command line is concerned).
     """
     parts = os.path.basename(word).split("-")
     while parts and parts[-1].replace(".", "").isdigit():
         parts.pop()
     return bool(parts) and parts[-1] in COMPILERS
+
+
+def compile_argv(argv):
+    """`argv` with any leading wrapper words dropped, or None if it is not a
+    compile at all.
+
+    `CC = ccache gcc` is an ordinary thing for a makefile to say, and it puts
+    the wrapper in argv[0] where a bare `looks_like_compiler` answers no. That
+    is the worst possible answer here: no entry is written, the database comes
+    back empty, `MakeBackend.configure` reads that as "no pre-filter", and every
+    syntactically invalid mutant costs a full rebuild with nothing saying why.
+    """
+    for i, word in enumerate(argv):
+        if looks_like_compiler(word):
+            return argv[i:]
+        if os.path.basename(word) not in WRAPPERS:
+            return None
+    return None
+
+
+def split_compile_line(argv):
+    """One compile command's arguments, and the source files it names.
+
+    Lifted out of the line loop so the classification table - the part that
+    grows a new entry when a compiler does - is reachable and testable on its
+    own, rather than only through a whole `make --dry-run` transcript.
+    """
+    kept, sources, i = [], [], 0
+    while i < len(argv):
+        arg = argv[i]
+        # The next word is an output, not an input: without skipping it,
+        # `-o src/x.o` would be read as a source the moment a makefile named an
+        # output ending in one of the suffixes.
+        if arg in OUTPUT_ARGS:
+            i += 2
+            continue
+        if arg.endswith(SOURCE_SUFFIXES) and not arg.startswith("-"):
+            sources.append(arg)
+        kept.append(arg)
+        i += 1
+    return kept, sources
 
 
 def compile_commands_from_make(output, directory):
@@ -365,30 +487,21 @@ def compile_commands_from_make(output, directory):
         line = line.strip()
         if not line or line.startswith("#"):
             continue
+        # Cheap reject before shlex, which is ~400x the cost of a split: most of
+        # a dry run is not a compile.
+        head = line.split(None, 1)[0].strip("\"'")
+        if not (looks_like_compiler(head) or os.path.basename(head) in WRAPPERS):
+            continue
         try:
             argv = shlex.split(line)
         except ValueError:
             # An unbalanced quote is a shell fragment make is echoing rather
             # than a compile; there is nothing here worth guessing at.
             continue
-        if not argv or not looks_like_compiler(argv[0]):
+        argv = compile_argv(argv) if argv else None
+        if not argv:
             continue
-        kept, sources, i = [], [], 0
-        while i < len(argv):
-            arg = argv[i]
-            # The argument after these names an output, not an input: without
-            # skipping it, `-o src/x.o` would be read as a source the moment a
-            # makefile named an output ending in one of the suffixes.
-            if arg in ("-o", "-MF", "-MQ", "-MT"):
-                i += 2
-                continue
-            if arg.startswith(LINK_ONLY):
-                i += 1
-                continue
-            if arg.endswith(SOURCE_SUFFIXES) and not arg.startswith("-"):
-                sources.append(arg)
-            kept.append(arg)
-            i += 1
+        kept, sources = split_compile_line(argv)
         for source in sources:
             key = os.path.normpath(os.path.join(directory, source))
             if key in seen:
@@ -418,6 +531,9 @@ class MakeBackend(Backend):
     """
 
     name = "make"
+    #: There is no configure step; what the fingerprint shows is the variables
+    #: every build line carries.
+    setup_label = "variables"
 
     def __init__(self, target=None):
         #: The make target the lanes build. None builds the default goal, which
@@ -436,22 +552,23 @@ class MakeBackend(Backend):
         return (["make", "-C", build] + list(extra) + self.setup_args(args)
                 + ([self.target] if self.target else []))
 
-    def is_configured(self, build):
-        # An in-tree build is configured the moment the tree exists. Answering
-        # off build.ninja here would say "never", and `--reuse` would then
-        # rewrite the compilation database on every run for nothing.
-        return os.path.isdir(build)
-
     def build_argv(self, build, jobs, args):
         return self._argv(build, args, ["-j", str(jobs)])
 
+    def compiler(self, project, args):
+        # `--make-arg CC=clang` is how a make project asks for a different
+        # compiler, and it never reaches the environment - so the base class's
+        # answer would name the system compiler while the lanes built with
+        # another one.
+        for arg in reversed(self.setup_args(args)):
+            if arg.startswith((project.compiler_env + "=", "CC=", "CXX=")):
+                return arg.split("=", 1)[1]
+        return super().compiler(project, args)
+
     def configure(self, lane, args):
-        argv = self._argv(lane.build, args, ["--always-make", "--dry-run"])
-        r = subprocess.run(argv, cwd=lane.dir, capture_output=True, text=True,
-                           env=lane.env)
-        if r.returncode != 0:
-            raise RuntimeError("make --dry-run failed in lane:\n%s%s"
-                               % (r.stdout, r.stderr))
+        r = self._run_in_lane(
+            lane, self._argv(lane.build, args, ["--always-make", "--dry-run"]),
+            "make --dry-run")
         entries = compile_commands_from_make(r.stdout, lane.build)
         # Written even when empty. The pre-filter reads a database with no entry
         # for its file as "no pre-filter", which is the correct reading of a
@@ -481,19 +598,40 @@ class Harness:
 
     name = ""
 
-    #: Whether this runner can be told to run a subset of its cases. The four
-    #: `--test-suite`/`--test-filter` flags are only offered when it can: a
-    #: filter flag that is accepted and then ignored would run the whole suite
-    #: while the fingerprint claimed otherwise, and there is no reading of that
-    #: report which is true.
-    filters = False
+    def add_arguments(self, parser):
+        """Flags this runner can honour, added to the parser.
+
+        A filter flag that is accepted and then ignored would run the whole
+        suite while the fingerprint claimed otherwise, and there is no reading
+        of that report which is true - so a runner that takes no arguments adds
+        none, and argparse refuses them by name. The backends say what they can
+        honour the same way, for the same reason.
+        """
 
     def test_args(self, args):
         """The filter flags, as this runner spells them."""
         return []
 
     def parse_output(self, proc):
-        """Which tests went red, given a finished run."""
+        """Which tests went red, given a finished run.
+
+        The shape is fixed here and only the reading is a subclass's, because
+        the tail is this file's one load-bearing invariant: a nonzero exit that
+        names no failed assertion is still a kill. A subclass that wrote its own
+        `parse_output` and forgot `crash_summary` would return `[]` for a
+        crash, which `evaluate` scores `survived` - the flattering direction.
+        """
+        if proc.returncode == 0:
+            return []
+        failing = []
+        for name in self.failing_cases(proc.stdout):
+            if name not in failing:
+                failing.append(name)
+        return failing or self.crash_summary(proc)
+
+    def failing_cases(self, stdout):
+        """Every case this runner's output names as failed, in order and with
+        duplicates allowed - `parse_output` collapses them."""
         raise NotImplementedError
 
     def count_cases(self, stdout):
@@ -539,7 +677,21 @@ class DoctestHarness(Harness):
     """doctest, as both C++ projects here use it."""
 
     name = "doctest"
-    filters = True
+
+    def add_arguments(self, parser):
+        parser.add_argument("--test-suite", metavar="NAME",
+                            help="run only this doctest suite (-ts=)")
+        parser.add_argument("--exclude-suite", metavar="NAME",
+                            help="skip this doctest suite (-tse=)")
+        parser.add_argument("--test-filter", metavar="PATTERN",
+                            help="run only matching doctest cases (-tc=)")
+        parser.add_argument("--exclude-filter", metavar="PATTERN",
+                            help="skip matching doctest cases (-tce=). What to "
+                                 "reach for when one case is flaky on this "
+                                 "machine: the baseline refuses to score against "
+                                 "a suite that is not green twice running, and "
+                                 "excluding the flake by name is honest in a way "
+                                 "that lowering --baseline-runs is not")
 
     def test_args(self, args):
         pairs = (("-ts=", args.test_suite), ("-tse=", args.exclude_suite),
@@ -554,22 +706,17 @@ class DoctestHarness(Harness):
         return ("doctest's suites are the ones TEST_SUITE names, not the build "
                 "system's")
 
-    def parse_output(self, proc):
-        if proc.returncode == 0:
-            return []
-
+    def failing_cases(self, stdout):
         # doctest prints a `TEST CASE:` banner for anything that produces
         # output, a passing MESSAGE included, so the banners alone are not
         # failures - only one with an assertion error under it counts.
-        failing, current = [], None
-        for line in proc.stdout.splitlines():
+        current = None
+        for line in stdout.splitlines():
             banner = re.match(r"^TEST CASE:\s*(.+)$", line)
             if banner:
                 current = banner.group(1).strip()
             elif ("ERROR" in line or "FAILED" in line) and current:
-                if current not in failing:
-                    failing.append(current)
-        return failing or self.crash_summary(proc)
+                yield current
 
     def short_name(self, name, limit=52):
         """Where a suite is mostly `TEST_CASE_TEMPLATE`, a name arrives as
@@ -596,8 +743,8 @@ class DoctestHarness(Harness):
 class MinunitHarness(Harness):
     """minunit, the single-header C runner.
 
-    A whole suite is one binary with no arguments: `filters` stays False, so the
-    four filter flags are not offered rather than offered and ignored. Where
+    A whole suite is one binary with no arguments, so it adds no flags and the
+    four filter options are absent rather than offered and ignored. Where
     doctest lets a flaky case be excluded by name, here the honest answers are
     to fix the case or to say in the fingerprint that it was not excluded.
 
@@ -618,18 +765,14 @@ class MinunitHarness(Harness):
         return ("minunit runs whatever MU_RUN_TEST names in the suite function; "
                 "a suite that names nothing is green")
 
-    def parse_output(self, proc):
-        if proc.returncode == 0:
-            return []
+    def failing_cases(self, stdout):
         # `MU_RUN_TEST` prints "<func> failed:" and then an indented location.
         # Matched anchored on its own line so that a test *name* containing the
         # word, or an assertion message quoting it, cannot invent a failure.
-        failing = []
-        for line in proc.stdout.splitlines():
+        for line in stdout.splitlines():
             m = re.match(r"^(\S+) failed:$", line)
-            if m and m.group(1) not in failing:
-                failing.append(m.group(1))
-        return failing or self.crash_summary(proc)
+            if m:
+                yield m.group(1)
 
 
 # ---------------------------------------------------------------- projects
@@ -662,11 +805,14 @@ class Project:
     #: inheriting one silently is how the wrong tool gets run against the right
     #: tree.
     backend = None
-    #: How the suite is run and its output read. doctest by default because that
-    #: is what most C++ projects reach for, and because a default that is wrong
-    #: announces itself immediately - the baseline refuses a suite it cannot see
-    #: any test cases in, rather than scoring every mutant `survived`.
-    harness = DoctestHarness()
+    #: A DoctestHarness or a MinunitHarness. No default, for the same reason
+    #: `backend` has none, and against the temptation to default it to doctest:
+    #: a wrong harness does *not* announce itself. `DoctestHarness.count_cases`
+    #: finds no `[doctest] test cases:` line in minunit output and returns None,
+    #: which the baseline logs as "? cases" and accepts - so the run would be
+    #: scored by a parser that cannot read its runner, silently, in the
+    #: flattering direction.
+    harness = None
     #: The environment variable naming the compiler, and what to ask for its
     #: version when it is unset. For the fingerprint only; a C project says CC.
     compiler_env = "CXX"
@@ -786,6 +932,16 @@ class Project:
         fingerprint. The build system knows the common spelling; a project that
         wraps it in an option of its own overrides this."""
         return self.backend.sanitizer(setup_args)
+
+    def resolve_file(self, args):
+        """Which file this run mutates, given everything the command line said.
+
+        The hook exists because `--file` is not always the only source of that
+        answer: a project whose bug files declare the source they are about can
+        read it from there, so the two cannot be given inconsistently. Returning
+        `args.file` unchanged - the default - is what every other project wants.
+        """
+        return args.file
 
     def extra_facts(self, args):
         """Anything else this run's verdicts depend on, for the fingerprint."""
@@ -1627,8 +1783,14 @@ class Lane:
             # -MF/-MQ name ninja's depfile for this object: writing it from
             # here would leave the real build's dependency information
             # describing a compile that never produced an object.
-            if arg in ("-o", "-MF", "-MQ", "-MT"):
+            if arg in OUTPUT_ARGS:
                 i += 2
+                continue
+            # Link-only arguments are fatal to a compile that produces no
+            # object - see LINK_ONLY. Dropped here rather than when a database
+            # is written, so every backend's entries get the same treatment.
+            if arg.startswith(LINK_ONLY):
+                i += 1
                 continue
             if arg not in ("-c", "-MD", "-MMD"):
                 if borrowed and arg == entry["file"]:
@@ -1952,18 +2114,12 @@ def fingerprint(project, args):
     something a test then checks. Without a sanitizer those come back `survived`
     however good the tests are.
     """
-    compiler = os.environ.get(project.compiler_env)
-    if compiler is None:
-        try:
-            compiler = subprocess.run([project.compiler_probe, "--version"],
-                                      capture_output=True,
-                                      text=True).stdout.splitlines()[0]
-        except (OSError, IndexError):
-            compiler = "unknown"
     setup_args = project.backend.setup_args(args)
+    compiler = project.backend.compiler(project, args)
     tests = " ".join(project.harness.test_args(args))
     facts = dict(compiler=compiler, sanitizer=project.sanitizer(setup_args),
                  cores=os.cpu_count(), backend=project.backend.name,
+                 setup_label=project.backend.setup_label,
                  harness=project.harness.name,
                  setup=setup_args, tests=tests or "all", file=args.file,
                  ccache=shutil.which("ccache") is not None,
@@ -1979,7 +2135,8 @@ def render_fingerprint(project, facts):
              "lanes           %d, %d job%s each"
              % (facts["lanes"], facts["jobs"], "" if facts["jobs"] == 1 else "s"),
              "memory          %s per lane" % human(facts["memory"]),
-             "%-15s %s" % (facts["backend"] + " setup", " ".join(facts["setup"])),
+             "%-15s %s" % (facts["backend"] + " " + facts["setup_label"],
+                           " ".join(facts["setup"])),
              "sanitizer       %s" % facts["sanitizer"],
              "mutating        %s" % facts["file"],
              "tests           %s (%s)" % (facts["tests"], facts["harness"])]
@@ -2197,15 +2354,12 @@ def run_mutants(lanes, mutants, args, log, original):
     return results
 
 
-def report(results, args, original, harness=None):
+def report(results, args, original, harness):
     """One summary for both modes. Only the framing differs, not the verdicts.
 
     The harness is passed rather than reached for because this is the one part
-    of the run that has no lane to ask, and defaulting it to the base class -
-    which shortens a name without understanding it - keeps a caller that has
-    none from crashing at the last line of an hour-long sweep.
+    of the run that has no lane to ask.
     """
-    harness = harness or Harness()
     counts = {v: sum(1 for r in results if r["verdict"] == v) for v in VERDICTS}
     survivors = [r for r in results if r["verdict"] == "survived"]
 
@@ -2296,8 +2450,6 @@ def build_parser(project, doc):
                    help="build parallelism inside one lane (default: the cores "
                         "divided by the lanes, so one each when the lanes fill "
                         "the machine and all of them for a single bug)")
-    p.add_argument("--buildtype", default=project.buildtype,
-                   help="what the lanes are built as (default %(default)s)")
     p.add_argument("--memory-limit", type=parse_size, default=None, metavar="SIZE",
                    help="what one lane may allocate, as 4G, 512M or 0 for no "
                         "cap. The default is the smaller of a lane's share of "
@@ -2325,29 +2477,14 @@ def build_parser(project, doc):
                         "leg catches the bug, which the default build cannot "
                         "answer. Needs the '=' form when the value starts with "
                         "a dash" % project.backend.name)
-    # Offered only where the runner can honour them. A runner that takes no
-    # arguments - minunit is one - would accept `--test-filter` and run the whole
-    # suite anyway, while the fingerprint printed the filter as though it had
-    # applied; there is no reading of that report which is true, so the flags are
-    # absent instead and argparse says so by name.
-    if project.harness.filters:
-        runner = project.harness.name
-        p.add_argument("--test-suite", metavar="NAME",
-                       help="run only this %s suite (-ts=)" % runner)
-        p.add_argument("--exclude-suite", metavar="NAME",
-                       help="skip this %s suite (-tse=)" % runner)
-        p.add_argument("--test-filter", metavar="PATTERN",
-                       help="run only matching %s cases (-tc=)" % runner)
-        p.add_argument("--exclude-filter", metavar="PATTERN",
-                       help="skip matching %s cases (-tce=). What to reach for "
-                            "when one case is flaky on this machine: the "
-                            "baseline refuses to score against a suite that is "
-                            "not green twice running, and excluding the flake by "
-                            "name is honest in a way that lowering "
-                            "--baseline-runs is not" % runner)
-    else:
-        p.set_defaults(test_suite=None, exclude_suite=None,
-                       test_filter=None, exclude_filter=None)
+    # Each seam adds the flags it can actually honour, and nothing adds a flag
+    # it would ignore. `--buildtype` means something to both generators and
+    # nothing to make; the four filter options mean something to doctest and
+    # nothing to minunit. A flag accepted and then dropped would be printed in
+    # the fingerprint as though it had applied, and there is no reading of that
+    # report which is true - so argparse refuses it by name instead.
+    project.backend.add_arguments(p, project)
+    project.harness.add_arguments(p)
     p.add_argument("--syntax-tu", metavar="PATH", default=None,
                    help="the TU the pre-filter compiles (default: derived from "
                         "--file)")
@@ -2452,6 +2589,12 @@ def main(project, doc):
         raise RuntimeError("%s does not describe this repository:\n%s"
                            % (type(project).__name__,
                               "\n".join("  " + problem for problem in problems)))
+
+    # The project's last word on what is being mutated, before anything reads
+    # it. A project whose bug files name their own target resolves that here
+    # rather than making every caller pass a `--file` that has to agree with a
+    # `--bugs`; the default changes nothing.
+    args.file = project.resolve_file(args)
 
     modes = [bool(args.replace), bool(args.bugs), bool(args.reverse)]
     if sum(modes) > 1:

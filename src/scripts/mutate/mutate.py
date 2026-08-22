@@ -55,6 +55,7 @@ class Nanobench(mutate_core.Project):
 
     test_binary = "nb"
     backend = mutate_core.CMakeBackend()
+    harness = mutate_core.DoctestHarness()
     # The suite is built and run the way CI runs it. Not a detail: several tests
     # assert on measured time, and at -O0 an epoch does different work.
     buildtype = "release"
