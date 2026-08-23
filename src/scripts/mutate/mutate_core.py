@@ -22,6 +22,20 @@ there is one copy of it rather than one per repository: this docstring is for
 whoever opens this file, MANUAL is for whoever runs the tool.
 """
 
+#: Bumped by hand on every change to this file, and never otherwise. The
+#: `.sha256` beside each copy already answers "has this copy been edited?"
+#: precisely; what it cannot answer is "which of two copies is older", because
+#: hashes do not order. That question is the one that went unanswered for weeks:
+#: two of the three repositories sat on a stale core with their own lints green,
+#: since each records the hash of whatever it has committed and no lint in any
+#: of them can see the other two. A version in the run fingerprint makes the
+#: staleness legible from one run's output instead of from three checkouts.
+#:
+#: sync-core.py refuses to propagate a changed file whose version did not move,
+#: which is the guard on forgetting to bump: two different files claiming one
+#: version would be worse than no version at all.
+CORE_VERSION = 3
+
 import argparse
 import bisect
 import concurrent.futures
@@ -86,7 +100,8 @@ mainline moved on without you as though it were yours.
 
 `--operators` picks what to change. `tokens` changes one token at a time,
 `bitwise` does the same for `^` and `|` -- the two spellings the token table
-leaves alone -- and `deletions` removes whole statements. The default is all of
+leaves alone -- `negation` drops a logical `!`, so the condition it guards is
+inverted, and `deletions` removes whole statements. The default is all of
 them, so a plain run asks every question this knows how to ask; naming one
 sweeps for that alone, which is the cheaper thing to do and the reason they are
 named at all.
@@ -1366,6 +1381,24 @@ BITWISE_MUTATIONS = [
     ("|", ["&", "^"]),
 ]
 
+# Dropping a logical `!`, which is the one edit here that removes a token rather than
+# exchanging one. It is kept out of the table above for the reason `bitwise` is: an operator
+# worth asking for on its own is worth measuring on its own.
+#
+# `!=` is a consumer, not an omission, and the ordering is load-bearing in the same way
+# `||` is above: without it a bare `!` matches first and `a != b` becomes `a = b`, which is
+# an assignment inside a condition - it compiles, it changes the program, and the mutant is
+# then about something nobody asked a question about.
+#
+# The trade this operator makes is the opposite of most: an inverted condition is the most
+# ordinary bug there is, so nearly every site is caught, and its value is the handful that
+# are not. Measured on oans's src/fiemap.c: 14 sites, 13 caught, 1 survived - the `!` that
+# excludes DELALLOC extents from the shared count, which no test held.
+NEGATION_MUTATIONS = [
+    ("!=", []),
+    ("!", [""]),
+]
+
 # `# 123 "some/file.h" 1` -- what -E emits when the next line it prints is not
 # the one that would follow. The path may be quoted with escapes; nothing here
 # has one, and realpath on a mangled path simply fails to match.
@@ -1472,7 +1505,8 @@ def mutation_sites(src, mask, line_filter=None, skipped=None,
             return
         sites.append(dict(offset=offset, original=original,
                           replacement=replacement, line=line,
-                          description="%s -> %s" % (original, replacement)))
+                          description=("drop: %s" % original if replacement == ""
+                                       else "%s -> %s" % (original, replacement))))
 
     i = 0
     while i < n:
@@ -1535,7 +1569,16 @@ def bitwise_sites(src, mask, line_filter=None):
                           operator_table=BITWISE_MUTATIONS, words_and_numbers=False)
 
 
-OPERATORS = ("tokens", "bitwise", "deletions")
+def negation_sites(src, mask, line_filter=None):
+    """A logical `!` dropped, so the condition it guards is inverted.
+
+    `words_and_numbers=False` for the same reason bitwise_sites passes it: asking for this
+    operator alone must not quietly re-answer every integer and every `true` in the file."""
+    return mutation_sites(src, mask, line_filter,
+                          operator_table=NEGATION_MUTATIONS, words_and_numbers=False)
+
+
+OPERATORS = ("tokens", "bitwise", "negation", "deletions")
 
 
 def parse_operators(text):
@@ -2117,7 +2160,8 @@ def fingerprint(project, args):
     setup_args = project.backend.setup_args(args)
     compiler = project.backend.compiler(project, args)
     tests = " ".join(project.harness.test_args(args))
-    facts = dict(compiler=compiler, sanitizer=project.sanitizer(setup_args),
+    facts = dict(core_version=CORE_VERSION,
+                 compiler=compiler, sanitizer=project.sanitizer(setup_args),
                  cores=os.cpu_count(), backend=project.backend.name,
                  setup_label=project.backend.setup_label,
                  harness=project.harness.name,
@@ -2130,7 +2174,8 @@ def fingerprint(project, args):
 
 
 def render_fingerprint(project, facts):
-    lines = ["compiler        %s" % facts["compiler"],
+    lines = ["core            v%s (mutate_core.py, shared)" % facts["core_version"],
+             "compiler        %s" % facts["compiler"],
              "cores           %s" % (facts["cores"] or "?"),
              "lanes           %d, %d job%s each"
              % (facts["lanes"], facts["jobs"], "" if facts["jobs"] == 1 else "s"),
@@ -2612,6 +2657,8 @@ def collect_mutants(project, args, original):
                           % (len(equivalent), "" if len(equivalent) == 1 else "s"))
             if "bitwise" in args.operators:
                 sites += bitwise_sites(original, mask, line_filter)
+            if "negation" in args.operators:
+                sites += negation_sites(original, mask, line_filter)
             if "deletions" in args.operators:
                 sites += deletion_sites(original, mask, line_filter)
             sites.sort(key=lambda s: s["offset"])
