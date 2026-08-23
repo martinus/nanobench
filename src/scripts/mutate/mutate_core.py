@@ -34,7 +34,7 @@ whoever opens this file, MANUAL is for whoever runs the tool.
 #: sync-core.py refuses to propagate a changed file whose version did not move,
 #: which is the guard on forgetting to bump: two different files claiming one
 #: version would be worse than no version at all.
-CORE_VERSION = 3
+CORE_VERSION = 4
 
 import argparse
 import bisect
@@ -1032,19 +1032,53 @@ def sync_tree(src, dst, ignore):
                 os.remove(stale)
 
 
-def estimate_seconds(project, count, lanes, cores):
+#: What a mutant costs when the `-fsyntax-only` pre-filter rejects it, as a
+#: fraction of a full build. Measured repeatedly at about a tenth, which is the
+#: figure every adapter's own notes quote.
+SYNTAX_FRACTION = 0.1
+
+
+def estimate_seconds(project, count, lanes, cores, rejected=0.0):
+    """Seconds for `count` mutants, of which `rejected` (0..1) never build.
+
+    The per-mutant constants describe a mutant that compiles. One the
+    pre-filter throws out costs a fraction of that, so a run whose mutants are
+    mostly invalid finishes far under an estimate that assumes they all build.
+    """
     lanes, cores = max(1, lanes), max(1, cores)
+    per = (project.cpu_seconds_per_mutant / cores
+           + project.lane_seconds_per_mutant / lanes
+           + project.overhead_seconds_per_mutant)
+    built = count * (1.0 - rejected)
     return (project.setup_seconds + project.setup_seconds_per_lane * lanes
-            + count * (project.cpu_seconds_per_mutant / cores
-                       + project.lane_seconds_per_mutant / lanes
-                       + project.overhead_seconds_per_mutant))
+            + built * per + (count - built) * per * SYNTAX_FRACTION)
 
 
-def estimate(project, count, lanes, cores):
-    seconds = estimate_seconds(project, count, lanes, cores)
+def human_duration(seconds):
     if seconds > 5400:
         return "%.1f h" % (seconds / 3600)
     return "%.0f min" % (seconds / 60) if seconds > 90 else "%.0f s" % seconds
+
+
+def estimate(project, count, lanes, cores, pre_filter=False):
+    """The range a run can land in, rather than one number that assumes the best.
+
+    The single figure this used to print assumes every mutant builds, and read
+    high by an order of magnitude wherever that is wrong: measured, a `negation`
+    sweep of unordered_dense's header was estimated at 11 minutes and took 51
+    seconds, because every one of its 24 mutants is ill-formed and the
+    pre-filter disposed of them. A tool being confidently wrong about its own
+    cost is a small thing that teaches people to ignore it.
+
+    Which end applies is knowable without running anything: it is how many of
+    these mutants the compiler will refuse, which is what the operator and the
+    code decide.
+    """
+    high = human_duration(estimate_seconds(project, count, lanes, cores))
+    if not pre_filter:
+        return high
+    low = human_duration(estimate_seconds(project, count, lanes, cores, 1.0))
+    return "%s, or %s if the compiler refuses them" % (high, low)
 
 
 # ---------------------------------------------------------------- memory
@@ -2734,7 +2768,8 @@ def main(project, doc):
         print("\n%d mutant%s over %d lane%s, roughly %s, %s"
               % (len(mutants), "" if len(mutants) == 1 else "s", args.lanes,
                  "" if args.lanes == 1 else "s",
-                 estimate(project, len(mutants), args.lanes, os.cpu_count() or 4),
+                 estimate(project, len(mutants), args.lanes, os.cpu_count() or 4,
+                          pre_filter=args.quick_reject),
                  "%s of memory each" % human(args.memory_limit)
                  if args.memory_limit else "no memory cap available here"))
         return 0
