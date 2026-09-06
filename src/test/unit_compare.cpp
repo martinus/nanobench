@@ -1,6 +1,7 @@
 #include <nanobench.h>
 #include <thirdparty/doctest/doctest.h>
 
+#include <algorithm>
 #include <chrono>
 #include <cmath>
 #include <cstdint>
@@ -1273,4 +1274,179 @@ TEST_CASE("unit_compare_fastest_is_a_selection_over_the_medians") {
 
     // and nothing to choose from is entry 0, not an out of range index
     CHECK(arrange({}).fastest() == 0U);
+}
+
+// roundsForTargetWidth() is what turns "I want the ratio this precisely" into a
+// number of rounds. Pure, so it can be checked against arithmetic instead of
+// against a benchmark that would have to be noisy to exercise it.
+TEST_CASE("unit_compare_rounds_for_target_width") {
+    // A sign-test interval narrows as 1/sqrt(n), so reaching half the width
+    // costs four times the rounds. 12 pilot rounds at width 0.4, asking 0.2:
+    // 12 * 4 = 48, already a whole number of blocks.
+    CHECK(nb::roundsForTargetWidth(12, 0.4, 0.2, 2, 1000) == 48);
+    // a quarter of the width is sixteen times the rounds
+    CHECK(nb::roundsForTargetWidth(12, 0.4, 0.1, 2, 1000) == 192);
+
+    // Already good enough asks for nothing more, and never for less than was
+    // already run: the second stage must not be shorter than the pilot.
+    CHECK(nb::roundsForTargetWidth(12, 0.1, 0.2, 2, 1000) == 12);
+    CHECK(nb::roundsForTargetWidth(12, 0.2, 0.2, 2, 1000) == 12);
+
+    // The cap wins, and still lands on a whole block.
+    CHECK(nb::roundsForTargetWidth(12, 1.0, 0.001, 3, 100) == 102);
+    CHECK(nb::roundsForTargetWidth(12, 1.0, 0.001, 3, 100) % 3 == 0);
+
+    // Every alternative is measured the same number of times, so a count that
+    // is not a whole number of blocks is rounded up to one.
+    CHECK(nb::roundsForTargetWidth(10, 0.3, 0.2, 4, 1000) % 4 == 0);
+    CHECK(nb::roundsForTargetWidth(10, 0.3, 0.2, 4, 1000) >= 22);
+
+    // A pilot where every round measured the same thing has a width of zero,
+    // which must ask for the minimum rather than divide by it.
+    CHECK(nb::roundsForTargetWidth(12, 0.0, 0.2, 2, 1000) == 12);
+    // and a target of zero is the disabled case, which never reaches here but
+    // must not misbehave if it does
+    CHECK(nb::roundsForTargetWidth(12, 0.4, 0.0, 2, 1000) == 12);
+}
+
+TEST_CASE(
+    "unit_compare_target_width_runs_longer_and_reports_only_the_second_stage") {
+    auto out = std::ostringstream();
+    auto bench = ankerl::nanobench::Bench();
+    // A target no real machine reaches, so the answer is the cap and the test
+    // does not depend on how quiet this one happens to be. Asking for something
+    // achievable would sometimes be met by the pilot itself - two identical
+    // operations measured paired can already be very tight - and the test would
+    // then be checking the weather.
+    bench.title("target width")
+        .output(&out)
+        .epochs(6)
+        .targetIntervalWidth(1e-9)
+        .maxEpochs(60);
+
+    auto work = Work();
+    auto const cmp = bench.compare(
+        "a",
+        [&] {
+            work.step();
+        },
+        "b",
+        [&] {
+            work.step();
+        });
+
+    // The pilot asked for more than epochs(), and the cap is what stops it.
+    CHECK(cmp.rounds() == 60);
+
+    // And the pilot's measurements are not in the result: each alternative was
+    // measured exactly once per reported round. If the pilot leaked in, this
+    // would be rounds() + 6, and the interval would be built partly from the
+    // data that chose its own sample size.
+    CHECK(cmp[0].result.size() == cmp.rounds());
+    CHECK(cmp[1].result.size() == cmp.rounds());
+}
+
+TEST_CASE("unit_compare_target_width_is_off_by_default") {
+    auto out = std::ostringstream();
+    auto bench = ankerl::nanobench::Bench();
+    bench.title("no target").output(&out).epochs(8);
+    CHECK(bench.targetIntervalWidth() <= 0.0);
+
+    auto work = Work();
+    auto const cmp = bench.compare(
+        "a",
+        [&] {
+            work.step();
+        },
+        "b",
+        [&] {
+            work.step();
+        });
+    // exactly what epochs() asked for, as before this option existed
+    CHECK(cmp.rounds() == 8);
+    CHECK(cmp[0].result.size() == 8);
+}
+
+// render() for a comparison. Without it a CompareResult could only be read by a
+// human out of the printed table: the existing templates take a Bench or a
+// vector<Result>, and neither carries a ratio or its interval.
+TEST_CASE("unit_compare_render_csv") {
+    auto out = std::ostringstream();
+    auto bench = ankerl::nanobench::Bench();
+    bench.title("rendered").output(nullptr).epochs(8);
+
+    auto work = Work();
+    auto const cmp = bench.compare(
+        "base",
+        [&] {
+            work.step();
+        },
+        "cand",
+        [&] {
+            work.step();
+        });
+
+    ankerl::nanobench::render(ankerl::nanobench::templates::compareCsv(), cmp,
+                              out);
+    auto const csv = out.str();
+
+    // header, then one row per alternative
+    auto lines = std::vector<std::string>();
+    auto stream = std::istringstream(csv);
+    auto line = std::string();
+    while (std::getline(stream, line)) {
+        lines.push_back(line);
+    }
+    REQUIRE(lines.size() == 3);
+    CHECK(lines[0].find("\"relative low\"") != std::string::npos);
+    CHECK(lines[1].find("\"rendered\";\"base\"") == 0);
+    CHECK(lines[2].find("\"rendered\";\"cand\"") == 0);
+
+    // The baseline's own row is the degenerate comparison: exactly 1, with an
+    // interval of zero width. Printing it keeps every alternative on a row.
+    CHECK(lines[1].find(";1;1;1;") != std::string::npos);
+}
+
+TEST_CASE("unit_compare_render_tags_and_sections") {
+    auto bench = ankerl::nanobench::Bench();
+    bench.title("tags").output(nullptr).epochs(8);
+    auto work = Work();
+    auto const cmp = bench.compare(
+        "base",
+        [&] {
+            work.step();
+        },
+        "cand",
+        [&] {
+            work.step();
+        });
+
+    // The experiment-wide tags work outside the section, which is what lets a
+    // header line carry them.
+    auto out = std::ostringstream();
+    ankerl::nanobench::render("{{rounds}}|{{comparisons}}|{{title}}", cmp, out);
+    CHECK(out.str() == "8|1|tags");
+
+    // Inside it, the comparison tags and the result tags share one namespace,
+    // so a template can mix them without knowing which is which.
+    out.str("");
+    ankerl::nanobench::render(
+        "{{#alternative}}{{name}}={{relative}},{{/alternative}}", cmp, out);
+    CHECK(out.str().find("base=1,") == 0);
+    CHECK(out.str().find("cand=") != std::string::npos);
+
+    // A result tag inside the section reaches that alternative's measurements.
+    out.str("");
+    ankerl::nanobench::render(
+        "{{#alternative}}{{median(elapsed)}};{{/alternative}}", cmp, out);
+    // one local, not two temporaries: begin() and end() of separate out.str()
+    // calls point into different strings
+    auto const medians = out.str();
+    CHECK(std::count(medians.begin(), medians.end(), ';') == 2);
+
+    // and an unknown one is an error rather than silence
+    out.str("");
+    CHECK_THROWS(ankerl::nanobench::render("{{nonesuch}}", cmp, out));
+    CHECK_THROWS(ankerl::nanobench::render(
+        "{{#nosuchsection}}x{{/nosuchsection}}", cmp, out));
 }

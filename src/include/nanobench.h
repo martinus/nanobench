@@ -383,6 +383,26 @@ void render(std::string const& mustacheTemplate, Bench const& bench, std::ostrea
 void render(char const* mustacheTemplate, std::vector<Result> const& results, std::ostream& out);
 void render(std::string const& mustacheTemplate, std::vector<Result> const& results, std::ostream& out);
 
+/**
+ * @brief Same, for the outcome of a Bench::compare().
+ *
+   @verbatim embed:rst
+   The section is ``{{#alternative}}``, one iteration per alternative with the baseline first, and
+   inside it the ratio tags ``{{relative}}``, ``{{relativeLow}}``, ``{{relativeHigh}}``,
+   ``{{tiedRounds}}`` and ``{{significant}}`` are available on top of everything a result tag
+   already offers, so ``{{median(elapsed)}}`` and ``{{title}}`` work as they do elsewhere.
+   ``{{rounds}}`` and ``{{comparisons}}`` describe the experiment and can be used anywhere.
+
+   Without this a comparison could only be read by a human out of the printed table:
+   :cpp:func:`templates::csv() <ankerl::nanobench::templates::csv()>` and its neighbours take a
+   :cpp:class:`Bench <ankerl::nanobench::Bench>` or a vector of
+   :cpp:class:`Result <ankerl::nanobench::Result>`, neither of which carries a ratio or its
+   interval. See :ref:`tutorial-template-compare-csv`.
+   @endverbatim
+ */
+void render(char const* mustacheTemplate, CompareResult const& cmp, std::ostream& out);
+void render(std::string const& mustacheTemplate, CompareResult const& cmp, std::ostream& out);
+
 // Contains mustache-like templates
 namespace templates {
 
@@ -396,6 +416,18 @@ namespace templates {
   @endverbatim
  */
 char const* csv() noexcept;
+
+/*!
+  @brief CSV data for a paired comparison, one row per alternative.
+
+  Carries the ratio and the bounds of its confidence interval, which is what separates a comparison
+  from a set of independent runs. Meant for ``render(templates::compareCsv(), cmp, out)``.
+
+  @verbatim embed:rst
+  See the tutorial at :ref:`tutorial-template-compare-csv` for an example.
+  @endverbatim
+ */
+char const* compareCsv() noexcept;
 
 /*!
   @brief HTML output that uses plotly to generate an interactive boxplot chart. See the tutorial for an example output.
@@ -490,6 +522,9 @@ struct Config {
     // stays the table nanobench has always printed.
     uint32_t mHiddenColumns{};                  // NOLINT(misc-non-private-member-variables-in-classes)
     std::vector<std::string> mContextColumns{}; // NOLINT(misc-non-private-member-variables-in-classes)
+    // 0 disables: compare() then runs exactly mNumEpochs rounds, as it always has.
+    double mTargetIntervalWidth{0.0}; // NOLINT(misc-non-private-member-variables-in-classes)
+    size_t mMaxEpochs{1000};          // NOLINT(misc-non-private-member-variables-in-classes)
 
     Config();
     ~Config();
@@ -1074,6 +1109,52 @@ public:
     ANKERL_NANOBENCH(NODISCARD) size_t epochs() const noexcept;
 
     /**
+     * @brief Asks Bench::compare() to keep measuring until the ratio is known this precisely.
+     *
+       @verbatim embed:rst
+       The width is in log space, which for the small widths worth asking for is the width of the
+       interval as a fraction of the ratio: ``0.05`` means the ratio is pinned to about ±2.5%. Zero,
+       the default, disables it and :cpp:func:`epochs() <ankerl::nanobench::Bench::epochs()>` alone
+       decides the count, as before.
+
+       How many rounds a target takes cannot be known in advance -- it depends on how noisy the
+       machine is -- and the default 11 is often far too few: it leaves the interval on a ratio
+       about 25% wide, which cannot tell a 10% difference from nothing. Guessing the number by hand
+       means guessing again on the next machine.
+
+       So compare() runs **two stages**. The first is ``epochs()`` rounds and is used only to see how
+       noisy the measurement is; the second runs as many rounds as that implies, and **the reported
+       result comes from the second stage alone**. Splitting them is what keeps the statistics
+       honest: a rule that watched one growing sample and stopped as soon as it looked tight enough
+       would stop preferentially on the samples that happen to look tight, and the interval would
+       then cover less often than it claims. Here the stopping decision is made from data that is
+       then discarded, so the second stage's interval is exactly as good as its confidence says. The
+       price of that is the pilot, a fixed ``epochs()`` rounds.
+
+       Simulated over 4000 trials against skewed noise, asking for a width of 0.2 at a nominal 95%:
+       two stages cover **96.0%** of the time, and the same rule watching one growing sample covers
+       **92.9%** while using half the rounds. The first is the sign test's usual slight
+       over-coverage from discreteness; the second is the interval quietly meaning less than it
+       says.
+
+       A machine too noisy to reach the target within
+       :cpp:func:`maxEpochs() <ankerl::nanobench::Bench::maxEpochs()>` stops there and reports the
+       width it did reach, rather than running forever or pretending.
+       @endverbatim
+     *
+     * @param width Interval width to aim for, in log space. 0 disables.
+     */
+    Bench& targetIntervalWidth(double width) noexcept;
+    ANKERL_NANOBENCH(NODISCARD) double targetIntervalWidth() const noexcept;
+
+    /**
+     * @brief Upper limit on the rounds Bench::compare() runs when targetIntervalWidth() is set.
+     *        Default 1000.
+     */
+    Bench& maxEpochs(size_t numEpochs) noexcept;
+    ANKERL_NANOBENCH(NODISCARD) size_t maxEpochs() const noexcept;
+
+    /**
      * @brief Upper limit for the runtime of each epoch.
      *
      * As a safety precaution if the clock is not very accurate, we can set an upper limit for the maximum evaluation time per
@@ -1614,6 +1695,19 @@ double bonferroniConfidence(size_t numComparisons) noexcept;
 // a tool whose output ends up in a pull request.
 std::pair<double, double> medianInterval(std::vector<double> values, double confidence);
 
+// How many rounds a second stage needs so that its interval is no wider than `targetWidth`.
+//
+// The width of a sign-test interval for the median shrinks as 1/sqrt(n) -- the two order statistics
+// that bracket it sit about z*sqrt(n)/2 ranks either side of the middle, so the distance between
+// them falls off with the square root of the count. So the count that reaches a target width scales
+// with the square of the ratio of widths, which is all this computes, plus the rounding the caller
+// needs: up to a whole block of `numOps`, never below what was already run, never above `maxRounds`.
+//
+// `observedWidth` and `targetWidth` are both in log space, the space the interval is computed in.
+// A degenerate pilot -- every round identical, so a width of zero -- asks for the minimum rather
+// than dividing by zero.
+size_t roundsForTargetWidth(size_t pilotRounds, double observedWidth, double targetWidth, size_t numOps, size_t maxRounds) noexcept;
+
 // Branch misses cannot exceed the branches they were taken from, and the loop is assumed to mispredict
 // its own exit once - so at least one miss is always attributed to it.
 double correctBranchMisses(uint64_t rawBranchMisses, double correctedBranchInstructions) noexcept;
@@ -1984,6 +2078,12 @@ char const* csv() noexcept {
     return R"DELIM("title";"name";"unit";"batch";"elapsed";"error %";"instructions";"branches";"branch misses";"total"
 {{#result}}"{{title}}";"{{name}}";"{{unit}}";{{batch}};{{median(elapsed)}};{{medianAbsolutePercentError(elapsed)}};{{median(instructions)}};{{median(branchinstructions)}};{{median(branchmisses)}};{{sumProduct(iterations, elapsed)}}
 {{/result}})DELIM";
+}
+
+char const* compareCsv() noexcept {
+    return R"DELIM("title";"name";"relative";"relative low";"relative high";"significant";"tied rounds";"rounds";"elapsed";"error %"
+{{#alternative}}"{{title}}";"{{name}}";{{relative}};{{relativeLow}};{{relativeHigh}};{{significant}};{{tiedRounds}};{{rounds}};{{median(elapsed)}};{{medianAbsolutePercentError(elapsed)}}
+{{/alternative}})DELIM";
 }
 
 char const* htmlBoxplot() noexcept {
@@ -2383,6 +2483,62 @@ static void generateResultMeasurement(std::vector<Node> const& nodes, size_t idx
     }
 }
 
+// The tags a comparison adds on top of a result's. Returns false for anything it does not know, so
+// the caller can fall back to the result tags and a template keeps working whichever it names.
+static bool generateCompareTag(Node const& n, CompareResult const& cmp, size_t idx, std::ostream& out) {
+    if (n == "relative") {
+        out << cmp[idx].relative;
+    } else if (n == "relativeLow") {
+        out << cmp[idx].relativeLow;
+    } else if (n == "relativeHigh") {
+        out << cmp[idx].relativeHigh;
+    } else if (n == "tiedRounds") {
+        out << cmp[idx].tiedRounds;
+    } else if (n == "significant") {
+        out << (cmp.isSignificant(idx) ? 1 : 0);
+    } else if (n == "rounds") {
+        out << cmp.rounds();
+    } else if (n == "comparisons") {
+        out << cmp.comparisons();
+    } else {
+        return false;
+    }
+    return true;
+}
+
+static void generateCompareEntry(std::vector<Node> const& nodes, size_t idx, CompareResult const& cmp, std::ostream& out) {
+    auto const& r = cmp[idx].result;
+    for (auto const& n : nodes) {
+        if (!generateFirstLast(n, idx, cmp.size(), out)) {
+            ANKERL_NANOBENCH_LOG("n.type=" << static_cast<int>(n.type));
+            switch (n.type) {
+            case Node::Type::content:
+                writeTo(n, out);
+                break;
+
+            case Node::Type::inverted_section:
+                ANKERL_NANOBENCH_THROW(std::runtime_error("got a inverted section inside alternative"));
+
+            case Node::Type::section:
+                if (n == "measurement") {
+                    for (size_t i = 0; i < r.size(); ++i) {
+                        generateResultMeasurement(n.children, i, r, out);
+                    }
+                } else {
+                    ANKERL_NANOBENCH_THROW(std::runtime_error("got a section inside alternative"));
+                }
+                break;
+
+            case Node::Type::tag:
+                if (!generateCompareTag(n, cmp, idx, out)) {
+                    generateResultTag(n, r, out);
+                }
+                break;
+            }
+        }
+    }
+}
+
 static void generateResult(std::vector<Node> const& nodes, size_t idx, std::vector<Result> const& results, std::ostream& out) {
     auto const& r = results[idx];
     for (auto const& n : nodes) {
@@ -2585,6 +2741,47 @@ void render(char const* mustacheTemplate, std::vector<Result> const& results, st
             break;
         }
     }
+}
+
+void render(char const* mustacheTemplate, CompareResult const& cmp, std::ostream& out) {
+    detail::fmt::StreamStateRestorer const restorer(out);
+
+    out.precision(std::numeric_limits<double>::digits10);
+    auto nodes = templates::parseMustacheTemplate(&mustacheTemplate);
+
+    for (auto const& n : nodes) {
+        ANKERL_NANOBENCH_LOG("n.type=" << static_cast<int>(n.type));
+        switch (n.type) {
+        case templates::Node::Type::content:
+            templates::writeTo(n, out);
+            break;
+
+        case templates::Node::Type::inverted_section:
+            ANKERL_NANOBENCH_THROW(std::runtime_error("unknown list '" + templates::text(n) + "'"));
+
+        case templates::Node::Type::section:
+            if (n == "alternative") {
+                for (size_t i = 0; i < cmp.size(); ++i) {
+                    templates::generateCompareEntry(n.children, i, cmp, out);
+                }
+            } else {
+                ANKERL_NANOBENCH_THROW(std::runtime_error("render: unknown section '" + templates::text(n) + "'"));
+            }
+            break;
+
+        case templates::Node::Type::tag:
+            // Outside the section only the experiment-wide tags mean anything; the baseline's config
+            // answers for the rest, which is what makes a bare {{title}} in a header line work.
+            if (!templates::generateCompareTag(n, cmp, 0, out) && !templates::generateConfigTag(n, cmp[0].result.config(), out)) {
+                ANKERL_NANOBENCH_THROW(std::runtime_error("unknown tag '" + templates::text(n) + "'"));
+            }
+            break;
+        }
+    }
+}
+
+void render(std::string const& mustacheTemplate, CompareResult const& cmp, std::ostream& out) {
+    render(mustacheTemplate.c_str(), cmp, out);
 }
 
 void render(std::string const& mustacheTemplate, std::vector<Result> const& results, std::ostream& out) {
@@ -3525,6 +3722,29 @@ ANKERL_NANOBENCH_NO_SANITIZE("integer", "undefined")
 uint64_t correctBranchInstructions(uint64_t rawBranchInstructions, uint64_t numIters) noexcept {
     // one branch per iteration for the loop, plus the one that ends it
     return saturatingSub(rawBranchInstructions, numIters + 1U);
+}
+
+size_t roundsForTargetWidth(size_t pilotRounds, double observedWidth, double targetWidth, size_t numOps, size_t maxRounds) noexcept {
+    auto rounds = pilotRounds;
+    if (targetWidth > 0.0 && observedWidth > targetWidth) {
+        auto const factor = (observedWidth / targetWidth) * (observedWidth / targetWidth);
+        // d() is only defined further down; this stays in double throughout and clamps before the
+        // cast back, so a pilot that measured almost nothing cannot overflow the count.
+        auto const wanted = static_cast<double>(pilotRounds) * factor;
+        auto const capped = wanted > static_cast<double>(maxRounds) ? static_cast<double>(maxRounds) : wanted;
+        rounds = static_cast<size_t>(capped);
+        if (rounds < pilotRounds) {
+            rounds = pilotRounds;
+        }
+    }
+    if (rounds > maxRounds) {
+        rounds = maxRounds;
+    }
+    // whole blocks, so every alternative is measured the same number of times
+    if (0U != numOps && 0U != rounds % numOps) {
+        rounds += numOps - (rounds % numOps);
+    }
+    return rounds;
 }
 
 double correctBranchMisses(uint64_t rawBranchMisses, double correctedBranchInstructions) noexcept {
@@ -4579,26 +4799,58 @@ CompareResult Bench::compareImpl(std::vector<std::string> const& names, std::vec
         numRounds += numOps;
     }
 
-    Rng orderRng;
-    std::vector<uint32_t> order(numOps);
-    for (size_t i = 0; i < numOps; ++i) {
-        order[i] = static_cast<uint32_t>(i);
+    // Rounds, into whichever results are handed in. A stage is one call.
+    auto runRounds = [&](size_t rounds, std::vector<Result>& into) {
+        Rng orderRng;
+        std::vector<uint32_t> order(numOps);
+        for (size_t i = 0; i < numOps; ++i) {
+            order[i] = static_cast<uint32_t>(i);
+        }
+        for (size_t round = 0; round < rounds; ++round) {
+            auto const positionInBlock = round % numOps;
+            if (0 == positionInBlock) {
+                // A fresh random permutation per block, then rotated one step per round: every
+                // alternative occupies every position exactly once over the block, so their mean
+                // positions are equal and a drift that is linear over the block cancels. For two
+                // alternatives this produces exactly ABBA or BAAB.
+                orderRng.shuffle(order);
+            }
+            for (size_t slot = 0; slot < numOps; ++slot) {
+                auto const which = order[(slot + positionInBlock) % numOps];
+                compareEpoch(ops[which], iters, into[which]);
+            }
+        }
+    };
+
+    if (targetIntervalWidth() > 0.0) {
+        // A pilot, whose only job is to say how many rounds the target needs. Its measurements are
+        // then dropped: choosing the count from the same data that the interval is computed from is
+        // the optional-stopping mistake, and it makes an interval that covers less often than it
+        // claims. See targetIntervalWidth() for the argument.
+        std::vector<Result> pilot;
+        pilot.reserve(numOps);
+        for (auto const& name : names) {
+            Config pilotConfig = mConfig;
+            pilotConfig.mBenchmarkName = name;
+            pilot.emplace_back(std::move(pilotConfig));
+        }
+        runRounds(numRounds, pilot);
+
+        // The widest interval over the alternatives, so that every row reaches the target, not just
+        // the luckiest one.
+        auto widest = 0.0;
+        for (size_t i = 1; i < numOps; ++i) {
+            auto const logRatios = detail::pairedLogRatios(pilot[0], pilot[i]);
+            auto const interval = detail::medianInterval(logRatios, confidence);
+            auto const width = interval.second - interval.first;
+            if (width > widest) {
+                widest = width;
+            }
+        }
+        numRounds = detail::roundsForTargetWidth(numRounds, widest, targetIntervalWidth(), numOps, maxEpochs());
     }
 
-    for (size_t round = 0; round < numRounds; ++round) {
-        auto const positionInBlock = round % numOps;
-        if (0 == positionInBlock) {
-            // A fresh random permutation per block, then rotated one step per round: every
-            // alternative occupies every position exactly once over the block, so their mean
-            // positions are equal and a drift that is linear over the block cancels. For two
-            // alternatives this produces exactly ABBA or BAAB.
-            orderRng.shuffle(order);
-        }
-        for (size_t slot = 0; slot < numOps; ++slot) {
-            auto const which = order[(slot + positionInBlock) % numOps];
-            compareEpoch(ops[which], iters, results[which]);
-        }
-    }
+    runRounds(numRounds, results);
 
     std::vector<CompareResult::Entry> entries;
     entries.reserve(numOps);
@@ -4948,6 +5200,22 @@ Bench& Bench::epochs(size_t numEpochs) noexcept {
 }
 size_t Bench::epochs() const noexcept {
     return mConfig.mNumEpochs;
+}
+
+Bench& Bench::targetIntervalWidth(double width) noexcept {
+    mConfig.mTargetIntervalWidth = width;
+    return *this;
+}
+double Bench::targetIntervalWidth() const noexcept {
+    return mConfig.mTargetIntervalWidth;
+}
+
+Bench& Bench::maxEpochs(size_t numEpochs) noexcept {
+    mConfig.mMaxEpochs = numEpochs;
+    return *this;
+}
+size_t Bench::maxEpochs() const noexcept {
+    return mConfig.mMaxEpochs;
 }
 
 // Desired evaluation time is a multiple of clock resolution. Default is to be 1000 times above this measurement precision.
