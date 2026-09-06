@@ -894,6 +894,79 @@ Rendered as CSV table:
 Note that the CSV template doesn't provide all the data that is available.
 
 
+.. _tutorial-template-compare-csv:
+
+CSV for a comparison
+--------------------
+
+:cpp:func:`Bench::compare() <ankerl::nanobench::Bench::compare()>` returns a
+:cpp:class:`CompareResult <ankerl::nanobench::CompareResult>`, which carries something the templates
+above cannot express: a ratio and the confidence interval around it. Those come from the paired
+measurement and are the reason to run a comparison rather than two independent benchmarks, so they
+need a way out of the process that is not the printed table.
+:cpp:func:`ankerl::nanobench::templates::compareCsv` is that way:
+
+.. code-block:: cpp
+
+   auto bench = ankerl::nanobench::Bench().output(nullptr);
+   auto const cmp = bench.compare("v1", [&] { v1(); }, "v2", [&] { v2(); });
+   ankerl::nanobench::render(ankerl::nanobench::templates::compareCsv(), cmp, std::cout);
+
+.. code-block:: text
+
+   "title";"name";"relative";"relative low";"relative high";"significant";"tied rounds";"rounds";"elapsed";"error %"
+   "benchmark";"v1";1;1;1;0;0;11;1.0293e-08;0.0091
+   "benchmark";"v2";1.4271;1.3702;1.4884;1;0;11;7.2126e-09;0.0083
+
+``relative`` is the baseline's time over this alternative's, so above 1 means faster than the
+baseline; ``relative low`` and ``relative high`` bracket it, and ``significant`` is 1 when that
+interval excludes the baseline. Inside ``{{#alternative}}`` every tag a result template understands
+works too, so ``{{median(elapsed)}}`` and ``{{title}}`` are available alongside them, and
+``{{rounds}}`` and ``{{comparisons}}`` can be used anywhere.
+
+Sweeping a parameter is what this is for: run one comparison per size, render a row for each, and the
+result is a table of ratios with their uncertainty that a plot can be drawn from. Do give it enough
+rounds -- see :ref:`tutorial-compare-precision`.
+
+
+.. _tutorial-compare-precision:
+
+How precise is a comparison?
+----------------------------
+
+The interval that :cpp:func:`Bench::compare() <ankerl::nanobench::Bench::compare()>` reports is
+computed from the rounds it ran, and the default 11 is not many: on an ordinary machine that leaves
+the interval on a ratio about 25% wide, which cannot tell a 10% difference from no difference at all.
+The number of rounds a given precision needs depends on how noisy the machine is, so it cannot be
+written into a program that has to run on more than one.
+
+:cpp:func:`Bench::targetIntervalWidth() <ankerl::nanobench::Bench::targetIntervalWidth()>` asks for
+the precision instead of the count:
+
+.. code-block:: cpp
+
+   auto bench = ankerl::nanobench::Bench().targetIntervalWidth(0.05).maxEpochs(500);
+
+The width is in log space, which for the small widths worth asking for is the width of the interval
+as a fraction of the ratio: ``0.05`` pins the ratio to about ±2.5%.
+
+compare() then runs two stages. The first is ``epochs()`` rounds and exists only to see how noisy the
+measurement is; the second runs as many rounds as that implies, and the reported result comes from
+the second stage alone. That split is deliberate. A rule that watched one growing sample and stopped
+as soon as it looked tight enough would stop preferentially on the samples that happen to look tight,
+and the interval would then cover less often than its confidence claims -- the optional-stopping
+mistake. Deciding from data that is then discarded leaves the second stage's interval exactly as good
+as it says it is. The price is the pilot, a fixed ``epochs()`` rounds.
+
+Simulated over 4000 trials against skewed noise, asking for a width of 0.2 at a nominal 95%: two
+stages cover 96.0% of the time, and the same rule watching one growing sample covers 92.9% while
+using half the rounds. The first is the sign test's usual slight over-coverage from discreteness; the
+second is an interval that quietly means less than it says.
+
+A machine too noisy to reach the target within
+:cpp:func:`maxEpochs() <ankerl::nanobench::Bench::maxEpochs()>` stops there and reports the width it
+did reach.
+
 
 .. _tutorial-template-html:
 
